@@ -1,0 +1,54 @@
+// Prisma schema for آل شايع Family Tree Application
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./family.db"
+}
+
+model FamilyMember {
+  id                    String   @id // P001, P002, etc.
+  firstName             String   // الاسم
+  fatherName            String?  // اسم الأب
+  grandfatherName       String?  // اسم الجد
+  greatGrandfatherName  String?  // اسم الجد الثاني
+  familyName            String   @default("آل شايع")
+
+  // Relationship
+  fatherId              String?  // Father_ID reference
+  father                FamilyMember?  @relation("ParentChild", fields: [fatherId], references: [id])
+  children              FamilyMember[] @relation("ParentChild")
+
+  // Personal info
+  gender                String   // Male or Female
+  birthYear             Int?     // سنة الميلاد
+  sonsCount             Int      @default(0) // عدد الأبناء
+  daughtersCount        Int      @default(0) // عدد البنات
+
+  // Calculated/Display fields
+  generation            Int      @default(1) // الجيل
+  branch                String?  // الفرع (الأصل, الفرع 1, etc.)
+  fullNameAr            String?  // الاسم الكامل بالعربي
+  fullNameEn            String?  // Full name in English
+
+  // Contact info
+  phone                 String?
+  city                  String?
+  status                String   @default("Living") // Living, Deceased
+  photoUrl              String?
+  biography             String?
+  occupation            String?
+  email                 String?
+
+  // Metadata
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([generation])
+  @@index([branch])
+  @@index([gender])
+  @@index([fatherId])
+}
