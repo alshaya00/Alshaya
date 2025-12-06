@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+:root {
+  --male-color: #4472C4;
+  --male-bg: #DBEEF3;
+  --female-color: #E91E63;
+  --female-bg: #F2DCDB;
+  --family-green: #70AD47;
+  --family-gold: #FFD700;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Sans Arabic', Arial, sans-serif;
+  background-color: #f8fafc;
+  min-height: 100vh;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Male member card */
+.member-card-male {
+  background: linear-gradient(135deg, var(--male-bg) 0%, #ffffff 100%);
+  border-left: 4px solid var(--male-color);
+}
+
+/* Female member card */
+.member-card-female {
+  background: linear-gradient(135deg, var(--female-bg) 0%, #ffffff 100%);
+  border-left: 4px solid var(--female-color);
+}
+
+/* RTL adjustments for member cards */
+[dir="rtl"] .member-card-male,
+[dir="rtl"] .member-card-female {
+  border-left: none;
+  border-right: 4px solid var(--male-color);
+}
+
+[dir="rtl"] .member-card-female {
+  border-right-color: var(--female-color);
+}
+
+/* Tree node styles */
+.tree-node-male {
+  fill: var(--male-bg);
+  stroke: var(--male-color);
+  stroke-width: 3;
+}
+
+.tree-node-female {
+  fill: var(--female-bg);
+  stroke: var(--female-color);
+  stroke-width: 3;
+}
+
+/* Animation for tree links */
+.tree-link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 2;
+  transition: stroke 0.3s ease;
+}
+
+.tree-link:hover {
+  stroke: var(--family-green);
+}
+
+/* Stat card animations */
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation active state */
+.nav-link-active {
+  background-color: var(--family-green);
+  color: white;
+}
+
+/* Quick add form styles */
+.quick-add-input {
+  @apply w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all;
+}
+
+.quick-add-input:focus {
+  outline: none;
+}
+
+/* Table styles */
+.data-table {
+  @apply w-full border-collapse;
+}
+
+.data-table th {
+  @apply bg-gray-100 p-3 text-right font-semibold border-b-2 border-gray-200;
+}
+
+.data-table td {
+  @apply p-3 border-b border-gray-100;
+}
+
+.data-table tr:hover {
+  @apply bg-gray-50;
+}
+
+/* Badge styles */
+.badge-male {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
+}
+
+.badge-female {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800;
+}
+
+/* Loading animation */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.33);
+  }
+  40%, 50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.loading-spinner {
+  @apply inline-block w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin;
+}
+
+/* Generation badge colors */
+.gen-1 { @apply bg-red-500; }
+.gen-2 { @apply bg-orange-500; }
+.gen-3 { @apply bg-yellow-500; }
+.gen-4 { @apply bg-green-500; }
+.gen-5 { @apply bg-teal-500; }
+.gen-6 { @apply bg-blue-500; }
+.gen-7 { @apply bg-indigo-500; }
+.gen-8 { @apply bg-purple-500; }
