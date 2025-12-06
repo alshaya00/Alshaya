@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X } from 'lucide-react';
+import { Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X, GitBranch } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
   { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
+  { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
   { href: '/registry', label: 'السجل', labelEn: 'Registry', icon: Users },
-  { href: '/quick-add', label: 'إضافة', labelEn: 'Add', icon: PlusCircle },
   { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 },
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
 ];
