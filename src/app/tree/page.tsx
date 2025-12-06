@@ -1,397 +1,353 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import * as d3 from 'd3';
-import { buildFamilyTree, getAllMembers, FamilyMember } from '@/lib/data';
+import { useState, useEffect, useMemo } from 'react';
+import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
 import {
-  ZoomIn, ZoomOut, RotateCcw, Search,
-  ChevronDown, ChevronUp, X
+  Search, ChevronDown, ChevronRight, Users, User,
+  Eye, X, TreePine, LayoutGrid, List
 } from 'lucide-react';
 import Link from 'next/link';
 
-type TreeNode = FamilyMember & {
-  children?: TreeNode[];
-  _children?: TreeNode[];
-  x0?: number;
-  y0?: number;
-};
+type ViewMode = 'tree' | 'generations' | 'list';
+
+interface TreeNodeData extends FamilyMember {
+  children: TreeNodeData[];
+  isExpanded: boolean;
+}
 
 export default function TreePage() {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('tree');
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['P001']));
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<FamilyMember[]>([]);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const allMembers = getAllMembers();
 
-  // Search functionality
-  useEffect(() => {
-    if (searchTerm.length >= 2) {
-      const results = allMembers.filter(m =>
-        m.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.fullNameAr?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.id.toLowerCase().includes(searchTerm.toLowerCase())
-      ).slice(0, 8);
-      setSearchResults(results);
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchTerm, allMembers]);
+  // Build tree structure
+  const treeData = useMemo(() => {
+    const memberMap = new Map<string, TreeNodeData>();
 
-  const highlightMember = useCallback((id: string) => {
-    setHighlightedId(id);
-    setSearchTerm('');
-    setSearchResults([]);
-    setTimeout(() => setHighlightedId(null), 3000);
-  }, []);
+    // Create nodes
+    allMembers.forEach(member => {
+      memberMap.set(member.id, {
+        ...member,
+        children: [],
+        isExpanded: expandedNodes.has(member.id)
+      });
+    });
 
-  useEffect(() => {
-    const treeData = buildFamilyTree();
-    if (!treeData || !svgRef.current || !containerRef.current) return;
-
-    const container = containerRef.current;
-    const width = container.clientWidth;
-    const height = 700;
-    const margin = { top: 60, right: 40, bottom: 40, left: 40 };
-
-    // Clear previous content
-    d3.select(svgRef.current).selectAll('*').remove();
-
-    const svg = d3.select(svgRef.current)
-      .attr('width', width)
-      .attr('height', height);
-
-    // Add gradient definitions
-    const defs = svg.append('defs');
-
-    // Male gradient
-    const maleGradient = defs.append('linearGradient')
-      .attr('id', 'maleGradient')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    maleGradient.append('stop').attr('offset', '0%').attr('stop-color', '#60a5fa');
-    maleGradient.append('stop').attr('offset', '100%').attr('stop-color', '#3b82f6');
-
-    // Female gradient
-    const femaleGradient = defs.append('linearGradient')
-      .attr('id', 'femaleGradient')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    femaleGradient.append('stop').attr('offset', '0%').attr('stop-color', '#f472b6');
-    femaleGradient.append('stop').attr('offset', '100%').attr('stop-color', '#ec4899');
-
-    // Drop shadow filter
-    const filter = defs.append('filter')
-      .attr('id', 'dropShadow')
-      .attr('height', '130%');
-    filter.append('feDropShadow')
-      .attr('dx', '0')
-      .attr('dy', '2')
-      .attr('stdDeviation', '3')
-      .attr('flood-color', 'rgba(0,0,0,0.2)');
-
-    const g = svg.append('g')
-      .attr('transform', `translate(${width / 2},${margin.top})`);
-
-    // Create tree layout - VERTICAL orientation
-    const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([85, 100])
-      .separation((a, b) => a.parent === b.parent ? 1.2 : 1.8);
-
-    // Create hierarchy
-    const root = d3.hierarchy(treeData as TreeNode);
-
-    // Collapse nodes after depth 2
-    root.descendants().forEach((d: any) => {
-      if (d.depth >= 2 && d.children) {
-        d._children = d.children;
-        d.children = null;
+    // Build hierarchy
+    const roots: TreeNodeData[] = [];
+    memberMap.forEach(node => {
+      if (node.fatherId && memberMap.has(node.fatherId)) {
+        memberMap.get(node.fatherId)!.children.push(node);
+      } else if (!node.fatherId) {
+        roots.push(node);
       }
     });
 
-    const update = (source: any) => {
-      const treeNodes = treeLayout(root as any);
-      const nodes = treeNodes.descendants();
-      const links = treeNodes.links();
-      const duration = 400;
-
-      // Update links
-      const link = g.selectAll<SVGPathElement, any>('.link')
-        .data(links, (d: any) => d.target.data.id);
-
-      const linkEnter = link.enter()
-        .append('path')
-        .attr('class', 'link')
-        .attr('fill', 'none')
-        .attr('stroke', '#cbd5e1')
-        .attr('stroke-width', 2)
-        .attr('d', () => {
-          const o = { x: source.x0 || 0, y: source.y0 || 0 };
-          return `M${o.x},${o.y}L${o.x},${o.y}`;
-        });
-
-      link.merge(linkEnter)
-        .transition()
-        .duration(duration)
-        .attr('d', (d: any) => {
-          return `M${d.source.x},${d.source.y}
-                  C${d.source.x},${(d.source.y + d.target.y) / 2}
-                   ${d.target.x},${(d.source.y + d.target.y) / 2}
-                   ${d.target.x},${d.target.y}`;
-        });
-
-      link.exit()
-        .transition()
-        .duration(duration)
-        .attr('d', () => {
-          const o = { x: source.x, y: source.y };
-          return `M${o.x},${o.y}L${o.x},${o.y}`;
-        })
-        .remove();
-
-      // Update nodes
-      const node = g.selectAll<SVGGElement, any>('.node')
-        .data(nodes, (d: any) => d.data.id);
-
-      const nodeEnter = node.enter()
-        .append('g')
-        .attr('class', 'node')
-        .attr('transform', () => `translate(${source.x0 || 0},${source.y0 || 0})`)
-        .style('cursor', 'pointer')
-        .on('click', (event: MouseEvent, d: any) => {
-          event.stopPropagation();
-          if (event.shiftKey || event.ctrlKey) {
-            setSelectedMember(d.data as FamilyMember);
-          } else {
-            if (d.children) {
-              d._children = d.children;
-              d.children = null;
-            } else if (d._children) {
-              d.children = d._children;
-              d._children = null;
-            }
-            update(d);
-          }
-        });
-
-      // Node card background
-      nodeEnter.append('rect')
-        .attr('class', 'node-bg')
-        .attr('x', -38)
-        .attr('y', -28)
-        .attr('width', 76)
-        .attr('height', 56)
-        .attr('rx', 10)
-        .attr('fill', 'white')
-        .attr('filter', 'url(#dropShadow)');
-
-      // Colored header bar
-      nodeEnter.append('rect')
-        .attr('x', -38)
-        .attr('y', -28)
-        .attr('width', 76)
-        .attr('height', 10)
-        .attr('rx', 10)
-        .attr('fill', (d: any) => d.data.gender === 'Male' ? 'url(#maleGradient)' : 'url(#femaleGradient)');
-
-      nodeEnter.append('rect')
-        .attr('x', -38)
-        .attr('y', -22)
-        .attr('width', 76)
-        .attr('height', 6)
-        .attr('fill', (d: any) => d.data.gender === 'Male' ? '#3b82f6' : '#ec4899');
-
-      // Gender icon
-      nodeEnter.append('text')
-        .attr('x', 0)
-        .attr('y', -2)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '18px')
-        .text((d: any) => d.data.gender === 'Male' ? '👨' : '👩');
-
-      // Name
-      nodeEnter.append('text')
-        .attr('x', 0)
-        .attr('y', 18)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '11px')
-        .attr('font-weight', 'bold')
-        .attr('fill', '#1f2937')
-        .text((d: any) => {
-          const name = d.data.firstName;
-          return name.length > 9 ? name.slice(0, 8) + '..' : name;
-        });
-
-      // Expand/collapse indicator
-      nodeEnter.append('circle')
-        .attr('class', 'toggle-circle')
-        .attr('cx', 0)
-        .attr('cy', 38)
-        .attr('r', 12)
-        .attr('fill', (d: any) => (d._children || d.children) ? '#10b981' : 'transparent')
-        .attr('stroke', (d: any) => (d._children || d.children) ? '#10b981' : 'transparent');
-
-      nodeEnter.append('text')
-        .attr('class', 'toggle-text')
-        .attr('x', 0)
-        .attr('y', 42)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '11px')
-        .attr('fill', 'white')
-        .attr('font-weight', 'bold')
-        .text((d: any) => {
-          if (d._children) return '+' + d._children.length;
-          if (d.children) return '−';
-          return '';
-        });
-
-      // Generation badge
-      nodeEnter.append('circle')
-        .attr('cx', 30)
-        .attr('cy', -20)
-        .attr('r', 10)
-        .attr('fill', (d: any) => {
-          const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7'];
-          return colors[(d.data.generation - 1) % colors.length];
-        });
-
-      nodeEnter.append('text')
-        .attr('x', 30)
-        .attr('y', -16)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '10px')
-        .attr('fill', 'white')
-        .attr('font-weight', 'bold')
-        .text((d: any) => d.data.generation);
-
-      // Merge and transition
-      const nodeUpdate = node.merge(nodeEnter);
-
-      nodeUpdate.transition()
-        .duration(duration)
-        .attr('transform', (d: any) => `translate(${d.x},${d.y})`);
-
-      // Update toggle indicators
-      nodeUpdate.select('.toggle-circle')
-        .attr('fill', (d: any) => (d._children || d.children) ? '#10b981' : 'transparent')
-        .attr('stroke', (d: any) => (d._children || d.children) ? '#10b981' : 'transparent');
-
-      nodeUpdate.select('.toggle-text')
-        .text((d: any) => {
-          if (d._children) return '+' + d._children.length;
-          if (d.children) return '−';
-          return '';
-        });
-
-      // Highlight effect
-      nodeUpdate.select('.node-bg')
-        .attr('stroke', (d: any) => d.data.id === highlightedId ? '#fbbf24' : 'transparent')
-        .attr('stroke-width', (d: any) => d.data.id === highlightedId ? 4 : 0);
-
-      // Exit
-      node.exit()
-        .transition()
-        .duration(duration)
-        .attr('transform', () => `translate(${source.x},${source.y})`)
-        .remove();
-
-      // Store positions
-      nodes.forEach((d: any) => {
-        d.x0 = d.x;
-        d.y0 = d.y;
-      });
+    // Sort children by birth year
+    const sortChildren = (node: TreeNodeData) => {
+      node.children.sort((a, b) => (a.birthYear || 0) - (b.birthYear || 0));
+      node.children.forEach(sortChildren);
     };
+    roots.forEach(sortChildren);
 
-    // Initial render
-    (root as any).x0 = 0;
-    (root as any).y0 = 0;
-    update(root);
+    return roots;
+  }, [allMembers, expandedNodes]);
 
-    // Zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.2, 3])
-      .on('zoom', (event) => {
-        g.attr('transform', `translate(${event.transform.x + width / 2},${event.transform.y + margin.top}) scale(${event.transform.k})`);
-      });
+  // Group by generation for generation view
+  const generations = useMemo(() => {
+    const groups: Map<number, FamilyMember[]> = new Map();
+    allMembers.forEach(member => {
+      if (!groups.has(member.generation)) {
+        groups.set(member.generation, []);
+      }
+      groups.get(member.generation)!.push(member);
+    });
+    return Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
+  }, [allMembers]);
 
-    svg.call(zoom);
+  // Search functionality
+  const searchResults = useMemo(() => {
+    if (searchTerm.length < 2) return [];
+    const term = searchTerm.toLowerCase();
+    return allMembers.filter(m =>
+      m.firstName.toLowerCase().includes(term) ||
+      m.fullNameAr?.toLowerCase().includes(term) ||
+      m.id.toLowerCase().includes(term)
+    ).slice(0, 10);
+  }, [searchTerm, allMembers]);
 
-    // Store references
-    (svg.node() as any).__zoom = zoom;
-    (svg.node() as any).__update = update;
-    (svg.node() as any).__root = root;
-
-  }, [highlightedId]);
-
-  const handleZoomIn = () => {
-    const svg = d3.select(svgRef.current);
-    const zoom = (svg.node() as any)?.__zoom;
-    if (zoom) svg.transition().duration(300).call(zoom.scaleBy, 1.3);
-  };
-
-  const handleZoomOut = () => {
-    const svg = d3.select(svgRef.current);
-    const zoom = (svg.node() as any)?.__zoom;
-    if (zoom) svg.transition().duration(300).call(zoom.scaleBy, 0.7);
-  };
-
-  const handleReset = () => {
-    const svg = d3.select(svgRef.current);
-    const zoom = (svg.node() as any)?.__zoom;
-    if (zoom) {
-      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
-    }
+  const toggleNode = (id: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const expandAll = () => {
-    const svg = d3.select(svgRef.current);
-    const root = (svg.node() as any)?.__root;
-    const update = (svg.node() as any)?.__update;
-    if (root && update) {
-      root.descendants().forEach((d: any) => {
-        if (d._children) {
-          d.children = d._children;
-          d._children = null;
-        }
-      });
-      update(root);
-    }
+    setExpandedNodes(new Set(allMembers.filter(m => m.gender === 'Male').map(m => m.id)));
   };
 
   const collapseAll = () => {
-    const svg = d3.select(svgRef.current);
-    const root = (svg.node() as any)?.__root;
-    const update = (svg.node() as any)?.__update;
-    if (root && update) {
-      root.descendants().forEach((d: any) => {
-        if (d.depth >= 2 && d.children) {
-          d._children = d.children;
-          d.children = null;
-        }
-      });
-      update(root);
-    }
+    setExpandedNodes(new Set(['P001']));
   };
 
+  const highlightMember = (id: string) => {
+    setHighlightedId(id);
+    setSearchTerm('');
+
+    // Expand path to member
+    const member = getMemberById(id);
+    if (member) {
+      const newExpanded = new Set(expandedNodes);
+      let current = member;
+      while (current.fatherId) {
+        newExpanded.add(current.fatherId);
+        const parent = getMemberById(current.fatherId);
+        if (!parent) break;
+        current = parent;
+      }
+      setExpandedNodes(newExpanded);
+    }
+
+    setTimeout(() => setHighlightedId(null), 4000);
+  };
+
+  const generationColors: Record<number, string> = {
+    1: 'bg-red-500',
+    2: 'bg-orange-500',
+    3: 'bg-amber-500',
+    4: 'bg-green-500',
+    5: 'bg-teal-500',
+    6: 'bg-blue-500',
+    7: 'bg-indigo-500',
+    8: 'bg-purple-500',
+  };
+
+  // Render tree node recursively
+  const renderTreeNode = (node: TreeNodeData, level: number = 0) => {
+    const isExpanded = expandedNodes.has(node.id);
+    const hasChildren = node.children.length > 0;
+    const isHighlighted = node.id === highlightedId;
+
+    return (
+      <div key={node.id} className="relative">
+        {/* Node */}
+        <div
+          className={`
+            flex items-center gap-2 py-2 px-3 rounded-lg mb-1 transition-all cursor-pointer
+            ${isHighlighted ? 'bg-yellow-100 ring-2 ring-yellow-400 animate-pulse' : 'hover:bg-gray-50'}
+            ${level === 0 ? 'bg-green-50 border border-green-200' : ''}
+          `}
+          style={{ marginRight: `${level * 24}px` }}
+        >
+          {/* Expand/Collapse Button */}
+          {hasChildren ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleNode(node.id); }}
+              className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                isExpanded ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+            >
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+          ) : (
+            <div className="w-6 h-6 flex items-center justify-center">
+              <div className={`w-2 h-2 rounded-full ${node.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}`} />
+            </div>
+          )}
+
+          {/* Avatar */}
+          <div className={`
+            w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2
+            ${node.gender === 'Male'
+              ? 'bg-blue-50 border-blue-400 text-blue-600'
+              : 'bg-pink-50 border-pink-400 text-pink-600'
+            }
+          `}>
+            {node.gender === 'Male' ? '♂' : '♀'}
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0" onClick={() => setSelectedMember(node)}>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-gray-800 truncate">{node.firstName}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full text-white ${generationColors[node.generation]}`}>
+                ج{node.generation}
+              </span>
+              {node.sonsCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">
+                  {node.sonsCount} ابن
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 truncate">
+              {node.id} • {node.branch || 'الأصل'}
+              {node.birthYear && ` • ${node.birthYear}`}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <button
+            onClick={() => setSelectedMember(node)}
+            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+          >
+            <Eye size={16} />
+          </button>
+        </div>
+
+        {/* Children */}
+        {isExpanded && hasChildren && (
+          <div className="relative">
+            {/* Vertical line */}
+            <div
+              className="absolute top-0 bottom-0 border-r-2 border-gray-200"
+              style={{ right: `${level * 24 + 36}px` }}
+            />
+            {node.children.map(child => renderTreeNode(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render generation view
+  const renderGenerationView = () => (
+    <div className="space-y-6">
+      {generations.map(([gen, members]) => (
+        <div key={gen} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          {/* Generation Header */}
+          <div className={`${generationColors[gen]} text-white px-4 py-3 flex items-center justify-between`}>
+            <div className="flex items-center gap-2">
+              <Users size={20} />
+              <span className="font-bold">الجيل {gen}</span>
+            </div>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
+              {members.length} عضو
+            </span>
+          </div>
+
+          {/* Members Grid */}
+          <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {members.map(member => (
+              <button
+                key={member.id}
+                onClick={() => setSelectedMember(member)}
+                className={`
+                  p-3 rounded-xl border-2 text-center transition-all hover:shadow-md
+                  ${member.id === highlightedId ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100 hover:border-gray-200'}
+                  ${member.gender === 'Male' ? 'bg-blue-50/50' : 'bg-pink-50/50'}
+                `}
+              >
+                <div className={`
+                  w-12 h-12 mx-auto rounded-full flex items-center justify-center text-2xl mb-2 border-2
+                  ${member.gender === 'Male'
+                    ? 'bg-blue-100 border-blue-300'
+                    : 'bg-pink-100 border-pink-300'
+                  }
+                `}>
+                  {member.gender === 'Male' ? '👨' : '👩'}
+                </div>
+                <p className="font-bold text-sm text-gray-800 truncate">{member.firstName}</p>
+                <p className="text-[10px] text-gray-500">{member.id}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Render list view
+  const renderListView = () => (
+    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-gray-50 border-b">
+          <tr>
+            <th className="text-right px-4 py-3 text-sm font-semibold text-gray-600">الاسم</th>
+            <th className="text-center px-4 py-3 text-sm font-semibold text-gray-600">الجيل</th>
+            <th className="text-center px-4 py-3 text-sm font-semibold text-gray-600">الجنس</th>
+            <th className="text-right px-4 py-3 text-sm font-semibold text-gray-600 hidden md:table-cell">الفرع</th>
+            <th className="text-center px-4 py-3 text-sm font-semibold text-gray-600 hidden sm:table-cell">الأبناء</th>
+            <th className="text-center px-4 py-3 text-sm font-semibold text-gray-600"></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {allMembers.map(member => (
+            <tr
+              key={member.id}
+              className={`hover:bg-gray-50 transition-colors ${member.id === highlightedId ? 'bg-yellow-50' : ''}`}
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className={`
+                    w-8 h-8 rounded-full flex items-center justify-center text-sm
+                    ${member.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}
+                  `}>
+                    {member.gender === 'Male' ? '♂' : '♀'}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">{member.firstName}</p>
+                    <p className="text-xs text-gray-400">{member.id}</p>
+                  </div>
+                </div>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className={`inline-block px-2 py-1 rounded-full text-white text-xs font-bold ${generationColors[member.generation]}`}>
+                  {member.generation}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className={`text-sm ${member.gender === 'Male' ? 'text-blue-600' : 'text-pink-600'}`}>
+                  {member.gender === 'Male' ? 'ذكر' : 'أنثى'}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-right hidden md:table-cell">
+                <span className="text-sm text-gray-600">{member.branch || '-'}</span>
+              </td>
+              <td className="px-4 py-3 text-center hidden sm:table-cell">
+                <span className="text-sm font-medium">{member.sonsCount + member.daughtersCount}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <button
+                  onClick={() => setSelectedMember(member)}
+                  className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                >
+                  <Eye size={16} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 py-4">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-gray-100 py-4">
+      <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
-        <div className="text-center mb-4">
+        <div className="text-center mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
-            <span className="text-3xl">🌳</span>
-            الشجرة التفاعلية
+            <TreePine className="text-green-600" size={32} />
+            شجرة عائلة آل شايع
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            انقر للتوسيع/الطي • Shift+انقر لعرض التفاصيل
+            {allMembers.length} عضو • {generations.length} أجيال
           </p>
         </div>
 
-        {/* Controls Bar */}
-        <div className="bg-white rounded-xl shadow-md p-3 mb-4">
-          <div className="flex flex-wrap items-center gap-3">
+        {/* Controls */}
+        <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
+          <div className="flex flex-wrap items-center gap-4">
             {/* Search */}
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -400,162 +356,258 @@ export default function TreePage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="ابحث عن شخص..."
-                className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 text-sm"
+                className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500"
               />
               {searchResults.length > 0 && (
-                <div className="absolute top-full right-0 left-0 mt-1 bg-white rounded-lg shadow-lg border z-50 max-h-60 overflow-auto">
-                  {searchResults.map((m) => (
+                <div className="absolute top-full right-0 left-0 mt-1 bg-white rounded-lg shadow-lg border z-50 max-h-64 overflow-auto">
+                  {searchResults.map(m => (
                     <button
                       key={m.id}
                       onClick={() => highlightMember(m.id)}
-                      className="w-full px-4 py-2 text-right hover:bg-gray-50 flex items-center gap-2 border-b last:border-0"
+                      className="w-full px-4 py-2.5 text-right hover:bg-green-50 flex items-center gap-3 border-b last:border-0"
                     >
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                         m.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
                       }`}>
                         {m.gender === 'Male' ? '👨' : '👩'}
-                      </span>
-                      <span className="font-medium">{m.firstName}</span>
-                      <span className="text-xs text-gray-400">{m.id}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-800">{m.firstName}</p>
+                        <p className="text-xs text-gray-400">{m.id} • الجيل {m.generation}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1 border-r border-gray-200 pr-3">
-              <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-lg" title="تكبير">
-                <ZoomIn size={18} />
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('tree')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-all ${
+                  viewMode === 'tree' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <TreePine size={16} />
+                <span className="hidden sm:inline">شجرة</span>
               </button>
-              <button onClick={handleZoomOut} className="p-2 hover:bg-gray-100 rounded-lg" title="تصغير">
-                <ZoomOut size={18} />
+              <button
+                onClick={() => setViewMode('generations')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-all ${
+                  viewMode === 'generations' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <LayoutGrid size={16} />
+                <span className="hidden sm:inline">أجيال</span>
               </button>
-              <button onClick={handleReset} className="p-2 hover:bg-gray-100 rounded-lg" title="إعادة تعيين">
-                <RotateCcw size={18} />
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-all ${
+                  viewMode === 'list' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <List size={16} />
+                <span className="hidden sm:inline">قائمة</span>
               </button>
             </div>
 
-            {/* Expand/Collapse */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={expandAll}
-                className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm"
-              >
-                <ChevronDown size={16} />
-                توسيع
-              </button>
-              <button
-                onClick={collapseAll}
-                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
-              >
-                <ChevronUp size={16} />
-                طي
-              </button>
-            </div>
-
-            {/* Legend */}
-            <div className="hidden md:flex items-center gap-3 mr-auto text-sm">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-blue-500"></span> ذكر
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-pink-500"></span> أنثى
-              </span>
-            </div>
+            {/* Expand/Collapse for Tree View */}
+            {viewMode === 'tree' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={expandAll}
+                  className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm"
+                >
+                  توسيع الكل
+                </button>
+                <button
+                  onClick={collapseAll}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                >
+                  طي الكل
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Tree Container */}
+        {/* Main Content */}
         <div className="flex gap-4">
-          <div
-            ref={containerRef}
-            className="flex-1 bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200"
-            style={{ minHeight: '700px' }}
-          >
-            <svg ref={svgRef} className="w-full h-full"></svg>
+          {/* Tree/Grid/List */}
+          <div className="flex-1 min-w-0">
+            {viewMode === 'tree' && (
+              <div className="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto">
+                <div className="min-w-[500px]">
+                  {treeData.map(root => renderTreeNode(root))}
+                </div>
+              </div>
+            )}
+            {viewMode === 'generations' && renderGenerationView()}
+            {viewMode === 'list' && renderListView()}
           </div>
 
           {/* Member Details Sidebar */}
           {selectedMember && (
-            <div className="w-72 bg-white rounded-2xl shadow-lg p-4 h-fit sticky top-20">
+            <div className="w-80 bg-white rounded-xl shadow-lg border p-5 h-fit sticky top-4 hidden lg:block">
               <button
                 onClick={() => setSelectedMember(null)}
-                className="absolute top-3 left-3 p-1 hover:bg-gray-100 rounded"
+                className="absolute top-3 left-3 p-1.5 hover:bg-gray-100 rounded-lg"
               >
                 <X size={18} />
               </button>
 
-              <div className="text-center mb-4">
-                <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-2 ${
-                  selectedMember.gender === 'Male'
-                    ? 'bg-blue-100 border-3 border-blue-500'
-                    : 'bg-pink-100 border-3 border-pink-500'
-                }`}>
+              {/* Avatar */}
+              <div className="text-center mb-5">
+                <div className={`
+                  w-20 h-20 mx-auto rounded-full flex items-center justify-center text-4xl border-4
+                  ${selectedMember.gender === 'Male'
+                    ? 'bg-blue-50 border-blue-400'
+                    : 'bg-pink-50 border-pink-400'
+                  }
+                `}>
                   {selectedMember.gender === 'Male' ? '👨' : '👩'}
                 </div>
-                <h3 className="text-lg font-bold">{selectedMember.firstName}</h3>
-                <p className="text-xs text-gray-500">{selectedMember.id}</p>
+                <h3 className="text-xl font-bold mt-3 text-gray-800">{selectedMember.firstName}</h3>
+                <p className="text-sm text-gray-500">{selectedMember.id}</p>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-xs text-gray-500">الاسم الكامل</p>
-                  <p className="font-medium text-sm">{selectedMember.fullNameAr}</p>
+              {/* Full Name */}
+              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                <p className="text-xs text-gray-500 mb-1">الاسم الكامل</p>
+                <p className="font-semibold text-gray-800">{selectedMember.fullNameAr}</p>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">{selectedMember.generation}</p>
+                  <p className="text-xs text-gray-500">الجيل</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-sm font-bold text-gray-700">{selectedMember.branch || 'الأصل'}</p>
+                  <p className="text-xs text-gray-500">الفرع</p>
+                </div>
+              </div>
+
+              {/* Children Count */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-blue-600">{selectedMember.sonsCount}</p>
+                  <p className="text-xs text-gray-500">أبناء</p>
+                </div>
+                <div className="bg-pink-50 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-pink-600">{selectedMember.daughtersCount}</p>
+                  <p className="text-xs text-gray-500">بنات</p>
+                </div>
+              </div>
+
+              {/* Additional Info */}
+              {(selectedMember.birthYear || selectedMember.city) && (
+                <div className="border-t pt-3 mb-4 space-y-2 text-sm">
+                  {selectedMember.birthYear && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">سنة الميلاد:</span>
+                      <span className="font-medium">{selectedMember.birthYear}</span>
+                    </div>
+                  )}
+                  {selectedMember.city && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">المدينة:</span>
+                      <span className="font-medium">{selectedMember.city}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* View Profile Button */}
+              <Link
+                href={`/member/${selectedMember.id}`}
+                className="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                عرض الملف الكامل
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Member Modal */}
+        {selectedMember && (
+          <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex items-end justify-center p-4">
+            <div className="bg-white rounded-t-2xl w-full max-w-lg max-h-[80vh] overflow-auto">
+              <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+                <h3 className="font-bold text-lg">{selectedMember.firstName}</h3>
+                <button
+                  onClick={() => setSelectedMember(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-4">
+                {/* Avatar */}
+                <div className="text-center mb-4">
+                  <div className={`
+                    w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl border-4
+                    ${selectedMember.gender === 'Male'
+                      ? 'bg-blue-50 border-blue-400'
+                      : 'bg-pink-50 border-pink-400'
+                    }
+                  `}>
+                    {selectedMember.gender === 'Male' ? '👨' : '👩'}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">{selectedMember.id}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-gray-50 rounded-lg p-2 text-center">
-                    <p className="text-xs text-gray-500">الجيل</p>
-                    <p className="font-bold text-green-600">{selectedMember.generation}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-2 text-center">
-                    <p className="text-xs text-gray-500">الفرع</p>
-                    <p className="font-medium text-xs">{selectedMember.branch}</p>
-                  </div>
+                {/* Full Name */}
+                <div className="bg-gray-50 rounded-lg p-3 mb-3 text-center">
+                  <p className="font-semibold">{selectedMember.fullNameAr}</p>
                 </div>
 
-                {selectedMember.birthYear && (
-                  <div className="bg-gray-50 rounded-lg p-2">
-                    <p className="text-xs text-gray-500">سنة الميلاد</p>
-                    <p className="font-medium">{selectedMember.birthYear}</p>
+                {/* Stats */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <div className="bg-green-50 rounded-lg p-2 text-center">
+                    <p className="text-lg font-bold text-green-600">{selectedMember.generation}</p>
+                    <p className="text-[10px] text-gray-500">الجيل</p>
                   </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-xs font-bold">{selectedMember.branch || 'الأصل'}</p>
+                    <p className="text-[10px] text-gray-500">الفرع</p>
+                  </div>
                   <div className="bg-blue-50 rounded-lg p-2 text-center">
                     <p className="text-lg font-bold text-blue-600">{selectedMember.sonsCount}</p>
-                    <p className="text-xs text-gray-500">أبناء</p>
+                    <p className="text-[10px] text-gray-500">أبناء</p>
                   </div>
                   <div className="bg-pink-50 rounded-lg p-2 text-center">
                     <p className="text-lg font-bold text-pink-600">{selectedMember.daughtersCount}</p>
-                    <p className="text-xs text-gray-500">بنات</p>
+                    <p className="text-[10px] text-gray-500">بنات</p>
                   </div>
                 </div>
 
                 <Link
                   href={`/member/${selectedMember.id}`}
-                  className="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
+                  className="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg"
                 >
                   عرض الملف الكامل
                 </Link>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Generation Legend */}
-        <div className="mt-4 bg-white rounded-xl shadow-md p-4">
-          <p className="text-sm font-medium text-gray-700 mb-2">مفتاح الأجيال:</p>
+        <div className="mt-6 bg-white rounded-xl shadow-sm border p-4">
+          <p className="text-sm font-medium text-gray-700 mb-3">مفتاح الأجيال:</p>
           <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((gen) => {
-              const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-teal-500', 'bg-blue-500', 'bg-indigo-500', 'bg-purple-500'];
-              return (
-                <span key={gen} className={`px-3 py-1 rounded-full text-white text-sm font-medium ${colors[gen - 1]}`}>
-                  الجيل {gen}
-                </span>
-              );
-            })}
+            {generations.map(([gen, members]) => (
+              <span
+                key={gen}
+                className={`px-3 py-1.5 rounded-full text-white text-sm font-medium ${generationColors[gen]}`}
+              >
+                الجيل {gen} ({members.length})
+              </span>
+            ))}
           </div>
         </div>
       </div>
