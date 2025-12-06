@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X, GitBranch } from 'lucide-react';
+import { Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X, GitBranch, Download, Upload, History, Settings, Edit, Copy } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
@@ -13,6 +13,15 @@ const navItems = [
   { href: '/registry', label: 'السجل', labelEn: 'Registry', icon: Users },
   { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 },
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
+];
+
+const moreNavItems = [
+  { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit },
+  { href: '/export', label: 'تصدير', labelEn: 'Export', icon: Download },
+  { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload },
+  { href: '/duplicates', label: 'التكرارات', labelEn: 'Duplicates', icon: Copy },
+  { href: '/history', label: 'السجل', labelEn: 'History', icon: History },
+  { href: '/admin/settings', label: 'الإدارة', labelEn: 'Admin', icon: Settings },
 ];
 
 export function Navigation() {
@@ -146,30 +155,60 @@ export function Navigation() {
             </div>
 
             {/* Menu Items */}
-            <nav className="p-4">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl mb-2 transition-all',
-                      isActive
-                        ? 'bg-green-100 text-green-700 font-semibold'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
-                  >
-                    <Icon size={22} className={isActive ? 'text-green-600' : 'text-gray-400'} />
-                    <div>
-                      <span className="block">{item.label}</span>
-                      <span className="text-xs text-gray-400">{item.labelEn}</span>
-                    </div>
-                  </Link>
-                );
-              })}
+            <nav className="p-4 max-h-[calc(100vh-200px)] overflow-auto">
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 px-4 mb-2">التنقل الرئيسي</p>
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 rounded-xl mb-2 transition-all',
+                        isActive
+                          ? 'bg-green-100 text-green-700 font-semibold'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      )}
+                    >
+                      <Icon size={22} className={isActive ? 'text-green-600' : 'text-gray-400'} />
+                      <div>
+                        <span className="block">{item.label}</span>
+                        <span className="text-xs text-gray-400">{item.labelEn}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-xs text-gray-400 px-4 mb-2">أدوات إضافية</p>
+                {moreNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-2.5 rounded-xl mb-1 transition-all',
+                        isActive
+                          ? 'bg-green-100 text-green-700 font-semibold'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      )}
+                    >
+                      <Icon size={18} className={isActive ? 'text-green-600' : 'text-gray-400'} />
+                      <div>
+                        <span className="block text-sm">{item.label}</span>
+                        <span className="text-[10px] text-gray-400">{item.labelEn}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </nav>
 
             {/* Menu Footer */}
