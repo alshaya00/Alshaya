@@ -1,4 +1,5 @@
 // Prisma schema for آل شايع Family Tree Application
+// Enhanced with change history, audit trail, and permissions
 
 generator client {
   provider = "prisma-client-js"
@@ -8,6 +9,10 @@ datasource db {
   provider = "sqlite"
   url      = "file:./family.db"
 }
+
+// ============================================
+// CORE MODELS
+// ============================================
 
 model FamilyMember {
   id                    String   @id // P001, P002, etc.
@@ -25,6 +30,7 @@ model FamilyMember {
   // Personal info
   gender                String   // Male or Female
   birthYear             Int?     // سنة الميلاد
+  deathYear             Int?     // سنة الوفاة
   sonsCount             Int      @default(0) // عدد الأبناء
   daughtersCount        Int      @default(0) // عدد البنات
 
@@ -46,9 +52,296 @@ model FamilyMember {
   // Metadata
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+  createdBy             String?  // Admin who created
+  lastModifiedBy        String?  // Admin who last modified
+  version               Int      @default(1) // Version number for optimistic locking
+
+  // Relations
+  changeHistory         ChangeHistory[]
+  duplicateOf           DuplicateFlag[] @relation("DuplicateSource")
+  duplicatedBy          DuplicateFlag[] @relation("DuplicateTarget")
 
   @@index([generation])
   @@index([branch])
   @@index([gender])
   @@index([fatherId])
+  @@index([status])
+  @@index([firstName])
+}
+
+// ============================================
+// AUDIT & HISTORY MODELS
+// ============================================
+
+model ChangeHistory {
+  id              String   @id @default(cuid())
+  memberId        String
+  member          FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  // What changed
+  fieldName       String   // Field that was changed
+  oldValue        String?  // Previous value (JSON for complex fields)
+  newValue        String?  // New value (JSON for complex fields)
+  changeType      String   // CREATE, UPDATE, DELETE, PARENT_CHANGE, RESTORE
+
+  // Who and when
+  changedBy       String   // Admin ID who made the change
+  changedByName   String   // Admin name for display
+  changedAt       DateTime @default(now())
+
+  // For grouping related changes (batch edits)
+  batchId         String?  // Groups changes made together
+
+  // Snapshot for rollback
+  fullSnapshot    String?  // JSON snapshot of entire member state before change
+
+  // Additional context
+  reason          String?  // Optional reason for the change
+  ipAddress       String?  // For security audit
+
+  @@index([memberId])
+  @@index([changedAt])
+  @@index([changedBy])
+  @@index([batchId])
+  @@index([changeType])
+}
+
+model Snapshot {
+  id              String   @id @default(cuid())
+  name            String   // User-provided name for the snapshot
+  description     String?  // Optional description
+
+  // Full tree data
+  treeData        String   // JSON of entire family tree at this point
+  memberCount     Int      // Number of members at this point
+
+  // Metadata
+  createdBy       String   // Admin who created snapshot
+  createdByName   String   // Admin name
+  createdAt       DateTime @default(now())
+
+  // Snapshot type
+  snapshotType    String   @default("MANUAL") // MANUAL, AUTO_BACKUP, PRE_IMPORT
+
+  @@index([createdAt])
+  @@index([snapshotType])
+}
+
+// ============================================
+// DUPLICATE DETECTION
+// ============================================
+
+model DuplicateFlag {
+  id              String   @id @default(cuid())
+
+  // The two members flagged as potential duplicates
+  sourceMemberId  String
+  sourceMember    FamilyMember @relation("DuplicateSource", fields: [sourceMemberId], references: [id], onDelete: Cascade)
+  targetMemberId  String
+  targetMember    FamilyMember @relation("DuplicateTarget", fields: [targetMemberId], references: [id], onDelete: Cascade)
+
+  // Similarity details
+  matchScore      Float    // 0-100 confidence score
+  matchReasons    String   // JSON array of why they might be duplicates
+
+  // Resolution
+  status          String   @default("PENDING") // PENDING, CONFIRMED_DUPLICATE, NOT_DUPLICATE, MERGED
+  resolvedBy      String?  // Admin who resolved
+  resolvedAt      DateTime?
+  resolution      String?  // What action was taken
+
+  // Metadata
+  detectedAt      DateTime @default(now())
+  detectedBy      String   @default("SYSTEM") // SYSTEM or admin ID
+
+  @@unique([sourceMemberId, targetMemberId])
+  @@index([status])
+  @@index([matchScore])
+}
+
+// ============================================
+// ADMIN & PERMISSIONS
+// ============================================
+
+model Admin {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  accessCode      String   // Hashed access code
+
+  // Permissions
+  role            String   @default("EDITOR") // SUPER_ADMIN, ADMIN, EDITOR, VIEWER
+  permissions     String   // JSON array of specific permissions
+
+  // Status
+  isActive        Boolean  @default(true)
+  lastLoginAt     DateTime?
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?  // Admin who created this admin
+
+  // Sessions
+  sessions        AdminSession[]
+
+  @@index([email])
+  @@index([isActive])
+}
+
+model AdminSession {
+  id              String   @id @default(cuid())
+  adminId         String
+  admin           Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  // Session data
+  token           String   @unique
+  expiresAt       DateTime
+
+  // Device info
+  userAgent       String?
+  ipAddress       String?
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  lastActivityAt  DateTime @default(now())
+
+  @@index([token])
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+// ============================================
+// IMPORT/EXPORT TRACKING
+// ============================================
+
+model ImportJob {
+  id              String   @id @default(cuid())
+
+  // Import details
+  fileName        String
+  fileType        String   // JSON, CSV, EXCEL
+  totalRecords    Int
+
+  // Progress
+  status          String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED
+  processedCount  Int      @default(0)
+  successCount    Int      @default(0)
+  errorCount      Int      @default(0)
+
+  // Conflict handling
+  conflictCount   Int      @default(0)
+  conflicts       String?  // JSON array of conflicts
+  conflictResolutions String? // JSON of how conflicts were resolved
+
+  // Results
+  importedIds     String?  // JSON array of imported member IDs
+  errorLog        String?  // JSON array of errors
+
+  // Metadata
+  importedBy      String
+  importedByName  String
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  // Rollback support
+  snapshotId      String?  // Snapshot created before import
+
+  @@index([status])
+  @@index([importedBy])
+}
+
+model ExportJob {
+  id              String   @id @default(cuid())
+
+  // Export details
+  format          String   // JSON, CSV, EXCEL, PDF
+  fileName        String
+
+  // What was exported
+  memberCount     Int
+  fieldsIncluded  String   // JSON array of fields exported
+  filters         String?  // JSON of filters applied
+
+  // Metadata
+  exportedBy      String
+  exportedByName  String
+  exportedAt      DateTime @default(now())
+
+  // File info
+  fileSize        Int?     // bytes
+  downloadUrl     String?  // Temporary download URL
+
+  @@index([exportedBy])
+  @@index([exportedAt])
+}
+
+// ============================================
+// PENDING MEMBERS (for branch entry system)
+// ============================================
+
+model PendingMember {
+  id                    String   @id @default(cuid())
+
+  // Same fields as FamilyMember
+  firstName             String
+  fatherName            String?
+  grandfatherName       String?
+  greatGrandfatherName  String?
+  familyName            String   @default("آل شايع")
+  proposedFatherId      String?
+  gender                String
+  birthYear             Int?
+  generation            Int      @default(1)
+  branch                String?
+  fullNameAr            String?
+  fullNameEn            String?
+  phone                 String?
+  city                  String?
+  status                String   @default("Living")
+  occupation            String?
+  email                 String?
+
+  // Submission info
+  submittedVia          String?  // Branch token or direct
+  submittedAt           DateTime @default(now())
+
+  // Review status
+  reviewStatus          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  reviewNotes           String?
+
+  // If approved, the created member ID
+  approvedMemberId      String?
+
+  @@index([reviewStatus])
+  @@index([branch])
+}
+
+// ============================================
+// BRANCH ENTRY LINKS
+// ============================================
+
+model BranchEntryLink {
+  id              String   @id @default(cuid())
+  token           String   @unique
+
+  // Branch info
+  branchName      String
+  branchHeadId    String   // The member who is the branch head
+  branchHeadName  String
+
+  // Access control
+  isActive        Boolean  @default(true)
+  expiresAt       DateTime?
+  maxUses         Int?
+  useCount        Int      @default(0)
+
+  // Metadata
+  createdBy       String
+  createdAt       DateTime @default(now())
+
+  @@index([token])
+  @@index([isActive])
 }
