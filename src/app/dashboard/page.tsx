@@ -2,6 +2,7 @@
 
 import { getStatistics, getAllMembers } from '@/lib/data';
 import { BarChart3, Users, TrendingUp, GitBranch, Calendar, MapPin } from 'lucide-react';
+import ExportPDF, { ExportButton } from '@/components/ExportPDF';
 
 export default function DashboardPage() {
   const stats = getStatistics();
@@ -64,6 +65,12 @@ export default function DashboardPage() {
             لوحة الإحصائيات المتقدمة
           </h1>
           <p className="text-gray-600 mt-2">Advanced Analytics Dashboard</p>
+
+          {/* Export Buttons */}
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <ExportPDF />
+            <ExportButton />
+          </div>
         </div>
 
         {/* KPI Cards */}
