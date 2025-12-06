@@ -4,11 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
 import {
   Search, ChevronDown, ChevronRight, Users, User,
-  Eye, X, TreePine, LayoutGrid, List
+  Eye, X, TreePine, LayoutGrid, List, GitBranch
 } from 'lucide-react';
 import Link from 'next/link';
+import FamilyTreeGraph from '@/components/FamilyTreeGraph';
 
-type ViewMode = 'tree' | 'generations' | 'list';
+type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
 interface TreeNodeData extends FamilyMember {
   children: TreeNodeData[];
@@ -410,6 +411,15 @@ export default function TreePage() {
                 <List size={16} />
                 <span className="hidden sm:inline">قائمة</span>
               </button>
+              <button
+                onClick={() => setViewMode('graph')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-all ${
+                  viewMode === 'graph' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <GitBranch size={16} />
+                <span className="hidden sm:inline">رسم بياني</span>
+              </button>
             </div>
 
             {/* Expand/Collapse for Tree View */}
@@ -445,6 +455,13 @@ export default function TreePage() {
             )}
             {viewMode === 'generations' && renderGenerationView()}
             {viewMode === 'list' && renderListView()}
+            {viewMode === 'graph' && (
+              <FamilyTreeGraph
+                members={allMembers}
+                onSelectMember={setSelectedMember}
+                highlightedId={highlightedId}
+              />
+            )}
           </div>
 
           {/* Member Details Sidebar */}
