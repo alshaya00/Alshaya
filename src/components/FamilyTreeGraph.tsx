@@ -189,13 +189,16 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     svg.transition().duration(500).call(zoomRef.current.transform, fitTransform);
   }, [dimensions, nodes]);
 
-  // Generate curved path for links
+  // Generate orthogonal (right-angled) path for links - clearer for family trees
   const generateLinkPath = (source: D3TreeNode, target: D3TreeNode) => {
-    const midY = (source.y + target.y) / 2;
-    return `M ${source.x} ${source.y + 45}
-            C ${source.x} ${midY},
-              ${target.x} ${midY},
-              ${target.x} ${target.y - 45}`;
+    const sourceY = source.y + 50; // Start from bottom of parent card
+    const targetY = target.y - 50; // End at top of child card
+    const midY = (sourceY + targetY) / 2; // Horizontal connector at midpoint
+
+    return `M ${source.x} ${sourceY}
+            L ${source.x} ${midY}
+            L ${target.x} ${midY}
+            L ${target.x} ${targetY}`;
   };
 
   const getGenColors = (gen: number) => {
@@ -291,15 +294,28 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             {links.map((link, i) => {
               const genColor = getGenColors(link.target.data.generation);
               return (
-                <path
-                  key={i}
-                  d={generateLinkPath(link.source, link.target)}
-                  fill="none"
-                  stroke={genColor.primary}
-                  strokeWidth={2}
-                  strokeOpacity={0.4}
-                  strokeLinecap="round"
-                />
+                <g key={i}>
+                  {/* Shadow/glow line for depth */}
+                  <path
+                    d={generateLinkPath(link.source, link.target)}
+                    fill="none"
+                    stroke={genColor.secondary}
+                    strokeWidth={8}
+                    strokeOpacity={0.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Main visible line */}
+                  <path
+                    d={generateLinkPath(link.source, link.target)}
+                    fill="none"
+                    stroke={genColor.primary}
+                    strokeWidth={3}
+                    strokeOpacity={0.85}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </g>
               );
             })}
           </g>
@@ -308,19 +324,23 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
           <g className="link-dots">
             {links.map((link, i) => (
               <g key={i}>
+                {/* Source connection point (bottom of parent) */}
                 <circle
                   cx={link.source.x}
-                  cy={link.source.y + 45}
-                  r={3}
+                  cy={link.source.y + 50}
+                  r={5}
                   fill={getGenColors(link.source.data.generation).primary}
-                  opacity={0.5}
+                  stroke="white"
+                  strokeWidth={2}
                 />
+                {/* Target connection point (top of child) */}
                 <circle
                   cx={link.target.x}
-                  cy={link.target.y - 45}
-                  r={3}
+                  cy={link.target.y - 50}
+                  r={5}
                   fill={getGenColors(link.target.data.generation).primary}
-                  opacity={0.5}
+                  stroke="white"
+                  strokeWidth={2}
                 />
               </g>
             ))}
