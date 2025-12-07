@@ -444,8 +444,8 @@ export default function TreePage() {
 
         {/* Main Content */}
         <div className="flex gap-4">
-          {/* Tree/Grid/List */}
-          <div className="flex-1 min-w-0">
+          {/* Tree/Grid/List/Graph */}
+          <div className={`flex-1 min-w-0 ${viewMode === 'graph' && selectedMember ? 'lg:max-w-[calc(100%-340px)]' : ''}`}>
             {viewMode === 'tree' && (
               <div className="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto">
                 <div className="min-w-[500px]">
@@ -466,7 +466,7 @@ export default function TreePage() {
 
           {/* Member Details Sidebar */}
           {selectedMember && (
-            <div className="w-80 bg-white rounded-xl shadow-lg border p-5 h-fit sticky top-4 hidden lg:block">
+            <div className="w-80 shrink-0 bg-white rounded-xl shadow-lg border p-5 h-fit sticky top-4 hidden lg:block relative">
               <button
                 onClick={() => setSelectedMember(null)}
                 className="absolute top-3 left-3 p-1.5 hover:bg-gray-100 rounded-lg"
