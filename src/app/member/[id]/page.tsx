@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getMemberById, getChildren, FamilyMember } from '@/lib/data';
+import { getAllMembers, getChildren } from '@/lib/data';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import {
   User,
@@ -13,6 +13,7 @@ import {
   TreePine,
   ChevronLeft,
   ArrowRight,
+  GitBranch,
 } from 'lucide-react';
 
 interface PageProps {
@@ -20,16 +21,25 @@ interface PageProps {
 }
 
 export default function MemberPage({ params }: PageProps) {
-  const member = getMemberById(params.id);
+  const allMembers = getAllMembers();
+  const member = allMembers.find((m) => m.id === params.id);
 
   if (!member) {
     notFound();
   }
 
   const children = getChildren(member.id);
-  const father = member.fatherId ? getMemberById(member.fatherId) : null;
+  const father = member.fatherId ? allMembers.find((m) => m.id === member.fatherId) : null;
   const siblings = father ? getChildren(father.id).filter((s) => s.id !== member.id) : [];
   const statusBadge = getStatusBadge(member.status);
+
+  // Get lineage ancestors for display
+  const lineageBranchAncestor = member.lineageBranchId
+    ? allMembers.find((m) => m.id === member.lineageBranchId)
+    : null;
+  const subBranchAncestor = member.subBranchId
+    ? allMembers.find((m) => m.id === member.subBranchId)
+    : null;
 
   return (
     <div className="min-h-screen py-8 bg-gray-100">
@@ -109,6 +119,107 @@ export default function MemberPage({ params }: PageProps) {
                 <p className="text-sm text-gray-500 mt-2">الحالة</p>
               </div>
             </div>
+
+            {/* Lineage Information */}
+            {lineageBranchAncestor && (
+              <div className="bg-indigo-50 rounded-xl p-5 mb-8">
+                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <GitBranch className="text-indigo-600" size={20} />
+                  السلالة والفرع
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Main Branch (Gen 2) */}
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-sm text-gray-500 mb-2">الفرع الرئيسي (الجيل الثاني)</p>
+                    <Link
+                      href={`/member/${lineageBranchAncestor.id}`}
+                      className="flex items-center gap-3 hover:bg-indigo-50 rounded-lg p-2 -m-2 transition-colors"
+                    >
+                      <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-xl">
+                        👨
+                      </span>
+                      <div className="flex-1">
+                        <p className="font-bold text-indigo-700">فرع {lineageBranchAncestor.firstName}</p>
+                        <p className="text-xs text-gray-500">{lineageBranchAncestor.fullNameAr}</p>
+                      </div>
+                      <ChevronLeft size={16} className="text-gray-400" />
+                    </Link>
+                  </div>
+
+                  {/* Sub Branch (Gen 3) */}
+                  {subBranchAncestor && member.generation > 3 ? (
+                    <div className="bg-white rounded-lg p-4">
+                      <p className="text-sm text-gray-500 mb-2">الفرع الفرعي (الجيل الثالث)</p>
+                      <Link
+                        href={`/member/${subBranchAncestor.id}`}
+                        className="flex items-center gap-3 hover:bg-purple-50 rounded-lg p-2 -m-2 transition-colors"
+                      >
+                        <span className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                          👨
+                        </span>
+                        <div className="flex-1">
+                          <p className="font-bold text-purple-700">ذرية {subBranchAncestor.firstName}</p>
+                          <p className="text-xs text-gray-500">{subBranchAncestor.fullNameAr}</p>
+                        </div>
+                        <ChevronLeft size={16} className="text-gray-400" />
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg p-4">
+                      <p className="text-sm text-gray-500 mb-2">الفرع الفرعي (الجيل الثالث)</p>
+                      <p className="text-gray-400 text-sm">
+                        {member.generation <= 3 ? 'هذا العضو من الأجيال المؤسسة' : 'غير متوفر'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Lineage Path */}
+                {member.lineagePath && member.lineagePath.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-indigo-200">
+                    <p className="text-sm text-gray-500 mb-2">مسار النسب:</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {member.lineagePath.map((ancestorId, index) => {
+                        const ancestor = allMembers.find((m) => m.id === ancestorId);
+                        if (!ancestor) return null;
+                        return (
+                          <span key={ancestorId} className="flex items-center gap-1">
+                            <Link
+                              href={`/member/${ancestorId}`}
+                              className="px-2 py-1 bg-white hover:bg-indigo-100 rounded text-sm text-indigo-700 transition-colors"
+                            >
+                              {ancestor.firstName}
+                            </Link>
+                            {index < member.lineagePath!.length - 1 && (
+                              <span className="text-gray-400">←</span>
+                            )}
+                          </span>
+                        );
+                      })}
+                      <span className="text-gray-400">←</span>
+                      <span className="px-2 py-1 bg-indigo-600 text-white rounded text-sm font-bold">
+                        {member.firstName}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Root member indicator */}
+            {member.generation === 1 && (
+              <div className="bg-amber-50 rounded-xl p-5 mb-8">
+                <div className="flex items-center gap-3">
+                  <span className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+                    👑
+                  </span>
+                  <div>
+                    <h2 className="font-bold text-lg text-amber-800">جذر العائلة</h2>
+                    <p className="text-sm text-amber-600">هذا هو المؤسس الأصلي لعائلة آل شايع</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Details Grid */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">

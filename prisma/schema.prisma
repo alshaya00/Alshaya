@@ -40,6 +40,13 @@ model FamilyMember {
   fullNameAr            String?  // الاسم الكامل بالعربي
   fullNameEn            String?  // Full name in English
 
+  // Lineage Identification (Gen 2/Gen 3 branch tracking)
+  lineageBranchId       String?  // ID of Gen 2 ancestor (main branch founder)
+  lineageBranchName     String?  // Name of Gen 2 ancestor for display
+  subBranchId           String?  // ID of Gen 3 ancestor (sub-branch founder)
+  subBranchName         String?  // Name of Gen 3 ancestor for display
+  lineagePath           String?  // JSON array of ancestor IDs from root to parent
+
   // Contact info
   phone                 String?
   city                  String?
@@ -67,6 +74,8 @@ model FamilyMember {
   @@index([fatherId])
   @@index([status])
   @@index([firstName])
+  @@index([lineageBranchId])
+  @@index([subBranchId])
 }
 
 // ============================================

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { getAllMembers, FamilyMember } from '@/lib/data';
 import { calculateAge, getGenerationColor } from '@/lib/utils';
-import { Search as SearchIcon, User, Calendar, MapPin, Eye, X } from 'lucide-react';
+import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch } from 'lucide-react';
 
 export default function SearchPage() {
   const allMembers = getAllMembers();
@@ -23,7 +23,9 @@ export default function SearchPage() {
         m.id.toLowerCase().includes(term) ||
         m.city?.toLowerCase().includes(term) ||
         m.occupation?.toLowerCase().includes(term) ||
-        m.fatherName?.toLowerCase().includes(term)
+        m.fatherName?.toLowerCase().includes(term) ||
+        m.lineageBranchName?.toLowerCase().includes(term) ||
+        m.subBranchName?.toLowerCase().includes(term)
     );
   }, [allMembers, query]);
 
@@ -163,6 +165,21 @@ export default function SearchPage() {
                     </div>
 
                     <p className="text-gray-600 text-sm mb-2">{member.fullNameAr}</p>
+
+                    {/* Lineage Badge */}
+                    {member.lineageBranchName && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                          <GitBranch size={12} />
+                          فرع {member.lineageBranchName}
+                        </span>
+                        {member.subBranchName && member.generation > 3 && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                            ذرية {member.subBranchName}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
                       {member.birthYear && (

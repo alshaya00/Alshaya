@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
-import { FamilyMember } from '@/lib/data';
-import { ZoomIn, ZoomOut, Maximize2, Users, Home } from 'lucide-react';
+import { FamilyMember, getGen2Branches } from '@/lib/data';
+import { ZoomIn, ZoomOut, Maximize2, Users, Home, GitBranch, Layers } from 'lucide-react';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
 }
+
+type ColorMode = 'generation' | 'lineage';
 
 interface FamilyTreeGraphProps {
   members: FamilyMember[];
@@ -34,6 +36,22 @@ const GENERATION_COLORS = {
   8: { primary: '#9333ea', secondary: '#e9d5ff', gradient: ['#a855f7', '#9333ea'] },
 };
 
+// Colors for lineage branches (Gen 2 ancestors)
+const LINEAGE_COLORS = [
+  { primary: '#ef4444', secondary: '#fecaca', gradient: ['#f87171', '#ef4444'] }, // red
+  { primary: '#3b82f6', secondary: '#bfdbfe', gradient: ['#60a5fa', '#3b82f6'] }, // blue
+  { primary: '#22c55e', secondary: '#bbf7d0', gradient: ['#4ade80', '#22c55e'] }, // green
+  { primary: '#f59e0b', secondary: '#fef3c7', gradient: ['#fbbf24', '#f59e0b'] }, // amber
+  { primary: '#a855f7', secondary: '#e9d5ff', gradient: ['#c084fc', '#a855f7'] }, // purple
+  { primary: '#ec4899', secondary: '#fbcfe8', gradient: ['#f472b6', '#ec4899'] }, // pink
+  { primary: '#6366f1', secondary: '#c7d2fe', gradient: ['#818cf8', '#6366f1'] }, // indigo
+  { primary: '#14b8a6', secondary: '#99f6e4', gradient: ['#2dd4bf', '#14b8a6'] }, // teal
+  { primary: '#f97316', secondary: '#fed7aa', gradient: ['#fb923c', '#f97316'] }, // orange
+  { primary: '#06b6d4', secondary: '#a5f3fc', gradient: ['#22d3ee', '#06b6d4'] }, // cyan
+];
+
+const ROOT_COLOR = { primary: '#78716c', secondary: '#d6d3d1', gradient: ['#a8a29e', '#78716c'] };
+
 export default function FamilyTreeGraph({ members, onSelectMember, highlightedId }: FamilyTreeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
@@ -43,6 +61,19 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
   const [currentZoom, setCurrentZoom] = useState(0.5);
   const [hoveredNode, setHoveredNode] = useState<TreeNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [colorMode, setColorMode] = useState<ColorMode>('generation');
+
+  // Get Gen 2 branches for lineage coloring
+  const gen2Branches = useMemo(() => getGen2Branches(), []);
+
+  // Create a mapping of branch ID to color index
+  const branchColorMap = useMemo(() => {
+    const map = new Map<string, number>();
+    gen2Branches.forEach((branch, index) => {
+      map.set(branch.id, index % LINEAGE_COLORS.length);
+    });
+    return map;
+  }, [gen2Branches]);
 
   // Build tree structure
   const treeData = useMemo(() => {
@@ -205,6 +236,24 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     return GENERATION_COLORS[gen as keyof typeof GENERATION_COLORS] || GENERATION_COLORS[8];
   };
 
+  // Get color based on color mode (generation or lineage)
+  const getNodeColors = useCallback((node: TreeNode) => {
+    if (colorMode === 'generation') {
+      return getGenColors(node.generation);
+    } else {
+      // Lineage mode - color by Gen 2 branch
+      if (node.generation === 1) {
+        return ROOT_COLOR; // Root ancestor gets special color
+      }
+      const branchId = node.lineageBranchId;
+      if (branchId && branchColorMap.has(branchId)) {
+        const colorIndex = branchColorMap.get(branchId)!;
+        return LINEAGE_COLORS[colorIndex];
+      }
+      return ROOT_COLOR;
+    }
+  }, [colorMode, branchColorMap]);
+
   return (
     <div ref={containerRef} className="relative w-full h-[700px] bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-lg">
       {/* Controls */}
@@ -238,6 +287,20 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
         >
           <Maximize2 size={20} className="text-gray-600" />
         </button>
+        <div className="w-full h-px bg-gray-200" />
+        <button
+          onClick={() => setColorMode(colorMode === 'generation' ? 'lineage' : 'generation')}
+          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+            colorMode === 'lineage' ? 'bg-indigo-100 hover:bg-indigo-200' : 'hover:bg-gray-100'
+          }`}
+          title={colorMode === 'generation' ? 'تلوين حسب السلالة' : 'تلوين حسب الجيل'}
+        >
+          {colorMode === 'generation' ? (
+            <GitBranch size={20} className="text-gray-600" />
+          ) : (
+            <Layers size={20} className="text-indigo-600" />
+          )}
+        </button>
       </div>
 
       {/* Zoom indicator */}
@@ -261,6 +324,17 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
               <stop offset="100%" stopColor={colors.gradient[1]} />
             </linearGradient>
           ))}
+          {/* Lineage branch gradients */}
+          {LINEAGE_COLORS.map((colors, index) => (
+            <linearGradient key={`lineage-${index}`} id={`lineage-gradient-${index}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={colors.gradient[0]} />
+              <stop offset="100%" stopColor={colors.gradient[1]} />
+            </linearGradient>
+          ))}
+          <linearGradient id="root-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={ROOT_COLOR.gradient[0]} />
+            <stop offset="100%" stopColor={ROOT_COLOR.gradient[1]} />
+          </linearGradient>
           <linearGradient id="male-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#60a5fa" />
             <stop offset="100%" stopColor="#3b82f6" />
@@ -292,14 +366,14 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
           {/* Links */}
           <g className="links">
             {links.map((link, i) => {
-              const genColor = getGenColors(link.target.data.generation);
+              const nodeColors = getNodeColors(link.target.data);
               return (
                 <g key={i}>
                   {/* Shadow/glow line for depth */}
                   <path
                     d={generateLinkPath(link.source, link.target)}
                     fill="none"
-                    stroke={genColor.secondary}
+                    stroke={nodeColors.secondary}
                     strokeWidth={8}
                     strokeOpacity={0.4}
                     strokeLinecap="round"
@@ -309,7 +383,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   <path
                     d={generateLinkPath(link.source, link.target)}
                     fill="none"
-                    stroke={genColor.primary}
+                    stroke={nodeColors.primary}
                     strokeWidth={3}
                     strokeOpacity={0.85}
                     strokeLinecap="round"
@@ -329,7 +403,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   cx={link.source.x}
                   cy={link.source.y + 50}
                   r={5}
-                  fill={getGenColors(link.source.data.generation).primary}
+                  fill={getNodeColors(link.source.data).primary}
                   stroke="white"
                   strokeWidth={2}
                 />
@@ -338,7 +412,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   cx={link.target.x}
                   cy={link.target.y - 50}
                   r={5}
-                  fill={getGenColors(link.target.data.generation).primary}
+                  fill={getNodeColors(link.target.data).primary}
                   stroke="white"
                   strokeWidth={2}
                 />
@@ -352,6 +426,21 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
               const isHighlighted = node.data.id === highlightedId;
               const isHovered = hoveredNode?.id === node.data.id;
               const isMale = node.data.gender === 'Male';
+              const nodeColors = getNodeColors(node.data);
+
+              // Get gradient ID based on color mode
+              const getGradientId = () => {
+                if (colorMode === 'generation') {
+                  return `gen-gradient-${node.data.generation}`;
+                } else {
+                  if (node.data.generation === 1) return 'root-gradient';
+                  const branchId = node.data.lineageBranchId;
+                  if (branchId && branchColorMap.has(branchId)) {
+                    return `lineage-gradient-${branchColorMap.get(branchId)}`;
+                  }
+                  return 'root-gradient';
+                }
+              };
 
               return (
                 <g
@@ -404,13 +493,13 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     strokeWidth={isHovered ? 2 : 1}
                   />
 
-                  {/* Generation color accent bar */}
+                  {/* Color accent bar (by generation or lineage) */}
                   <rect
                     x={-65}
                     y={-42}
                     width={130}
                     height={5}
-                    fill={`url(#gen-gradient-${node.data.generation})`}
+                    fill={`url(#${getGradientId()})`}
                     style={{ clipPath: 'inset(0 0 0 0 round 14px 14px 0 0)' }}
                   />
 
@@ -448,7 +537,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     {node.data.firstName}
                   </text>
 
-                  {/* ID & Generation badge */}
+                  {/* ID & badge */}
                   <g transform="translate(0, 32)">
                     <text
                       x={-22}
@@ -463,20 +552,24 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     <rect
                       x={8}
                       y={-9}
-                      width={28}
+                      width={colorMode === 'lineage' && node.data.lineageBranchName ? 40 : 28}
                       height={14}
                       rx={7}
-                      fill={`url(#gen-gradient-${node.data.generation})`}
+                      fill={`url(#${getGradientId()})`}
                     />
                     <text
-                      x={22}
+                      x={colorMode === 'lineage' && node.data.lineageBranchName ? 28 : 22}
                       y={2}
                       textAnchor="middle"
                       fontSize={8}
                       fontWeight="bold"
                       fill="white"
                     >
-                      ج{node.data.generation}
+                      {colorMode === 'generation'
+                        ? `ج${node.data.generation}`
+                        : node.data.lineageBranchName
+                          ? `${node.data.lineageBranchName.slice(0, 4)}`
+                          : 'جذر'}
                     </text>
                   </g>
 
@@ -551,6 +644,14 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             </div>
           </div>
 
+          {/* Lineage info */}
+          {hoveredNode.lineageBranchName && (
+            <div className="mt-2 bg-indigo-50 p-2.5 rounded-lg text-center">
+              <span className="font-bold text-indigo-600 block text-sm">فرع {hoveredNode.lineageBranchName}</span>
+              <span className="text-gray-500 text-xs">السلالة</span>
+            </div>
+          )}
+
           {(hoveredNode.sonsCount > 0 || hoveredNode.daughtersCount > 0) && (
             <div className="flex gap-2 mt-2">
               {hoveredNode.sonsCount > 0 && (
@@ -576,19 +677,53 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
       <div className="absolute bottom-4 left-4 right-4 z-20">
         <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border p-3">
           <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
-            <Users size={14} />
-            مفتاح الأجيال
+            {colorMode === 'generation' ? (
+              <>
+                <Layers size={14} />
+                مفتاح الأجيال
+              </>
+            ) : (
+              <>
+                <GitBranch size={14} />
+                مفتاح السلالات (الجيل الثاني)
+              </>
+            )}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {Object.entries(GENERATION_COLORS).map(([gen, colors]) => (
-              <div
-                key={gen}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm"
-                style={{ background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[1]})` }}
-              >
-                الجيل {gen}
-              </div>
-            ))}
+            {colorMode === 'generation' ? (
+              // Generation colors legend
+              Object.entries(GENERATION_COLORS).map(([gen, colors]) => (
+                <div
+                  key={gen}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm"
+                  style={{ background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[1]})` }}
+                >
+                  الجيل {gen}
+                </div>
+              ))
+            ) : (
+              // Lineage branches legend
+              <>
+                <div
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm"
+                  style={{ background: `linear-gradient(135deg, ${ROOT_COLOR.gradient[0]}, ${ROOT_COLOR.gradient[1]})` }}
+                >
+                  الجذر
+                </div>
+                {gen2Branches.map((branch, index) => {
+                  const colors = LINEAGE_COLORS[index % LINEAGE_COLORS.length];
+                  return (
+                    <div
+                      key={branch.id}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm"
+                      style={{ background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[1]})` }}
+                    >
+                      فرع {branch.firstName}
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
       </div>
