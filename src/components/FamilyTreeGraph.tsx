@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 import { FamilyMember } from '@/lib/data';
-import { X, ZoomIn, ZoomOut, Maximize2, User, Users } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Users, Home } from 'lucide-react';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -36,9 +36,11 @@ const GENERATION_COLORS = {
 
 export default function FamilyTreeGraph({ members, onSelectMember, highlightedId }: FamilyTreeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const gRef = useRef<SVGGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 1200, height: 800 });
-  const [transform, setTransform] = useState({ x: 0, y: 0, k: 0.6 });
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 1200, height: 700 });
+  const [currentZoom, setCurrentZoom] = useState(0.5);
   const [hoveredNode, setHoveredNode] = useState<TreeNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
@@ -79,7 +81,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setDimensions({ width: Math.max(width, 800), height: Math.max(height, 600) });
+        setDimensions({ width: Math.max(width, 600), height: Math.max(height, 500) });
       }
     };
 
@@ -94,8 +96,8 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
 
     const hierarchy = d3.hierarchy<TreeNode>(treeData);
     const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([180, 200])
-      .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.8));
+      .nodeSize([160, 180])
+      .separation((a, b) => (a.parent === b.parent ? 1.1 : 1.6));
 
     const root = treeLayout(hierarchy);
     const nodes = root.descendants() as unknown as D3TreeNode[];
@@ -104,87 +106,96 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     return { nodes, links };
   }, [treeData]);
 
-  // Calculate bounds for centering
-  const bounds = useMemo(() => {
-    if (nodes.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    nodes.forEach(node => {
-      minX = Math.min(minX, node.x);
-      maxX = Math.max(maxX, node.x);
-      minY = Math.min(minY, node.y);
-      maxY = Math.max(maxY, node.y);
-    });
-
-    return { minX, maxX, minY, maxY };
-  }, [nodes]);
-
-  // Zoom handlers
-  const handleZoom = useCallback((delta: number) => {
-    setTransform(prev => ({
-      ...prev,
-      k: Math.min(2, Math.max(0.1, prev.k + delta))
-    }));
-  }, []);
-
-  const resetView = useCallback(() => {
-    const centerX = dimensions.width / 2;
-    const centerY = 100;
-    setTransform({ x: centerX, y: centerY, k: 0.6 });
-  }, [dimensions]);
-
-  // Initialize view
+  // Initialize D3 zoom behavior
   useEffect(() => {
-    resetView();
+    if (!svgRef.current || !gRef.current) return;
+
+    const svg = d3.select(svgRef.current);
+    const g = d3.select(gRef.current);
+
+    // Create zoom behavior
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 3])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform.toString());
+        setCurrentZoom(event.transform.k);
+      });
+
+    zoomRef.current = zoom;
+    svg.call(zoom);
+
+    // Set initial transform - center the tree
+    const initialTransform = d3.zoomIdentity
+      .translate(dimensions.width / 2, 80)
+      .scale(0.5);
+
+    svg.call(zoom.transform, initialTransform);
+
+    return () => {
+      svg.on('.zoom', null);
+    };
   }, [dimensions.width, dimensions.height]);
 
-  // Mouse wheel zoom
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+  // Zoom control functions
+  const handleZoomIn = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.transition().duration(300).call(zoomRef.current.scaleBy, 1.3);
+  }, []);
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const delta = -e.deltaY * 0.001;
-      handleZoom(delta);
-    };
+  const handleZoomOut = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.transition().duration(300).call(zoomRef.current.scaleBy, 0.7);
+  }, []);
 
-    svg.addEventListener('wheel', handleWheel, { passive: false });
-    return () => svg.removeEventListener('wheel', handleWheel);
-  }, [handleZoom]);
+  const handleResetView = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current) return;
+    const svg = d3.select(svgRef.current);
+    const resetTransform = d3.zoomIdentity
+      .translate(dimensions.width / 2, 80)
+      .scale(0.5);
+    svg.transition().duration(500).call(zoomRef.current.transform, resetTransform);
+  }, [dimensions.width]);
 
-  // Pan handling
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const handleFitToScreen = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current || nodes.length === 0) return;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target === svgRef.current || (e.target as Element).tagName === 'svg') {
-      setIsPanning(true);
-      setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-    }
-  };
+    // Calculate bounds
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach(node => {
+      minX = Math.min(minX, node.x - 80);
+      maxX = Math.max(maxX, node.x + 80);
+      minY = Math.min(minY, node.y - 50);
+      maxY = Math.max(maxY, node.y + 50);
+    });
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isPanning) {
-      setTransform(prev => ({
-        ...prev,
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y
-      }));
-    }
-  };
+    const treeWidth = maxX - minX;
+    const treeHeight = maxY - minY;
+    const scale = Math.min(
+      (dimensions.width - 100) / treeWidth,
+      (dimensions.height - 150) / treeHeight,
+      1
+    ) * 0.9;
 
-  const handleMouseUp = () => {
-    setIsPanning(false);
-  };
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const svg = d3.select(svgRef.current);
+    const fitTransform = d3.zoomIdentity
+      .translate(dimensions.width / 2 - centerX * scale, dimensions.height / 2 - centerY * scale)
+      .scale(scale);
+
+    svg.transition().duration(500).call(zoomRef.current.transform, fitTransform);
+  }, [dimensions, nodes]);
 
   // Generate curved path for links
   const generateLinkPath = (source: D3TreeNode, target: D3TreeNode) => {
     const midY = (source.y + target.y) / 2;
-    return `M ${source.x} ${source.y + 50}
+    return `M ${source.x} ${source.y + 45}
             C ${source.x} ${midY},
               ${target.x} ${midY},
-              ${target.x} ${target.y - 50}`;
+              ${target.x} ${target.y - 45}`;
   };
 
   const getGenColors = (gen: number) => {
@@ -192,35 +203,43 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-[700px] bg-gradient-to-br from-slate-50 via-white to-slate-100 rounded-xl overflow-hidden border shadow-inner">
+    <div ref={containerRef} className="relative w-full h-[700px] bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-lg">
       {/* Controls */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border p-2">
         <button
-          onClick={() => handleZoom(0.2)}
-          className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors border"
+          onClick={handleZoomIn}
+          className="p-2.5 hover:bg-green-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
           title="تكبير"
         >
           <ZoomIn size={20} className="text-gray-600" />
         </button>
         <button
-          onClick={() => handleZoom(-0.2)}
-          className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors border"
+          onClick={handleZoomOut}
+          className="p-2.5 hover:bg-green-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
           title="تصغير"
         >
           <ZoomOut size={20} className="text-gray-600" />
         </button>
+        <div className="w-full h-px bg-gray-200" />
         <button
-          onClick={resetView}
-          className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors border"
+          onClick={handleResetView}
+          className="p-2.5 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
           title="إعادة ضبط"
+        >
+          <Home size={20} className="text-gray-600" />
+        </button>
+        <button
+          onClick={handleFitToScreen}
+          className="p-2.5 hover:bg-purple-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+          title="ملائمة الشاشة"
         >
           <Maximize2 size={20} className="text-gray-600" />
         </button>
       </div>
 
       {/* Zoom indicator */}
-      <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-md border text-sm text-gray-600">
-        {Math.round(transform.k * 100)}%
+      <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg border text-sm font-medium text-gray-700">
+        {Math.round(currentZoom * 100)}%
       </div>
 
       {/* SVG Canvas */}
@@ -228,11 +247,8 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
         ref={svgRef}
         width={dimensions.width}
         height={dimensions.height}
-        className={`cursor-${isPanning ? 'grabbing' : 'grab'}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        className="cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
       >
         {/* Gradient Definitions */}
         <defs>
@@ -250,23 +266,26 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             <stop offset="0%" stopColor="#f472b6" />
             <stop offset="100%" stopColor="#ec4899" />
           </linearGradient>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15" />
+          <filter id="card-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000" floodOpacity="0.1" />
           </filter>
-          <filter id="shadow-hover" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="8" stdDeviation="12" floodOpacity="0.25" />
+          <filter id="card-shadow-hover" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="8" stdDeviation="16" floodColor="#000" floodOpacity="0.15" />
           </filter>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+          <filter id="glow-highlight" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feFlood floodColor="#fbbf24" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="glow" />
             <feMerge>
-              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="glow" />
+              <feMergeNode in="glow" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
 
-        {/* Transform Group */}
-        <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
+        {/* Transform Group - controlled by D3 zoom */}
+        <g ref={gRef}>
           {/* Links */}
           <g className="links">
             {links.map((link, i) => {
@@ -277,9 +296,9 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   d={generateLinkPath(link.source, link.target)}
                   fill="none"
                   stroke={genColor.primary}
-                  strokeWidth={2.5}
-                  strokeOpacity={0.5}
-                  className="transition-all duration-300"
+                  strokeWidth={2}
+                  strokeOpacity={0.4}
+                  strokeLinecap="round"
                 />
               );
             })}
@@ -291,17 +310,17 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
               <g key={i}>
                 <circle
                   cx={link.source.x}
-                  cy={link.source.y + 50}
-                  r={4}
+                  cy={link.source.y + 45}
+                  r={3}
                   fill={getGenColors(link.source.data.generation).primary}
-                  opacity={0.6}
+                  opacity={0.5}
                 />
                 <circle
                   cx={link.target.x}
-                  cy={link.target.y - 50}
-                  r={4}
+                  cy={link.target.y - 45}
+                  r={3}
                   fill={getGenColors(link.target.data.generation).primary}
-                  opacity={0.6}
+                  opacity={0.5}
                 />
               </g>
             ))}
@@ -312,7 +331,6 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             {nodes.map((node) => {
               const isHighlighted = node.data.id === highlightedId;
               const isHovered = hoveredNode?.id === node.data.id;
-              const genColors = getGenColors(node.data.generation);
               const isMale = node.data.gender === 'Male';
 
               return (
@@ -320,10 +338,14 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   key={node.data.id}
                   transform={`translate(${node.x}, ${node.y})`}
                   className="cursor-pointer"
-                  onClick={() => onSelectMember(node.data)}
+                  style={{ transition: 'transform 0.2s ease-out' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMember(node.data);
+                  }}
                   onMouseEnter={(e) => {
                     setHoveredNode(node.data);
-                    const rect = svgRef.current?.getBoundingClientRect();
+                    const rect = containerRef.current?.getBoundingClientRect();
                     if (rect) {
                       setTooltipPos({
                         x: e.clientX - rect.left,
@@ -336,50 +358,47 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   {/* Highlight ring for searched member */}
                   {isHighlighted && (
                     <rect
-                      x={-80}
-                      y={-55}
-                      width={160}
-                      height={110}
-                      rx={20}
+                      x={-72}
+                      y={-50}
+                      width={144}
+                      height={100}
+                      rx={18}
                       fill="none"
-                      stroke="#eab308"
+                      stroke="#fbbf24"
                       strokeWidth={4}
-                      filter="url(#glow)"
+                      filter="url(#glow-highlight)"
                       className="animate-pulse"
                     />
                   )}
 
                   {/* Card background */}
                   <rect
-                    x={-70}
-                    y={-45}
-                    width={140}
-                    height={90}
-                    rx={16}
+                    x={-65}
+                    y={-42}
+                    width={130}
+                    height={84}
+                    rx={14}
                     fill="white"
-                    filter={isHovered ? 'url(#shadow-hover)' : 'url(#shadow)'}
-                    className="transition-all duration-300"
-                    style={{
-                      transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                      transformOrigin: 'center'
-                    }}
+                    filter={isHovered ? 'url(#card-shadow-hover)' : 'url(#card-shadow)'}
+                    stroke={isHovered ? '#22c55e' : '#e5e7eb'}
+                    strokeWidth={isHovered ? 2 : 1}
                   />
 
                   {/* Generation color accent bar */}
                   <rect
-                    x={-70}
-                    y={-45}
-                    width={140}
-                    height={6}
-                    rx={3}
+                    x={-65}
+                    y={-42}
+                    width={130}
+                    height={5}
                     fill={`url(#gen-gradient-${node.data.generation})`}
+                    style={{ clipPath: 'inset(0 0 0 0 round 14px 14px 0 0)' }}
                   />
 
                   {/* Avatar circle */}
                   <circle
                     cx={0}
-                    cy={-15}
-                    r={22}
+                    cy={-12}
+                    r={20}
                     fill={isMale ? 'url(#male-gradient)' : 'url(#female-gradient)'}
                     stroke="white"
                     strokeWidth={3}
@@ -388,9 +407,9 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                   {/* Avatar icon */}
                   <text
                     x={0}
-                    y={-10}
+                    y={-7}
                     textAnchor="middle"
-                    fontSize={18}
+                    fontSize={16}
                     fill="white"
                   >
                     {isMale ? '♂' : '♀'}
@@ -401,39 +420,39 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     x={0}
                     y={18}
                     textAnchor="middle"
-                    fontSize={13}
-                    fontWeight="bold"
+                    fontSize={12}
+                    fontWeight="600"
                     fill="#1f2937"
-                    className="select-none"
+                    style={{ pointerEvents: 'none' }}
                   >
                     {node.data.firstName}
                   </text>
 
                   {/* ID & Generation badge */}
-                  <g transform="translate(0, 35)">
+                  <g transform="translate(0, 32)">
                     <text
-                      x={-25}
+                      x={-22}
                       y={0}
                       textAnchor="middle"
-                      fontSize={9}
-                      fill="#6b7280"
+                      fontSize={8}
+                      fill="#9ca3af"
                     >
                       {node.data.id}
                     </text>
 
                     <rect
-                      x={5}
-                      y={-10}
-                      width={32}
-                      height={16}
-                      rx={8}
+                      x={8}
+                      y={-9}
+                      width={28}
+                      height={14}
+                      rx={7}
                       fill={`url(#gen-gradient-${node.data.generation})`}
                     />
                     <text
-                      x={21}
+                      x={22}
                       y={2}
                       textAnchor="middle"
-                      fontSize={9}
+                      fontSize={8}
                       fontWeight="bold"
                       fill="white"
                     >
@@ -443,14 +462,14 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
 
                   {/* Children indicator */}
                   {(node.data.sonsCount > 0 || node.data.daughtersCount > 0) && (
-                    <g transform="translate(55, -35)">
-                      <rect
-                        x={-12}
-                        y={-8}
-                        width={24}
-                        height={16}
-                        rx={8}
+                    <g transform="translate(50, -32)">
+                      <circle
+                        cx={0}
+                        cy={0}
+                        r={10}
                         fill={isMale ? '#dbeafe' : '#fce7f3'}
+                        stroke={isMale ? '#93c5fd' : '#f9a8d4'}
+                        strokeWidth={1}
                       />
                       <text
                         x={0}
@@ -474,14 +493,15 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
       {/* Tooltip */}
       {hoveredNode && (
         <div
-          className="absolute z-30 pointer-events-none bg-white rounded-xl shadow-xl border p-4 min-w-[200px] transform -translate-x-1/2"
+          className="absolute z-30 pointer-events-none bg-white rounded-xl shadow-2xl border-2 border-gray-100 p-4 min-w-[220px] max-w-[280px]"
           style={{
-            left: Math.min(Math.max(tooltipPos.x, 120), dimensions.width - 120),
-            top: Math.min(tooltipPos.y + 20, dimensions.height - 180)
+            left: Math.min(Math.max(tooltipPos.x + 15, 20), dimensions.width - 260),
+            top: Math.min(Math.max(tooltipPos.y - 10, 20), dimensions.height - 200),
+            transform: tooltipPos.x > dimensions.width / 2 ? 'translateX(-100%)' : 'translateX(0)'
           }}
         >
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl border-2 ${
+          <div className="flex items-center gap-3 mb-3 pb-3 border-b">
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xl border-2 shadow-sm ${
               hoveredNode.gender === 'Male'
                 ? 'bg-blue-50 border-blue-300'
                 : 'bg-pink-50 border-pink-300'
@@ -490,23 +510,23 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             </div>
             <div>
               <p className="font-bold text-gray-800">{hoveredNode.firstName}</p>
-              <p className="text-xs text-gray-500">{hoveredNode.id}</p>
+              <p className="text-xs text-gray-400">{hoveredNode.id}</p>
             </div>
           </div>
 
           {hoveredNode.fullNameAr && (
-            <p className="text-sm text-gray-600 mb-2 bg-gray-50 p-2 rounded-lg">
+            <p className="text-sm text-gray-600 mb-3 bg-gray-50 p-2.5 rounded-lg leading-relaxed">
               {hoveredNode.fullNameAr}
             </p>
           )}
 
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-green-50 p-2 rounded-lg text-center">
-              <span className="font-bold text-green-600 block">ج{hoveredNode.generation}</span>
+            <div className="bg-green-50 p-2.5 rounded-lg text-center">
+              <span className="font-bold text-green-600 block text-sm">ج{hoveredNode.generation}</span>
               <span className="text-gray-500">الجيل</span>
             </div>
-            <div className="bg-gray-50 p-2 rounded-lg text-center">
-              <span className="font-bold text-gray-700 block">{hoveredNode.branch || 'الأصل'}</span>
+            <div className="bg-gray-50 p-2.5 rounded-lg text-center">
+              <span className="font-bold text-gray-700 block text-sm">{hoveredNode.branch || 'الأصل'}</span>
               <span className="text-gray-500">الفرع</span>
             </div>
           </div>
@@ -528,22 +548,22 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             </div>
           )}
 
-          <p className="text-xs text-center text-gray-400 mt-3">انقر للمزيد</p>
+          <p className="text-xs text-center text-green-600 mt-3 font-medium">👆 انقر للمزيد</p>
         </div>
       )}
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 right-4 z-20">
-        <div className="bg-white/95 backdrop-blur rounded-xl shadow-md border p-3">
-          <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
+        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border p-3">
+          <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
             <Users size={14} />
             مفتاح الأجيال
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {Object.entries(GENERATION_COLORS).map(([gen, colors]) => (
               <div
                 key={gen}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium text-white"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm"
                 style={{ background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[1]})` }}
               >
                 الجيل {gen}
@@ -554,8 +574,8 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
       </div>
 
       {/* Instructions */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-md border text-xs text-gray-500">
-        🖱️ سحب للتحريك • 🔍 تمرير للتكبير/التصغير • 👆 انقر على عضو لعرض التفاصيل
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-white/95 backdrop-blur-sm px-5 py-2.5 rounded-xl shadow-lg border text-xs text-gray-600 font-medium">
+        🖱️ سحب للتحريك • 🔍 تمرير للتكبير • 👆 انقر لعرض التفاصيل
       </div>
     </div>
   );
