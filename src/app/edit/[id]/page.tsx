@@ -73,8 +73,11 @@ export default function EditMemberPage() {
   const changedFields = useMemo(() => {
     if (!originalMember) return [];
     const changed: string[] = [];
-    for (const key of Object.keys(formData) as (keyof FamilyMember)[]) {
-      if (formData[key] !== originalMember[key]) {
+    const originalRecord = originalMember as unknown as Record<string, unknown>;
+    for (const key of Object.keys(formData)) {
+      const formValue = formData[key as keyof FamilyMember];
+      const originalValue = originalRecord[key];
+      if (formValue !== originalValue) {
         changed.push(key);
       }
     }
@@ -736,20 +739,24 @@ export default function EditMemberPage() {
                   التغييرات ({changedFields.length})
                 </h3>
                 <div className="space-y-2 max-h-60 overflow-auto">
-                  {changedFields.map(field => (
-                    <div key={field} className="text-sm">
-                      <span className="font-medium text-gray-700">{field}:</span>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-red-600 line-through">
-                          {String(originalMember[field as keyof FamilyMember] ?? '-')}
-                        </span>
-                        <span>→</span>
-                        <span className="text-green-600">
-                          {String(formData[field as keyof FamilyMember] ?? '-')}
-                        </span>
+                  {changedFields.map(field => {
+                    const originalRecord = originalMember as unknown as Record<string, unknown>;
+                    const formRecord = formData as unknown as Record<string, unknown>;
+                    return (
+                      <div key={field} className="text-sm">
+                        <span className="font-medium text-gray-700">{field}:</span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-red-600 line-through">
+                            {String(originalRecord[field] ?? '-')}
+                          </span>
+                          <span>→</span>
+                          <span className="text-green-600">
+                            {String(formRecord[field] ?? '-')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
