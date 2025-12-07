@@ -8,11 +8,13 @@ import {
   buildEntryUrl,
   getPendingCountByBranch,
   getTotalPendingCount,
+  getPendingMembers,
   BranchEntryLink,
 } from '@/lib/branchEntry';
 import {
   GitBranch, Link2, Copy, Check, Users, ChevronDown,
-  ChevronRight, ExternalLink, Bell, Share2, MessageCircle
+  ChevronRight, ExternalLink, Bell, Share2, MessageCircle,
+  TreePine, Eye, QrCode
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,6 +25,30 @@ interface BranchData {
   children: FamilyMember[];
   link?: BranchEntryLink;
   pendingCount: number;
+  fullName: string;
+}
+
+// Build full lineage name
+function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], maxDepth: number = 4): string {
+  const names: string[] = [member.firstName];
+  let current = member;
+  let depth = 0;
+
+  while (current.fatherId && depth < maxDepth) {
+    const father = allMembers.find(m => m.id === current.fatherId);
+    if (father) {
+      names.push(father.firstName);
+      current = father;
+      depth++;
+    } else {
+      break;
+    }
+  }
+
+  if (names.length > 1) {
+    return names.join(' بن ') + ' آل شايع';
+  }
+  return member.firstName + ' آل شايع';
 }
 
 export default function BranchesPage() {
@@ -30,6 +56,7 @@ export default function BranchesPage() {
   const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [totalPending, setTotalPending] = useState(0);
+  const [showLinkModal, setShowLinkModal] = useState<BranchData | null>(null);
 
   const allMembers = getAllMembers();
 
@@ -56,6 +83,7 @@ export default function BranchesPage() {
       const directChildren = allMembers.filter(m => m.fatherId === head.id);
       const link = links.find(l => l.branchHeadId === head.id && l.isActive);
       const pendingCount = getPendingCountByBranch(head.id);
+      const fullName = getFullLineageName(head, allMembers, 3);
 
       return {
         head,
@@ -64,6 +92,7 @@ export default function BranchesPage() {
         children: directChildren,
         link,
         pendingCount,
+        fullName,
       };
     });
 
@@ -95,6 +124,8 @@ export default function BranchesPage() {
     setBranches(prev => prev.map(b =>
       b.head.id === branch.head.id ? { ...b, link } : b
     ));
+    // Show link modal
+    setShowLinkModal({ ...branch, link });
   };
 
   const handleCopyLink = async (token: string) => {
@@ -107,7 +138,24 @@ export default function BranchesPage() {
   const handleShareWhatsApp = (branch: BranchData) => {
     if (!branch.link) return;
     const url = buildEntryUrl(branch.link.token);
-    const text = `السلام عليكم\n\nأرجو منك إضافة أفراد عائلتك في شجرة آل شايع:\n\n${url}\n\nشكراً لمساهمتك 🌳`;
+    const fullName = branch.fullName;
+    const text = `السلام عليكم ورحمة الله وبركاته
+
+أخي الكريم / أختي الكريمة
+
+نرجو منكم المساهمة في تحديث شجرة العائلة بإضافة أفراد فرعكم:
+
+📌 الفرع: ${fullName}
+📌 الجيل: ${branch.head.generation}
+
+🔗 رابط الإضافة:
+${url}
+
+✅ يمكنك إضافة الأبناء والأحفاد
+✅ البيانات ستُراجع قبل الإضافة النهائية
+✅ الرابط آمن وخاص بفرعكم فقط
+
+شكراً لمساهمتكم في إثراء شجرة آل شايع 🌳`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -203,21 +251,21 @@ export default function BranchesPage() {
                   </div>
 
                   {/* Avatar */}
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl border-2 border-blue-300">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl border-2 border-blue-300 flex-shrink-0">
                     👨
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-lg text-gray-800">
-                        {branch.head.firstName}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-lg text-gray-800 truncate">
+                        {branch.fullName}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full text-white ${generationColors[branch.head.generation]}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full text-white ${generationColors[branch.head.generation]} flex-shrink-0`}>
                         ج{branch.head.generation}
                       </span>
                       {branch.pendingCount > 0 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500 text-white">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500 text-white flex-shrink-0">
                           {branch.pendingCount} جديد
                         </span>
                       )}
@@ -229,7 +277,7 @@ export default function BranchesPage() {
 
                   {/* Link Status */}
                   {branch.link ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
                         رابط نشط
                       </span>
@@ -240,7 +288,7 @@ export default function BranchesPage() {
                         e.stopPropagation();
                         handleGenerateLink(branch);
                       }}
-                      className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg flex items-center gap-1 transition-colors flex-shrink-0"
                     >
                       <Link2 size={14} />
                       إنشاء رابط
@@ -294,6 +342,22 @@ export default function BranchesPage() {
                           <ExternalLink size={18} />
                         </Link>
                       </div>
+
+                      {/* Link Details Card */}
+                      <div className="mt-4 bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                          <Share2 size={16} />
+                          تفاصيل الرابط
+                        </h4>
+                        <div className="text-sm text-blue-700 space-y-1">
+                          <p><strong>الفرع:</strong> {branch.fullName}</p>
+                          <p><strong>الجيل:</strong> {branch.head.generation}</p>
+                          <p><strong>تاريخ الإنشاء:</strong> {new Date(branch.link.createdAt).toLocaleDateString('ar-SA')}</p>
+                        </div>
+                        <p className="text-xs text-blue-500 mt-2">
+                          عند مشاركة هذا الرابط، سيتمكن المستلم من إضافة أفراد تحت هذا الفرع فقط
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
@@ -314,18 +378,23 @@ export default function BranchesPage() {
                       الأبناء المباشرين ({branch.children.length}):
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {branch.children.map(child => (
-                        <span
-                          key={child.id}
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            child.gender === 'Male'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-pink-100 text-pink-700'
-                          }`}
-                        >
-                          {child.firstName}
-                        </span>
-                      ))}
+                      {branch.children.map(child => {
+                        const childFullName = getFullLineageName(child, allMembers, 1);
+                        return (
+                          <span
+                            key={child.id}
+                            className={`px-3 py-1.5 rounded-lg text-sm ${
+                              child.gender === 'Male'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-pink-100 text-pink-700'
+                            }`}
+                            title={childFullName}
+                          >
+                            {child.firstName}
+                            <span className="text-xs opacity-70 mr-1">ج{child.generation}</span>
+                          </span>
+                        );
+                      })}
                       {branch.children.length === 0 && (
                         <span className="text-gray-400 text-sm">لا يوجد أبناء مسجلين</span>
                       )}
@@ -351,7 +420,120 @@ export default function BranchesPage() {
             <li>راجع الإضافات الجديدة من صفحة "بانتظار المراجعة"</li>
           </ol>
         </div>
+
+        {/* What Family Members See */}
+        <div className="mt-4 bg-green-50 rounded-xl p-6 border border-green-200">
+          <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+            <Eye size={20} />
+            ماذا يرى فرد العائلة عند فتح الرابط؟
+          </h3>
+          <ul className="space-y-2 text-sm text-green-700">
+            <li className="flex items-start gap-2">
+              <TreePine size={16} className="mt-0.5 flex-shrink-0" />
+              <span>صفحة ترحيبية توضح الفرع والجيل المراد تحديثه</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <TreePine size={16} className="mt-0.5 flex-shrink-0" />
+              <span>شجرة مرئية تُظهر الفرع الحالي وتتحدث تلقائياً عند الإضافة</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <TreePine size={16} className="mt-0.5 flex-shrink-0" />
+              <span>نموذج سهل لإضافة الأبناء والأحفاد</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <TreePine size={16} className="mt-0.5 flex-shrink-0" />
+              <span>صفحة مراجعة وتأكيد قبل الإرسال</span>
+            </li>
+          </ul>
+        </div>
       </div>
+
+      {/* Link Share Modal */}
+      {showLinkModal && showLinkModal.link && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-l from-green-500 to-green-600 px-6 py-4 text-white rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <Link2 size={24} />
+                <div>
+                  <h3 className="font-bold text-lg">تم إنشاء الرابط!</h3>
+                  <p className="text-green-100 text-sm">شارك الرابط مع مسؤول الفرع</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Branch Info */}
+              <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
+                <p className="text-sm text-blue-600 mb-1">الفرع:</p>
+                <p className="font-bold text-blue-800">{showLinkModal.fullName}</p>
+                <p className="text-xs text-blue-500 mt-1">
+                  الجيل {showLinkModal.head.generation} • {showLinkModal.totalMembers} عضو
+                </p>
+              </div>
+
+              {/* Link Input */}
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">الرابط:</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={buildEntryUrl(showLinkModal.link.token)}
+                    className="flex-1 px-3 py-2 bg-gray-100 border rounded-lg text-sm text-gray-600"
+                    dir="ltr"
+                  />
+                  <button
+                    onClick={() => handleCopyLink(showLinkModal.link!.token)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      copiedToken === showLinkModal.link!.token
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+                    }`}
+                  >
+                    {copiedToken === showLinkModal.link!.token ? (
+                      <Check size={18} />
+                    ) : (
+                      <Copy size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Share Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleShareWhatsApp(showLinkModal)}
+                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <MessageCircle size={20} />
+                  مشاركة عبر واتساب
+                </button>
+                <Link
+                  href={`/add-branch/${showLinkModal.link.token}`}
+                  target="_blank"
+                  className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <ExternalLink size={20} />
+                  فتح الرابط للمعاينة
+                </Link>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => setShowLinkModal(null)}
+                className="w-full py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
