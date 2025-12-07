@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils';
 import {
   Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X,
   GitBranch, Download, Upload, History, Settings, Edit, Copy,
-  MoreHorizontal, ChevronDown, Loader2
+  MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ROLE_LABELS } from '@/lib/auth/types';
 
 const navItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
@@ -31,20 +33,22 @@ const moreNavItems = [
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
   { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Statistics', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
-  { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit },
-  { href: '/export', label: 'تصدير', labelEn: 'Export', icon: Download },
-  { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload },
-  { href: '/duplicates', label: 'التكرارات', labelEn: 'Duplicates', icon: Copy },
-  { href: '/history', label: 'السجل', labelEn: 'History', icon: History },
+  { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit, permission: 'edit_member' },
+  { href: '/export', label: 'تصدير', labelEn: 'Export', icon: Download, permission: 'export_data' },
+  { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload, permission: 'import_data' },
+  { href: '/duplicates', label: 'التكرارات', labelEn: 'Duplicates', icon: Copy, permission: 'edit_member' },
+  { href: '/history', label: 'السجل', labelEn: 'History', icon: History, permission: 'view_change_history' },
   { href: '/admin', label: 'لوحة التحكم', labelEn: 'Admin Panel', icon: Settings },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout, hasPermission } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
@@ -56,6 +60,7 @@ export function Navigation() {
     setIsMenuOpen(false);
     setIsMoreOpen(false);
     setIsMobileMoreOpen(false);
+    setIsUserMenuOpen(false);
     setSearchQuery('');
   }, [pathname]);
 
@@ -106,6 +111,17 @@ export function Navigation() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  // Filter more nav items based on permissions
+  const filteredMoreNavItems = moreNavItems.filter((item) => {
+    if (!item.permission) return true;
+    return hasPermission(item.permission as Parameters<typeof hasPermission>[0]);
+  });
 
   return (
     <>
@@ -187,7 +203,7 @@ export function Navigation() {
                   aria-label="المزيد من الخيارات"
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
-                    isMoreOpen || moreNavItems.some(item => pathname === item.href)
+                    isMoreOpen || filteredMoreNavItems.some(item => pathname === item.href)
                       ? 'bg-white text-green-700 font-semibold'
                       : 'hover:bg-green-500 text-white'
                   )}
@@ -202,7 +218,7 @@ export function Navigation() {
                     className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
                     role="menu"
                   >
-                    {moreNavItems.map((item) => {
+                    {filteredMoreNavItems.map((item) => {
                       const Icon = item.icon;
                       const isActive = pathname === item.href;
                       return (
@@ -230,6 +246,63 @@ export function Navigation() {
                 )}
               </div>
             </nav>
+
+            {/* User Menu (Desktop) */}
+            <div className="hidden lg:flex items-center gap-4">
+              {user && (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-500 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                      <User size={18} />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{user.nameArabic}</p>
+                      <p className="text-[10px] text-green-200">{ROLE_LABELS[user.role].ar}</p>
+                    </div>
+                  </button>
+
+                  {isUserMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      />
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 py-2 text-gray-700">
+                        <Link
+                          href="/profile"
+                          className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <User size={16} />
+                          <span>الملف الشخصي</span>
+                        </Link>
+                        {hasPermission('view_users') && (
+                          <Link
+                            href="/admin"
+                            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Shield size={16} />
+                            <span>لوحة الإدارة</span>
+                          </Link>
+                        )}
+                        <hr className="my-2" />
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 w-full text-red-600"
+                        >
+                          <LogOut size={16} />
+                          <span>تسجيل الخروج</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Mobile: Search & Menu buttons */}
             <div className="flex items-center gap-2 lg:hidden">
@@ -295,7 +368,7 @@ export function Navigation() {
                 aria-label="المزيد من الخيارات"
                 className={cn(
                   'flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all min-w-0 w-full',
-                  isMobileMoreOpen || moreNavItems.some(item => pathname === item.href)
+                  isMobileMoreOpen || filteredMoreNavItems.some(item => pathname === item.href)
                     ? 'text-green-600 bg-green-50'
                     : 'text-gray-500 hover:text-green-600 active:bg-gray-100'
                 )}
@@ -310,7 +383,7 @@ export function Navigation() {
                   className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
                   role="menu"
                 >
-                  {moreNavItems.map((item) => {
+                  {filteredMoreNavItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
                     return (
@@ -434,7 +507,7 @@ export function Navigation() {
               <div className="border-t pt-3">
                 <p className="text-xs text-gray-400 px-3 mb-2" id="tools-nav-label">أدوات إضافية</p>
                 <ul role="list" aria-labelledby="tools-nav-label" className="space-y-1">
-                  {moreNavItems.filter(item => !['/dashboard', '/branches'].includes(item.href)).map((item) => {
+                  {filteredMoreNavItems.filter(item => !['/dashboard', '/branches'].includes(item.href)).map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
                     return (
@@ -461,13 +534,45 @@ export function Navigation() {
                   })}
                 </ul>
               </div>
+
+              {/* User section in mobile menu */}
+              {user && (
+                <div className="border-t pt-3 mt-3">
+                  <p className="text-xs text-gray-400 px-3 mb-2">الحساب</p>
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100"
+                  >
+                    <User size={18} className="text-gray-400" />
+                    <span className="text-sm">الملف الشخصي</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 w-full"
+                  >
+                    <LogOut size={18} />
+                    <span className="text-sm">تسجيل الخروج</span>
+                  </button>
+                </div>
+              )}
             </nav>
 
             {/* Menu Footer */}
             <footer className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-100 bg-white">
-              <p className="text-center text-xs text-gray-400">
-                شجرة آل شايع • النسخة 1.0
-              </p>
+              {user ? (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700">{user.nameArabic}</p>
+                  <p className="text-xs text-gray-400">{ROLE_LABELS[user.role].ar}</p>
+                </div>
+              ) : (
+                <p className="text-center text-xs text-gray-400">
+                  شجرة آل شايع • النسخة 1.0
+                </p>
+              )}
             </footer>
           </aside>
         </>
