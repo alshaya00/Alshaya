@@ -20,21 +20,37 @@ import {
 // Step definitions
 type Step = 'info' | 'add' | 'review' | 'submitted';
 
-// Build full lineage name
-function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], maxDepth: number = 4): string {
+// Build full lineage name - searches in both regular members and pending session members
+function getFullLineageName(
+  member: FamilyMember | (FamilyMember & { isPending?: boolean }),
+  allMembers: FamilyMember[],
+  maxDepth: number = 4,
+  sessionMembers: PendingMember[] = []
+): string {
   const names: string[] = [member.firstName];
-  let current = member;
+  let currentFatherId = member.fatherId;
   let depth = 0;
 
-  while (current.fatherId && depth < maxDepth) {
-    const father = allMembers.find(m => m.id === current.fatherId);
-    if (father) {
-      names.push(father.firstName);
-      current = father;
-      depth++;
-    } else {
-      break;
+  while (currentFatherId && depth < maxDepth) {
+    // First search in regular members
+    let father = allMembers.find(m => m.id === currentFatherId);
+
+    // If not found, search in session/pending members (by tempId)
+    if (!father) {
+      const pendingFather = sessionMembers.find(p => p.tempId === currentFatherId);
+      if (pendingFather) {
+        names.push(pendingFather.firstName);
+        currentFatherId = pendingFather.fatherId;
+        depth++;
+        continue;
+      } else {
+        break;
+      }
     }
+
+    names.push(father.firstName);
+    currentFatherId = father.fatherId || null;
+    depth++;
   }
 
   if (names.length > 1) {
@@ -43,7 +59,7 @@ function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], ma
   return member.firstName + ' آل شايع';
 }
 
-// Mini Tree Node Component
+// Mini Tree Node Component for regular members
 function TreeNode({
   member,
   allMembers,
@@ -98,20 +114,70 @@ function TreeNode({
             />
           ))}
           {pendingChildren.map(pending => (
-            <div key={pending.id} className="flex items-center gap-2 py-1 px-2 rounded-lg bg-yellow-50 border-2 border-yellow-400 border-dashed animate-pulse">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                pending.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
-              }`}>
-                {pending.gender === 'Male' ? '👨' : '👩'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-yellow-700">
-                  {pending.firstName}
-                  <span className="text-xs text-yellow-500 mr-1">(جديد)</span>
-                </p>
-                <p className="text-xs text-yellow-500">ج{pending.generation}</p>
-              </div>
-            </div>
+            <PendingTreeNode
+              key={pending.id}
+              pending={pending}
+              allMembers={allMembers}
+              pendingMembers={pendingMembers}
+              level={level + 1}
+              highlightedIds={highlightedIds}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Tree Node for pending/temporary members - supports showing their children too
+function PendingTreeNode({
+  pending,
+  allMembers,
+  pendingMembers,
+  level = 0,
+  highlightedIds = new Set<string>()
+}: {
+  pending: PendingMember;
+  allMembers: FamilyMember[];
+  pendingMembers: PendingMember[];
+  level?: number;
+  highlightedIds?: Set<string>;
+}) {
+  // Find children of this pending member (they reference the tempId as fatherId)
+  const pendingChildrenOfPending = pendingMembers.filter(
+    p => p.fatherId === pending.tempId && p.status === 'pending' && p.id !== pending.id
+  );
+
+  return (
+    <div className="relative">
+      {/* Pending Node */}
+      <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-yellow-50 border-2 border-yellow-400 border-dashed">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+          pending.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
+        }`}>
+          {pending.gender === 'Male' ? '👨' : '👩'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate text-yellow-700">
+            {pending.firstName}
+            <span className="text-xs text-yellow-500 mr-1">(جديد)</span>
+          </p>
+          <p className="text-xs text-yellow-500">ج{pending.generation}</p>
+        </div>
+      </div>
+
+      {/* Children of pending member */}
+      {pendingChildrenOfPending.length > 0 && (
+        <div className="mr-4 mt-1 border-r-2 border-yellow-300 pr-3 space-y-1">
+          {pendingChildrenOfPending.map(child => (
+            <PendingTreeNode
+              key={child.id}
+              pending={child}
+              allMembers={allMembers}
+              pendingMembers={pendingMembers}
+              level={level + 1}
+              highlightedIds={highlightedIds}
+            />
           ))}
         </div>
       )}
@@ -215,12 +281,12 @@ export default function BranchEntryPage() {
     if (!fatherSearch) return branchMembers;
     const search = fatherSearch.toLowerCase();
     return branchMembers.filter(m => {
-      const fullName = getFullLineageName(m, allMembers, 3);
+      const fullName = getFullLineageName(m, allMembers, 3, sessionMembers);
       return m.firstName.toLowerCase().includes(search) ||
              fullName.toLowerCase().includes(search) ||
              m.id.toLowerCase().includes(search);
     });
-  }, [branchMembers, fatherSearch, allMembers]);
+  }, [branchMembers, fatherSearch, allMembers, sessionMembers]);
 
   // Get selected father info
   const selectedFather = useMemo(() => {
@@ -228,37 +294,50 @@ export default function BranchEntryPage() {
     return branchMembers.find(m => m.id === fatherId || (m as any).id === fatherId) || null;
   }, [fatherId, branchMembers]);
 
-  // Calculate auto-filled data
+  // Calculate auto-filled data - builds full lineage through temporary members
   const autoFill = useMemo(() => {
     if (!selectedFather || !firstName) return null;
 
     const connector = gender === 'Male' ? 'بن' : 'بنت';
     const generation = (selectedFather.generation || 1) + 1;
-    const fatherFullName = getFullLineageName(selectedFather, allMembers, 2);
+    const fatherFullName = getFullLineageName(selectedFather, allMembers, 2, sessionMembers);
+
+    // Build the full name including ancestor chain through temporary members
+    const fatherLineage = getFullLineageName(selectedFather, allMembers, 3, sessionMembers);
+    // Remove the family name suffix to get just the lineage names
+    const lineageWithoutSuffix = fatherLineage.replace(' آل شايع', '');
+    const fullNameAr = `${firstName} ${connector} ${lineageWithoutSuffix} آل شايع`;
 
     return {
       generation,
       branch: branchHead?.branch || branchHead?.firstName || 'الأصل',
-      fullNameAr: `${firstName} ${connector} ${selectedFather.firstName} آل شايع`,
+      fullNameAr,
       fatherName: selectedFather.firstName,
       fatherFullName,
     };
-  }, [selectedFather, firstName, gender, branchHead, allMembers]);
+  }, [selectedFather, firstName, gender, branchHead, allMembers, sessionMembers]);
 
-  // Get highlighted IDs for tree visualization
+  // Get highlighted IDs for tree visualization - traverses through both regular and pending members
   const highlightedIds = useMemo(() => {
     const ids = new Set<string>();
     sessionMembers.forEach(m => {
       ids.add(m.tempId);
-      // Also highlight the path to root
+      // Also highlight the path to root (through both regular and pending members)
       let currentId = m.fatherId;
       while (currentId) {
         ids.add(currentId);
+        // First try to find in regular members
         const parent = allMembers.find(p => p.id === currentId);
         if (parent) {
           currentId = parent.fatherId || '';
         } else {
-          break;
+          // If not found, try to find in pending members (by tempId)
+          const pendingParent = sessionMembers.find(p => p.tempId === currentId);
+          if (pendingParent) {
+            currentId = pendingParent.fatherId;
+          } else {
+            break;
+          }
         }
       }
     });
@@ -415,7 +494,7 @@ export default function BranchEntryPage() {
                 <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
                   <p className="text-sm text-blue-600 mb-1">رأس الفرع:</p>
                   <p className="font-bold text-blue-800 text-lg">
-                    {getFullLineageName(branchHead, allMembers, 4)}
+                    {getFullLineageName(branchHead, allMembers, 4, sessionMembers)}
                   </p>
                   <p className="text-xs text-blue-500 mt-1">
                     الجيل {branchHead.generation} • {branchHead.sonsCount} أبناء
@@ -611,7 +690,7 @@ export default function BranchEntryPage() {
                         {selectedFather ? (
                           <>
                             <p className="font-bold text-gray-800 truncate">
-                              {getFullLineageName(selectedFather, allMembers, 2)}
+                              {getFullLineageName(selectedFather, allMembers, 2, sessionMembers)}
                             </p>
                             <p className="text-xs text-gray-500">
                               الجيل {selectedFather.generation} • {selectedFather.id}
@@ -646,7 +725,7 @@ export default function BranchEntryPage() {
                     {/* Options */}
                     <div className="max-h-52 overflow-y-auto">
                       {filteredFathers.map(member => {
-                        const fullName = getFullLineageName(member, allMembers, 2);
+                        const fullName = getFullLineageName(member, allMembers, 2, sessionMembers);
                         const isPending = (member as any).isPending;
 
                         return (
