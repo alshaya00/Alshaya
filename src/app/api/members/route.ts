@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllMembers, getMaleMembers, getMembersByGeneration, getMembersByBranch, FamilyMember, familyMembers } from '@/lib/data';
 
+// Sanitize string input to prevent XSS attacks
+function sanitizeString(input: string | null | undefined): string | null {
+  if (!input) return null;
+  // Remove HTML tags and script content
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
+// Normalize gender input to handle case insensitivity
+function normalizeGender(gender: string): 'Male' | 'Female' | null {
+  const normalized = gender.toLowerCase();
+  if (normalized === 'male') return 'Male';
+  if (normalized === 'female') return 'Female';
+  return null;
+}
+
 // GET /api/members - Get all members with optional filters
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +42,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (gender) {
-      members = members.filter((m) => m.gender === gender);
+      const normalizedGender = normalizeGender(gender);
+      if (normalizedGender) {
+        members = members.filter((m) => m.gender === normalizedGender);
+      }
     }
 
     if (generation) {
@@ -76,17 +100,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Sanitize input fields to prevent XSS
+    const sanitizedFirstName = sanitizeString(body.firstName);
+    const sanitizedGender = body.gender ? normalizeGender(body.gender) : null;
+
     // Validate required fields
-    if (!body.firstName) {
+    if (!sanitizedFirstName) {
       return NextResponse.json(
         { success: false, error: 'firstName is required' },
         { status: 400 }
       );
     }
 
-    if (!body.gender || !['Male', 'Female'].includes(body.gender)) {
+    if (!sanitizedGender) {
       return NextResponse.json(
-        { success: false, error: 'Valid gender is required' },
+        { success: false, error: 'Valid gender is required (Male or Female)' },
         { status: 400 }
       );
     }
@@ -103,30 +131,30 @@ export async function POST(request: NextRequest) {
     const maxId = Math.max(...familyMembers.map(m => parseInt(m.id.slice(1))));
     const id = body.id || `P${String(maxId + 1).padStart(3, '0')}`;
 
-    // Create member object
+    // Create member object with sanitized inputs
     const newMember: FamilyMember = {
       id,
-      firstName: body.firstName,
-      fatherName: body.fatherName || null,
-      grandfatherName: body.grandfatherName || null,
-      greatGrandfatherName: body.greatGrandfatherName || null,
-      familyName: body.familyName || 'آل شايع',
-      fatherId: body.fatherId || null,
-      gender: body.gender,
+      firstName: sanitizedFirstName,
+      fatherName: sanitizeString(body.fatherName),
+      grandfatherName: sanitizeString(body.grandfatherName),
+      greatGrandfatherName: sanitizeString(body.greatGrandfatherName),
+      familyName: sanitizeString(body.familyName) || 'آل شايع',
+      fatherId: sanitizeString(body.fatherId),
+      gender: sanitizedGender,
       birthYear: body.birthYear || null,
       sonsCount: body.sonsCount || 0,
       daughtersCount: body.daughtersCount || 0,
       generation: body.generation || 1,
-      branch: body.branch || null,
-      fullNameAr: body.fullNameAr || null,
-      fullNameEn: body.fullNameEn || null,
-      phone: body.phone || null,
-      city: body.city || null,
-      status: body.status || 'Living',
-      photoUrl: body.photoUrl || null,
-      biography: body.biography || null,
-      occupation: body.occupation || null,
-      email: body.email || null,
+      branch: sanitizeString(body.branch),
+      fullNameAr: sanitizeString(body.fullNameAr),
+      fullNameEn: sanitizeString(body.fullNameEn),
+      phone: sanitizeString(body.phone),
+      city: sanitizeString(body.city),
+      status: body.status === 'Deceased' ? 'Deceased' : 'Living',
+      photoUrl: sanitizeString(body.photoUrl),
+      biography: sanitizeString(body.biography),
+      occupation: sanitizeString(body.occupation),
+      email: sanitizeString(body.email),
     };
 
     // In real implementation with Prisma:
