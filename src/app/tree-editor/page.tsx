@@ -71,8 +71,7 @@ export default function TreeEditorPage() {
 
   // Tree data
   const treeData = useMemo(() => {
-    const tree = buildFamilyTree();
-    return tree[0] || null;
+    return buildFamilyTree() as unknown as TreeNode | null;
   }, []);
 
   // D3 references
