@@ -269,17 +269,20 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
         <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
           {/* Links */}
           <g className="links">
-            {links.map((link, i) => (
-              <path
-                key={i}
-                d={generateLinkPath(link.source, link.target)}
-                fill="none"
-                stroke="url(#gen-gradient-${link.target.data.generation})"
-                strokeWidth={3}
-                strokeOpacity={0.4}
-                className="transition-all duration-300"
-              />
-            ))}
+            {links.map((link, i) => {
+              const genColor = getGenColors(link.target.data.generation);
+              return (
+                <path
+                  key={i}
+                  d={generateLinkPath(link.source, link.target)}
+                  fill="none"
+                  stroke={genColor.primary}
+                  strokeWidth={2.5}
+                  strokeOpacity={0.5}
+                  className="transition-all duration-300"
+                />
+              );
+            })}
           </g>
 
           {/* Link connection dots */}
