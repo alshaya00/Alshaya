@@ -122,8 +122,8 @@ export default function SearchPage() {
         {/* Search Results */}
         {query && (
           <div className="mb-4 text-gray-600">
-            تم العثور على <span className="font-bold">{searchResults.length}</span> نتيجة للبحث عن "
-            <span className="font-bold">{query}</span>"
+            تم العثور على <span className="font-bold">{searchResults.length}</span> نتيجة للبحث عن &ldquo;
+            <span className="font-bold">{query}</span>&rdquo;
           </div>
         )}
 
