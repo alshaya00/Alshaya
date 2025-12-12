@@ -682,3 +682,129 @@ model BranchEntryLink {
   @@index([token])
   @@index([isActive])
 }
+
+// ============================================
+// API SERVICE CONFIGURATION
+// ============================================
+
+model ApiServiceConfig {
+  id                      String  @id @default("default")
+
+  // Email Provider Configuration
+  emailProvider           String  @default("none") // resend, sendgrid, mailgun, smtp, none
+  emailApiKey             String? // Encrypted API key
+  emailFromAddress        String?
+  emailFromName           String?
+
+  // SMTP Configuration (when provider is smtp)
+  smtpHost                String?
+  smtpPort                Int?
+  smtpUser                String?
+  smtpPassword            String? // Encrypted
+  smtpSecure              Boolean @default(true)
+
+  // OTP/SMS Provider Configuration
+  otpProvider             String  @default("none") // twilio, vonage, messagebird, none
+  otpApiKey               String? // Encrypted
+  otpApiSecret            String? // Encrypted
+  otpFromNumber           String?
+
+  // General Settings
+  enableEmailNotifications Boolean @default(false)
+  enableSMSNotifications   Boolean @default(false)
+  testMode                 Boolean @default(true) // If true, don't actually send emails/SMS
+
+  // Metadata
+  updatedAt               DateTime @updatedAt
+  updatedBy               String?
+}
+
+// ============================================
+// EMAIL LOGS
+// ============================================
+
+model EmailLog {
+  id              String   @id @default(cuid())
+
+  // Email details
+  to              String
+  from            String
+  subject         String
+  templateName    String?
+  templateData    String?  // JSON
+
+  // Status
+  status          String   @default("PENDING") // PENDING, SENT, FAILED, BOUNCED
+  provider        String
+  providerMessageId String?
+  errorMessage    String?
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  sentAt          DateTime?
+
+  @@index([to])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// SMS/OTP LOGS
+// ============================================
+
+model SmsLog {
+  id              String   @id @default(cuid())
+
+  // SMS details
+  to              String
+  from            String
+  message         String
+  type            String   @default("OTP") // OTP, NOTIFICATION
+
+  // Status
+  status          String   @default("PENDING") // PENDING, SENT, FAILED, DELIVERED
+  provider        String
+  providerMessageId String?
+  errorMessage    String?
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  sentAt          DateTime?
+
+  @@index([to])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// SCHEDULED JOBS (for backups, cleanup, etc.)
+// ============================================
+
+model ScheduledJob {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  description     String?
+
+  // Schedule (cron expression)
+  cronExpression  String
+  timezone        String   @default("Asia/Riyadh")
+
+  // Job configuration
+  jobType         String   // BACKUP, CLEANUP, EMAIL_DIGEST, etc.
+  jobConfig       String?  // JSON configuration
+
+  // Status
+  isEnabled       Boolean  @default(true)
+  lastRunAt       DateTime?
+  lastRunStatus   String?  // SUCCESS, FAILED, RUNNING
+  lastRunDuration Int?     // milliseconds
+  lastRunError    String?
+  nextRunAt       DateTime?
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isEnabled])
+  @@index([nextRunAt])
+}
