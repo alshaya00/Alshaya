@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X, GitBranch, Download, Upload, History, Settings, Edit, Copy, MoreHorizontal, ChevronDown } from 'lucide-react';
+import {
+  Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X,
+  GitBranch, Download, Upload, History, Settings, Edit, Copy,
+  MoreHorizontal, ChevronDown, Loader2
+} from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
@@ -12,11 +16,21 @@ const navItems = [
   { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
   { href: '/registry', label: 'السجل', labelEn: 'Registry', icon: Users },
   { href: '/quick-add', label: 'إضافة', labelEn: 'Add', icon: PlusCircle },
+];
+
+// Mobile bottom nav items (5 main + More)
+const mobileNavItems = [
+  { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
+  { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
+  { href: '/quick-add', label: 'إضافة', labelEn: 'Add', icon: PlusCircle },
+  { href: '/registry', label: 'السجل', labelEn: 'Registry', icon: Users },
   { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 },
 ];
 
 const moreNavItems = [
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
+  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Statistics', icon: BarChart3 },
+  { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
   { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit },
   { href: '/export', label: 'تصدير', labelEn: 'Export', icon: Download },
   { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload },
@@ -27,21 +41,32 @@ const moreNavItems = [
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMoreRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Close menu on route change
+  // Close menus on route change
   useEffect(() => {
     setIsMenuOpen(false);
     setIsMoreOpen(false);
+    setIsMobileMoreOpen(false);
+    setSearchQuery('');
   }, [pathname]);
 
-  // Close more dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
         setIsMoreOpen(false);
+      }
+      if (mobileMoreRef.current && !mobileMoreRef.current.contains(event.target as Node)) {
+        setIsMobileMoreOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -60,22 +85,78 @@ export function Navigation() {
     };
   }, [isMenuOpen]);
 
+  // Handle search submission
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setIsSearching(true);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setTimeout(() => setIsSearching(false), 500);
+    }
+  };
+
+  // Handle keyboard shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <>
       <header className="bg-gradient-to-l from-green-600 to-green-700 text-white shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between py-3 md:py-4">
+          <div className="flex items-center justify-between py-3 md:py-4 gap-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 md:gap-3">
-              <span className="text-2xl md:text-3xl">🌳</span>
-              <div>
+            <Link href="/" className="flex items-center gap-2 md:gap-3 shrink-0">
+              <span className="text-2xl md:text-3xl" role="img" aria-label="شجرة العائلة">🌳</span>
+              <div className="hidden sm:block">
                 <h1 className="text-lg md:text-xl font-bold">شجرة آل شايع</h1>
-                <p className="text-[10px] md:text-xs text-green-200 hidden sm:block">Al-Shaye Family Tree</p>
+                <p className="text-[10px] md:text-xs text-green-200">Al-Shaye Family Tree</p>
               </div>
             </Link>
 
+            {/* Global Search Bar - Desktop */}
+            <form
+              onSubmit={handleSearch}
+              className="hidden md:flex flex-1 max-w-md mx-4"
+              role="search"
+            >
+              <div className="relative w-full">
+                <label htmlFor="global-search" className="sr-only">البحث عن أفراد العائلة</label>
+                <input
+                  ref={searchInputRef}
+                  id="global-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ابحث عن أفراد العائلة... (⌘K)"
+                  className="w-full px-4 py-2 pr-10 rounded-lg bg-white/20 backdrop-blur-sm text-white placeholder-green-200 border border-white/30 focus:bg-white/30 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                  aria-describedby="search-hint"
+                />
+                <button
+                  type="submit"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                  aria-label="بحث"
+                  disabled={isSearching}
+                >
+                  {isSearching ? (
+                    <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Search size={18} aria-hidden="true" />
+                  )}
+                </button>
+                <span id="search-hint" className="sr-only">اضغط Enter للبحث أو استخدم Ctrl+K للتركيز على البحث</span>
+              </div>
+            </form>
+
             {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center gap-1" role="navigation" aria-label="Main navigation">
+            <nav className="hidden lg:flex items-center gap-1 shrink-0" role="navigation" aria-label="التنقل الرئيسي">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -85,7 +166,7 @@ export function Navigation() {
                     href={item.href}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200',
+                      'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
                       isActive
                         ? 'bg-white text-green-700 font-semibold'
                         : 'hover:bg-green-500 text-white'
@@ -105,7 +186,7 @@ export function Navigation() {
                   aria-haspopup="true"
                   aria-label="المزيد من الخيارات"
                   className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200',
+                    'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
                     isMoreOpen || moreNavItems.some(item => pathname === item.href)
                       ? 'bg-white text-green-700 font-semibold'
                       : 'hover:bg-green-500 text-white'
@@ -150,25 +231,35 @@ export function Navigation() {
               </div>
             </nav>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-green-500 transition-colors"
-              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            {/* Mobile: Search & Menu buttons */}
+            <div className="flex items-center gap-2 lg:hidden">
+              <Link
+                href="/search"
+                className="p-2 rounded-lg hover:bg-green-500 transition-colors"
+                aria-label="البحث"
+              >
+                <Search size={22} aria-hidden="true" />
+              </Link>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 rounded-lg hover:bg-green-500 transition-colors"
+                aria-label={isMenuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+                aria-expanded={isMenuOpen}
+              >
+                {isMenuOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Navigation Bar for Mobile - Always visible */}
+        {/* Bottom Navigation Bar for Mobile - 5 items + More */}
         <nav
           className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 pb-safe"
           role="navigation"
-          aria-label="Mobile navigation"
+          aria-label="التنقل السريع"
         >
-          <div className="grid grid-cols-6 gap-1 px-1 py-2">
-            {navItems.map((item) => {
+          <div className="grid grid-cols-6 gap-0.5 px-1 py-1.5">
+            {mobileNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -178,22 +269,72 @@ export function Navigation() {
                   aria-current={isActive ? 'page' : undefined}
                   aria-label={`${item.label} - ${item.labelEn}`}
                   className={cn(
-                    'flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all min-w-0',
+                    'flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all min-w-0',
                     isActive
                       ? 'text-green-600 bg-green-50'
-                      : 'text-gray-500 hover:text-green-600 hover:bg-gray-50'
+                      : 'text-gray-500 hover:text-green-600 active:bg-gray-100'
                   )}
                 >
-                  <Icon size={20} aria-hidden="true" className={isActive ? 'text-green-600' : ''} />
+                  <Icon size={22} aria-hidden="true" />
                   <span className={cn(
-                    'text-[9px] mt-0.5 font-medium truncate w-full text-center',
-                    isActive ? 'text-green-600' : ''
+                    'text-[10px] mt-1 font-medium truncate w-full text-center',
+                    isActive && 'text-green-600'
                   )}>
                     {item.label}
                   </span>
                 </Link>
               );
             })}
+
+            {/* More Button for Mobile Bottom Nav */}
+            <div className="relative" ref={mobileMoreRef}>
+              <button
+                onClick={() => setIsMobileMoreOpen(!isMobileMoreOpen)}
+                aria-expanded={isMobileMoreOpen}
+                aria-haspopup="true"
+                aria-label="المزيد من الخيارات"
+                className={cn(
+                  'flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all min-w-0 w-full',
+                  isMobileMoreOpen || moreNavItems.some(item => pathname === item.href)
+                    ? 'text-green-600 bg-green-50'
+                    : 'text-gray-500 hover:text-green-600 active:bg-gray-100'
+                )}
+              >
+                <MoreHorizontal size={22} aria-hidden="true" />
+                <span className="text-[10px] mt-1 font-medium">المزيد</span>
+              </button>
+
+              {/* Mobile More Dropdown - Pops up above the nav */}
+              {isMobileMoreOpen && (
+                <div
+                  className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                  role="menu"
+                >
+                  {moreNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        role="menuitem"
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => setIsMobileMoreOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-4 py-2.5 transition-colors',
+                          isActive
+                            ? 'bg-green-50 text-green-700 font-semibold'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        )}
+                      >
+                        <Icon size={18} aria-hidden="true" className={isActive ? 'text-green-600' : 'text-gray-400'} />
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </nav>
       </header>
@@ -210,37 +351,59 @@ export function Navigation() {
 
           {/* Menu Panel */}
           <aside
-            className="lg:hidden fixed top-0 right-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out"
+            className="lg:hidden fixed top-0 right-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out overflow-hidden"
             role="dialog"
             aria-modal="true"
             aria-label="القائمة الرئيسية"
           >
             {/* Menu Header */}
-            <div className="bg-gradient-to-l from-green-600 to-green-700 p-6 text-white">
-              <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-l from-green-600 to-green-700 p-4 text-white">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl" role="img" aria-label="شجرة">🌳</span>
+                  <span className="text-2xl" role="img" aria-label="شجرة">🌳</span>
                   <div>
-                    <h2 className="text-lg font-bold">شجرة آل شايع</h2>
+                    <h2 className="text-base font-bold">شجرة آل شايع</h2>
                     <p className="text-xs text-green-200">Al-Shaye Family Tree</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsMenuOpen(false)}
-                  className="p-1 rounded-lg hover:bg-green-500 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-green-500 transition-colors"
                   aria-label="إغلاق القائمة"
                 >
-                  <X size={24} aria-hidden="true" />
+                  <X size={22} aria-hidden="true" />
                 </button>
               </div>
+
+              {/* Mobile Search in Menu */}
+              <form onSubmit={handleSearch} role="search">
+                <label htmlFor="mobile-search" className="sr-only">البحث</label>
+                <div className="relative">
+                  <input
+                    id="mobile-search"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ابحث عن أفراد العائلة..."
+                    className="w-full px-4 py-2 pr-10 rounded-lg bg-white/20 text-white placeholder-green-200 border border-white/30 focus:bg-white/30 focus:outline-none text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1"
+                    aria-label="بحث"
+                  >
+                    <Search size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* Menu Items */}
-            <nav className="p-4 max-h-[calc(100vh-200px)] overflow-auto" aria-label="Main menu">
-              <div className="mb-4">
-                <p className="text-xs text-gray-400 px-4 mb-2" id="main-nav-label">التنقل الرئيسي</p>
-                <ul role="list" aria-labelledby="main-nav-label" className="space-y-2">
-                  {navItems.map((item) => {
+            <nav className="p-3 h-[calc(100vh-180px)] overflow-y-auto" aria-label="القائمة الرئيسية">
+              <div className="mb-3">
+                <p className="text-xs text-gray-400 px-3 mb-2" id="main-nav-label">التنقل الرئيسي</p>
+                <ul role="list" aria-labelledby="main-nav-label" className="space-y-1">
+                  {[...navItems, { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 }].map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
                     return (
@@ -250,16 +413,16 @@ export function Navigation() {
                           onClick={() => setIsMenuOpen(false)}
                           aria-current={isActive ? 'page' : undefined}
                           className={cn(
-                            'flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
+                            'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all',
                             isActive
                               ? 'bg-green-100 text-green-700 font-semibold'
                               : 'text-gray-700 hover:bg-gray-100'
                           )}
                         >
-                          <Icon size={22} aria-hidden="true" className={isActive ? 'text-green-600' : 'text-gray-400'} />
+                          <Icon size={20} aria-hidden="true" className={isActive ? 'text-green-600' : 'text-gray-400'} />
                           <div>
-                            <span className="block">{item.label}</span>
-                            <span className="text-xs text-gray-400">{item.labelEn}</span>
+                            <span className="block text-sm">{item.label}</span>
+                            <span className="text-[10px] text-gray-400">{item.labelEn}</span>
                           </div>
                         </Link>
                       </li>
@@ -268,10 +431,10 @@ export function Navigation() {
                 </ul>
               </div>
 
-              <div className="border-t pt-4">
-                <p className="text-xs text-gray-400 px-4 mb-2" id="tools-nav-label">أدوات إضافية</p>
+              <div className="border-t pt-3">
+                <p className="text-xs text-gray-400 px-3 mb-2" id="tools-nav-label">أدوات إضافية</p>
                 <ul role="list" aria-labelledby="tools-nav-label" className="space-y-1">
-                  {moreNavItems.map((item) => {
+                  {moreNavItems.filter(item => !['/dashboard', '/branches'].includes(item.href)).map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
                     return (
@@ -281,7 +444,7 @@ export function Navigation() {
                           onClick={() => setIsMenuOpen(false)}
                           aria-current={isActive ? 'page' : undefined}
                           className={cn(
-                            'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all',
+                            'flex items-center gap-3 px-3 py-2 rounded-xl transition-all',
                             isActive
                               ? 'bg-green-100 text-green-700 font-semibold'
                               : 'text-gray-600 hover:bg-gray-100'
@@ -301,9 +464,9 @@ export function Navigation() {
             </nav>
 
             {/* Menu Footer */}
-            <footer className="absolute bottom-20 left-0 right-0 p-4 border-t border-gray-100">
-              <p className="text-center text-sm text-gray-400">
-                99 عضو • 8 أجيال
+            <footer className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-100 bg-white">
+              <p className="text-center text-xs text-gray-400">
+                شجرة آل شايع • النسخة 1.0
               </p>
             </footer>
           </aside>

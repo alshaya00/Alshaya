@@ -139,30 +139,55 @@ export default function TreePage() {
     const hasChildren = node.children.length > 0;
     const isHighlighted = node.id === highlightedId;
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setSelectedMember(getMemberById(node.id));
+      }
+      if (e.key === 'ArrowRight' && hasChildren && !isExpanded) {
+        e.preventDefault();
+        toggleNode(node.id);
+      }
+      if (e.key === 'ArrowLeft' && isExpanded) {
+        e.preventDefault();
+        toggleNode(node.id);
+      }
+    };
+
     return (
-      <div key={node.id} className="relative">
+      <div key={node.id} className="relative" role="treeitem" aria-expanded={hasChildren ? isExpanded : undefined}>
         {/* Node */}
         <div
           className={`
-            flex items-center gap-2 py-2 px-3 rounded-lg mb-1 transition-all cursor-pointer
+            flex items-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg mb-1 transition-all cursor-pointer
             ${isHighlighted ? 'bg-yellow-100 ring-2 ring-yellow-400 animate-pulse' : 'hover:bg-gray-50'}
             ${level === 0 ? 'bg-green-50 border border-green-200' : ''}
+            focus-within:ring-2 focus-within:ring-green-400
           `}
-          style={{ marginRight: `${level * 24}px` }}
+          style={{ marginRight: `${level * 16}px` }}
         >
           {/* Expand/Collapse Button */}
           {hasChildren ? (
             <button
               onClick={(e) => { e.stopPropagation(); toggleNode(node.id); }}
-              className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleNode(node.id);
+                }
+              }}
+              aria-label={isExpanded ? `طي ${node.firstName}` : `توسيع ${node.firstName}`}
+              aria-expanded={isExpanded}
+              className={`w-5 h-5 sm:w-6 sm:h-6 rounded flex items-center justify-center transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-green-400 ${
                 isExpanded ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
               }`}
             >
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {isExpanded ? <ChevronDown size={12} className="sm:w-3.5 sm:h-3.5" /> : <ChevronRight size={12} className="sm:w-3.5 sm:h-3.5" />}
             </button>
           ) : (
-            <div className="w-6 h-6 flex items-center justify-center">
-              <div className={`w-2 h-2 rounded-full ${node.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}`} />
+            <div className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center shrink-0">
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${node.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}`} aria-hidden="true" />
             </div>
           )}
 
@@ -447,8 +472,8 @@ export default function TreePage() {
           {/* Tree/Grid/List/Graph */}
           <div className={`flex-1 min-w-0 ${viewMode === 'graph' && selectedMember ? 'lg:max-w-[calc(100%-340px)]' : ''}`}>
             {viewMode === 'tree' && (
-              <div className="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto">
-                <div className="min-w-[500px]">
+              <div className="bg-white rounded-xl shadow-sm border p-2 sm:p-4 overflow-x-auto">
+                <div className="min-w-0">
                   {treeData.map(root => renderTreeNode(root))}
                 </div>
               </div>
