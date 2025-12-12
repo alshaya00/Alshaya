@@ -21,7 +21,7 @@ const moreNavItems = [
   { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload },
   { href: '/duplicates', label: 'التكرارات', labelEn: 'Duplicates', icon: Copy },
   { href: '/history', label: 'السجل', labelEn: 'History', icon: History },
-  { href: '/admin/settings', label: 'الإدارة', labelEn: 'Admin', icon: Settings },
+  { href: '/admin', label: 'لوحة التحكم', labelEn: 'Admin Panel', icon: Settings },
 ];
 
 export function Navigation() {
