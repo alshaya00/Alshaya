@@ -27,6 +27,9 @@ const config: Config = {
       fontFamily: {
         arabic: ['Noto Sans Arabic', 'Arial', 'sans-serif'],
       },
+      padding: {
+        'safe': 'env(safe-area-inset-bottom)',
+      },
     },
   },
   plugins: [],
