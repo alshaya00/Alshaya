@@ -12,10 +12,11 @@ import {
   PendingMember,
 } from '@/lib/branchEntry';
 import BranchAddMemberGraph from '@/components/BranchAddMemberGraph';
+import BranchTreeViewer from '@/components/BranchTreeViewer';
 import {
   User, Plus, Check, ChevronDown, Search, ArrowRight, ArrowLeft,
   TreePine, Clock, AlertCircle, X, Eye, Send, Edit2, Trash2,
-  CheckCircle, Users, GitBranch, Info, List
+  CheckCircle, Users, GitBranch, Info, List, Maximize2
 } from 'lucide-react';
 
 // Step definitions
@@ -213,6 +214,7 @@ export default function BranchEntryPage() {
   const [submitterName, setSubmitterName] = useState('');
   const [submitterPhone, setSubmitterPhone] = useState('');
   const [viewMode, setViewMode] = useState<'graph' | 'dropdown'>('graph');
+  const [showTreeViewer, setShowTreeViewer] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const allMembers = getAllMembers();
@@ -504,12 +506,21 @@ export default function BranchEntryPage() {
                 </div>
               )}
 
-              {/* Current Branch Tree Preview */}
+              {/* Current Branch Tree Preview with Graph Toggle */}
               <div className="mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Eye size={16} />
-                  معاينة الفرع الحالي:
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Eye size={16} />
+                    معاينة الفرع الحالي:
+                  </p>
+                  <button
+                    onClick={() => setShowTreeViewer(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-lg transition-colors"
+                  >
+                    <Maximize2 size={14} />
+                    عرض الشجرة كاملة
+                  </button>
+                </div>
                 <div className="bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto border">
                   {branchHead && (
                     <TreeNode
@@ -520,6 +531,9 @@ export default function BranchEntryPage() {
                     />
                   )}
                 </div>
+                <p className="text-xs text-center text-gray-400 mt-2">
+                  انقر &ldquo;عرض الشجرة كاملة&rdquo; لرؤية الشجرة التفاعلية
+                </p>
               </div>
 
               {/* Instructions */}
@@ -530,21 +544,28 @@ export default function BranchEntryPage() {
                 </h3>
                 <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
                   <li>أضف أسماء أفراد عائلتك (الأبناء والأحفاد)</li>
-                  <li>اختر الأب لكل فرد من القائمة</li>
+                  <li>اختر الأب لكل فرد من الشجرة التفاعلية</li>
                   <li>راجع جميع الإضافات قبل الإرسال</li>
                   <li>سيقوم المسؤول بمراجعة الإضافات والموافقة عليها</li>
                 </ol>
               </div>
             </div>
 
-            {/* Start Button */}
-            <div className="p-5 pt-0">
+            {/* Action Buttons */}
+            <div className="p-5 pt-0 space-y-3">
               <button
                 onClick={() => setCurrentStep('add')}
                 className="w-full py-4 bg-gradient-to-l from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"
               >
                 <Plus size={24} />
                 ابدأ الإضافة
+              </button>
+              <button
+                onClick={() => setShowTreeViewer(true)}
+                className="w-full py-3 border-2 border-green-500 text-green-600 font-medium rounded-xl hover:bg-green-50 transition-all flex items-center justify-center gap-2"
+              >
+                <Eye size={20} />
+                عرض شجرة الفرع
               </button>
             </div>
           </div>
@@ -569,6 +590,17 @@ export default function BranchEntryPage() {
             </div>
           )}
         </div>
+
+        {/* Tree Viewer Modal */}
+        {branchHead && (
+          <BranchTreeViewer
+            branchHead={branchHead}
+            allMembers={allMembers}
+            pendingMembers={sessionMembers}
+            isOpen={showTreeViewer}
+            onClose={() => setShowTreeViewer(false)}
+          />
+        )}
       </div>
     );
   }
@@ -591,7 +623,14 @@ export default function BranchEntryPage() {
               <h1 className="text-xl font-bold text-gray-800">إضافة أفراد</h1>
               <p className="text-sm text-gray-500">فرع {branchHead?.firstName}</p>
             </div>
-            <div className="w-16" />
+            <button
+              onClick={() => setShowTreeViewer(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-lg transition-colors"
+              title="عرض الشجرة كاملة"
+            >
+              <Eye size={14} />
+              الشجرة
+            </button>
           </div>
 
           {/* Session Counter */}
@@ -1025,6 +1064,17 @@ export default function BranchEntryPage() {
             </div>
           </div>
         )}
+
+        {/* Tree Viewer Modal */}
+        {branchHead && (
+          <BranchTreeViewer
+            branchHead={branchHead}
+            allMembers={allMembers}
+            pendingMembers={sessionMembers}
+            isOpen={showTreeViewer}
+            onClose={() => setShowTreeViewer(false)}
+          />
+        )}
       </div>
     );
   }
@@ -1047,7 +1097,14 @@ export default function BranchEntryPage() {
               <h1 className="text-xl font-bold text-gray-800">مراجعة الإضافات</h1>
               <p className="text-sm text-gray-500">تأكد من صحة البيانات</p>
             </div>
-            <div className="w-16" />
+            <button
+              onClick={() => setShowTreeViewer(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-lg transition-colors"
+              title="عرض الشجرة كاملة"
+            >
+              <Eye size={14} />
+              الشجرة
+            </button>
           </div>
 
           {/* Summary Card */}
@@ -1066,10 +1123,19 @@ export default function BranchEntryPage() {
 
             {/* Tree Preview */}
             <div className="p-4 border-b">
-              <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <TreePine size={16} className="text-green-600" />
-                شكل الشجرة بعد الإضافة:
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <TreePine size={16} className="text-green-600" />
+                  شكل الشجرة بعد الإضافة:
+                </p>
+                <button
+                  onClick={() => setShowTreeViewer(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-lg transition-colors"
+                >
+                  <Maximize2 size={14} />
+                  عرض كاملة
+                </button>
+              </div>
               <div className="bg-green-50 rounded-xl p-3 max-h-64 overflow-y-auto border border-green-200">
                 {branchHead && (
                   <TreeNode
@@ -1183,6 +1249,17 @@ export default function BranchEntryPage() {
             </button>
           </div>
         </div>
+
+        {/* Tree Viewer Modal */}
+        {branchHead && (
+          <BranchTreeViewer
+            branchHead={branchHead}
+            allMembers={allMembers}
+            pendingMembers={sessionMembers}
+            isOpen={showTreeViewer}
+            onClose={() => setShowTreeViewer(false)}
+          />
+        )}
       </div>
     );
   }
