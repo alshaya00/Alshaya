@@ -22,6 +22,7 @@ import {
   Menu,
   X,
   ClipboardList,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface NavItem {
@@ -46,6 +47,7 @@ const adminNavItems: NavItem[] = [
     icon: Database,
     children: [
       { href: '/admin/database/members', label: 'الأعضاء', labelEn: 'Members', icon: Users },
+      { href: '/admin/database/excel', label: 'عرض Excel', labelEn: 'Excel View', icon: FileSpreadsheet },
       { href: '/admin/database/history', label: 'سجل التغييرات', labelEn: 'History', icon: History },
       { href: '/admin/database/snapshots', label: 'النسخ الاحتياطية', labelEn: 'Snapshots', icon: Camera },
       { href: '/admin/database/pending', label: 'الطلبات المعلقة', labelEn: 'Pending', icon: UserCheck },
