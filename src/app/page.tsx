@@ -1,16 +1,74 @@
 import Link from 'next/link';
 import { getStatistics } from '@/lib/data';
-import { TreePine, Users, PlusCircle, BarChart3, Search, ChevronLeft } from 'lucide-react';
+import {
+  TreePine, Users, PlusCircle, BarChart3, ChevronLeft,
+  Download, Upload, Edit, History, Copy, Search, Settings
+} from 'lucide-react';
 
 export default function HomePage() {
   const stats = getStatistics();
+
+  const quickActions = [
+    {
+      href: '/tree',
+      icon: TreePine,
+      title: 'الشجرة التفاعلية',
+      titleEn: 'Interactive Tree',
+      description: 'عرض شجرة العائلة بشكل تفاعلي مع إمكانية التكبير والتصغير',
+      color: 'green',
+    },
+    {
+      href: '/registry',
+      icon: Users,
+      title: 'سجل الأفراد',
+      titleEn: 'Family Registry',
+      description: 'قائمة شاملة بجميع أفراد العائلة مع تفاصيلهم',
+      color: 'blue',
+    },
+    {
+      href: '/quick-add',
+      icon: PlusCircle,
+      title: 'إضافة سريعة',
+      titleEn: 'Quick Add',
+      description: 'إضافة أفراد جدد بسرعة مع الملء التلقائي للبيانات',
+      color: 'yellow',
+    },
+    {
+      href: '/dashboard',
+      icon: BarChart3,
+      title: 'لوحة الإحصائيات',
+      titleEn: 'Dashboard',
+      description: 'تحليلات وإحصائيات تفصيلية عن العائلة',
+      color: 'purple',
+    },
+  ];
+
+  const tools = [
+    { href: '/search', icon: Search, label: 'البحث', labelEn: 'Search' },
+    { href: '/tree-editor', icon: Edit, label: 'محرر الشجرة', labelEn: 'Tree Editor' },
+    { href: '/export', icon: Download, label: 'تصدير', labelEn: 'Export' },
+    { href: '/import', icon: Upload, label: 'استيراد', labelEn: 'Import' },
+    { href: '/duplicates', icon: Copy, label: 'التكرارات', labelEn: 'Duplicates' },
+    { href: '/history', icon: History, label: 'السجل', labelEn: 'History' },
+    { href: '/admin', icon: Settings, label: 'لوحة التحكم', labelEn: 'Admin' },
+  ];
+
+  const colorClasses: Record<string, { bg: string; bgHover: string; text: string; border: string }> = {
+    green: { bg: 'bg-green-100', bgHover: 'group-hover:bg-green-500', text: 'text-green-600', border: 'hover:border-green-500' },
+    blue: { bg: 'bg-blue-100', bgHover: 'group-hover:bg-blue-500', text: 'text-blue-600', border: 'hover:border-blue-500' },
+    yellow: { bg: 'bg-yellow-100', bgHover: 'group-hover:bg-yellow-500', text: 'text-yellow-600', border: 'hover:border-yellow-500' },
+    purple: { bg: 'bg-purple-100', bgHover: 'group-hover:bg-purple-500', text: 'text-purple-600', border: 'hover:border-purple-500' },
+  };
+
+  // Generation icons for accessibility (colorblind users)
+  const genIcons = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="bg-gradient-to-bl from-green-600 via-green-700 to-green-800 text-white py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
-          <div className="text-6xl md:text-8xl mb-6">🌳</div>
+          <div className="text-6xl md:text-8xl mb-6" role="img" aria-label="شجرة العائلة">🌳</div>
           <h1 className="text-4xl md:text-6xl font-bold mb-4">شجرة عائلة آل شايع</h1>
           <p className="text-xl md:text-2xl text-green-100 mb-8">
             Al-Shaye Family Tree
@@ -22,17 +80,17 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               href="/tree"
-              className="bg-white text-green-700 px-8 py-3 rounded-full font-bold text-lg hover:bg-green-50 transition-colors flex items-center gap-2"
+              className="bg-white text-green-700 px-8 py-3 rounded-full font-bold text-lg hover:bg-green-50 transition-colors flex items-center gap-2 shadow-lg"
             >
-              <TreePine size={20} />
+              <TreePine size={20} aria-hidden="true" />
               استعرض الشجرة
-              <ChevronLeft size={20} />
+              <ChevronLeft size={20} aria-hidden="true" />
             </Link>
             <Link
               href="/quick-add"
-              className="bg-green-500 text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-green-400 transition-colors flex items-center gap-2 border-2 border-white"
+              className="bg-green-500 text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-green-400 transition-colors flex items-center gap-2 border-2 border-white shadow-lg"
             >
-              <PlusCircle size={20} />
+              <PlusCircle size={20} aria-hidden="true" />
               إضافة عضو جديد
             </Link>
           </div>
@@ -40,157 +98,150 @@ export default function HomePage() {
       </section>
 
       {/* Stats Cards */}
-      <section className="py-12 -mt-8">
+      <section className="py-12 -mt-8" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" className="sr-only">إحصائيات العائلة</h2>
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            <div className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-blue-500">
-              <div className="text-4xl mb-2">👥</div>
+            <article className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-blue-500">
+              <div className="text-4xl mb-2" role="img" aria-label="أفراد">👥</div>
               <div className="text-3xl md:text-4xl font-bold text-blue-600">{stats.totalMembers}</div>
               <div className="text-gray-600 mt-1">إجمالي الأفراد</div>
               <div className="text-sm text-gray-400">Total Members</div>
-            </div>
+            </article>
 
-            <div className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-blue-400">
-              <div className="text-4xl mb-2">👨</div>
+            <article className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-blue-400">
+              <div className="text-4xl mb-2" role="img" aria-label="ذكور">👨</div>
               <div className="text-3xl md:text-4xl font-bold text-blue-500">{stats.males}</div>
               <div className="text-gray-600 mt-1">الذكور</div>
               <div className="text-sm text-gray-400">Males</div>
-            </div>
+            </article>
 
-            <div className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-pink-400">
-              <div className="text-4xl mb-2">👩</div>
+            <article className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-pink-400">
+              <div className="text-4xl mb-2" role="img" aria-label="إناث">👩</div>
               <div className="text-3xl md:text-4xl font-bold text-pink-500">{stats.females}</div>
               <div className="text-gray-600 mt-1">الإناث</div>
               <div className="text-sm text-gray-400">Females</div>
-            </div>
+            </article>
 
-            <div className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-green-500">
-              <div className="text-4xl mb-2">🌳</div>
+            <article className="stat-card bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-green-500">
+              <div className="text-4xl mb-2" role="img" aria-label="أجيال">🌳</div>
               <div className="text-3xl md:text-4xl font-bold text-green-600">{stats.generations}</div>
               <div className="text-gray-600 mt-1">الأجيال</div>
               <div className="text-sm text-gray-400">Generations</div>
-            </div>
+            </article>
           </div>
         </div>
       </section>
 
       {/* Quick Actions */}
-      <section className="py-12 bg-gray-100">
+      <section className="py-12 bg-gray-100" aria-labelledby="quick-actions-heading">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
+          <h2 id="quick-actions-heading" className="text-3xl font-bold text-center mb-8 text-gray-800">
             الوصول السريع
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Link
-              href="/tree"
-              className="group bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-green-500"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-500 transition-colors">
-                  <TreePine className="text-green-600 group-hover:text-white" size={28} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800">الشجرة التفاعلية</h3>
-                  <p className="text-sm text-gray-500">Interactive Tree</p>
-                </div>
-              </div>
-              <p className="mt-4 text-gray-600 text-sm">
-                عرض شجرة العائلة بشكل تفاعلي مع إمكانية التكبير والتصغير
-              </p>
-            </Link>
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              const colors = colorClasses[action.color];
+              return (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className={`group bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-2 border-transparent ${colors.border}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 ${colors.bg} rounded-xl flex items-center justify-center ${colors.bgHover} transition-colors`}>
+                      <Icon className={`${colors.text} group-hover:text-white`} size={28} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-800">{action.title}</h3>
+                      <p className="text-sm text-gray-500">{action.titleEn}</p>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-gray-600 text-sm">
+                    {action.description}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-            <Link
-              href="/registry"
-              className="group bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-                  <Users className="text-blue-600 group-hover:text-white" size={28} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800">سجل الأفراد</h3>
-                  <p className="text-sm text-gray-500">Family Registry</p>
-                </div>
-              </div>
-              <p className="mt-4 text-gray-600 text-sm">
-                قائمة شاملة بجميع أفراد العائلة مع تفاصيلهم
-              </p>
-            </Link>
-
-            <Link
-              href="/quick-add"
-              className="group bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-yellow-500"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-yellow-100 rounded-xl flex items-center justify-center group-hover:bg-yellow-500 transition-colors">
-                  <PlusCircle className="text-yellow-600 group-hover:text-white" size={28} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800">إضافة سريعة</h3>
-                  <p className="text-sm text-gray-500">Quick Add</p>
-                </div>
-              </div>
-              <p className="mt-4 text-gray-600 text-sm">
-                إضافة أفراد جدد بسرعة مع الملء التلقائي للبيانات
-              </p>
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="group bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-purple-500"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-500 transition-colors">
-                  <BarChart3 className="text-purple-600 group-hover:text-white" size={28} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800">لوحة الإحصائيات</h3>
-                  <p className="text-sm text-gray-500">Dashboard</p>
-                </div>
-              </div>
-              <p className="mt-4 text-gray-600 text-sm">
-                تحليلات وإحصائيات تفصيلية عن العائلة
-              </p>
-            </Link>
+      {/* Tools Section */}
+      <section className="py-12" aria-labelledby="tools-heading">
+        <div className="container mx-auto px-4">
+          <h2 id="tools-heading" className="text-3xl font-bold text-center mb-2 text-gray-800">
+            أدوات إضافية
+          </h2>
+          <p className="text-center text-gray-500 mb-8">Additional Tools</p>
+          <div className="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
+            {tools.map((tool) => {
+              const Icon = tool.icon;
+              return (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-full shadow-sm border border-gray-200 hover:shadow-md hover:border-green-300 transition-all text-gray-700 hover:text-green-600"
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <span className="font-medium">{tool.label}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* Generation Overview */}
-      <section className="py-12">
+      <section className="py-12 bg-gray-100" aria-labelledby="generations-heading">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
+          <h2 id="generations-heading" className="text-3xl font-bold text-center mb-8 text-gray-800">
             نظرة عامة على الأجيال
           </h2>
           <div className="bg-white rounded-2xl shadow-lg p-6 overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" role="table">
               <thead>
                 <tr className="border-b-2 border-gray-200">
-                  <th className="p-3 text-right">الجيل</th>
-                  <th className="p-3 text-center">العدد</th>
-                  <th className="p-3 text-center">الذكور</th>
-                  <th className="p-3 text-center">الإناث</th>
-                  <th className="p-3 text-center">النسبة</th>
+                  <th scope="col" className="p-3 text-right">الجيل</th>
+                  <th scope="col" className="p-3 text-center">العدد</th>
+                  <th scope="col" className="p-3 text-center">الذكور</th>
+                  <th scope="col" className="p-3 text-center">الإناث</th>
+                  <th scope="col" className="p-3 text-center">النسبة</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.generationBreakdown.map((gen) => (
                   <tr key={gen.generation} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3">
-                      <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold gen-${gen.generation}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-white text-sm font-bold gen-${gen.generation}`}>
+                        <span aria-hidden="true">{genIcons[gen.generation - 1] || gen.generation}</span>
                         الجيل {gen.generation}
                       </span>
                     </td>
                     <td className="p-3 text-center font-bold text-lg">{gen.count}</td>
                     <td className="p-3 text-center">
-                      <span className="badge-male">{gen.males} 👨</span>
+                      <span className="badge-male inline-flex items-center gap-1">
+                        {gen.males}
+                        <span role="img" aria-label="ذكور">👨</span>
+                      </span>
                     </td>
                     <td className="p-3 text-center">
-                      <span className="badge-female">{gen.females} 👩</span>
+                      <span className="badge-female inline-flex items-center gap-1">
+                        {gen.females}
+                        <span role="img" aria-label="إناث">👩</span>
+                      </span>
                     </td>
                     <td className="p-3 text-center">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden"
+                          role="progressbar"
+                          aria-valuenow={gen.percentage}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`نسبة الجيل ${gen.generation}: ${gen.percentage}%`}
+                        >
                           <div
                             className="bg-green-500 h-full rounded-full transition-all duration-500"
                             style={{ width: `${gen.percentage}%` }}
@@ -210,24 +261,25 @@ export default function HomePage() {
       </section>
 
       {/* Family Branches */}
-      <section className="py-12 bg-gray-100">
+      <section className="py-12" aria-labelledby="branches-heading">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
+          <h2 id="branches-heading" className="text-3xl font-bold text-center mb-8 text-gray-800">
             فروع العائلة
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {stats.branches.map((branch) => (
-              <div
+              <Link
                 key={branch.name}
-                className="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition-shadow"
+                href="/branches"
+                className="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition-shadow group"
               >
-                <div className="text-4xl mb-3">🌿</div>
-                <h3 className="text-xl font-bold text-gray-800">{branch.name}</h3>
+                <div className="text-4xl mb-3" role="img" aria-label="فرع">🌿</div>
+                <h3 className="text-xl font-bold text-gray-800 group-hover:text-green-600 transition-colors">{branch.name}</h3>
                 <p className="text-3xl font-bold text-green-600 mt-2">{branch.count}</p>
                 <p className="text-sm text-gray-500 mt-1">
                   {Math.round((branch.count / stats.totalMembers) * 100)}% من العائلة
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

@@ -257,8 +257,44 @@ export default function QuickAddPage() {
         )}
 
         {/* Step Progress */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between relative">
+        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-6">
+          {/* Mobile Step Indicator */}
+          <div className="sm:hidden mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-500">الخطوة {step} من {steps.length}</span>
+              <span className="text-sm font-bold text-green-600">{steps[step - 1].title}</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 transition-all duration-500 rounded-full"
+                style={{ width: `${(step / steps.length) * 100}%` }}
+                role="progressbar"
+                aria-valuenow={step}
+                aria-valuemin={1}
+                aria-valuemax={steps.length}
+                aria-label={`الخطوة ${step} من ${steps.length}`}
+              />
+            </div>
+            <div className="flex justify-between mt-2">
+              {steps.map((s) => (
+                <div
+                  key={s.num}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    s.num < step
+                      ? 'bg-green-500 text-white'
+                      : s.num === step
+                      ? 'bg-green-500 text-white ring-2 ring-green-200'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}
+                >
+                  {s.num < step ? <Check size={14} /> : s.num}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop Step Indicator */}
+          <div className="hidden sm:flex items-center justify-between relative">
             {/* Progress Line */}
             <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 mx-12 z-0">
               <div
@@ -271,6 +307,8 @@ export default function QuickAddPage() {
               <button
                 key={s.num}
                 onClick={() => s.num < step && setStep(s.num)}
+                aria-label={`${s.title} - الخطوة ${s.num}`}
+                aria-current={s.num === step ? 'step' : undefined}
                 className={`relative z-10 flex flex-col items-center gap-2 transition-all duration-300 ${
                   s.num < step ? 'cursor-pointer' : s.num === step ? '' : 'cursor-not-allowed opacity-50'
                 }`}
@@ -284,7 +322,7 @@ export default function QuickAddPage() {
                       : 'bg-gray-200 text-gray-400'
                   }`}
                 >
-                  {s.num < step ? <Check size={20} /> : <s.icon size={20} />}
+                  {s.num < step ? <Check size={20} aria-hidden="true" /> : <s.icon size={20} aria-hidden="true" />}
                 </div>
                 <span
                   className={`text-sm font-medium ${
@@ -325,11 +363,13 @@ export default function QuickAddPage() {
 
                 {/* First Name */}
                 <div>
-                  <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
-                    <User size={18} />
-                    الاسم الأول <span className="text-red-500">*</span>
+                  <label htmlFor="firstName" className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                    <User size={18} aria-hidden="true" />
+                    الاسم الأول <span className="text-red-500" aria-hidden="true">*</span>
+                    <span className="sr-only">(مطلوب)</span>
                   </label>
                   <input
+                    id="firstName"
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => updateField('firstName', e.target.value)}
@@ -338,42 +378,47 @@ export default function QuickAddPage() {
                     }`}
                     placeholder="أدخل الاسم الأول فقط..."
                     dir="rtl"
+                    aria-required="true"
+                    aria-invalid={!!errors.firstName}
+                    aria-describedby={errors.firstName ? 'firstName-error' : undefined}
                   />
                   {errors.firstName && (
-                    <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+                    <p id="firstName-error" className="text-red-500 text-sm mt-1" role="alert">{errors.firstName}</p>
                   )}
                 </div>
 
                 {/* Gender */}
-                <div>
-                  <label className="font-bold text-gray-700 mb-3 block">الجنس</label>
+                <fieldset>
+                  <legend className="font-bold text-gray-700 mb-3">الجنس <span className="text-red-500" aria-hidden="true">*</span></legend>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
                       onClick={() => updateField('gender', 'Male')}
+                      aria-pressed={formData.gender === 'Male'}
                       className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-3 ${
                         formData.gender === 'Male'
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
                           : 'border-gray-200 hover:border-blue-300'
                       }`}
                     >
-                      <span className="text-3xl">👨</span>
+                      <span className="text-3xl" role="img" aria-label="ذكر">👨</span>
                       <span className="font-semibold">ذكر / Male</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => updateField('gender', 'Female')}
+                      aria-pressed={formData.gender === 'Female'}
                       className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-3 ${
                         formData.gender === 'Female'
                           ? 'border-pink-500 bg-pink-50 text-pink-700'
                           : 'border-gray-200 hover:border-pink-300'
                       }`}
                     >
-                      <span className="text-3xl">👩</span>
+                      <span className="text-3xl" role="img" aria-label="أنثى">👩</span>
                       <span className="font-semibold">أنثى / Female</span>
                     </button>
                   </div>
-                </div>
+                </fieldset>
               </div>
             )}
 
