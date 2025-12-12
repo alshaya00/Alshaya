@@ -67,6 +67,7 @@ model FamilyMember {
   changeHistory         ChangeHistory[]
   duplicateOf           DuplicateFlag[] @relation("DuplicateSource")
   duplicatedBy          DuplicateFlag[] @relation("DuplicateTarget")
+  photos                MemberPhoto[]
 
   @@index([generation])
   @@index([branch])
@@ -807,4 +808,99 @@ model ScheduledJob {
 
   @@index([isEnabled])
   @@index([nextRunAt])
+}
+
+// ============================================
+// IMAGE MANAGEMENT (Upload & Approval System)
+// ============================================
+
+model PendingImage {
+  id              String   @id @default(cuid())
+
+  // Image data
+  imageData       String   // Base64 encoded image
+  thumbnailData   String?  // Smaller version for preview
+
+  // Categorization
+  category        String   @default("memory") // profile, memory, document, historical
+  title           String?  // User-provided title
+  titleAr         String?  // Arabic title
+  caption         String?  // Description/story
+  captionAr       String?  // Arabic caption
+  year            Int?     // Year the photo was taken (for timeline)
+
+  // Who/what is in the photo
+  memberId        String?  // Primary member in photo (optional)
+  memberName      String?  // Member name for display
+  taggedMemberIds String?  // JSON array of tagged member IDs
+
+  // Submission info
+  uploadedBy      String?  // User ID (null for guest uploads)
+  uploadedByName  String   // Name of uploader
+  uploadedByEmail String?  // Email for guest uploads
+  uploadedAt      DateTime @default(now())
+  ipAddress       String?  // For security
+
+  // Review status
+  reviewStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy      String?  // Admin who reviewed
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  reviewNotes     String?  // Reason for rejection or notes
+
+  // If approved, link to created MemberPhoto
+  approvedPhotoId String?
+
+  @@index([reviewStatus])
+  @@index([category])
+  @@index([memberId])
+  @@index([uploadedBy])
+  @@index([uploadedAt])
+}
+
+model MemberPhoto {
+  id              String   @id @default(cuid())
+
+  // Image data
+  imageData       String   // Base64 encoded image
+  thumbnailData   String?  // Smaller version for gallery view
+
+  // Categorization
+  category        String   @default("memory") // profile, memory, document, historical
+  title           String?
+  titleAr         String?
+  caption         String?
+  captionAr       String?
+  year            Int?     // For timeline sorting
+
+  // Primary member (whose gallery this appears in)
+  memberId        String?
+  member          FamilyMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  // Tagged members (for group photos)
+  taggedMemberIds String?  // JSON array of member IDs
+
+  // For family album (photos not tied to specific member)
+  isFamilyAlbum   Boolean  @default(false)
+
+  // Contribution tracking
+  uploadedBy      String?  // User ID
+  uploadedByName  String
+  originalPendingId String? // Reference to original pending image
+
+  // Display settings
+  isProfilePhoto  Boolean  @default(false) // Primary profile photo for member
+  displayOrder    Int      @default(0) // For gallery ordering
+  isPublic        Boolean  @default(true) // Visible to all roles
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([category])
+  @@index([isFamilyAlbum])
+  @@index([year])
+  @@index([uploadedBy])
+  @@index([isProfilePhoto])
 }

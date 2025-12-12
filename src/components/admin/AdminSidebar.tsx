@@ -24,6 +24,7 @@ import {
   ClipboardList,
   FileSpreadsheet,
   Server,
+  Image,
 } from 'lucide-react';
 
 interface NavItem {
@@ -54,6 +55,12 @@ const adminNavItems: NavItem[] = [
       { href: '/admin/database/pending', label: 'الطلبات المعلقة', labelEn: 'Pending', icon: UserCheck },
       { href: '/admin/database/branches', label: 'روابط الفروع', labelEn: 'Branch Links', icon: Link2 },
     ],
+  },
+  {
+    href: '/admin/images',
+    label: 'إدارة الصور',
+    labelEn: 'Image Moderation',
+    icon: Image,
   },
   {
     href: '/admin/config',

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllMembers, getChildren } from '@/lib/data';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
+import MemberPhotoSection from '@/components/MemberPhotoSection';
 import {
   User,
   Calendar,
@@ -384,6 +385,14 @@ export default function MemberPage({ params }: PageProps) {
                 </Link>
               </div>
             )}
+
+            {/* Photo Gallery */}
+            <div className="mb-8">
+              <MemberPhotoSection
+                memberId={member.id}
+                memberName={member.fullNameAr || member.firstName}
+              />
+            </div>
 
             {/* Actions */}
             <div className="flex flex-wrap gap-4">
