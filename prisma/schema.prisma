@@ -40,6 +40,13 @@ model FamilyMember {
   fullNameAr            String?  // الاسم الكامل بالعربي
   fullNameEn            String?  // Full name in English
 
+  // Lineage Identification (Gen 2/Gen 3 branch tracking)
+  lineageBranchId       String?  // ID of Gen 2 ancestor (main branch founder)
+  lineageBranchName     String?  // Name of Gen 2 ancestor for display
+  subBranchId           String?  // ID of Gen 3 ancestor (sub-branch founder)
+  subBranchName         String?  // Name of Gen 3 ancestor for display
+  lineagePath           String?  // JSON array of ancestor IDs from root to parent
+
   // Contact info
   phone                 String?
   city                  String?
@@ -67,6 +74,8 @@ model FamilyMember {
   @@index([fatherId])
   @@index([status])
   @@index([firstName])
+  @@index([lineageBranchId])
+  @@index([subBranchId])
 }
 
 // ============================================
@@ -160,7 +169,332 @@ model DuplicateFlag {
 }
 
 // ============================================
-// ADMIN & PERMISSIONS
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+
+  // Profile
+  nameArabic      String
+  nameEnglish     String?
+  phone           String?
+  avatarUrl       String?
+
+  // Role & Status
+  role            String   @default("MEMBER") // SUPER_ADMIN, ADMIN, BRANCH_LEADER, MEMBER, GUEST
+  status          String   @default("PENDING") // PENDING, ACTIVE, DISABLED
+
+  // Link to family member profile (optional - user can be linked to their family member record)
+  linkedMemberId  String?
+
+  // For branch leaders - which branch they manage
+  assignedBranch  String?
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
+
+  // Relations
+  sessions        Session[]
+  invitesSent     Invite[] @relation("InviteSender")
+  inviteUsed      Invite?  @relation("InviteUsed")
+  accessRequest   AccessRequest?
+  activityLogs    ActivityLog[]
+  notifications   Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([linkedMemberId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token        String   @unique
+  expiresAt    DateTime
+
+  // Session options
+  rememberMe   Boolean  @default(false)
+
+  // Device info for security
+  ipAddress    String?
+  userAgent    String?
+  deviceName   String?  // "Chrome on Windows", etc.
+
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Invite {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  email        String
+
+  // What role and branch to assign
+  role         String   @default("MEMBER")
+  branch       String?  // For branch leader invites
+
+  // Who sent it
+  sentById     String
+  sentBy       User     @relation("InviteSender", fields: [sentById], references: [id])
+
+  // Usage tracking
+  expiresAt    DateTime
+  usedAt       DateTime?
+  usedById     String?  @unique
+  usedBy       User?    @relation("InviteUsed", fields: [usedById], references: [id])
+
+  // Personal message
+  message      String?
+
+  createdAt    DateTime @default(now())
+
+  @@index([code])
+  @@index([email])
+  @@index([sentById])
+}
+
+model AccessRequest {
+  id              String   @id @default(cuid())
+
+  // Request details
+  email           String
+  nameArabic      String
+  nameEnglish     String?
+  phone           String?
+
+  // How they claim to be related
+  claimedRelation String   // "Son of محمد", "Daughter of أحمد", etc.
+  relatedMemberId String?  // ID of the family member they claim relation to
+  relationshipType String? // CHILD, SPOUSE, SIBLING, etc.
+
+  // Their message
+  message         String?
+
+  // Review status
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, MORE_INFO
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+
+  // If approved, link to created user
+  userId          String?  @unique
+  user            User?    @relation(fields: [userId], references: [id])
+
+  // Assigned role on approval
+  approvedRole    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+}
+
+// ============================================
+// PERMISSION MATRIX (Fully Configurable)
+// ============================================
+
+model PermissionMatrix {
+  id              String   @id @default("default")
+
+  // JSON object storing all permissions by role
+  // Structure: { "ROLE": { "permission_key": true/false, ... }, ... }
+  permissions     String   @default("{}")
+
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+}
+
+// Individual permission overrides for specific users
+model UserPermissionOverride {
+  id              String   @id @default(cuid())
+  userId          String
+  permissionKey   String
+  allowed         Boolean
+
+  // Who set this override
+  setBy           String
+  setAt           DateTime @default(now())
+  reason          String?
+
+  @@unique([userId, permissionKey])
+  @@index([userId])
+}
+
+// ============================================
+// SITE SETTINGS
+// ============================================
+
+model SiteSettings {
+  id                      String  @id @default("default")
+
+  // Branding
+  familyNameArabic        String  @default("آل شايع")
+  familyNameEnglish       String  @default("Al-Shaye")
+  taglineArabic           String  @default("نحفظ إرثنا، نربط أجيالنا")
+  taglineEnglish          String  @default("Preserving Our Legacy, Connecting Generations")
+  logoUrl                 String?
+
+  // General settings
+  defaultLanguage         String  @default("ar")
+  sessionDurationDays     Int     @default(7)
+  rememberMeDurationDays  Int     @default(30)
+
+  // Registration settings
+  allowSelfRegistration   Boolean @default(true)
+  requireEmailVerification Boolean @default(false)
+  requireApprovalForRegistration Boolean @default(true)
+
+  // Security settings
+  maxLoginAttempts        Int     @default(5)
+  lockoutDurationMinutes  Int     @default(15)
+  require2FAForAdmins     Boolean @default(false)
+  minPasswordLength       Int     @default(8)
+
+  // Guest access settings
+  allowGuestPreview       Boolean @default(true)  // Show simplified tree to guests
+  guestPreviewMemberCount Int     @default(20)    // How many members guests can see
+
+  updatedAt               DateTime @updatedAt
+}
+
+model PrivacySettings {
+  id                      String  @id @default("default")
+
+  // Profile visibility by role (JSON: { "GUEST": false, "MEMBER": true, ... })
+  profileVisibility       String  @default("{\"GUEST\":false,\"MEMBER\":true,\"BRANCH_LEADER\":true,\"ADMIN\":true,\"SUPER_ADMIN\":true}")
+
+  // Contact info visibility
+  showPhoneToRoles        String  @default("[\"ADMIN\",\"SUPER_ADMIN\"]")
+  showEmailToRoles        String  @default("[\"ADMIN\",\"SUPER_ADMIN\"]")
+
+  // Personal info visibility
+  showBirthYearToRoles    String  @default("[\"MEMBER\",\"BRANCH_LEADER\",\"ADMIN\",\"SUPER_ADMIN\"]")
+  showAgeForLiving        Boolean @default(false)
+  showOccupation          Boolean @default(true)
+  showCity                Boolean @default(true)
+  showBiography           Boolean @default(true)
+
+  // Photo visibility
+  showPhotosToRoles       String  @default("[\"MEMBER\",\"BRANCH_LEADER\",\"ADMIN\",\"SUPER_ADMIN\"]")
+
+  // Deceased members
+  showDeathYear           Boolean @default(true)
+  showFullDeathDate       Boolean @default(false)
+
+  updatedAt               DateTime @updatedAt
+}
+
+// ============================================
+// ACTIVITY & NOTIFICATIONS
+// ============================================
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+
+  // Who did it
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail   String?  // Store email in case user is deleted
+  userName    String?  // Store name in case user is deleted
+
+  // What they did
+  action      String   // LOGIN, LOGOUT, VIEW_MEMBER, EDIT_MEMBER, CREATE_MEMBER, etc.
+  category    String   // AUTH, MEMBER, USER, SETTINGS, EXPORT, etc.
+
+  // Target of the action
+  targetType  String?  // USER, MEMBER, SETTINGS, etc.
+  targetId    String?
+  targetName  String?  // Human readable name of target
+
+  // Additional details
+  details     String?  // JSON with extra context
+
+  // Security info
+  ipAddress   String?
+  userAgent   String?
+
+  // Result
+  success     Boolean  @default(true)
+  errorMessage String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([category])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Notification content
+  type        String   // WELCOME, ACCESS_APPROVED, NEW_MEMBER, EDIT_SUGGESTION, etc.
+  titleAr     String
+  titleEn     String
+  messageAr   String
+  messageEn   String
+
+  // Link to related content
+  linkUrl     String?
+  linkType    String?  // MEMBER, USER, REQUEST, etc.
+  linkId      String?
+
+  // Status
+  read        Boolean  @default(false)
+  readAt      DateTime?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+// ============================================
+// LEGACY ADMIN MODEL (Deprecated - migrate to User)
 // ============================================
 
 model Admin {
@@ -184,6 +518,9 @@ model Admin {
 
   // Sessions
   sessions        AdminSession[]
+
+  // Migration flag
+  migratedToUserId String? // If migrated to new User model
 
   @@index([email])
   @@index([isActive])

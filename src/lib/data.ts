@@ -24,6 +24,12 @@ export interface FamilyMember {
   biography: string | null;
   occupation: string | null;
   email: string | null;
+  // Lineage Identification Fields
+  lineageBranchId?: string | null;      // ID of the Gen 2 ancestor (main branch founder)
+  lineageBranchName?: string | null;    // Name of the Gen 2 ancestor for display
+  subBranchId?: string | null;          // ID of the Gen 3 ancestor (sub-branch founder)
+  subBranchName?: string | null;        // Name of the Gen 3 ancestor for display
+  lineagePath?: string[] | null;        // Array of ancestor IDs from root to parent
 }
 
 export const familyMembers: FamilyMember[] = [
@@ -2422,8 +2428,75 @@ export const familyMembers: FamilyMember[] = [
   },
 ];
 
+// Helper function to calculate lineage for a member
+function calculateLineageForMember(member: FamilyMember): FamilyMember {
+  // Get lineage path (ancestor IDs from root to parent)
+  const path: string[] = [];
+  let current = familyMembers.find((m) => m.id === member.fatherId);
+  while (current) {
+    path.unshift(current.id);
+    current = familyMembers.find((m) => m.id === current!.fatherId);
+  }
+
+  // Find Gen 2 ancestor (main branch founder)
+  let gen2Ancestor: FamilyMember | null = null;
+  if (member.generation === 1) {
+    gen2Ancestor = null; // Root has no Gen 2 ancestor
+  } else if (member.generation === 2) {
+    gen2Ancestor = member; // Gen 2 members ARE the branch founders
+  } else {
+    // Find the Gen 2 ancestor in the path
+    for (const ancestorId of path) {
+      const ancestor = familyMembers.find((m) => m.id === ancestorId);
+      if (ancestor && ancestor.generation === 2) {
+        gen2Ancestor = ancestor;
+        break;
+      }
+    }
+  }
+
+  // Find Gen 3 ancestor (sub-branch founder)
+  let gen3Ancestor: FamilyMember | null = null;
+  if (member.generation <= 2) {
+    gen3Ancestor = null; // Gen 1-2 have no Gen 3 ancestor
+  } else if (member.generation === 3) {
+    gen3Ancestor = member; // Gen 3 members ARE the sub-branch founders
+  } else {
+    // Find the Gen 3 ancestor in the path
+    for (const ancestorId of path) {
+      const ancestor = familyMembers.find((m) => m.id === ancestorId);
+      if (ancestor && ancestor.generation === 3) {
+        gen3Ancestor = ancestor;
+        break;
+      }
+    }
+  }
+
+  return {
+    ...member,
+    lineageBranchId: gen2Ancestor?.id || null,
+    lineageBranchName: gen2Ancestor?.firstName || null,
+    subBranchId: gen3Ancestor?.id || null,
+    subBranchName: gen3Ancestor?.firstName || null,
+    lineagePath: path,
+  };
+}
+
+// Cache for members with lineage info
+let membersWithLineage: FamilyMember[] | null = null;
+
 // Helper functions to work with the data
 export function getAllMembers(): FamilyMember[] {
+  // Return cached version if available
+  if (membersWithLineage) return membersWithLineage;
+
+  // Calculate and cache lineage info for all members
+  membersWithLineage = familyMembers.map(calculateLineageForMember);
+  return membersWithLineage;
+}
+
+// Get raw members without lineage calculation (for internal use)
+export function getRawMembers(): FamilyMember[] {
   return familyMembers;
 }
 
@@ -2503,4 +2576,81 @@ export function buildFamilyTree(): FamilyMember & { children: FamilyMember[] } |
 export function getNextId(): string {
   const maxId = Math.max(...familyMembers.map((m) => parseInt(m.id.replace('P', ''))));
   return `P${String(maxId + 1).padStart(3, '0')}`;
+}
+
+// ============================================
+// LINEAGE HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Get all Gen 2 members (main branch founders)
+ * These are the direct children of the family founder
+ */
+export function getGen2Branches(): FamilyMember[] {
+  const members = getAllMembers();
+  return members.filter((m) => m.generation === 2);
+}
+
+/**
+ * Get all Gen 3 members (sub-branch founders)
+ * These are grandchildren of the family founder
+ */
+export function getGen3SubBranches(): FamilyMember[] {
+  const members = getAllMembers();
+  return members.filter((m) => m.generation === 3);
+}
+
+/**
+ * Get all members belonging to a specific Gen 2 branch
+ */
+export function getMembersByLineageBranch(gen2AncestorId: string): FamilyMember[] {
+  const members = getAllMembers();
+  return members.filter((m) => m.lineageBranchId === gen2AncestorId);
+}
+
+/**
+ * Get all members belonging to a specific Gen 3 sub-branch
+ */
+export function getMembersBySubBranch(gen3AncestorId: string): FamilyMember[] {
+  const members = getAllMembers();
+  return members.filter((m) => m.subBranchId === gen3AncestorId);
+}
+
+/**
+ * Get lineage statistics for all Gen 2 branches
+ */
+export function getLineageStatistics() {
+  const members = getAllMembers();
+  const gen2Branches = getGen2Branches();
+
+  const branchStats = gen2Branches.map((branch) => {
+    const branchMembers = members.filter((m) => m.lineageBranchId === branch.id);
+    const livingCount = branchMembers.filter((m) => m.status === 'Living').length;
+    const maleCount = branchMembers.filter((m) => m.gender === 'Male').length;
+    const femaleCount = branchMembers.filter((m) => m.gender === 'Female').length;
+
+    // Get sub-branches for this Gen 2 branch
+    const subBranches = branchMembers.filter((m) => m.generation === 3);
+
+    return {
+      id: branch.id,
+      name: branch.firstName,
+      fullName: branch.fullNameAr,
+      totalCount: branchMembers.length,
+      livingCount,
+      maleCount,
+      femaleCount,
+      subBranchCount: subBranches.length,
+      subBranches: subBranches.map((sb) => ({
+        id: sb.id,
+        name: sb.firstName,
+        count: members.filter((m) => m.subBranchId === sb.id).length,
+      })),
+    };
+  });
+
+  return {
+    totalBranches: gen2Branches.length,
+    branches: branchStats,
+  };
 }
