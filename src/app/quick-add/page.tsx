@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getMaleMembers, getNextId, FamilyMember, getAllMembers } from '@/lib/data';
 import SearchableDropdown from '@/components/SearchableDropdown';
+import AddMemberGraph from '@/components/AddMemberGraph';
 import {
   PlusCircle,
   Check,
@@ -18,6 +19,8 @@ import {
   Eye,
   Save,
   RotateCcw,
+  GitBranch,
+  List,
 } from 'lucide-react';
 
 interface NewMemberData {
@@ -51,6 +54,7 @@ export default function QuickAddPage() {
   const [submitted, setSubmitted] = useState(false);
   const [newMemberId, setNewMemberId] = useState<string>('');
   const [savedMembers, setSavedMembers] = useState<number>(0);
+  const [viewMode, setViewMode] = useState<'dropdown' | 'graph'>('graph');
 
   const [formData, setFormData] = useState<NewMemberData>({
     firstName: '',
@@ -212,6 +216,11 @@ export default function QuickAddPage() {
     setErrors({});
   };
 
+  // Handle father selection from graph
+  const handleGraphFatherSelect = (member: FamilyMember | null) => {
+    updateField('fatherId', member?.id || '');
+  };
+
   const steps = [
     { num: 1, title: 'الهوية', icon: User },
     { num: 2, title: 'النسب', icon: User },
@@ -371,12 +380,78 @@ export default function QuickAddPage() {
             {/* Step 2: Lineage */}
             {step === 2 && (
               <div className="space-y-6">
-                {/* Father Selection with Searchable Dropdown */}
-                <div>
-                  <label className="flex items-center gap-2 font-bold text-gray-700 mb-3">
+                {/* View Mode Toggle */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                  <label className="flex items-center gap-2 font-bold text-gray-700">
                     <User size={18} />
                     اختر الأب من شجرة العائلة
                   </label>
+                  <div className="flex items-center gap-1 bg-white rounded-lg p-1 border shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('graph')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        viewMode === 'graph'
+                          ? 'bg-green-500 text-white shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <GitBranch size={16} />
+                      الشجرة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('dropdown')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        viewMode === 'dropdown'
+                          ? 'bg-green-500 text-white shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <List size={16} />
+                      القائمة
+                    </button>
+                  </div>
+                </div>
+
+                {/* Graph View */}
+                {viewMode === 'graph' && (
+                  <div className="space-y-4">
+                    <AddMemberGraph
+                      members={allMembers}
+                      selectedFatherId={formData.fatherId || null}
+                      onSelectFather={handleGraphFatherSelect}
+                      newMemberPreview={formData.firstName ? {
+                        firstName: formData.firstName,
+                        gender: formData.gender
+                      } : null}
+                    />
+                    {formData.fatherId && (
+                      <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 rounded-xl py-3">
+                        <Check size={20} />
+                        <span className="font-medium">
+                          تم اختيار: {fathers.find(f => f.id === formData.fatherId)?.firstName || formData.fatherId}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateField('fatherId', '')}
+                          className="text-gray-400 hover:text-red-500 mr-2"
+                          title="إلغاء الاختيار"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                    {!formData.fatherId && (
+                      <p className="text-center text-gray-500 text-sm">
+                        انقر على أي ذكر في الشجرة لاختياره كأب للعضو الجديد
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Dropdown View */}
+                {viewMode === 'dropdown' && (
                   <SearchableDropdown
                     options={fathers}
                     value={formData.fatherId}
@@ -385,7 +460,7 @@ export default function QuickAddPage() {
                     allowEmpty={true}
                     emptyLabel="-- إضافة كجذر جديد (بدون أب) --"
                   />
-                </div>
+                )}
 
                 {/* Auto-filled Data Preview */}
                 {autoFillData && (
