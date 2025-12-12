@@ -11,10 +11,11 @@ import {
   BranchEntryLink,
   PendingMember,
 } from '@/lib/branchEntry';
+import BranchAddMemberGraph from '@/components/BranchAddMemberGraph';
 import {
   User, Plus, Check, ChevronDown, Search, ArrowRight, ArrowLeft,
   TreePine, Clock, AlertCircle, X, Eye, Send, Edit2, Trash2,
-  CheckCircle, Users, GitBranch, Info
+  CheckCircle, Users, GitBranch, Info, List
 } from 'lucide-react';
 
 // Step definitions
@@ -211,6 +212,7 @@ export default function BranchEntryPage() {
   const [editingMember, setEditingMember] = useState<PendingMember | null>(null);
   const [submitterName, setSubmitterName] = useState('');
   const [submitterPhone, setSubmitterPhone] = useState('');
+  const [viewMode, setViewMode] = useState<'graph' | 'dropdown'>('graph');
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const allMembers = getAllMembers();
@@ -618,25 +620,93 @@ export default function BranchEntryPage() {
             </div>
           )}
 
-          {/* Live Tree Preview */}
-          <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <TreePine size={16} className="text-green-600" />
-              معاينة الشجرة (تتحدث تلقائياً):
-            </p>
-            <div className="bg-gray-50 rounded-xl p-3 max-h-56 overflow-y-auto border">
-              {branchHead && (
-                <TreeNode
-                  member={branchHead}
-                  allMembers={allMembers}
-                  pendingMembers={sessionMembers}
-                  highlightedIds={highlightedIds}
-                />
-              )}
+          {/* View Mode Toggle & Graph/Tree View */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-4">
+            {/* View Mode Toggle */}
+            <div className="flex items-center justify-between bg-gray-50 px-4 py-3 border-b">
+              <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <TreePine size={16} className="text-green-600" />
+                اختر الأب من الشجرة
+              </p>
+              <div className="flex items-center gap-1 bg-white rounded-lg p-1 border shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('graph')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    viewMode === 'graph'
+                      ? 'bg-green-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <GitBranch size={14} />
+                  الشجرة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('dropdown')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    viewMode === 'dropdown'
+                      ? 'bg-green-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <List size={14} />
+                  القائمة
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mt-2 text-center">
-              الأعضاء الجدد يظهرون بإطار أصفر منقط
-            </p>
+
+            {/* Graph View */}
+            {viewMode === 'graph' && branchHead && (
+              <div className="p-3">
+                <BranchAddMemberGraph
+                  branchHead={branchHead}
+                  branchMembers={branchMembers.filter(m => !('isPending' in m))}
+                  pendingMembers={sessionMembers}
+                  selectedFatherId={fatherId}
+                  onSelectFather={(id) => setFatherId(id)}
+                  newMemberPreview={firstName ? {
+                    firstName: firstName,
+                    gender: gender
+                  } : null}
+                />
+                {fatherId && (
+                  <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 rounded-xl py-2.5 mt-3">
+                    <Check size={18} />
+                    <span className="font-medium text-sm">
+                      تم اختيار: {selectedFather?.firstName || fatherId}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setFatherId('')}
+                      className="text-gray-400 hover:text-red-500 mr-2"
+                      title="إلغاء الاختيار"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Simple Tree View (for dropdown mode) */}
+            {viewMode === 'dropdown' && (
+              <div className="p-4">
+                <div className="bg-gray-50 rounded-xl p-3 max-h-56 overflow-y-auto border mb-3">
+                  {branchHead && (
+                    <TreeNode
+                      member={branchHead}
+                      allMembers={allMembers}
+                      pendingMembers={sessionMembers}
+                      highlightedIds={highlightedIds}
+                    />
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 text-center">
+                  الأعضاء الجدد يظهرون بإطار أصفر منقط
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Main Form */}
@@ -670,102 +740,122 @@ export default function BranchEntryPage() {
                 />
               </div>
 
-              {/* Father Selection */}
-              <div className="relative">
-                <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
-                  <User size={18} />
-                  الأب <span className="text-red-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowFatherDropdown(!showFatherDropdown)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-right bg-green-50 hover:bg-green-100 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
-                        👨
+              {/* Father Selection - Only show in dropdown mode */}
+              {viewMode === 'dropdown' && (
+                <div className="relative">
+                  <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                    <User size={18} />
+                    الأب <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowFatherDropdown(!showFatherDropdown)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-right bg-green-50 hover:bg-green-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
+                          👨
+                        </div>
+                        <div className="flex-1 min-w-0 text-right">
+                          {selectedFather ? (
+                            <>
+                              <p className="font-bold text-gray-800 truncate">
+                                {getFullLineageName(selectedFather, allMembers, 2, sessionMembers)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                الجيل {selectedFather.generation} • {selectedFather.id}
+                              </p>
+                            </>
+                          ) : (
+                            <span className="text-gray-400">اختر الأب</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0 text-right">
-                        {selectedFather ? (
-                          <>
-                            <p className="font-bold text-gray-800 truncate">
-                              {getFullLineageName(selectedFather, allMembers, 2, sessionMembers)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              الجيل {selectedFather.generation} • {selectedFather.id}
-                            </p>
-                          </>
-                        ) : (
-                          <span className="text-gray-400">اختر الأب</span>
+                      <ChevronDown size={20} className={`text-gray-400 transition-transform flex-shrink-0 mr-2 ${showFatherDropdown ? 'rotate-180' : ''}`} />
+                    </div>
+                  </button>
+
+                  {/* Father Dropdown */}
+                  {showFatherDropdown && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-72 overflow-hidden">
+                      {/* Search */}
+                      <div className="p-3 border-b sticky top-0 bg-white">
+                        <div className="relative">
+                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <input
+                            type="text"
+                            value={fatherSearch}
+                            onChange={(e) => setFatherSearch(e.target.value)}
+                            placeholder="ابحث بالاسم..."
+                            className="w-full pr-10 pl-3 py-2.5 border rounded-lg focus:outline-none focus:border-green-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Options */}
+                      <div className="max-h-52 overflow-y-auto">
+                        {filteredFathers.map(member => {
+                          const fullName = getFullLineageName(member, allMembers, 2, sessionMembers);
+                          const isPending = (member as any).isPending;
+
+                          return (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => {
+                                setFatherId(member.id);
+                                setShowFatherDropdown(false);
+                                setFatherSearch('');
+                              }}
+                              className={`w-full px-4 py-3 text-right flex items-center gap-3 hover:bg-green-50 border-b last:border-0 transition-colors ${
+                                fatherId === member.id ? 'bg-green-100' : ''
+                              }`}
+                            >
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
+                                {isPending ? '⏳' : '👨'}
+                              </div>
+                              <div className="flex-1 min-w-0 text-right">
+                                <p className="font-medium text-gray-800">
+                                  {fullName}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  الجيل {member.generation}
+                                  {isPending && <span className="text-orange-500 mr-2">(جديد - مضاف هذه الجلسة)</span>}
+                                </p>
+                              </div>
+                              {fatherId === member.id && (
+                                <Check size={18} className="text-green-600 flex-shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                        {filteredFathers.length === 0 && (
+                          <p className="text-center text-gray-400 py-4">لا توجد نتائج</p>
                         )}
                       </div>
                     </div>
-                    <ChevronDown size={20} className={`text-gray-400 transition-transform flex-shrink-0 mr-2 ${showFatherDropdown ? 'rotate-180' : ''}`} />
-                  </div>
-                </button>
+                  )}
+                </div>
+              )}
 
-                {/* Father Dropdown */}
-                {showFatherDropdown && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-72 overflow-hidden">
-                    {/* Search */}
-                    <div className="p-3 border-b sticky top-0 bg-white">
-                      <div className="relative">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input
-                          type="text"
-                          value={fatherSearch}
-                          onChange={(e) => setFatherSearch(e.target.value)}
-                          placeholder="ابحث بالاسم..."
-                          className="w-full pr-10 pl-3 py-2.5 border rounded-lg focus:outline-none focus:border-green-500"
-                        />
-                      </div>
-                    </div>
+              {/* Selected Father Display - For graph mode */}
+              {viewMode === 'graph' && selectedFather && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3">
+                  <label className="text-xs text-green-600 mb-1 block">الأب المختار من الشجرة:</label>
+                  <p className="font-bold text-green-800">
+                    {getFullLineageName(selectedFather, allMembers, 2, sessionMembers)}
+                  </p>
+                </div>
+              )}
 
-                    {/* Options */}
-                    <div className="max-h-52 overflow-y-auto">
-                      {filteredFathers.map(member => {
-                        const fullName = getFullLineageName(member, allMembers, 2, sessionMembers);
-                        const isPending = (member as any).isPending;
-
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => {
-                              setFatherId(member.id);
-                              setShowFatherDropdown(false);
-                              setFatherSearch('');
-                            }}
-                            className={`w-full px-4 py-3 text-right flex items-center gap-3 hover:bg-green-50 border-b last:border-0 transition-colors ${
-                              fatherId === member.id ? 'bg-green-100' : ''
-                            }`}
-                          >
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
-                              {isPending ? '⏳' : '👨'}
-                            </div>
-                            <div className="flex-1 min-w-0 text-right">
-                              <p className="font-medium text-gray-800">
-                                {fullName}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                الجيل {member.generation}
-                                {isPending && <span className="text-orange-500 mr-2">(جديد - مضاف هذه الجلسة)</span>}
-                              </p>
-                            </div>
-                            {fatherId === member.id && (
-                              <Check size={18} className="text-green-600 flex-shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })}
-                      {filteredFathers.length === 0 && (
-                        <p className="text-center text-gray-400 py-4">لا توجد نتائج</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              {viewMode === 'graph' && !selectedFather && (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-3">
+                  <p className="text-yellow-700 text-sm text-center">
+                    👆 انقر على أي ذكر في الشجرة أعلاه لاختياره كأب
+                  </p>
+                </div>
+              )}
 
               {/* Gender Selection */}
               <div>
