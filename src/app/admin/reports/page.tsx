@@ -32,6 +32,7 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<'overview' | 'demographics' | 'activity' | 'branches'>('overview');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     loadReportData();
@@ -149,34 +150,45 @@ export default function ReportsPage() {
             >
               <RefreshCw className="w-5 h-5" />
             </button>
-            <div className="relative group">
-              <button className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg">
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg"
+              >
                 <Download className="w-5 h-5" />
                 تصدير
               </button>
-              <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border hidden group-hover:block z-10">
-                <button
-                  onClick={() => exportReport('pdf')}
-                  className="w-full px-4 py-2 text-right hover:bg-gray-50 flex items-center gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  PDF
-                </button>
-                <button
-                  onClick={() => exportReport('excel')}
-                  className="w-full px-4 py-2 text-right hover:bg-gray-50 flex items-center gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  Excel
-                </button>
-                <button
-                  onClick={() => exportReport('csv')}
-                  className="w-full px-4 py-2 text-right hover:bg-gray-50 flex items-center gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  CSV
-                </button>
-              </div>
+              {showExportMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowExportMenu(false)}
+                  />
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20">
+                    <button
+                      onClick={() => { exportReport('pdf'); setShowExportMenu(false); }}
+                      className="w-full px-4 py-3 text-right hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
+                    >
+                      <FileText className="w-4 h-4" />
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => { exportReport('excel'); setShowExportMenu(false); }}
+                      className="w-full px-4 py-3 text-right hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Excel
+                    </button>
+                    <button
+                      onClick={() => { exportReport('csv'); setShowExportMenu(false); }}
+                      className="w-full px-4 py-3 text-right hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
+                    >
+                      <FileText className="w-4 h-4" />
+                      CSV
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
