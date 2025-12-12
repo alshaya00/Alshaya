@@ -1,0 +1,59 @@
+# Al-Shaye Family Tree - Docker Compose Configuration
+version: '3.8'
+
+services:
+  # Main application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alshaye-family-tree
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/prisma/family.db
+      # Add your environment variables here:
+      # - NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
+      # - SENTRY_ORG=your_org
+      # - SENTRY_PROJECT=your_project
+    volumes:
+      # Persist database
+      - ./prisma/family.db:/app/prisma/family.db
+      # Persist uploads (if using local storage)
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - alshaye-network
+
+  # Redis for caching and rate limiting (optional, for production)
+  redis:
+    image: redis:7-alpine
+    container_name: alshaye-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - alshaye-network
+
+networks:
+  alshaye-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local

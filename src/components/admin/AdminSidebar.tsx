@@ -23,6 +23,7 @@ import {
   X,
   ClipboardList,
   FileSpreadsheet,
+  Server,
 } from 'lucide-react';
 
 interface NavItem {
@@ -77,6 +78,12 @@ const adminNavItems: NavItem[] = [
     label: 'سجل المراجعة',
     labelEn: 'Audit Log',
     icon: ClipboardList,
+  },
+  {
+    href: '/admin/services',
+    label: 'الخدمات الخارجية',
+    labelEn: 'API Services',
+    icon: Server,
   },
   {
     href: '/admin/settings',
