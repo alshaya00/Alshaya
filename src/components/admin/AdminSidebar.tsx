@@ -21,6 +21,7 @@ import {
   Home,
   Menu,
   X,
+  ClipboardList,
 } from 'lucide-react';
 
 interface NavItem {
@@ -68,6 +69,12 @@ const adminNavItems: NavItem[] = [
     label: 'التقارير والتحليلات',
     labelEn: 'Reports',
     icon: BarChart3,
+  },
+  {
+    href: '/admin/audit',
+    label: 'سجل المراجعة',
+    labelEn: 'Audit Log',
+    icon: ClipboardList,
   },
   {
     href: '/admin/settings',

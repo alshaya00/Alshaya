@@ -7,62 +7,33 @@ import {
   Shield,
   Users,
   UserPlus,
-  Settings,
-  Key,
   Lock,
   Unlock,
-  Check,
-  X,
   Edit,
   Trash2,
   Eye,
   EyeOff,
   Save,
-  AlertTriangle,
   Copy,
   RefreshCw,
+  CheckCircle,
+  XCircle,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
-
-interface Admin {
-  id: string;
-  name: string;
-  email: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'EDITOR' | 'VIEWER';
-  permissions: string[];
-  isActive: boolean;
-  lastLoginAt: string | null;
-  createdAt: string;
-}
-
-const ROLE_LABELS = {
-  SUPER_ADMIN: { label: 'مدير عام', color: 'bg-red-100 text-red-700' },
-  ADMIN: { label: 'مدير', color: 'bg-orange-100 text-orange-700' },
-  EDITOR: { label: 'محرر', color: 'bg-blue-100 text-blue-700' },
-  VIEWER: { label: 'مشاهد', color: 'bg-gray-100 text-gray-700' },
-};
-
-const ALL_PERMISSIONS = [
-  { key: 'VIEW_MEMBERS', label: 'عرض الأعضاء', category: 'members' },
-  { key: 'ADD_MEMBERS', label: 'إضافة أعضاء', category: 'members' },
-  { key: 'EDIT_MEMBERS', label: 'تعديل أعضاء', category: 'members' },
-  { key: 'DELETE_MEMBERS', label: 'حذف أعضاء', category: 'members' },
-  { key: 'CHANGE_PARENT', label: 'تغيير الأب', category: 'members' },
-  { key: 'EXPORT_DATA', label: 'تصدير البيانات', category: 'data' },
-  { key: 'IMPORT_DATA', label: 'استيراد البيانات', category: 'data' },
-  { key: 'MANAGE_DUPLICATES', label: 'إدارة التكرارات', category: 'data' },
-  { key: 'VIEW_HISTORY', label: 'عرض السجل', category: 'history' },
-  { key: 'ROLLBACK_CHANGES', label: 'استرجاع التغييرات', category: 'history' },
-  { key: 'CREATE_SNAPSHOTS', label: 'إنشاء نسخ احتياطية', category: 'history' },
-  { key: 'MANAGE_ADMINS', label: 'إدارة المشرفين', category: 'admin' },
-  { key: 'APPROVE_PENDING', label: 'الموافقة على الطلبات', category: 'admin' },
-];
-
-const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
-  SUPER_ADMIN: ALL_PERMISSIONS.map(p => p.key),
-  ADMIN: ALL_PERMISSIONS.filter(p => p.key !== 'MANAGE_ADMINS').map(p => p.key),
-  EDITOR: ['VIEW_MEMBERS', 'ADD_MEMBERS', 'EDIT_MEMBERS', 'EXPORT_DATA', 'VIEW_HISTORY'],
-  VIEWER: ['VIEW_MEMBERS', 'EXPORT_DATA'],
-};
+import {
+  type Admin,
+  type AdminRole,
+  ALL_PERMISSIONS,
+  ROLE_DEFAULT_PERMISSIONS,
+  ROLE_LABELS,
+  CATEGORY_LABELS,
+  getPermissionsByCategory,
+  getPermissionLabel,
+  setCurrentAdmin,
+  validateAccessCode,
+} from '@/lib/permissions';
 
 export default function AdminSettingsPage() {
   // State
@@ -78,10 +49,14 @@ export default function AdminSettingsPage() {
   const [newAdmin, setNewAdmin] = useState({
     name: '',
     email: '',
-    role: 'EDITOR' as Admin['role'],
+    role: 'EDITOR' as AdminRole,
     permissions: ROLE_DEFAULT_PERMISSIONS['EDITOR'],
     accessCode: ''
   });
+
+  // UI state
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['members', 'data', 'backup', 'audit', 'admin', 'history']);
+  const permissionsByCategory = getPermissionsByCategory();
 
   // Load admins from localStorage
   useEffect(() => {
@@ -110,15 +85,23 @@ export default function AdminSettingsPage() {
 
   // Authenticate
   const handleAuth = () => {
-    const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
-    const validCodes = Object.values(codes);
-
-    if (validCodes.includes(accessCode) || accessCode === 'admin123') {
+    const admin = validateAccessCode(accessCode);
+    if (admin) {
+      setCurrentAdmin(admin.id);
       setIsAuthenticated(true);
       setAuthError('');
     } else {
       setAuthError('رمز الوصول غير صحيح');
     }
+  };
+
+  // Toggle category expansion
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
   };
 
   // Generate access code
@@ -372,7 +355,7 @@ export default function AdminSettingsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold">{admin.name}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs ${ROLE_LABELS[admin.role].color}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs ${ROLE_LABELS[admin.role].bgColor} ${ROLE_LABELS[admin.role].color}`}>
                           {ROLE_LABELS[admin.role].label}
                         </span>
                         {!admin.isActive && (
@@ -437,12 +420,12 @@ export default function AdminSettingsPage() {
                       key={perm}
                       className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
                     >
-                      {ALL_PERMISSIONS.find(p => p.key === perm)?.label || perm}
+                      {getPermissionLabel(perm)}
                     </span>
                   ))}
                   {admin.permissions.length > 5 && (
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                      +{admin.permissions.length - 5}
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-xs">
+                      +{admin.permissions.length - 5} صلاحية أخرى
                     </span>
                   )}
                 </div>
@@ -500,7 +483,7 @@ export default function AdminSettingsPage() {
                   الدور
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {(Object.keys(ROLE_LABELS) as Array<keyof typeof ROLE_LABELS>).map(role => (
+                  {(Object.keys(ROLE_LABELS) as AdminRole[]).map(role => (
                     <button
                       key={role}
                       type="button"
@@ -512,15 +495,16 @@ export default function AdminSettingsPage() {
                           setNewAdmin({ ...newAdmin, role, permissions: perms });
                         }
                       }}
-                      className={`p-3 border rounded-lg text-center transition-colors ${
+                      className={`p-3 border-2 rounded-lg text-center transition-all ${
                         (editingAdmin?.role || newAdmin.role) === role
-                          ? 'border-[#1E3A5F] bg-[#1E3A5F]/10'
-                          : 'hover:bg-gray-50'
+                          ? 'border-[#1E3A5F] bg-[#1E3A5F]/10 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
-                      <span className={`px-2 py-0.5 rounded text-xs ${ROLE_LABELS[role].color}`}>
+                      <span className={`px-3 py-1 rounded text-xs font-medium ${ROLE_LABELS[role].bgColor} ${ROLE_LABELS[role].color}`}>
                         {ROLE_LABELS[role].label}
                       </span>
+                      <span className="block text-[10px] text-gray-500 mt-1">{ROLE_LABELS[role].labelEn}</span>
                     </button>
                   ))}
                 </div>
@@ -528,53 +512,115 @@ export default function AdminSettingsPage() {
 
               {/* Permissions */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الصلاحيات
-                </label>
-                <div className="border rounded-lg p-4 max-h-60 overflow-auto">
-                  {['members', 'data', 'history', 'admin'].map(category => (
-                    <div key={category} className="mb-4 last:mb-0">
-                      <h4 className="font-bold text-sm text-gray-500 mb-2">
-                        {category === 'members' ? 'الأعضاء' :
-                         category === 'data' ? 'البيانات' :
-                         category === 'history' ? 'السجل' : 'الإدارة'}
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {ALL_PERMISSIONS.filter(p => p.category === category).map(perm => {
-                          const permissions = editingAdmin?.permissions || newAdmin.permissions;
-                          const isChecked = permissions.includes(perm.key);
-
-                          return (
-                            <label
-                              key={perm.key}
-                              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer ${
-                                isChecked ? 'bg-blue-50' : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  const newPerms = e.target.checked
-                                    ? [...permissions, perm.key]
-                                    : permissions.filter(p => p !== perm.key);
-
-                                  if (editingAdmin) {
-                                    setEditingAdmin({ ...editingAdmin, permissions: newPerms });
-                                  } else {
-                                    setNewAdmin({ ...newAdmin, permissions: newPerms });
-                                  }
-                                }}
-                                className="w-4 h-4 rounded"
-                              />
-                              <span className="text-sm">{perm.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    الصلاحيات
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allPerms = ALL_PERMISSIONS.map(p => p.key);
+                        if (editingAdmin) {
+                          setEditingAdmin({ ...editingAdmin, permissions: allPerms });
+                        } else {
+                          setNewAdmin({ ...newAdmin, permissions: allPerms });
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                    >
+                      تحديد الكل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingAdmin) {
+                          setEditingAdmin({ ...editingAdmin, permissions: [] });
+                        } else {
+                          setNewAdmin({ ...newAdmin, permissions: [] });
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                    >
+                      إلغاء الكل
+                    </button>
+                  </div>
                 </div>
+                <div className="border rounded-lg max-h-80 overflow-auto">
+                  {Object.entries(permissionsByCategory).map(([category, categoryPerms]) => {
+                    const isExpanded = expandedCategories.includes(category);
+                    const permissions = editingAdmin?.permissions || newAdmin.permissions;
+                    const categoryPermKeys = categoryPerms.map(p => p.key);
+                    const selectedInCategory = categoryPermKeys.filter(k => permissions.includes(k)).length;
+
+                    return (
+                      <div key={category} className="border-b last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleCategory(category)}
+                          className="w-full flex items-center justify-between p-3 hover:bg-gray-50"
+                        >
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            <span className="font-medium">{CATEGORY_LABELS[category]?.label || category}</span>
+                            <span className="text-xs text-gray-500">({CATEGORY_LABELS[category]?.labelEn})</span>
+                          </div>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            selectedInCategory === categoryPerms.length
+                              ? 'bg-green-100 text-green-700'
+                              : selectedInCategory > 0
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {selectedInCategory} / {categoryPerms.length}
+                          </span>
+                        </button>
+                        {isExpanded && (
+                          <div className="p-3 pt-0 grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {categoryPerms.map(perm => {
+                              const isChecked = permissions.includes(perm.key);
+
+                              return (
+                                <label
+                                  key={perm.key}
+                                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                    isChecked ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newPerms = e.target.checked
+                                        ? [...permissions, perm.key]
+                                        : permissions.filter(p => p !== perm.key);
+
+                                      if (editingAdmin) {
+                                        setEditingAdmin({ ...editingAdmin, permissions: newPerms });
+                                      } else {
+                                        setNewAdmin({ ...newAdmin, permissions: newPerms });
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded text-blue-600"
+                                  />
+                                  <div className="flex-1">
+                                    <span className="block text-sm font-medium">{perm.label}</span>
+                                    <span className="block text-xs text-gray-500">{perm.labelEn}</span>
+                                  </div>
+                                  {isChecked && <CheckCircle size={16} className="text-green-500" />}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <Info size={12} />
+                  {(editingAdmin?.permissions || newAdmin.permissions).length} صلاحية محددة من {ALL_PERMISSIONS.length}
+                </p>
               </div>
 
               {/* Access code for new admin */}
