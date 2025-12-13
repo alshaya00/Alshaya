@@ -419,3 +419,122 @@ export interface MiniGraphData {
   // Milk family (عائلة الرضاعة)
   milkFamilies: MilkFamily[];
 }
+
+// ============================================
+// FAMILY JOURNALS & STORIES
+// ============================================
+
+export interface FamilyJournal {
+  id: string;
+  titleAr: string;
+  titleEn?: string | null;
+  contentAr: string;
+  contentEn?: string | null;
+  excerpt?: string | null;
+  category: JournalCategoryType;
+  tags?: string[] | null;
+  era?: string | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  dateDescription?: string | null;
+  location?: string | null;
+  locationAr?: string | null;
+  primaryMemberId?: string | null;
+  relatedMemberIds?: string[] | null;
+  generation?: number | null;
+  coverImageUrl?: string | null;
+  mediaItems?: JournalMedia[];
+  narrator?: string | null;
+  narratorId?: string | null;
+  source?: string | null;
+  status: JournalStatus;
+  isFeatured: boolean;
+  displayOrder: number;
+  authorId?: string | null;
+  authorName: string;
+  reviewStatus: ReviewStatus;
+  reviewedBy?: string | null;
+  reviewedAt?: Date | null;
+  reviewNotes?: string | null;
+  viewCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type JournalCategoryType =
+  | 'ORAL_HISTORY'    // الروايات الشفهية - Stories passed down through generations
+  | 'MIGRATION'       // الهجرات والتنقلات - Migration and movement stories
+  | 'MEMORY'          // الذكريات - Personal memories
+  | 'POEM'            // الشعر والأدب - Poetry and literature
+  | 'GENEALOGY';      // الأنساب - Genealogy information
+
+export type JournalStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export interface JournalMedia {
+  id: string;
+  journalId: string;
+  type: 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO';
+  url?: string | null;
+  imageData?: string | null;
+  thumbnailData?: string | null;
+  titleAr?: string | null;
+  titleEn?: string | null;
+  captionAr?: string | null;
+  captionEn?: string | null;
+  year?: number | null;
+  displayOrder: number;
+  isHero: boolean;
+  createdAt: Date;
+}
+
+export interface JournalCategory {
+  id: string;
+  key: JournalCategoryType;
+  nameAr: string;
+  nameEn: string;
+  descriptionAr?: string | null;
+  descriptionEn?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+// Journal category metadata for UI (simplified - 5 categories)
+export const JOURNAL_CATEGORIES: Record<JournalCategoryType, {
+  nameAr: string;
+  nameEn: string;
+  icon: string;
+  color: string;
+}> = {
+  ORAL_HISTORY: {
+    nameAr: 'الروايات الشفهية',
+    nameEn: 'Oral History',
+    icon: '📜',
+    color: 'amber',
+  },
+  MIGRATION: {
+    nameAr: 'الهجرات والتنقلات',
+    nameEn: 'Migration',
+    icon: '🐪',
+    color: 'orange',
+  },
+  MEMORY: {
+    nameAr: 'الذكريات',
+    nameEn: 'Memories',
+    icon: '💭',
+    color: 'blue',
+  },
+  POEM: {
+    nameAr: 'الشعر والأدب',
+    nameEn: 'Poetry',
+    icon: '✒️',
+    color: 'rose',
+  },
+  GENEALOGY: {
+    nameAr: 'الأنساب',
+    nameEn: 'Genealogy',
+    icon: '🌳',
+    color: 'green',
+  }
+};
