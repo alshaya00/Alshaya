@@ -1,12 +1,52 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getStatistics } from '@/lib/data';
 import {
   TreePine, Users, PlusCircle, BarChart3, ChevronLeft,
   Download, Upload, Edit, History, Copy, Search, Settings
 } from 'lucide-react';
 
+interface Statistics {
+  totalMembers: number;
+  males: number;
+  females: number;
+  generations: number;
+  branches: { name: string; count: number }[];
+  generationBreakdown: {
+    generation: number;
+    count: number;
+    males: number;
+    females: number;
+    percentage: number;
+  }[];
+}
+
 export default function HomePage() {
-  const stats = getStatistics();
+  const [stats, setStats] = useState<Statistics>({
+    totalMembers: 0,
+    males: 0,
+    females: 0,
+    generations: 0,
+    branches: [],
+    generationBreakdown: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await fetch('/api/statistics');
+        const data = await res.json();
+        setStats(data);
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStats();
+  }, []);
 
   const quickActions = [
     {
@@ -62,6 +102,17 @@ export default function HomePage() {
 
   // Generation icons for accessibility (colorblind users)
   const genIcons = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -277,7 +328,7 @@ export default function HomePage() {
                 <h3 className="text-xl font-bold text-gray-800 group-hover:text-green-600 transition-colors">{branch.name}</h3>
                 <p className="text-3xl font-bold text-green-600 mt-2">{branch.count}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {Math.round((branch.count / stats.totalMembers) * 100)}% من العائلة
+                  {stats.totalMembers > 0 ? Math.round((branch.count / stats.totalMembers) * 100) : 0}% من العائلة
                 </p>
               </Link>
             ))}
