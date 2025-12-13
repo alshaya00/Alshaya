@@ -25,6 +25,7 @@ import {
   FileSpreadsheet,
   Server,
   Image,
+  Mail,
 } from 'lucide-react';
 
 interface NavItem {
@@ -61,6 +62,12 @@ const adminNavItems: NavItem[] = [
     label: 'إدارة الصور',
     labelEn: 'Image Moderation',
     icon: Image,
+  },
+  {
+    href: '/admin/broadcasts',
+    label: 'البث البريدي',
+    labelEn: 'Email Broadcasts',
+    icon: Mail,
   },
   {
     href: '/admin/config',
