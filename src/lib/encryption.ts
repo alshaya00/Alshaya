@@ -12,11 +12,28 @@ const IV_LENGTH = 16; // 128 bits
 const AUTH_TAG_LENGTH = 16; // 128 bits
 const SALT_LENGTH = 32;
 
-// Get encryption key from environment or generate a deterministic one
+// Get encryption key from environment - FAIL FAST if not configured
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET || 'default-family-tree-secret-key-change-in-production';
+  const secret = process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET;
+
+  // SECURITY: Fail immediately if secrets not configured in production
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'CRITICAL: ENCRYPTION_SECRET or JWT_SECRET must be set in production. ' +
+        'Generate with: openssl rand -base64 32'
+      );
+    }
+    // Allow development with warning
+    console.warn(
+      '⚠️ WARNING: Using default encryption key. ' +
+      'Set ENCRYPTION_SECRET or JWT_SECRET for production!'
+    );
+  }
+
+  const effectiveSecret = secret || 'dev-only-secret-not-for-production';
   const salt = process.env.ENCRYPTION_SALT || 'family-tree-salt';
-  return scryptSync(secret, salt, KEY_LENGTH);
+  return scryptSync(effectiveSecret, salt, KEY_LENGTH);
 }
 
 /**
