@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getAllMembers, getChildren } from '@/lib/data';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
+import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
 import {
   User,
   Calendar,
@@ -30,9 +31,12 @@ export default function MemberPage({ params }: PageProps) {
   }
 
   const children = getChildren(member.id);
-  const father = member.fatherId ? allMembers.find((m) => m.id === member.fatherId) : null;
+  const father = member.fatherId ? allMembers.find((m) => m.id === member.fatherId) ?? null : null;
   const siblings = father ? getChildren(father.id).filter((s) => s.id !== member.id) : [];
   const statusBadge = getStatusBadge(member.status);
+
+  // Get grandchildren (children of children)
+  const grandchildren = children.flatMap((child) => getChildren(child.id));
 
   // Get lineage ancestors for display
   const lineageBranchAncestor = member.lineageBranchId
@@ -221,6 +225,17 @@ export default function MemberPage({ params }: PageProps) {
                 </div>
               </div>
             )}
+
+            {/* Mini Family Graph & Breastfeeding Section */}
+            <div className="mb-8">
+              <MemberBreastfeedingSection
+                member={member}
+                father={father}
+                siblings={siblings}
+                children={children}
+                grandchildren={grandchildren}
+              />
+            </div>
 
             {/* Details Grid */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">

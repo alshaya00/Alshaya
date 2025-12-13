@@ -15,6 +15,7 @@ A modern, interactive family tree web application for the آل شايع (Al-Shay
 - **🔍 Advanced Search** - Search by name, city, occupation, and more
 - **📱 Responsive Design** - Works on desktop and mobile
 - **🌐 RTL Support** - Full Arabic language support with right-to-left layout
+- **🤱 Breastfeeding Relationships** - Islamic milk kinship (علاقات الرضاعة) tracking with mini family graphs
 
 ## 📊 Family Statistics
 
@@ -128,6 +129,11 @@ me/
 ### 👤 Member Detail (`/member/[id]`)
 - Complete member profile
 - Family connections (father, siblings, children)
+- Mini family graph showing immediate relatives
+- Breastfeeding relationships (milk family - عائلة الرضاعة)
+  - Milk mother (أم الرضاعة)
+  - Milk father (أب الرضاعة)
+  - Milk siblings (إخوة الرضاعة)
 - Quick navigation links
 
 ## 🔌 API Endpoints
@@ -136,6 +142,9 @@ me/
 |----------|--------|-------------|
 | `/api/members` | GET | Get all members (supports filters) |
 | `/api/members/[id]` | GET | Get single member with children |
+| `/api/members/[id]/breastfeeding` | GET | Get breastfeeding relationships for a member |
+| `/api/breastfeeding` | GET, POST | List/create breastfeeding relationships |
+| `/api/breastfeeding/[id]` | GET, PUT, DELETE | Manage specific breastfeeding relationship |
 | `/api/statistics` | GET | Get family statistics |
 | `/api/tree` | GET | Get hierarchical tree data |
 
