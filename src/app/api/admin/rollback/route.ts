@@ -269,7 +269,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const snapshot = JSON.parse(snapshotChange.fullSnapshot);
+      let snapshot: Record<string, unknown> | null = null;
+      try {
+        snapshot = JSON.parse(snapshotChange.fullSnapshot);
+      } catch {
+        return NextResponse.json(
+          { success: false, message: 'Invalid snapshot data - cannot parse' },
+          { status: 400 }
+        );
+      }
+      if (!snapshot) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid snapshot data - cannot parse' },
+          { status: 400 }
+        );
+      }
 
       await prisma.$transaction(async (tx) => {
         // Get current state for history

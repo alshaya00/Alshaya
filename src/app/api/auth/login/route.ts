@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import {
   findUserByEmail,
   verifyPassword,
@@ -10,9 +11,18 @@ import {
   logActivity,
 } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Rate limit by IP address
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(clientIp, rateLimiters.login);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });
+    }
+
     const body = await request.json();
     const { email, password, rememberMe } = body;
 
@@ -212,6 +222,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Login error:', error);
+    Sentry.captureException(error, {
+      tags: { endpoint: 'auth/login' },
+    });
     return NextResponse.json(
       {
         success: false,

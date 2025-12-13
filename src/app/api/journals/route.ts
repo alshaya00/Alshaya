@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { safeJsonParseArray } from '@/lib/utils/safe-json';
 
 // Sanitize string input to prevent XSS attacks
 function sanitizeString(input: string | null | undefined): string | null {
@@ -95,11 +96,11 @@ export async function GET(request: NextRequest) {
       take: limit
     });
 
-    // Parse JSON fields
+    // Parse JSON fields safely
     const parsedJournals = journals.map(journal => ({
       ...journal,
-      tags: journal.tags ? JSON.parse(journal.tags) : [],
-      relatedMemberIds: journal.relatedMemberIds ? JSON.parse(journal.relatedMemberIds) : []
+      tags: safeJsonParseArray<string>(journal.tags),
+      relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
     }));
 
     return NextResponse.json({
@@ -183,8 +184,8 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         ...journal,
-        tags: journal.tags ? JSON.parse(journal.tags) : [],
-        relatedMemberIds: journal.relatedMemberIds ? JSON.parse(journal.relatedMemberIds) : []
+        tags: safeJsonParseArray<string>(journal.tags),
+        relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
       },
       message: 'تم إنشاء القصة بنجاح'
     }, { status: 201 });

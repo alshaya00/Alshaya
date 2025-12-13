@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { safeJsonParseArray } from '@/lib/utils/safe-json';
 
 // Sanitize string input
 function sanitizeString(input: string | null | undefined): string | null {
@@ -45,11 +46,11 @@ export async function GET(
       data: { viewCount: { increment: 1 } }
     });
 
-    // Parse JSON fields
+    // Parse JSON fields safely
     const parsedJournal = {
       ...journal,
-      tags: journal.tags ? JSON.parse(journal.tags) : [],
-      relatedMemberIds: journal.relatedMemberIds ? JSON.parse(journal.relatedMemberIds) : []
+      tags: safeJsonParseArray<string>(journal.tags),
+      relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
     };
 
     return NextResponse.json({
@@ -127,8 +128,8 @@ export async function PUT(
       success: true,
       data: {
         ...journal,
-        tags: journal.tags ? JSON.parse(journal.tags) : [],
-        relatedMemberIds: journal.relatedMemberIds ? JSON.parse(journal.relatedMemberIds) : []
+        tags: safeJsonParseArray<string>(journal.tags),
+        relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
       },
       message: 'تم تحديث القصة بنجاح'
     });

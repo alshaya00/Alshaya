@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { getMemberById, getChildren, familyMembers, updateMemberInMemory, deleteMemberFromMemory, FamilyMember } from '@/lib/data';
 import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'crypto';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+// Helper to get authenticated user from request
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 // Helper to record change history
 async function recordChangeHistory(
@@ -64,6 +83,23 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // SECURITY: Require authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.view_member_profiles) {
+      return NextResponse.json(
+        { success: false, message: 'No permission to view members', messageAr: 'لا تملك صلاحية عرض الأعضاء' },
+        { status: 403 }
+      );
+    }
+
     const member = getMemberById(params.id);
 
     if (!member) {
@@ -83,6 +119,9 @@ export async function GET(
       }
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { endpoint: 'members/[id]', operation: 'get' },
+    });
     return NextResponse.json(
       { success: false, error: 'Failed to fetch member' },
       { status: 500 }
@@ -96,6 +135,23 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // SECURITY: Require authentication and edit permission
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.edit_member) {
+      return NextResponse.json(
+        { success: false, message: 'No permission to edit members', messageAr: 'لا تملك صلاحية تعديل الأعضاء' },
+        { status: 403 }
+      );
+    }
+
     const member = getMemberById(params.id);
 
     if (!member) {
@@ -196,6 +252,9 @@ export async function PUT(
     } catch (dbError) {
       // Fallback to in-memory update if database fails
       console.log('Database update failed, using in-memory fallback:', dbError);
+      Sentry.captureException(dbError, {
+        tags: { endpoint: 'members/[id]', operation: 'update', type: 'database_fallback' },
+      });
       updatedMember = updateMemberInMemory(params.id, updateData);
       if (!updatedMember) {
         return NextResponse.json(
@@ -220,6 +279,9 @@ export async function PUT(
       message: 'Member updated successfully'
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { endpoint: 'members/[id]', operation: 'update' },
+    });
     return NextResponse.json(
       { success: false, error: 'Failed to update member' },
       { status: 500 }
@@ -233,6 +295,23 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // SECURITY: Require authentication and delete permission
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.delete_member) {
+      return NextResponse.json(
+        { success: false, message: 'No permission to delete members', messageAr: 'لا تملك صلاحية حذف الأعضاء' },
+        { status: 403 }
+      );
+    }
+
     const member = getMemberById(params.id);
 
     if (!member) {
@@ -261,6 +340,9 @@ export async function DELETE(
     } catch (dbError) {
       // Fallback to in-memory delete if database fails
       console.log('Database delete failed, using in-memory fallback:', dbError);
+      Sentry.captureException(dbError, {
+        tags: { endpoint: 'members/[id]', operation: 'delete', type: 'database_fallback' },
+      });
       const deleted = deleteMemberFromMemory(params.id);
       if (!deleted) {
         return NextResponse.json(
@@ -275,6 +357,9 @@ export async function DELETE(
       message: 'Member deleted successfully'
     });
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { endpoint: 'members/[id]', operation: 'delete' },
+    });
     return NextResponse.json(
       { success: false, error: 'Failed to delete member' },
       { status: 500 }

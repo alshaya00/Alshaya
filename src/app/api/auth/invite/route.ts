@@ -9,10 +9,12 @@ import {
   findUserByEmail,
   getAllInvites,
   logActivity,
+  getSiteSettings,
 } from '@/lib/auth/store';
 import { getPermissionsForRole, getAssignableRoles } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/auth/types';
-import { hashPassword } from '@/lib/auth/password';
+import { hashPassword, validatePassword } from '@/lib/auth/password';
+import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 
 // Sanitize string input
 function sanitizeString(input: string | null | undefined): string {
@@ -221,12 +223,35 @@ export async function GET(request: NextRequest) {
 // PUT /api/auth/invite - Accept an invite and create account
 export async function PUT(request: NextRequest) {
   try {
+    // SECURITY: Rate limit by IP address
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(clientIp, rateLimiters.invite);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });
+    }
+
     const body = await request.json();
     const { code, password, nameArabic, nameEnglish, phone } = body;
 
     if (!code || !password || !nameArabic) {
       return NextResponse.json(
         { success: false, message: 'Code, password, and name are required', messageAr: 'الرمز وكلمة المرور والاسم مطلوبة' },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY: Validate password strength
+    const settings = await getSiteSettings();
+    const passwordValidation = validatePassword(password, settings.minPasswordLength || 8);
+    if (!passwordValidation.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: passwordValidation.errors.map((e) => e.en).join('. '),
+          messageAr: passwordValidation.errors.map((e) => e.ar).join('. '),
+          errors: passwordValidation.errors,
+        },
         { status: 400 }
       );
     }
