@@ -175,10 +175,12 @@ export default function ExcelViewPage() {
       }
 
       // Data type checks
-      if (member.birthYear && (member.birthYear < 1800 || member.birthYear > new Date().getFullYear())) {
+      const birthYear = Number(member.birthYear);
+      const deathYear = Number(member.deathYear);
+      if (member.birthYear && (birthYear < 1800 || birthYear > new Date().getFullYear())) {
         errors.push({ row: rowIndex, field: 'birthYear', message: 'سنة الميلاد غير صحيحة', severity: 'error' });
       }
-      if (member.deathYear && member.birthYear && member.deathYear < member.birthYear) {
+      if (member.deathYear && member.birthYear && deathYear < birthYear) {
         errors.push({ row: rowIndex, field: 'deathYear', message: 'سنة الوفاة قبل الميلاد', severity: 'error' });
       }
 
@@ -539,7 +541,8 @@ export default function ExcelViewPage() {
       }
 
       // Validate data types
-      if (member.birthYear && (member.birthYear < 1800 || member.birthYear > new Date().getFullYear())) {
+      const importBirthYear = Number(member.birthYear);
+      if (member.birthYear && (importBirthYear < 1800 || importBirthYear > new Date().getFullYear())) {
         errors.push({ row: rowIndex, field: 'birthYear', message: 'سنة الميلاد غير صحيحة', severity: 'error' });
       }
     });

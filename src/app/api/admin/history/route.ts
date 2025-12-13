@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const total = await prisma.changeHistory.count({ where });
 
     return NextResponse.json({
-      changes: changes.map((c) => ({
+      changes: changes.map((c: typeof changes[number]) => ({
         ...c,
         memberName: c.member?.fullNameAr || c.member?.firstName,
       })),

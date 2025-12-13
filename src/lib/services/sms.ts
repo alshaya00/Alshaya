@@ -164,7 +164,6 @@ export class SmsService {
 
     try {
       // Try to get from database first
-      // @ts-expect-error - Model may not exist yet
       const dbConfig = await prisma.apiServiceConfig?.findUnique({
         where: { id: 'default' },
       });
@@ -226,7 +225,6 @@ export class SmsService {
 
     // Log to database
     try {
-      // @ts-expect-error - Model may not exist yet
       await prisma.smsLog?.create({
         data: {
           to: options.to,

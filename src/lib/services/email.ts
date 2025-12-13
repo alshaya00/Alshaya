@@ -451,7 +451,6 @@ export class EmailService {
 
     try {
       // Try to get from database first
-      // @ts-expect-error - Model may not exist yet
       const dbConfig = await prisma.apiServiceConfig?.findUnique({
         where: { id: 'default' },
       });
@@ -542,7 +541,6 @@ export class EmailService {
 
     // Log to database
     try {
-      // @ts-expect-error - Model may not exist yet
       await prisma.emailLog?.create({
         data: {
           to: Array.isArray(options.to) ? options.to.join(',') : options.to,

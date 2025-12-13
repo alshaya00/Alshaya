@@ -10,14 +10,12 @@ import { smsService } from '@/lib/services/sms';
 // GET - Retrieve current API service configuration
 export async function GET() {
   try {
-    // @ts-expect-error - Model may not exist yet
     let config = await prisma.apiServiceConfig?.findUnique({
       where: { id: 'default' },
     });
 
     // If no config exists, create default
     if (!config) {
-      // @ts-expect-error - Model may not exist yet
       config = await prisma.apiServiceConfig?.create({
         data: {
           id: 'default',
@@ -67,7 +65,6 @@ export async function POST(request: NextRequest) {
     const data = validation.data;
 
     // Get existing config to preserve non-updated fields
-    // @ts-expect-error - Model may not exist yet
     const existingConfig = await prisma.apiServiceConfig?.findUnique({
       where: { id: 'default' },
     });
@@ -108,7 +105,6 @@ export async function POST(request: NextRequest) {
     if (data.testMode !== undefined) updateData.testMode = data.testMode;
 
     // Upsert configuration
-    // @ts-expect-error - Model may not exist yet
     const config = await prisma.apiServiceConfig?.upsert({
       where: { id: 'default' },
       update: updateData,

@@ -20,6 +20,17 @@ jest.mock('next/navigation', () => ({
   },
 }));
 
+// Mock next/server
+jest.mock('next/server', () => ({
+  NextRequest: jest.fn(),
+  NextResponse: {
+    json: jest.fn((data, init) => ({ ...data, ...init })),
+    next: jest.fn(),
+    redirect: jest.fn(),
+    rewrite: jest.fn(),
+  },
+}));
+
 // Mock next/headers
 jest.mock('next/headers', () => ({
   cookies() {

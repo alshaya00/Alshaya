@@ -47,7 +47,6 @@ export class BackupService {
 
   async getConfig(): Promise<BackupConfig> {
     try {
-      // @ts-expect-error - Model may not exist yet
       const job = await prisma.scheduledJob?.findUnique({
         where: { name: 'auto-backup' },
       });
@@ -67,7 +66,6 @@ export class BackupService {
     this.config = { ...this.config, ...config };
 
     try {
-      // @ts-expect-error - Model may not exist yet
       await prisma.scheduledJob?.upsert({
         where: { name: 'auto-backup' },
         update: {
@@ -124,7 +122,6 @@ export class BackupService {
 
       // Update job status
       try {
-        // @ts-expect-error - Model may not exist yet
         await prisma.scheduledJob?.update({
           where: { name: 'auto-backup' },
           data: {
@@ -163,7 +160,6 @@ export class BackupService {
 
       // Update job status
       try {
-        // @ts-expect-error - Model may not exist yet
         await prisma.scheduledJob?.update({
           where: { name: 'auto-backup' },
           data: {
@@ -258,14 +254,15 @@ export class BackupService {
       const members = JSON.parse(snapshot.treeData) as Record<string, unknown>[];
 
       // Delete all current members and re-create from snapshot
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: typeof prisma) => {
         // Delete all existing members (cascade will handle related records)
         await tx.familyMember.deleteMany({});
 
         // Re-create members
         for (const member of members) {
           await tx.familyMember.create({
-            data: member as Parameters<typeof tx.familyMember.create>[0]['data'],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: member as any,
           });
         }
       });

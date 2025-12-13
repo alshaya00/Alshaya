@@ -53,6 +53,13 @@ export interface MemberPhoto {
   updatedAt: string;
 }
 
+// Raw database row type (SQLite stores booleans as integers)
+interface MemberPhotoRow extends Omit<MemberPhoto, 'isFamilyAlbum' | 'isProfilePhoto' | 'isPublic'> {
+  isFamilyAlbum: number;
+  isProfilePhoto: number;
+  isPublic: number;
+}
+
 export interface CreatePendingImageInput {
   imageData: string;
   thumbnailData?: string;
@@ -348,7 +355,7 @@ export function createMemberPhoto(input: CreateMemberPhotoInput): MemberPhoto {
 export function getMemberPhotoById(id: string): MemberPhoto | null {
   const db = getDb();
   const stmt = db.prepare('SELECT * FROM MemberPhoto WHERE id = ?');
-  const row = stmt.get(id) as (MemberPhoto & { isFamilyAlbum: number; isProfilePhoto: number; isPublic: number }) | undefined;
+  const row = stmt.get(id) as MemberPhotoRow | undefined;
   db.close();
 
   if (!row) return null;
@@ -392,7 +399,7 @@ export function getMemberPhotos(memberId: string, options?: {
   }
 
   const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as (MemberPhoto & { isFamilyAlbum: number; isProfilePhoto: number; isPublic: number })[];
+  const rows = stmt.all(...params) as MemberPhotoRow[];
 
   db.close();
 
@@ -441,7 +448,7 @@ export function getFamilyAlbumPhotos(options?: {
   }
 
   const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as (MemberPhoto & { isFamilyAlbum: number; isProfilePhoto: number; isPublic: number })[];
+  const rows = stmt.all(...params) as MemberPhotoRow[];
 
   db.close();
 
@@ -495,7 +502,7 @@ export function getAllPhotos(options?: {
   }
 
   const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as (MemberPhoto & { isFamilyAlbum: number; isProfilePhoto: number; isPublic: number })[];
+  const rows = stmt.all(...params) as MemberPhotoRow[];
 
   db.close();
 
@@ -531,7 +538,7 @@ export function getPhotoTimeline(options?: {
   `;
 
   const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as (MemberPhoto & { isFamilyAlbum: number; isProfilePhoto: number; isPublic: number })[];
+  const rows = stmt.all(...params) as MemberPhotoRow[];
 
   db.close();
 
@@ -657,7 +664,7 @@ export function setProfilePhoto(memberId: string, photoId: string): boolean {
 export function getProfilePhoto(memberId: string): MemberPhoto | null {
   const db = getDb();
   const stmt = db.prepare('SELECT * FROM MemberPhoto WHERE memberId = ? AND isProfilePhoto = 1 LIMIT 1');
-  const row = stmt.get(memberId) as (MemberPhoto & { isFamilyAlbum: number; isProfilePhoto: number; isPublic: number }) | undefined;
+  const row = stmt.get(memberId) as MemberPhotoRow | undefined;
   db.close();
 
   if (!row) return null;
