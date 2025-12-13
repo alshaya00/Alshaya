@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllMembers, getMaleMembers, getMembersByGeneration, getMembersByBranch, FamilyMember, familyMembers } from '@/lib/data';
-import { prisma } from '@/lib/prisma';
-
-// Sanitize string input to prevent XSS attacks
-function sanitizeString(input: string | null | undefined): string | null {
-  if (!input) return null;
-  // Remove script tags and HTML tags, then escape remaining special characters
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<[^>]*>/g, '')
-    // Escape special characters to prevent XSS (do NOT convert entities back)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .trim();
-}
+import { FamilyMember } from '@/lib/data';
+import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInDb } from '@/lib/db';
+import { sanitizeString } from '@/lib/sanitize';
 
 // Normalize gender input to handle case insensitivity
 function normalizeGender(gender: string): 'Male' | 'Female' | null {
@@ -36,26 +21,15 @@ export async function GET(request: NextRequest) {
     const malesOnly = searchParams.get('males') === 'true';
     const status = searchParams.get('status');
     const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
 
-    // Try to get members from database first
-    let members: FamilyMember[];
-    try {
-      const dbMembers = await prisma.familyMember.findMany();
-      if (dbMembers.length > 0) {
-        members = dbMembers.map(m => ({
-          ...m,
-          gender: m.gender as 'Male' | 'Female',
-        }));
-      } else {
-        // Fallback to in-memory data if database is empty
-        members = getAllMembers();
-      }
-    } catch (dbError) {
-      console.error('Database error, falling back to in-memory data:', dbError);
-      members = getAllMembers();
-    }
+    // Validate pagination params
+    const page = Math.max(1, parseInt(pageParam || '1') || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(limitParam || '100') || 100));
+
+    // Get all members from database
+    let members = await getAllMembersFromDb();
 
     if (malesOnly) {
       members = members.filter(m => m.gender === 'Male');
@@ -64,13 +38,15 @@ export async function GET(request: NextRequest) {
     if (gender) {
       const normalizedGender = normalizeGender(gender);
       if (normalizedGender) {
-        members = members.filter((m) => m.gender === normalizedGender);
+        members = members.filter(m => m.gender === normalizedGender);
       }
     }
 
     if (generation) {
       const gen = parseInt(generation);
-      members = members.filter(m => m.generation === gen);
+      if (!isNaN(gen)) {
+        members = members.filter(m => m.generation === gen);
+      }
     }
 
     if (branch) {
@@ -78,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      members = members.filter((m) => m.status === status);
+      members = members.filter(m => m.status === status);
     }
 
     if (search) {
@@ -109,6 +85,7 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
+    console.error('Error fetching members:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch members' },
       { status: 500 }
@@ -142,42 +119,17 @@ export async function POST(request: NextRequest) {
 
     // Check for duplicate ID in database
     if (body.id) {
-      try {
-        const existingMember = await prisma.familyMember.findUnique({
-          where: { id: body.id }
-        });
-        if (existingMember) {
-          return NextResponse.json(
-            { success: false, error: 'Member with this ID already exists' },
-            { status: 409 }
-          );
-        }
-      } catch {
-        // Fallback to in-memory check if database is unavailable
-        if (familyMembers.some(m => m.id === body.id)) {
-          return NextResponse.json(
-            { success: false, error: 'Member with this ID already exists' },
-            { status: 409 }
-          );
-        }
+      const exists = await memberExistsInDb(body.id);
+      if (exists) {
+        return NextResponse.json(
+          { success: false, error: 'Member with this ID already exists' },
+          { status: 409 }
+        );
       }
     }
 
-    // Generate ID if not provided - get max from database first
-    let maxId: number;
-    try {
-      const allMembers = await prisma.familyMember.findMany({
-        select: { id: true }
-      });
-      if (allMembers.length > 0) {
-        maxId = Math.max(...allMembers.map(m => parseInt(m.id.slice(1))));
-      } else {
-        maxId = Math.max(...familyMembers.map(m => parseInt(m.id.slice(1))));
-      }
-    } catch {
-      maxId = Math.max(...familyMembers.map(m => parseInt(m.id.slice(1))));
-    }
-    const id = body.id || `P${String(maxId + 1).padStart(3, '0')}`;
+    // Generate ID if not provided
+    const id = body.id || await getNextIdFromDb();
 
     // Create member object with sanitized inputs
     const newMember: FamilyMember = {
@@ -203,67 +155,24 @@ export async function POST(request: NextRequest) {
       biography: sanitizeString(body.biography),
       occupation: sanitizeString(body.occupation),
       email: sanitizeString(body.email),
+      createdBy: body.createdBy || 'system',
     };
 
-    // Persist to database using Prisma
-    try {
-      const createdMember = await prisma.familyMember.create({
-        data: {
-          id: newMember.id,
-          firstName: newMember.firstName,
-          fatherName: newMember.fatherName,
-          grandfatherName: newMember.grandfatherName,
-          greatGrandfatherName: newMember.greatGrandfatherName,
-          familyName: newMember.familyName,
-          fatherId: newMember.fatherId,
-          gender: newMember.gender,
-          birthYear: newMember.birthYear ? parseInt(String(newMember.birthYear)) : null,
-          sonsCount: newMember.sonsCount,
-          daughtersCount: newMember.daughtersCount,
-          generation: newMember.generation,
-          branch: newMember.branch,
-          fullNameAr: newMember.fullNameAr,
-          fullNameEn: newMember.fullNameEn,
-          phone: newMember.phone,
-          city: newMember.city,
-          status: newMember.status,
-          photoUrl: newMember.photoUrl,
-          biography: newMember.biography,
-          occupation: newMember.occupation,
-          email: newMember.email,
-          createdBy: body.createdBy || 'system',
-        },
-      });
+    // Create in database
+    const createdMember = await createMemberInDb(newMember);
 
-      // Update parent's children count if fatherId is provided
-      if (newMember.fatherId) {
-        const countField = newMember.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
-        await prisma.familyMember.update({
-          where: { id: newMember.fatherId },
-          data: {
-            [countField]: {
-              increment: 1,
-            },
-          },
-        });
-      }
-
+    if (!createdMember) {
       return NextResponse.json({
-        success: true,
-        data: createdMember,
-        message: 'Member created successfully'
-      }, { status: 201 });
-    } catch (dbError) {
-      console.error('Database error creating member:', dbError);
-      // Fallback to returning the member object if database persistence fails
-      // This allows the app to work even without a database connection
-      return NextResponse.json({
-        success: true,
-        data: newMember,
-        message: 'Member created (local only - database unavailable)',
-        warning: 'Database persistence failed'
-      }, { status: 201 });
+        success: false,
+        error: 'Failed to create member in database'
+      }, { status: 500 });
     }
+
+    return NextResponse.json({
+      success: true,
+      data: createdMember,
+      message: 'Member created successfully'
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating member:', error);
     return NextResponse.json(

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getAllMembers, getGen2Branches, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
 
@@ -10,8 +10,9 @@ type SortField = 'id' | 'firstName' | 'generation' | 'birthYear';
 type SortOrder = 'asc' | 'desc';
 
 export default function RegistryPage() {
-  const allMembers = getAllMembers();
-  const gen2Branches = getGen2Branches();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [gen2Branches, setGen2Branches] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [generationFilter, setGenerationFilter] = useState<string>('all');
@@ -19,6 +20,24 @@ export default function RegistryPage() {
   const [lineageFilter, setLineageFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/members?limit=500');
+        const data = await res.json();
+        const members = data.data || [];
+        setAllMembers(members);
+        // Get Gen 2 branches (generation === 2)
+        setGen2Branches(members.filter((m: FamilyMember) => m.generation === 2));
+      } catch (error) {
+        console.error('Error loading members:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const generations = [...new Set(allMembers.map((m) => m.generation))].sort();
   const branches = [...new Set(allMembers.map((m) => m.branch).filter(Boolean))];
@@ -94,6 +113,17 @@ export default function RegistryPage() {
     if (sortField !== field) return null;
     return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8">
