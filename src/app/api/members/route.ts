@@ -39,10 +39,26 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    let members: FamilyMember[] = getAllMembers();
+    // Try to get members from database first
+    let members: FamilyMember[];
+    try {
+      const dbMembers = await prisma.familyMember.findMany();
+      if (dbMembers.length > 0) {
+        members = dbMembers.map(m => ({
+          ...m,
+          gender: m.gender as 'Male' | 'Female',
+        }));
+      } else {
+        // Fallback to in-memory data if database is empty
+        members = getAllMembers();
+      }
+    } catch (dbError) {
+      console.error('Database error, falling back to in-memory data:', dbError);
+      members = getAllMembers();
+    }
 
     if (malesOnly) {
-      members = getMaleMembers();
+      members = members.filter(m => m.gender === 'Male');
     }
 
     if (gender) {
@@ -53,11 +69,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (generation) {
-      members = getMembersByGeneration(parseInt(generation));
+      const gen = parseInt(generation);
+      members = members.filter(m => m.generation === gen);
     }
 
     if (branch) {
-      members = getMembersByBranch(branch);
+      members = members.filter(m => m.branch === branch);
     }
 
     if (status) {
@@ -123,16 +140,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate ID
-    if (body.id && familyMembers.some(m => m.id === body.id)) {
-      return NextResponse.json(
-        { success: false, error: 'Member with this ID already exists' },
-        { status: 409 }
-      );
+    // Check for duplicate ID in database
+    if (body.id) {
+      try {
+        const existingMember = await prisma.familyMember.findUnique({
+          where: { id: body.id }
+        });
+        if (existingMember) {
+          return NextResponse.json(
+            { success: false, error: 'Member with this ID already exists' },
+            { status: 409 }
+          );
+        }
+      } catch {
+        // Fallback to in-memory check if database is unavailable
+        if (familyMembers.some(m => m.id === body.id)) {
+          return NextResponse.json(
+            { success: false, error: 'Member with this ID already exists' },
+            { status: 409 }
+          );
+        }
+      }
     }
 
-    // Generate ID if not provided
-    const maxId = Math.max(...familyMembers.map(m => parseInt(m.id.slice(1))));
+    // Generate ID if not provided - get max from database first
+    let maxId: number;
+    try {
+      const allMembers = await prisma.familyMember.findMany({
+        select: { id: true }
+      });
+      if (allMembers.length > 0) {
+        maxId = Math.max(...allMembers.map(m => parseInt(m.id.slice(1))));
+      } else {
+        maxId = Math.max(...familyMembers.map(m => parseInt(m.id.slice(1))));
+      }
+    } catch {
+      maxId = Math.max(...familyMembers.map(m => parseInt(m.id.slice(1))));
+    }
     const id = body.id || `P${String(maxId + 1).padStart(3, '0')}`;
 
     // Create member object with sanitized inputs
