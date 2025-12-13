@@ -1,8 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+// Helper to get auth user from request
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.view_audit_logs && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -45,6 +81,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    // Only admins can create history entries
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     const change = await prisma.changeHistory.create({
@@ -54,8 +107,8 @@ export async function POST(request: NextRequest) {
         oldValue: body.oldValue,
         newValue: body.newValue,
         changeType: body.changeType,
-        changedBy: body.changedBy || 'admin',
-        changedByName: body.changedByName || 'المدير',
+        changedBy: user.id,
+        changedByName: user.nameArabic,
         batchId: body.batchId,
         reason: body.reason,
         fullSnapshot: body.fullSnapshot,

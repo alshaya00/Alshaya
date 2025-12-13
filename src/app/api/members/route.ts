@@ -5,13 +5,16 @@ import { prisma } from '@/lib/prisma';
 // Sanitize string input to prevent XSS attacks
 function sanitizeString(input: string | null | undefined): string | null {
   if (!input) return null;
-  // Remove HTML tags and script content
+  // Remove script tags and HTML tags, then escape remaining special characters
   return input
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<[^>]*>/g, '')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
+    // Escape special characters to prevent XSS (do NOT convert entities back)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
     .trim();
 }
 

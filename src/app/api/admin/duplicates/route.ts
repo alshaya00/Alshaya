@@ -1,8 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+
+// Helper to get auth user from request
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission - duplicates management requires admin level access
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
@@ -39,6 +73,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission - duplicates management requires admin level access
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     const duplicate = await prisma.duplicateFlag.create({
@@ -47,7 +98,7 @@ export async function POST(request: NextRequest) {
         targetMemberId: body.targetMemberId,
         matchScore: body.matchScore,
         matchReasons: JSON.stringify(body.matchReasons || []),
-        detectedBy: body.detectedBy || 'SYSTEM',
+        detectedBy: user.id,
       },
     });
 

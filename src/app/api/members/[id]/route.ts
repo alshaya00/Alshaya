@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMemberById, getChildren, familyMembers } from '@/lib/data';
+import { getMemberById, getChildren, familyMembers, updateMemberInMemory, deleteMemberFromMemory } from '@/lib/data';
+import { prisma } from '@/lib/prisma';
 
 // GET /api/members/[id] - Get single member with children
 export async function GET(
@@ -94,18 +95,56 @@ export async function PUT(
       }
     }
 
-    // Create updated member
-    const updatedMember = {
-      ...member,
-      ...body,
-      id: params.id, // Prevent ID change
+    // Create updated member data
+    const updateData = {
+      firstName: body.firstName,
+      fatherName: body.fatherName,
+      grandfatherName: body.grandfatherName,
+      greatGrandfatherName: body.greatGrandfatherName,
+      familyName: body.familyName,
+      fatherId: body.fatherId,
+      gender: body.gender,
+      birthYear: body.birthYear,
+      deathYear: body.deathYear,
+      generation: body.generation,
+      branch: body.branch,
+      lineage: body.lineage,
+      fullNameAr: body.fullNameAr,
+      fullNameEn: body.fullNameEn,
+      phone: body.phone,
+      city: body.city,
+      status: body.status,
+      photoUrl: body.photoUrl,
+      biography: body.biography,
+      occupation: body.occupation,
+      email: body.email,
     };
 
-    // In real implementation with Prisma:
-    // const result = await prisma.familyMember.update({
-    //   where: { id: params.id },
-    //   data: updatedMember
-    // });
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key as keyof typeof updateData] === undefined) {
+        delete updateData[key as keyof typeof updateData];
+      }
+    });
+
+    // Try to persist to database
+    let updatedMember;
+    try {
+      updatedMember = await prisma.familyMember.update({
+        where: { id: params.id },
+        data: updateData
+      });
+    } catch (dbError) {
+      // Fallback to in-memory update if database fails
+      console.log('Database update failed, using in-memory fallback:', dbError);
+      updatedMember = updateMemberInMemory(params.id, updateData);
+      if (!updatedMember) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to update member' },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -148,8 +187,20 @@ export async function DELETE(
       );
     }
 
-    // In real implementation with Prisma:
-    // await prisma.familyMember.delete({ where: { id: params.id } });
+    // Try to delete from database
+    try {
+      await prisma.familyMember.delete({ where: { id: params.id } });
+    } catch (dbError) {
+      // Fallback to in-memory delete if database fails
+      console.log('Database delete failed, using in-memory fallback:', dbError);
+      const deleted = deleteMemberFromMemory(params.id);
+      if (!deleted) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to delete member' },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

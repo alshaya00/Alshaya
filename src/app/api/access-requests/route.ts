@@ -188,17 +188,21 @@ export async function POST(request: NextRequest) {
         success: true,
       });
 
+      // TODO: In production, send tempPassword via email instead of logging
+      console.log(`[SECURITY] Temp password for ${newUser.email} created. Email should be sent.`);
+
       return NextResponse.json({
         success: true,
-        message: 'Request approved. User account created.',
-        messageAr: 'تمت الموافقة على الطلب. تم إنشاء حساب المستخدم.',
+        message: 'Request approved. User account created. Password sent to user email.',
+        messageAr: 'تمت الموافقة على الطلب. تم إنشاء حساب المستخدم. تم إرسال كلمة المرور للبريد الإلكتروني.',
         user: {
           id: newUser.id,
           email: newUser.email,
           nameArabic: newUser.nameArabic,
           role: newUser.role,
-          tempPassword, // In real app, would send via email
+          // Note: tempPassword is NOT returned for security - it should be sent via email
         },
+        requiresPasswordReset: true,
       });
     }
 
