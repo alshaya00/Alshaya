@@ -18,7 +18,7 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.19.1",
+    "@prisma/client": "^5.10.0",
     "@sentry/nextjs": "^10.30.0",
     "@tanstack/react-query": "^5.90.12",
     "bcryptjs": "^3.0.3",
@@ -57,7 +57,7 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8.4.35",
-    "prisma": "^5.19.1",
+    "prisma": "^5.10.0",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.6",
     "tsx": "^4.7.1",

@@ -2654,3 +2654,42 @@ export function getLineageStatistics() {
     branches: branchStats,
   };
 }
+
+/**
+ * Update a member in the in-memory array
+ * Returns the updated member or null if not found
+ */
+export function updateMemberInMemory(id: string, updates: Partial<FamilyMember>): FamilyMember | null {
+  const index = familyMembers.findIndex(m => m.id === id);
+  if (index === -1) return null;
+
+  // Merge updates with existing member
+  familyMembers[index] = {
+    ...familyMembers[index],
+    ...updates,
+    id, // Ensure ID is never changed
+  };
+
+  return familyMembers[index];
+}
+
+/**
+ * Delete a member from the in-memory array
+ * Returns true if deleted, false if not found
+ */
+export function deleteMemberFromMemory(id: string): boolean {
+  const index = familyMembers.findIndex(m => m.id === id);
+  if (index === -1) return false;
+
+  familyMembers.splice(index, 1);
+  return true;
+}
+
+/**
+ * Add a new member to the in-memory array
+ * Returns the added member
+ */
+export function addMemberToMemory(member: FamilyMember): FamilyMember {
+  familyMembers.push(member);
+  return member;
+}
