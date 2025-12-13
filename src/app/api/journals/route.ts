@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Parse JSON fields safely
-    const parsedJournals = journals.map(journal => ({
+    const parsedJournals = journals.map((journal: typeof journals[0]) => ({
       ...journal,
       tags: safeJsonParseArray<string>(journal.tags),
       relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)

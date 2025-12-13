@@ -208,12 +208,12 @@ export async function getBackupStats(): Promise<{
     },
   });
 
-  const autoBackups = snapshots.filter(s => s.snapshotType === 'AUTO_BACKUP').length;
-  const manualBackups = snapshots.filter(s => s.snapshotType === 'MANUAL').length;
+  const autoBackups = snapshots.filter((s: typeof snapshots[0]) => s.snapshotType === 'AUTO_BACKUP').length;
+  const manualBackups = snapshots.filter((s: typeof snapshots[0]) => s.snapshotType === 'MANUAL').length;
   const lastBackup = snapshots[0];
 
   // Estimate storage (rough calculation based on JSON string length)
-  const totalStorageBytes = snapshots.reduce((acc, s) => acc + (s.treeData?.length || 0), 0);
+  const totalStorageBytes = snapshots.reduce((acc: number, s: typeof snapshots[0]) => acc + (s.treeData?.length || 0), 0);
 
   return {
     totalBackups: snapshots.length,

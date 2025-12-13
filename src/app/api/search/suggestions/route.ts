@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
           });
 
           // Deduplicate
-          recentSearches = [...new Set(history.map(h => h.query))];
+          recentSearches = Array.from(new Set(history.map((h: { query: string }) => h.query)));
 
           // Add history suggestions
           for (const historyQuery of recentSearches) {

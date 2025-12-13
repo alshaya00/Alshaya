@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     // Get unique recent queries (deduplicated)
     const uniqueQueries = Array.from(
-      new Map(history.map(h => [h.query.toLowerCase(), h])).values()
+      new Map(history.map((h: typeof history[0]) => [h.query.toLowerCase(), h])).values()
     ).slice(0, limit);
 
     return NextResponse.json({

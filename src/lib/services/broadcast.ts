@@ -4,7 +4,6 @@
 
 import { prisma } from '@/lib/prisma';
 import { emailService } from './email';
-import type { BroadcastRecipient } from '@prisma/client';
 
 // ============================================
 // TYPES
