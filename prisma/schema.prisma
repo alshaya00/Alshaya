@@ -1067,3 +1067,129 @@ model BreastfeedingRelationship {
   @@index([nurseId])
   @@index([milkFatherId])
 }
+
+// ============================================
+// FAMILY JOURNALS & STORIES
+// ============================================
+
+model FamilyJournal {
+  id              String   @id @default(cuid())
+
+  // Titles (bilingual support)
+  titleAr         String   // Arabic title
+  titleEn         String?  // English title (optional)
+
+  // Story content
+  contentAr       String   // Arabic content (main story)
+  contentEn       String?  // English translation (optional)
+  excerpt         String?  // Short preview/summary for cards
+
+  // Categorization
+  category        String   @default("ORAL_HISTORY") // ORAL_HISTORY, MIGRATION, MEMORY, POEM, GENEALOGY
+  tags            String?  // JSON array of tags for filtering
+
+  // Time period
+  era             String?  // Free text era description
+  yearFrom        Int?     // Start year (approximate)
+  yearTo          Int?     // End year (approximate, null if single year)
+  dateDescription String?  // Human readable date: "في الأربعينات الهجرية"
+
+  // Location
+  location        String?  // Where the story took place
+  locationAr      String?  // Arabic location name
+
+  // Related family members
+  primaryMemberId   String?  // Main person this story is about
+  relatedMemberIds  String?  // JSON array of related member IDs
+  generation        Int?     // Which generation this story relates to
+
+  // Media attachments
+  coverImageUrl   String?  // Cover/hero image for the story
+  mediaItems      JournalMedia[]
+
+  // Narrative details
+  narrator        String?  // Who told this story
+  narratorId      String?  // If narrator is a family member
+  source          String?  // Source: "رواية شفهية", "وثيقة", "صورة قديمة"
+
+  // Publishing
+  status          String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  isFeatured      Boolean  @default(false) // Show on homepage/highlights
+  displayOrder    Int      @default(0) // For manual ordering
+
+  // Contribution tracking
+  authorId        String?  // User who wrote/submitted
+  authorName      String   // Author name for display
+
+  // Approval workflow
+  reviewStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+
+  // Engagement
+  viewCount       Int      @default(0)
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([primaryMemberId])
+  @@index([generation])
+  @@index([yearFrom])
+  @@index([reviewStatus])
+  @@index([createdAt])
+}
+
+model JournalMedia {
+  id              String   @id @default(cuid())
+
+  journalId       String
+  journal         FamilyJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+
+  // Media data
+  type            String   // IMAGE, DOCUMENT, AUDIO, VIDEO
+  url             String?  // External URL or path
+  imageData       String?  // Base64 for uploaded images
+  thumbnailData   String?  // Thumbnail for preview
+
+  // Description
+  titleAr         String?
+  titleEn         String?
+  captionAr       String?
+  captionEn       String?
+  year            Int?     // Year of the media
+
+  // Display
+  displayOrder    Int      @default(0)
+  isHero          Boolean  @default(false) // Main/hero image
+
+  // Metadata
+  createdAt       DateTime @default(now())
+
+  @@index([journalId])
+  @@index([type])
+}
+
+model JournalCategory {
+  id              String   @id @default(cuid())
+
+  // Category info
+  key             String   @unique // ORAL_HISTORY, MIGRATION, etc.
+  nameAr          String   // الروايات الشفهية
+  nameEn          String   // Oral History
+  descriptionAr   String?  // Description in Arabic
+  descriptionEn   String?  // Description in English
+  icon            String?  // Icon name or emoji
+  color           String?  // Theme color for the category
+
+  // Display
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  @@index([key])
+  @@index([displayOrder])
+}

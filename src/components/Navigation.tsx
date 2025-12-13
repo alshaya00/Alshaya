@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X,
   GitBranch, Download, Upload, History, Settings, Edit, Copy,
-  MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield
+  MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
@@ -16,21 +16,22 @@ const navItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
   { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
   { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
-  { href: '/registry', label: 'السجل', labelEn: 'Registry', icon: Users },
-  { href: '/quick-add', label: 'إضافة', labelEn: 'Add', icon: PlusCircle },
+  { href: '/journals', label: 'السجل التاريخي', labelEn: 'Journals', icon: BookOpen },
+  { href: '/registry', label: 'الأعضاء', labelEn: 'Registry', icon: Users },
 ];
 
 // Mobile bottom nav items (5 main + More)
 const mobileNavItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
   { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
-  { href: '/quick-add', label: 'إضافة', labelEn: 'Add', icon: PlusCircle },
-  { href: '/registry', label: 'السجل', labelEn: 'Registry', icon: Users },
+  { href: '/journals', label: 'السجل', labelEn: 'Journal', icon: BookOpen },
+  { href: '/registry', label: 'الأعضاء', labelEn: 'Members', icon: Users },
   { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 },
 ];
 
 const moreNavItems = [
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
+  { href: '/quick-add', label: 'إضافة عضو', labelEn: 'Add Member', icon: PlusCircle },
   { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Statistics', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
   { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit, permission: 'edit_member' },
