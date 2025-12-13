@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 import { FamilyMember, getGen2Branches } from '@/lib/data';
-import { ZoomIn, ZoomOut, Maximize2, Users, Home, GitBranch, Layers } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Users, Home, GitBranch, Layers, Star } from 'lucide-react';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -15,6 +15,7 @@ interface FamilyTreeGraphProps {
   members: FamilyMember[];
   onSelectMember: (member: FamilyMember) => void;
   highlightedId?: string | null;
+  currentUserId?: string | null; // For "Find Me" feature
 }
 
 interface D3TreeNode {
@@ -52,7 +53,7 @@ const LINEAGE_COLORS = [
 
 const ROOT_COLOR = { primary: '#78716c', secondary: '#d6d3d1', gradient: ['#a8a29e', '#78716c'] };
 
-export default function FamilyTreeGraph({ members, onSelectMember, highlightedId }: FamilyTreeGraphProps) {
+export default function FamilyTreeGraph({ members, onSelectMember, highlightedId, currentUserId }: FamilyTreeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -220,6 +221,27 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     svg.transition().duration(500).call(zoomRef.current.transform, fitTransform);
   }, [dimensions, nodes]);
 
+  // Find Me - Center on current user (Fix #3: Add Find Me Button)
+  const handleFindMe = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current || !currentUserId || nodes.length === 0) return;
+
+    // Find the current user's node
+    const userNode = nodes.find(node => node.data.id === currentUserId);
+    if (!userNode) return;
+
+    // Center on the user's node with a nice zoom level
+    const scale = 1.2;
+    const svg = d3.select(svgRef.current);
+    const findMeTransform = d3.zoomIdentity
+      .translate(dimensions.width / 2 - userNode.x * scale, dimensions.height / 2 - userNode.y * scale)
+      .scale(scale);
+
+    svg.transition().duration(700).call(zoomRef.current.transform, findMeTransform);
+
+    // Optionally select the user's node
+    onSelectMember(userNode.data);
+  }, [currentUserId, dimensions, nodes, onSelectMember]);
+
   // Generate orthogonal (right-angled) path for links - clearer for family trees
   const generateLinkPath = (source: D3TreeNode, target: D3TreeNode) => {
     const sourceY = source.y + 50; // Start from bottom of parent card
@@ -287,6 +309,19 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
         >
           <Maximize2 size={20} className="text-gray-600" />
         </button>
+        {/* Find Me Button - Fix #3 */}
+        {currentUserId && (
+          <>
+            <div className="w-full h-px bg-gray-200" />
+            <button
+              onClick={handleFindMe}
+              className="p-2.5 hover:bg-amber-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 bg-amber-100"
+              title="اعثر علي - Find Me"
+            >
+              <Star size={20} className="text-amber-600" />
+            </button>
+          </>
+        )}
         <div className="w-full h-px bg-gray-200" />
         <button
           onClick={() => setColorMode(colorMode === 'generation' ? 'lineage' : 'generation')}

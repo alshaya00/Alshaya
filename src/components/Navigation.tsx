@@ -12,34 +12,37 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
 
+// Updated labels for better UX (Fix #6: Rename Confusing Labels)
 const navItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
   { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
-  { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
-  { href: '/journals', label: 'السجل التاريخي', labelEn: 'Journals', icon: BookOpen },
-  { href: '/registry', label: 'الأعضاء', labelEn: 'Registry', icon: Users },
+  { href: '/journals', label: 'القصص', labelEn: 'Stories', icon: BookOpen },
+  { href: '/gatherings', label: 'اللقاءات', labelEn: 'Gatherings', icon: GitBranch },
+  { href: '/registry', label: 'العائلة', labelEn: 'Family', icon: Users },
 ];
 
-// Mobile bottom nav items (5 main + More)
+// Mobile bottom nav items (5 main + More) - Simplified for UX (Fix #2)
 const mobileNavItems = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
   { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
-  { href: '/journals', label: 'السجل', labelEn: 'Journal', icon: BookOpen },
-  { href: '/registry', label: 'الأعضاء', labelEn: 'Members', icon: Users },
-  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 },
+  { href: '/journals', label: 'القصص', labelEn: 'Stories', icon: BookOpen },
+  { href: '/gatherings', label: 'اللقاءات', labelEn: 'Gatherings', icon: GitBranch },
+  { href: '/registry', label: 'العائلة', labelEn: 'Family', icon: Users },
 ];
 
+// More menu items with renamed labels (Fix #6)
 const moreNavItems = [
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
-  { href: '/quick-add', label: 'إضافة عضو', labelEn: 'Add Member', icon: PlusCircle },
-  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Statistics', icon: BarChart3 },
+  { href: '/gallery', label: 'الصور', labelEn: 'Photos', icon: PlusCircle },
+  { href: '/quick-add', label: 'إضافة فرد', labelEn: 'Add Member', icon: PlusCircle },
+  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Family Stats', icon: BarChart3 },
   { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
-  { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit, permission: 'edit_member' },
-  { href: '/export', label: 'تصدير', labelEn: 'Export', icon: Download, permission: 'export_data' },
-  { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload, permission: 'import_data' },
-  { href: '/duplicates', label: 'التكرارات', labelEn: 'Duplicates', icon: Copy, permission: 'edit_member' },
-  { href: '/history', label: 'السجل', labelEn: 'History', icon: History, permission: 'view_change_history' },
-  { href: '/admin', label: 'لوحة التحكم', labelEn: 'Admin Panel', icon: Settings },
+  { href: '/tree-editor', label: 'تعديل الشجرة', labelEn: 'Edit Tree', icon: Edit, permission: 'edit_member' },
+  { href: '/export', label: 'تصدير البيانات', labelEn: 'Export', icon: Download, permission: 'export_data' },
+  { href: '/import', label: 'استيراد البيانات', labelEn: 'Import', icon: Upload, permission: 'import_data' },
+  { href: '/duplicates', label: 'إدارة التكرارات', labelEn: 'Duplicates', icon: Copy, permission: 'edit_member' },
+  { href: '/history', label: 'سجل التغييرات', labelEn: 'Change History', icon: History, permission: 'view_change_history' },
+  { href: '/admin', label: 'إدارة العائلة', labelEn: 'Family Management', icon: Settings },
 ];
 
 export function Navigation() {
