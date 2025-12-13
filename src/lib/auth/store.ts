@@ -122,6 +122,7 @@ let siteSettings = {
   lockoutDurationMinutes: 15,
   allowGuestPreview: true,
   guestPreviewMemberCount: 20,
+  minPasswordLength: 8,
 };
 
 let privacySettings = {

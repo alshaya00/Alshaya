@@ -291,10 +291,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           );
 
           // Update storage
-          if (prev) {
+          if (session) {
             storeSession(
               {
-                ...prev,
+                ...session,
                 user: {
                   ...data.user,
                   permissions: getPermissionsForRole(data.user.role),

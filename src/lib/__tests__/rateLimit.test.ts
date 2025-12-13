@@ -26,12 +26,15 @@ describe('Rate Limiting', () => {
     it('should track request count', () => {
       const config = RATE_LIMITS.api;
 
+      // Use a unique identifier for this test to avoid interference
+      const clientId = 'track-count-test';
+
       // Make 5 requests
       for (let i = 0; i < 5; i++) {
-        checkRateLimit('test-client', config);
+        checkRateLimit(clientId, config);
       }
 
-      const result = checkRateLimit('test-client', config);
+      const result = checkRateLimit(clientId, config);
       expect(result.remaining).toBe(config.maxRequests - 6);
     });
 

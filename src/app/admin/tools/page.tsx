@@ -155,7 +155,7 @@ export default function ToolsPage() {
       { name: 'فحص تسلسل الأجيال', status: 'pending' },
     ]);
 
-    const checks = [
+    const checks: Array<{ name: string; check: () => Promise<{ passed: boolean; warning?: boolean; message?: string }> }> = [
       { name: 'فحص اتصال قاعدة البيانات', check: async () => ({ passed: true }) },
       { name: 'التحقق من سلامة العلاقات', check: async () => {
         const res = await fetch('/api/members');

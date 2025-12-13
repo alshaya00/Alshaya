@@ -347,7 +347,7 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): { succe
 
 export function formatZodErrors(errors: z.ZodError): Record<string, string> {
   const formatted: Record<string, string> = {};
-  for (const error of errors.errors) {
+  for (const error of errors.issues) {
     const path = error.path.join('.');
     formatted[path] = error.message;
   }

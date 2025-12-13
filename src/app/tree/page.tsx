@@ -142,7 +142,7 @@ export default function TreePage() {
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        setSelectedMember(getMemberById(node.id));
+        setSelectedMember(getMemberById(node.id) || null);
       }
       if (e.key === 'ArrowRight' && hasChildren && !isExpanded) {
         e.preventDefault();

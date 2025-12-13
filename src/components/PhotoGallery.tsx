@@ -232,8 +232,8 @@ export default function PhotoGallery({
     );
   }
 
-  // Gallery View
-  const allPhotos = view === 'timeline' ? timeline.flatMap((t) => t.photos) : photos;
+  // Gallery View (view is 'gallery' or 'family' at this point since 'timeline' returns early)
+  const allPhotos = photos;
 
   return (
     <div>

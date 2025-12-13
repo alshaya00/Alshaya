@@ -34,11 +34,11 @@ export interface FamilyMember {
   lastModifiedBy?: string | null;
   version?: number;
   // Lineage Identification Fields
-  lineageBranchId: string | null;      // ID of the Gen 2 ancestor (main branch founder)
-  lineageBranchName: string | null;    // Name of the Gen 2 ancestor for display
-  subBranchId: string | null;          // ID of the Gen 3 ancestor (sub-branch founder)
-  subBranchName: string | null;        // Name of the Gen 3 ancestor for display
-  lineagePath: string[] | null;        // Array of ancestor IDs from root to parent
+  lineageBranchId?: string | null;      // ID of the Gen 2 ancestor (main branch founder)
+  lineageBranchName?: string | null;    // Name of the Gen 2 ancestor for display
+  subBranchId?: string | null;          // ID of the Gen 3 ancestor (sub-branch founder)
+  subBranchName?: string | null;        // Name of the Gen 3 ancestor for display
+  lineagePath?: string[] | null;        // Array of ancestor IDs from root to parent
 }
 
 export interface TreeNode extends FamilyMember {
