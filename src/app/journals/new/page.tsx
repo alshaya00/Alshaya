@@ -39,12 +39,15 @@ interface FormData {
   authorName: string;
   tags: string[];
   coverImageUrl: string;
+  primaryMemberId: string;
 }
 
 export default function NewJournalPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedEra = searchParams.get('era');
+  const preselectedMemberId = searchParams.get('memberId');
+  const preselectedMemberName = searchParams.get('memberName');
 
   const [formData, setFormData] = useState<FormData>({
     titleAr: '',
@@ -63,7 +66,10 @@ export default function NewJournalPage() {
     authorName: '',
     tags: [],
     coverImageUrl: '',
+    primaryMemberId: preselectedMemberId || '',
   });
+
+  const [linkedMemberName, setLinkedMemberName] = useState(preselectedMemberName || '');
 
   const [newTag, setNewTag] = useState('');
   const [saving, setSaving] = useState(false);
@@ -120,6 +126,7 @@ export default function NewJournalPage() {
           yearFrom: formData.yearFrom ? parseInt(formData.yearFrom) : null,
           yearTo: formData.yearTo ? parseInt(formData.yearTo) : null,
           generation: formData.generation ? parseInt(formData.generation) : null,
+          primaryMemberId: formData.primaryMemberId || null,
           status,
         }),
       });
@@ -166,7 +173,7 @@ export default function NewJournalPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center gap-4 mb-4">
             <Link
-              href="/journals"
+              href={linkedMemberName ? `/member/${formData.primaryMemberId}` : '/journals'}
               className="flex items-center gap-2 text-amber-200 hover:text-white transition-colors"
             >
               <ArrowRight className="w-5 h-5" />
@@ -176,8 +183,14 @@ export default function NewJournalPage() {
           <div className="flex items-center gap-3">
             <BookOpen className="w-8 h-8" />
             <div>
-              <h1 className="text-2xl font-bold">إضافة قصة جديدة</h1>
-              <p className="text-amber-200 text-sm">أضف قصة أو ذكرى من تاريخ العائلة</p>
+              <h1 className="text-2xl font-bold">
+                {linkedMemberName ? `إضافة قصة عن ${linkedMemberName.split(' ')[0]}` : 'إضافة قصة جديدة'}
+              </h1>
+              <p className="text-amber-200 text-sm">
+                {linkedMemberName
+                  ? `أضف قصة أو ذكرى عن ${linkedMemberName}`
+                  : 'أضف قصة أو ذكرى من تاريخ العائلة'}
+              </p>
             </div>
           </div>
         </div>
@@ -283,6 +296,37 @@ export default function NewJournalPage() {
                   dir="ltr"
                 />
               </div>
+
+              {/* Linked Family Member */}
+              {linkedMemberName && (
+                <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Users className="w-4 h-4 inline-block ml-1" />
+                    القصة مرتبطة بـ
+                  </label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-xl">
+                        👤
+                      </div>
+                      <div>
+                        <p className="font-semibold text-amber-800">{linkedMemberName}</p>
+                        <p className="text-xs text-amber-600">ستظهر هذه القصة في صفحته الشخصية</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkedMemberName('');
+                        handleChange('primaryMemberId', '');
+                      }}
+                      className="text-amber-600 hover:text-amber-800 p-1"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Author Name */}
               <div>

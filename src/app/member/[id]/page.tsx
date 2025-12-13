@@ -4,6 +4,7 @@ import { getAllMembers, getChildren } from '@/lib/data';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
+import MemberStoriesSection from '@/components/MemberStoriesSection';
 import {
   User,
   Calendar,
@@ -404,6 +405,14 @@ export default function MemberPage({ params }: PageProps) {
             {/* Photo Gallery */}
             <div className="mb-8">
               <MemberPhotoSection
+                memberId={member.id}
+                memberName={member.fullNameAr || member.firstName}
+              />
+            </div>
+
+            {/* Member Stories & History */}
+            <div className="mb-8">
+              <MemberStoriesSection
                 memberId={member.id}
                 memberName={member.fullNameAr || member.firstName}
               />
