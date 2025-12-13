@@ -22,6 +22,11 @@ import {
   RefreshCw,
   Shield,
   Activity,
+  Bell,
+  ChevronRight,
+  Image,
+  GitBranch,
+  UserPlus,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -33,6 +38,20 @@ interface DashboardStats {
   databaseSize: string;
   duplicatesCount: number;
   branchLinks: number;
+  pendingImages: number;
+  accessRequests: number;
+}
+
+interface ActionItem {
+  id: string;
+  type: 'pending_member' | 'pending_image' | 'duplicate' | 'access_request' | 'backup_needed';
+  title: string;
+  description: string;
+  count: number;
+  href: string;
+  icon: React.ReactNode;
+  color: string;
+  priority: 'high' | 'medium' | 'low';
 }
 
 interface RecentActivity {
@@ -53,8 +72,11 @@ export default function AdminDashboardPage() {
     databaseSize: '0 KB',
     duplicatesCount: 0,
     branchLinks: 0,
+    pendingImages: 0,
+    accessRequests: 0,
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -92,16 +114,116 @@ export default function AdminDashboardPage() {
       const branchLinksRes = await fetch('/api/admin/branch-links');
       const branchLinksData = await branchLinksRes.json().catch(() => ({ links: [] }));
 
+      // Load pending images
+      const pendingImagesRes = await fetch('/api/images/pending');
+      const pendingImagesData = await pendingImagesRes.json().catch(() => ({ pending: [] }));
+
+      // Load access requests
+      const accessReqRes = await fetch('/api/access-requests');
+      const accessReqData = await accessReqRes.json().catch(() => ({ requests: [] }));
+
+      const pendingApprovals = pendingData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0;
+      const duplicatesCount = duplicatesData.duplicates?.filter((d: { status: string }) => d.status === 'PENDING').length || 0;
+      const pendingImages = pendingImagesData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0;
+      const accessRequests = accessReqData.requests?.filter((r: { status: string }) => r.status === 'PENDING').length || 0;
+      const lastBackup = snapshotsData.snapshots?.[0]?.createdAt || null;
+
+      // Check if backup is needed (older than 7 days or none)
+      const backupNeeded = !lastBackup || (new Date().getTime() - new Date(lastBackup).getTime()) > 7 * 24 * 60 * 60 * 1000;
+
       setStats({
         totalMembers: statsData.totalMembers || 99,
-        pendingApprovals: pendingData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0,
+        pendingApprovals,
         recentChanges: historyData.changes?.length || 0,
         activeAdmins: activeAdmins || 1,
-        lastBackup: snapshotsData.snapshots?.[0]?.createdAt || null,
+        lastBackup,
         databaseSize: '2.5 MB',
-        duplicatesCount: duplicatesData.duplicates?.filter((d: { status: string }) => d.status === 'PENDING').length || 0,
+        duplicatesCount,
         branchLinks: branchLinksData.links?.filter((l: { isActive: boolean }) => l.isActive).length || 0,
+        pendingImages,
+        accessRequests,
       });
+
+      // Build action items list
+      const actions: ActionItem[] = [];
+
+      if (pendingApprovals > 0) {
+        actions.push({
+          id: 'pending_members',
+          type: 'pending_member',
+          title: 'أعضاء جدد بانتظار الموافقة',
+          description: `${pendingApprovals} عضو جديد يحتاج مراجعة وموافقة`,
+          count: pendingApprovals,
+          href: '/admin/pending',
+          icon: <UserPlus className="w-5 h-5" />,
+          color: 'bg-orange-500',
+          priority: 'high',
+        });
+      }
+
+      if (pendingImages > 0) {
+        actions.push({
+          id: 'pending_images',
+          type: 'pending_image',
+          title: 'صور بانتظار الموافقة',
+          description: `${pendingImages} صورة تحتاج مراجعة`,
+          count: pendingImages,
+          href: '/admin/images',
+          icon: <Image className="w-5 h-5" />,
+          color: 'bg-purple-500',
+          priority: 'medium',
+        });
+      }
+
+      if (duplicatesCount > 0) {
+        actions.push({
+          id: 'duplicates',
+          type: 'duplicate',
+          title: 'تكرارات محتملة',
+          description: `${duplicatesCount} تكرار محتمل يحتاج مراجعة`,
+          count: duplicatesCount,
+          href: '/duplicates',
+          icon: <AlertTriangle className="w-5 h-5" />,
+          color: 'bg-yellow-500',
+          priority: 'medium',
+        });
+      }
+
+      if (accessRequests > 0) {
+        actions.push({
+          id: 'access_requests',
+          type: 'access_request',
+          title: 'طلبات انضمام',
+          description: `${accessRequests} طلب انضمام جديد`,
+          count: accessRequests,
+          href: '/admin/settings',
+          icon: <Users className="w-5 h-5" />,
+          color: 'bg-blue-500',
+          priority: 'high',
+        });
+      }
+
+      if (backupNeeded) {
+        actions.push({
+          id: 'backup_needed',
+          type: 'backup_needed',
+          title: 'نسخة احتياطية مطلوبة',
+          description: lastBackup ? 'مضى أكثر من أسبوع على آخر نسخة' : 'لا توجد نسخ احتياطية',
+          count: 1,
+          href: '/admin/tools',
+          icon: <Camera className="w-5 h-5" />,
+          color: 'bg-red-500',
+          priority: 'low',
+        });
+      }
+
+      // Sort by priority
+      actions.sort((a, b) => {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+
+      setActionItems(actions);
 
       // Convert history to activity
       const activity: RecentActivity[] = (historyData.changes || []).slice(0, 5).map((change: {
@@ -130,6 +252,8 @@ export default function AdminDashboardPage() {
         databaseSize: '2.5 MB',
         duplicatesCount: 0,
         branchLinks: 0,
+        pendingImages: 0,
+        accessRequests: 0,
       });
     } finally {
       setIsLoading(false);
@@ -186,6 +310,62 @@ export default function AdminDashboardPage() {
         <h1 className="text-3xl font-bold text-gray-800">لوحة التحكم</h1>
         <p className="text-gray-500 mt-1">Admin Dashboard - نظرة عامة على النظام</p>
       </div>
+
+      {/* Action Required Panel - Shows when there are pending items */}
+      {actionItems.length > 0 && (
+        <div className="mb-8 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border-2 border-orange-200 overflow-hidden">
+          <div className="px-6 py-4 bg-orange-500 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">إجراءات مطلوبة</h2>
+                <p className="text-orange-100 text-sm">{actionItems.length} عنصر يحتاج انتباهك</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              {actionItems.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-transparent hover:border-orange-300 hover:shadow-md transition-all group"
+                >
+                  <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
+                    {item.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-800">{item.title}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold text-white ${item.color}`}>
+                        {item.count}
+                      </span>
+                      {item.priority === 'high' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                          عاجل
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 truncate">{item.description}</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                </Link>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-orange-100">
+              <Link
+                href="/admin/audit"
+                className="flex items-center justify-center gap-2 text-orange-600 hover:text-orange-800 font-medium text-sm"
+              >
+                <Activity className="w-4 h-4" />
+                عرض سجل النشاط الكامل
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

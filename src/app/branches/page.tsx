@@ -205,26 +205,7 @@ ${url}
           </Link>
         </div>
 
-        {/* Pending Alert */}
-        {totalPending > 0 && (
-          <Link
-            href="/admin/pending"
-            className="block mb-6 bg-orange-50 border-2 border-orange-200 rounded-xl p-4 hover:bg-orange-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-                <Bell className="text-white" size={20} />
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-orange-800">
-                  {totalPending} عضو جديد بانتظار المراجعة
-                </p>
-                <p className="text-sm text-orange-600">اضغط هنا للمراجعة والموافقة</p>
-              </div>
-              <ChevronRight className="text-orange-400" size={24} />
-            </div>
-          </Link>
-        )}
+        {/* Note: Pending approval notifications are shown in admin dashboard only */}
 
         {/* Branches List */}
         <div className="space-y-3">
