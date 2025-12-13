@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPendingImage, type CreatePendingImageInput } from '@/lib/db/images';
+import sharp from 'sharp';
 
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Thumbnail settings
+const THUMBNAIL_MAX_SIZE = 200;
+const THUMBNAIL_QUALITY = 80;
 
 // Allowed image types
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -63,12 +68,62 @@ function sanitizeString(str: string | undefined): string | undefined {
   return str.replace(/<[^>]*>/g, '').trim();
 }
 
-// Generate a thumbnail (smaller version of the image)
-function generateThumbnail(imageData: string, maxSize: number = 200): string {
-  // For server-side, we'll just store the original
-  // In a real app, you'd use sharp or similar for image processing
-  // For now, return the original (client handles resizing before upload)
-  return imageData;
+// Generate a thumbnail using Sharp
+async function generateThumbnail(imageData: string, maxSize: number = THUMBNAIL_MAX_SIZE): Promise<string> {
+  try {
+    // Extract base64 data and mime type from data URL
+    const match = imageData.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+    if (!match) {
+      console.log('Invalid image data URL for thumbnail generation');
+      return imageData;
+    }
+
+    const mimeType = match[1];
+    const base64Data = match[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Determine output format based on input type
+    let outputFormat: 'jpeg' | 'png' | 'webp' = 'jpeg';
+    if (mimeType === 'image/png') outputFormat = 'png';
+    else if (mimeType === 'image/webp') outputFormat = 'webp';
+
+    // Generate thumbnail using Sharp
+    let thumbnailBuffer: Buffer;
+
+    if (outputFormat === 'jpeg') {
+      thumbnailBuffer = await sharp(buffer)
+        .resize(maxSize, maxSize, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: THUMBNAIL_QUALITY })
+        .toBuffer();
+    } else if (outputFormat === 'png') {
+      thumbnailBuffer = await sharp(buffer)
+        .resize(maxSize, maxSize, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .png({ compressionLevel: 8 })
+        .toBuffer();
+    } else {
+      thumbnailBuffer = await sharp(buffer)
+        .resize(maxSize, maxSize, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: THUMBNAIL_QUALITY })
+        .toBuffer();
+    }
+
+    // Convert back to data URL
+    const thumbnailBase64 = thumbnailBuffer.toString('base64');
+    return `data:image/${outputFormat};base64,${thumbnailBase64}`;
+  } catch (error) {
+    console.error('Thumbnail generation failed:', error);
+    // Return original image if thumbnail generation fails
+    return imageData;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -131,10 +186,13 @@ export async function POST(request: NextRequest) {
       uploadedBy = 'authenticated';
     }
 
+    // Generate thumbnail
+    const thumbnailData = await generateThumbnail(body.imageData);
+
     // Prepare the input
     const input: CreatePendingImageInput = {
       imageData: body.imageData,
-      thumbnailData: generateThumbnail(body.imageData),
+      thumbnailData,
       category: body.category || 'memory',
       title: sanitizeString(body.title),
       titleAr: sanitizeString(body.titleAr),

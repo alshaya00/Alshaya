@@ -1,6 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMemberById, getChildren, familyMembers, updateMemberInMemory, deleteMemberFromMemory } from '@/lib/data';
+import { getMemberById, getChildren, familyMembers, updateMemberInMemory, deleteMemberFromMemory, FamilyMember } from '@/lib/data';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
+
+// Helper to record change history
+async function recordChangeHistory(
+  memberId: string,
+  oldMember: FamilyMember,
+  newData: Partial<FamilyMember>,
+  changedBy: string = 'system',
+  changedByName: string = 'النظام'
+): Promise<void> {
+  const batchId = randomUUID();
+  const changedFields: { field: string; oldValue: string | null; newValue: string | null }[] = [];
+
+  // Detect changed fields
+  const fieldsToTrack: (keyof FamilyMember)[] = [
+    'firstName', 'fatherName', 'grandfatherName', 'greatGrandfatherName',
+    'familyName', 'fatherId', 'gender', 'birthYear', 'deathYear',
+    'generation', 'branch', 'fullNameAr', 'fullNameEn', 'phone',
+    'city', 'status', 'photoUrl', 'biography', 'occupation', 'email'
+  ];
+
+  for (const field of fieldsToTrack) {
+    const oldValue = oldMember[field];
+    const newValue = newData[field];
+
+    // Only record if the field is in newData and the value changed
+    if (newValue !== undefined && String(oldValue || '') !== String(newValue || '')) {
+      changedFields.push({
+        field,
+        oldValue: oldValue !== null && oldValue !== undefined ? String(oldValue) : null,
+        newValue: newValue !== null && newValue !== undefined ? String(newValue) : null,
+      });
+    }
+  }
+
+  // Record each field change
+  for (const change of changedFields) {
+    try {
+      await prisma.changeHistory.create({
+        data: {
+          memberId,
+          fieldName: change.field,
+          oldValue: change.oldValue,
+          newValue: change.newValue,
+          changeType: 'UPDATE',
+          changedBy,
+          changedByName,
+          batchId,
+          fullSnapshot: JSON.stringify(oldMember),
+        },
+      });
+    } catch (err) {
+      console.log('Failed to record change history:', err);
+    }
+  }
+}
 
 // GET /api/members/[id] - Get single member with children
 export async function GET(
@@ -127,6 +183,9 @@ export async function PUT(
       }
     });
 
+    // Store original member data for change tracking
+    const originalMember = { ...member };
+
     // Try to persist to database
     let updatedMember;
     try {
@@ -145,6 +204,15 @@ export async function PUT(
         );
       }
     }
+
+    // Record change history (non-blocking)
+    recordChangeHistory(
+      params.id,
+      originalMember,
+      updateData,
+      body.changedBy || 'system',
+      body.changedByName || 'النظام'
+    ).catch(err => console.log('Change history recording failed:', err));
 
     return NextResponse.json({
       success: true,

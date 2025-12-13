@@ -538,3 +538,231 @@ export function prepareImport(
 
   return { newMembers, conflicts, errors };
 }
+
+// ============================================
+// EXCEL PARSING
+// ============================================
+
+/**
+ * Parse Excel file (xlsx/xls) content
+ * Supports both Arabic and English headers
+ */
+export async function parseExcel(buffer: ArrayBuffer): Promise<{ members: Partial<FamilyMember>[]; error?: string }> {
+  try {
+    // Dynamic import to avoid issues with SSR
+    const XLSX = await import('xlsx');
+
+    const workbook = XLSX.read(buffer, { type: 'array' });
+
+    // Get the first sheet
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      return { members: [], error: 'ملف Excel فارغ - No sheets found' };
+    }
+
+    const worksheet = workbook.Sheets[sheetName];
+
+    // Convert to JSON with headers
+    const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+      header: 1,
+      defval: ''
+    }) as unknown[][];
+
+    if (jsonData.length < 2) {
+      return { members: [], error: 'الملف لا يحتوي على بيانات كافية - Insufficient data' };
+    }
+
+    // First row is headers
+    const headers = (jsonData[0] as string[]).map(h => String(h).trim());
+    const fieldMapping = mapExcelHeaders(headers);
+
+    // Check if we have at least the required fields
+    const hasId = fieldMapping.includes('id');
+    const hasFirstName = fieldMapping.includes('firstName');
+
+    if (!hasId && !hasFirstName) {
+      return {
+        members: [],
+        error: 'الملف لا يحتوي على الأعمدة المطلوبة (الرقم، الاسم الأول) - Missing required columns (ID, First Name)'
+      };
+    }
+
+    const members: Partial<FamilyMember>[] = [];
+
+    // Process data rows
+    for (let i = 1; i < jsonData.length; i++) {
+      const row = jsonData[i] as unknown[];
+      if (!row || row.length === 0) continue;
+
+      // Skip empty rows
+      const hasData = row.some(cell => cell !== null && cell !== undefined && cell !== '');
+      if (!hasData) continue;
+
+      const member: Partial<FamilyMember> = {};
+
+      for (let j = 0; j < fieldMapping.length; j++) {
+        const field = fieldMapping[j];
+        if (field && row[j] !== undefined && row[j] !== null && row[j] !== '') {
+          const value = String(row[j]).trim();
+          (member as Record<string, unknown>)[field] = convertExcelValue(field, value);
+        }
+      }
+
+      // Only add if we have at least an ID or firstName
+      if (member.id || member.firstName) {
+        members.push(member);
+      }
+    }
+
+    return { members };
+  } catch (error) {
+    console.error('Excel parse error:', error);
+    return {
+      members: [],
+      error: `فشل في قراءة ملف Excel: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+/**
+ * Map Excel column headers to FamilyMember fields
+ */
+function mapExcelHeaders(headers: string[]): (keyof FamilyMember | null)[] {
+  const headerMap: Record<string, keyof FamilyMember> = {
+    // Arabic headers
+    'الرقم': 'id',
+    'رقم العضو': 'id',
+    'الاسم الأول': 'firstName',
+    'الاسم': 'firstName',
+    'اسم الأب': 'fatherName',
+    'اسم الجد': 'grandfatherName',
+    'اسم الجد الثاني': 'greatGrandfatherName',
+    'اسم العائلة': 'familyName',
+    'العائلة': 'familyName',
+    'رقم الأب': 'fatherId',
+    'معرف الأب': 'fatherId',
+    'الجنس': 'gender',
+    'النوع': 'gender',
+    'سنة الميلاد': 'birthYear',
+    'تاريخ الميلاد': 'birthYear',
+    'سنة الوفاة': 'deathYear',
+    'تاريخ الوفاة': 'deathYear',
+    'عدد الأبناء': 'sonsCount',
+    'عدد البنات': 'daughtersCount',
+    'الجيل': 'generation',
+    'رقم الجيل': 'generation',
+    'الفرع': 'branch',
+    'الاسم الكامل': 'fullNameAr',
+    'الاسم بالعربي': 'fullNameAr',
+    'الاسم بالإنجليزية': 'fullNameEn',
+    'الاسم الانجليزي': 'fullNameEn',
+    'الهاتف': 'phone',
+    'رقم الهاتف': 'phone',
+    'الجوال': 'phone',
+    'المدينة': 'city',
+    'مدينة السكن': 'city',
+    'الحالة': 'status',
+    'المهنة': 'occupation',
+    'الوظيفة': 'occupation',
+    'العمل': 'occupation',
+    'البريد': 'email',
+    'البريد الإلكتروني': 'email',
+    'السيرة': 'biography',
+    'نبذة': 'biography',
+    // English headers
+    'ID': 'id',
+    'Member ID': 'id',
+    'First Name': 'firstName',
+    'Name': 'firstName',
+    'Father Name': 'fatherName',
+    'Father\'s Name': 'fatherName',
+    'Grandfather Name': 'grandfatherName',
+    'Grandfather\'s Name': 'grandfatherName',
+    'Great Grandfather': 'greatGrandfatherName',
+    'Great Grandfather Name': 'greatGrandfatherName',
+    'Family Name': 'familyName',
+    'Last Name': 'familyName',
+    'Surname': 'familyName',
+    'Father ID': 'fatherId',
+    'Parent ID': 'fatherId',
+    'Gender': 'gender',
+    'Sex': 'gender',
+    'Birth Year': 'birthYear',
+    'Year of Birth': 'birthYear',
+    'Born': 'birthYear',
+    'Death Year': 'deathYear',
+    'Year of Death': 'deathYear',
+    'Died': 'deathYear',
+    'Sons Count': 'sonsCount',
+    'Number of Sons': 'sonsCount',
+    'Daughters Count': 'daughtersCount',
+    'Number of Daughters': 'daughtersCount',
+    'Generation': 'generation',
+    'Gen': 'generation',
+    'Branch': 'branch',
+    'Family Branch': 'branch',
+    'Full Name (Arabic)': 'fullNameAr',
+    'Arabic Name': 'fullNameAr',
+    'Full Name (English)': 'fullNameEn',
+    'English Name': 'fullNameEn',
+    'Phone': 'phone',
+    'Phone Number': 'phone',
+    'Mobile': 'phone',
+    'City': 'city',
+    'Location': 'city',
+    'Status': 'status',
+    'Living Status': 'status',
+    'Occupation': 'occupation',
+    'Job': 'occupation',
+    'Profession': 'occupation',
+    'Email': 'email',
+    'E-mail': 'email',
+    'Biography': 'biography',
+    'Bio': 'biography',
+  };
+
+  return headers.map(h => {
+    const normalized = h.trim();
+    return headerMap[normalized] || null;
+  });
+}
+
+/**
+ * Convert Excel cell value to appropriate type for FamilyMember field
+ */
+function convertExcelValue(field: keyof FamilyMember, value: string): unknown {
+  const numericFields = ['birthYear', 'deathYear', 'sonsCount', 'daughtersCount', 'generation'];
+
+  if (numericFields.includes(field)) {
+    // Handle Excel date serial numbers for birth/death years
+    const num = parseFloat(value);
+    if (isNaN(num)) return null;
+
+    // If it looks like an Excel date serial (large number), try to convert
+    if (num > 10000 && (field === 'birthYear' || field === 'deathYear')) {
+      // Excel date serial to year (approximate)
+      const date = new Date((num - 25569) * 86400 * 1000);
+      return date.getFullYear();
+    }
+
+    return Math.round(num);
+  }
+
+  // Convert Arabic gender to English
+  if (field === 'gender') {
+    const normalized = value.toLowerCase().trim();
+    if (normalized === 'ذكر' || normalized === 'male' || normalized === 'm') return 'Male';
+    if (normalized === 'أنثى' || normalized === 'female' || normalized === 'f') return 'Female';
+    return value;
+  }
+
+  // Convert Arabic status to English
+  if (field === 'status') {
+    const normalized = value.toLowerCase().trim();
+    if (normalized === 'على قيد الحياة' || normalized === 'حي' || normalized === 'living' || normalized === 'alive') return 'Living';
+    if (normalized === 'متوفى' || normalized === 'متوفي' || normalized === 'deceased' || normalized === 'dead') return 'Deceased';
+    return value;
+  }
+
+  return value;
+}
