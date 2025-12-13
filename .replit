@@ -1,6 +1,6 @@
 # Al-Shaye Family Tree Application
 
-run = "npm run dev"
+run = "npm install && npx prisma generate && npm run dev"
 entrypoint = "src/app/page.tsx"
 
 hidden = [".config", "package-lock.json", ".next", "node_modules"]
@@ -11,6 +11,7 @@ channel = "stable-24_05"
 [env]
 PATH = "/home/runner/$REPL_SLUG/.config/npm/node_global/bin:/home/runner/$REPL_SLUG/node_modules/.bin:./node_modules/.bin"
 npm_config_prefix = "/home/runner/$REPL_SLUG/.config/npm/node_global"
+DATABASE_URL = "file:./prisma/family.db"
 
 [packager]
 language = "nodejs"
@@ -29,7 +30,7 @@ pattern = "**/{*.ts,*.tsx}"
 start = "typescript-language-server --stdio"
 
 [deployment]
-run = ["sh", "-c", "npm run build && npm start"]
+run = ["sh", "-c", "npm install && npx prisma generate && npx prisma db push && npm run build && npm start"]
 deploymentTarget = "cloudrun"
 ignorePorts = false
 

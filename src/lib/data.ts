@@ -11,6 +11,7 @@ export interface FamilyMember {
   fatherId: string | null;
   gender: 'Male' | 'Female';
   birthYear: number | null;
+  deathYear?: number | null;
   sonsCount: number;
   daughtersCount: number;
   generation: number;
@@ -24,6 +25,11 @@ export interface FamilyMember {
   biography: string | null;
   occupation: string | null;
   email: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string | null;
+  lastModifiedBy?: string | null;
+  version?: number;
   // Lineage Identification Fields
   lineageBranchId?: string | null;      // ID of the Gen 2 ancestor (main branch founder)
   lineageBranchName?: string | null;    // Name of the Gen 2 ancestor for display
