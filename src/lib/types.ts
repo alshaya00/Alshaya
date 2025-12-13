@@ -357,3 +357,65 @@ export interface TreeValidation {
   affectedMembers: string[];
   errors: string[];
 }
+
+// ============================================
+// BREASTFEEDING RELATIONSHIPS (علاقات الرضاعة)
+// Islamic milk kinship - creates marriage prohibitions
+// ============================================
+
+export interface BreastfeedingRelationship {
+  id: string;
+  childId: string;
+  child?: FamilyMember;
+
+  // Milk mother (المرضعة / أم من الرضاعة)
+  nurseId: string | null;
+  nurse?: FamilyMember | null;
+  externalNurseName: string | null;
+
+  // Milk father (أب من الرضاعة)
+  milkFatherId: string | null;
+  milkFather?: FamilyMember | null;
+  externalMilkFatherName: string | null;
+
+  notes: string | null;
+  breastfeedingYear: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string | null;
+}
+
+// Milk sibling derived from breastfeeding relationship
+export interface MilkSibling {
+  id: string;
+  firstName: string;
+  gender: 'Male' | 'Female';
+  fullNameAr: string | null;
+  relationshipType: 'milk_sibling'; // أخ/أخت من الرضاعة
+}
+
+// Complete milk family for display in mini graph
+export interface MilkFamily {
+  relationship: BreastfeedingRelationship;
+  milkMother: FamilyMember | { name: string; isExternal: true } | null;
+  milkFather: FamilyMember | { name: string; isExternal: true } | null;
+  milkSiblings: MilkSibling[]; // Children of the milk mother
+}
+
+// Data structure for the mini family graph
+export interface MiniGraphData {
+  // The main person
+  person: FamilyMember;
+
+  // Blood family (العائلة الحقيقية)
+  bloodFamily: {
+    father: FamilyMember | null;
+    mother: FamilyMember | null; // If tracked
+    siblings: FamilyMember[];
+    children: FamilyMember[];
+    grandchildren: FamilyMember[];
+  };
+
+  // Milk family (عائلة الرضاعة)
+  milkFamilies: MilkFamily[];
+}

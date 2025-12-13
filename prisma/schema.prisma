@@ -69,6 +69,11 @@ model FamilyMember {
   duplicatedBy          DuplicateFlag[] @relation("DuplicateTarget")
   photos                MemberPhoto[]
 
+  // Breastfeeding relations (علاقات الرضاعة)
+  breastfedBy           BreastfeedingRelationship[] @relation("BreastfedChild")    // Who breastfed this person
+  nursedChildren        BreastfeedingRelationship[] @relation("NurseRelation")     // Children this person breastfed
+  milkChildren          BreastfeedingRelationship[] @relation("MilkFatherRelation") // Children where this person is milk father
+
   @@index([generation])
   @@index([branch])
   @@index([gender])
@@ -1025,4 +1030,40 @@ model MemberPhoto {
   @@index([year])
   @@index([uploadedBy])
   @@index([isProfilePhoto])
+}
+
+// ============================================
+// BREASTFEEDING RELATIONSHIPS (علاقات الرضاعة)
+// Islamic milk kinship - creates marriage prohibitions
+// ============================================
+
+model BreastfeedingRelationship {
+  id                    String   @id @default(cuid())
+
+  // The child who was breastfed (ابن/بنت من الرضاعة)
+  childId               String
+  child                 FamilyMember @relation("BreastfedChild", fields: [childId], references: [id], onDelete: Cascade)
+
+  // The wet nurse / milk mother (المرضعة / أم من الرضاعة)
+  nurseId               String?
+  nurse                 FamilyMember? @relation("NurseRelation", fields: [nurseId], references: [id], onDelete: SetNull)
+  externalNurseName     String?      // If nurse is not in family tree
+
+  // The milk father (أب من الرضاعة) - wet nurse's husband at time of breastfeeding
+  milkFatherId          String?
+  milkFather            FamilyMember? @relation("MilkFatherRelation", fields: [milkFatherId], references: [id], onDelete: SetNull)
+  externalMilkFatherName String?     // If milk father is not in family tree
+
+  // Additional information
+  notes                 String?      // Any additional notes
+  breastfeedingYear     Int?         // Year when breastfeeding occurred
+
+  // Metadata
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?      // Admin who added this record
+
+  @@index([childId])
+  @@index([nurseId])
+  @@index([milkFatherId])
 }
