@@ -2,7 +2,7 @@
 // This will be replaced with Prisma database calls in production
 
 import { hashPassword, verifyPassword, generateSessionToken, generateInviteCode } from './password';
-import { UserRole, UserStatus, DEFAULT_PERMISSION_MATRIX, PermissionMatrix } from './types';
+import { UserRole, UserStatus, DEFAULT_PERMISSION_MATRIX, PermissionMatrix, SiteSettings, PrivacySettings } from './types';
 
 // ============================================
 // USER STORE
@@ -107,7 +107,7 @@ let activityLogs: StoredActivityLog[] = [];
 let permissionMatrix: PermissionMatrix = DEFAULT_PERMISSION_MATRIX;
 
 // Site settings
-let siteSettings = {
+let siteSettings: SiteSettings = {
   familyNameArabic: 'آل شايع',
   familyNameEnglish: 'Al-Shaye',
   taglineArabic: 'نحفظ إرثنا، نربط أجيالنا',
@@ -125,7 +125,7 @@ let siteSettings = {
   minPasswordLength: 8,
 };
 
-let privacySettings = {
+let privacySettings: PrivacySettings = {
   profileVisibility: { GUEST: false, MEMBER: true, BRANCH_LEADER: true, ADMIN: true, SUPER_ADMIN: true },
   showPhoneToRoles: ['ADMIN', 'SUPER_ADMIN'],
   showEmailToRoles: ['ADMIN', 'SUPER_ADMIN'],
@@ -614,23 +614,23 @@ export async function clearLoginAttempts(email: string): Promise<void> {
 // SETTINGS OPERATIONS
 // ============================================
 
-export async function getSiteSettings() {
+export async function getSiteSettings(): Promise<SiteSettings> {
   await initializeStore();
   return { ...siteSettings };
 }
 
-export async function updateSiteSettings(data: Partial<typeof siteSettings>) {
+export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
   await initializeStore();
   siteSettings = { ...siteSettings, ...data };
   return siteSettings;
 }
 
-export async function getPrivacySettings() {
+export async function getPrivacySettings(): Promise<PrivacySettings> {
   await initializeStore();
   return { ...privacySettings };
 }
 
-export async function updatePrivacySettings(data: Partial<typeof privacySettings>) {
+export async function updatePrivacySettings(data: Partial<PrivacySettings>): Promise<PrivacySettings> {
   await initializeStore();
   privacySettings = { ...privacySettings, ...data };
   return privacySettings;

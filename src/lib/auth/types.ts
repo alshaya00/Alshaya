@@ -394,3 +394,39 @@ export interface ActivityLogEntry {
   targetName?: string;
   details?: Record<string, unknown>;
 }
+
+// ============================================
+// SITE SETTINGS TYPES
+// ============================================
+
+export interface SiteSettings {
+  familyNameArabic: string;
+  familyNameEnglish: string;
+  taglineArabic: string;
+  taglineEnglish: string;
+  defaultLanguage: string;
+  sessionDurationDays: number;
+  rememberMeDurationDays: number;
+  allowSelfRegistration: boolean;
+  requireEmailVerification: boolean;
+  requireApprovalForRegistration: boolean;
+  maxLoginAttempts: number;
+  lockoutDurationMinutes: number;
+  allowGuestPreview: boolean;
+  guestPreviewMemberCount: number;
+  minPasswordLength: number;
+}
+
+export interface PrivacySettings {
+  profileVisibility: Record<string, boolean>;
+  showPhoneToRoles: string[];
+  showEmailToRoles: string[];
+  showBirthYearToRoles: string[];
+  showAgeForLiving: boolean;
+  showOccupation: boolean;
+  showCity: boolean;
+  showBiography: boolean;
+  showPhotosToRoles: string[];
+  showDeathYear: boolean;
+  showFullDeathDate: boolean;
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findSessionByToken, findUserById, getActivityLogs, ActivityLogEntry } from '@/lib/auth/store';
+import { findSessionByToken, findUserById, getActivityLogs, StoredActivityLog } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
 // Helper to get auth user from request
@@ -62,15 +62,15 @@ export async function GET(request: NextRequest) {
     }
     if (startDate) {
       const start = new Date(startDate);
-      logs = logs.filter(log => new Date(log.timestamp) >= start);
+      logs = logs.filter(log => new Date(log.createdAt) >= start);
     }
     if (endDate) {
       const end = new Date(endDate);
-      logs = logs.filter(log => new Date(log.timestamp) <= end);
+      logs = logs.filter(log => new Date(log.createdAt) <= end);
     }
 
-    // Sort by timestamp descending
-    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Sort by createdAt descending
+    logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const total = logs.length;
 
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Calculate statistics from audit logs
-function calculateAuditStatistics(logs: ActivityLogEntry[]) {
+function calculateAuditStatistics(logs: StoredActivityLog[]) {
   // Stats by action
   const byAction: Record<string, number> = {};
   logs.forEach(log => {
@@ -120,10 +120,12 @@ function calculateAuditStatistics(logs: ActivityLogEntry[]) {
   // Stats by user (top 10 most active)
   const byUser: Record<string, { count: number; name: string }> = {};
   logs.forEach(log => {
-    if (!byUser[log.userId]) {
-      byUser[log.userId] = { count: 0, name: log.userName };
+    const logUserId = log.userId || 'unknown';
+    const logUserName = log.userName || 'Unknown';
+    if (!byUser[logUserId]) {
+      byUser[logUserId] = { count: 0, name: logUserName };
     }
-    byUser[log.userId].count++;
+    byUser[logUserId].count++;
   });
 
   const topUsers = Object.entries(byUser)
@@ -167,9 +169,9 @@ function calculateAuditStatistics(logs: ActivityLogEntry[]) {
 
   const activityByDay: Record<string, number> = {};
   logs
-    .filter(log => new Date(log.timestamp) >= thirtyDaysAgo)
+    .filter(log => new Date(log.createdAt) >= thirtyDaysAgo)
     .forEach(log => {
-      const day = new Date(log.timestamp).toISOString().split('T')[0];
+      const day = new Date(log.createdAt).toISOString().split('T')[0];
       activityByDay[day] = (activityByDay[day] || 0) + 1;
     });
 
@@ -186,37 +188,18 @@ function calculateAuditStatistics(logs: ActivityLogEntry[]) {
     summary: {
       totalToday: logs.filter(log => {
         const today = new Date().toISOString().split('T')[0];
-        return log.timestamp.startsWith(today);
+        return log.createdAt.toISOString().startsWith(today);
       }).length,
       totalThisWeek: logs.filter(log => {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(log.timestamp) >= weekAgo;
+        return new Date(log.createdAt) >= weekAgo;
       }).length,
       totalThisMonth: logs.filter(log => {
         const monthAgo = new Date();
         monthAgo.setMonth(monthAgo.getMonth() - 1);
-        return new Date(log.timestamp) >= monthAgo;
+        return new Date(log.createdAt) >= monthAgo;
       }).length,
     },
   };
-}
-
-// Extended ActivityLogEntry for typing
-interface ActivityLogEntry {
-  id: string;
-  userId: string;
-  userEmail: string;
-  userName: string;
-  action: string;
-  category: string;
-  targetType?: string;
-  targetId?: string;
-  targetName?: string;
-  details?: Record<string, unknown>;
-  ipAddress: string;
-  userAgent: string;
-  success: boolean;
-  errorMessage?: string;
-  timestamp: string;
 }

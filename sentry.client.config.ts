@@ -36,7 +36,7 @@ Sentry.init({
   enabled: process.env.NODE_ENV === 'production',
 
   // Filter out common errors that aren't actionable
-  beforeSend(event, hint) {
+  beforeSend(event: Sentry.ErrorEvent, hint: Sentry.EventHint) {
     const error = hint.originalException;
 
     // Ignore network errors

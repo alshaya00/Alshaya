@@ -4,6 +4,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { emailService } from './email';
+import type { BroadcastRecipient } from '@prisma/client';
 
 // ============================================
 // TYPES
@@ -677,11 +678,12 @@ export class BroadcastService {
       orderBy: { memberName: 'asc' },
     });
 
+    type RecipientRSVP = typeof recipients[number];
     const summary = {
-      yes: recipients.filter((r) => r.rsvpResponse === 'YES'),
-      no: recipients.filter((r) => r.rsvpResponse === 'NO'),
-      maybe: recipients.filter((r) => r.rsvpResponse === 'MAYBE'),
-      noResponse: recipients.filter((r) => !r.rsvpResponse),
+      yes: recipients.filter((r: RecipientRSVP) => r.rsvpResponse === 'YES'),
+      no: recipients.filter((r: RecipientRSVP) => r.rsvpResponse === 'NO'),
+      maybe: recipients.filter((r: RecipientRSVP) => r.rsvpResponse === 'MAYBE'),
+      noResponse: recipients.filter((r: RecipientRSVP) => !r.rsvpResponse),
     };
 
     return summary;
