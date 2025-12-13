@@ -4,31 +4,25 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowRight, Clock, MapPin, User, Users, Calendar, Eye, Share2,
-  BookOpen, ChevronLeft, ChevronRight, Scroll, Building2, Tent, Star,
-  Heart, FileText, Feather, TreePine, Edit, Trash2, Loader2, AlertCircle
+  ArrowRight, Clock, MapPin, User, Users, Eye, Share2,
+  BookOpen, ChevronLeft, Scroll, Tent, Star,
+  Heart, FileText, Feather, TreePine, Loader2, AlertCircle
 } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
-import { JOURNAL_CATEGORIES, HISTORICAL_ERAS, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
+import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
   ORAL_HISTORY: <Scroll className="w-5 h-5" />,
-  TRADITION: <Building2 className="w-5 h-5" />,
   MIGRATION: <Tent className="w-5 h-5" />,
-  ACHIEVEMENT: <Star className="w-5 h-5" />,
   MEMORY: <Heart className="w-5 h-5" />,
-  DOCUMENT: <FileText className="w-5 h-5" />,
   POEM: <Feather className="w-5 h-5" />,
   GENEALOGY: <TreePine className="w-5 h-5" />,
 };
 
 const categoryColors: Record<JournalCategoryType, { bg: string; text: string; border: string }> = {
   ORAL_HISTORY: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  TRADITION: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
   MIGRATION: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-  ACHIEVEMENT: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
   MEMORY: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  DOCUMENT: { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' },
   POEM: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
   GENEALOGY: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
 };
@@ -135,7 +129,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
 
   const category = JOURNAL_CATEGORIES[journal.category];
   const colors = categoryColors[journal.category];
-  const era = HISTORICAL_ERAS.find(e => e.key === journal.era);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-amber-50">
@@ -228,13 +221,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Meta Information */}
             <div className="flex flex-wrap gap-4 text-sm text-gray-500 border-t border-gray-100 pt-6">
-              {era && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-amber-600" />
-                  <span>{era.nameAr}</span>
-                  <span className="text-gray-300">({era.yearRange})</span>
-                </div>
-              )}
               {journal.dateDescription && (
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-600" />

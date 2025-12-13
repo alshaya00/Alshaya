@@ -4,30 +4,24 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   BookOpen, Clock, MapPin, User, Filter, Search, ChevronDown,
-  Scroll, Building2, Tent, Star, Heart, FileText, Feather, TreePine,
-  Calendar, Eye, Plus, Sparkles
+  Scroll, Tent, Heart, Feather, TreePine,
+  Eye, Plus, Sparkles
 } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
-import { JOURNAL_CATEGORIES, HISTORICAL_ERAS, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
+import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
   ORAL_HISTORY: <Scroll className="w-5 h-5" />,
-  TRADITION: <Building2 className="w-5 h-5" />,
   MIGRATION: <Tent className="w-5 h-5" />,
-  ACHIEVEMENT: <Star className="w-5 h-5" />,
   MEMORY: <Heart className="w-5 h-5" />,
-  DOCUMENT: <FileText className="w-5 h-5" />,
   POEM: <Feather className="w-5 h-5" />,
   GENEALOGY: <TreePine className="w-5 h-5" />,
 };
 
 const categoryColors: Record<JournalCategoryType, string> = {
   ORAL_HISTORY: 'bg-amber-100 text-amber-700 border-amber-200',
-  TRADITION: 'bg-purple-100 text-purple-700 border-purple-200',
   MIGRATION: 'bg-orange-100 text-orange-700 border-orange-200',
-  ACHIEVEMENT: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   MEMORY: 'bg-blue-100 text-blue-700 border-blue-200',
-  DOCUMENT: 'bg-gray-100 text-gray-700 border-gray-200',
   POEM: 'bg-rose-100 text-rose-700 border-rose-200',
   GENEALOGY: 'bg-green-100 text-green-700 border-green-200',
 };
@@ -36,21 +30,18 @@ export default function JournalsPage() {
   const [journals, setJournals] = useState<FamilyJournal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedEra, setSelectedEra] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'timeline' | 'grid'>('timeline');
 
   useEffect(() => {
     fetchJournals();
-  }, [selectedCategory, selectedEra, searchQuery]);
+  }, [selectedCategory, searchQuery]);
 
   const fetchJournals = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
-      if (selectedEra !== 'all') params.append('era', selectedEra);
       if (searchQuery) params.append('search', searchQuery);
       params.append('status', 'PUBLISHED');
 
@@ -69,12 +60,6 @@ export default function JournalsPage() {
 
   const featuredJournals = journals.filter(j => j.isFeatured);
   const regularJournals = journals.filter(j => !j.isFeatured);
-
-  // Group journals by era for timeline view
-  const journalsByEra = HISTORICAL_ERAS.reduce((acc, era) => {
-    acc[era.key] = regularJournals.filter(j => j.era === era.key);
-    return acc;
-  }, {} as Record<string, FamilyJournal[]>);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-green-50">
@@ -128,31 +113,6 @@ export default function JournalsPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* View Mode Toggle */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('timeline')}
-                  className={`px-4 py-2 rounded-md text-sm transition-all ${
-                    viewMode === 'timeline'
-                      ? 'bg-white text-amber-700 shadow-sm'
-                      : 'text-gray-600 hover:text-amber-600'
-                  }`}
-                >
-                  <Clock className="w-4 h-4 inline-block ml-1" />
-                  خط زمني
-                </button>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`px-4 py-2 rounded-md text-sm transition-all ${
-                    viewMode === 'grid'
-                      ? 'bg-white text-amber-700 shadow-sm'
-                      : 'text-gray-600 hover:text-amber-600'
-                  }`}
-                >
-                  شبكة
-                </button>
-              </div>
-
               {/* Filter Button */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -181,66 +141,34 @@ export default function JournalsPage() {
           {/* Filters Panel */}
           {showFilters && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm animate-in slide-in-from-top-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Category Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">التصنيف</label>
-                  <div className="flex flex-wrap gap-2">
+              {/* Category Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">التصنيف</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedCategory('all')}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+                      selectedCategory === 'all'
+                        ? 'bg-amber-100 border-amber-300 text-amber-700'
+                        : 'border-gray-200 text-gray-600 hover:border-amber-300'
+                    }`}
+                  >
+                    الكل
+                  </button>
+                  {Object.entries(JOURNAL_CATEGORIES).map(([key, cat]) => (
                     <button
-                      onClick={() => setSelectedCategory('all')}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
-                        selectedCategory === 'all'
-                          ? 'bg-amber-100 border-amber-300 text-amber-700'
+                      key={key}
+                      onClick={() => setSelectedCategory(key)}
+                      className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-1 ${
+                        selectedCategory === key
+                          ? categoryColors[key as JournalCategoryType]
                           : 'border-gray-200 text-gray-600 hover:border-amber-300'
                       }`}
                     >
-                      الكل
+                      <span>{cat.icon}</span>
+                      {cat.nameAr}
                     </button>
-                    {Object.entries(JOURNAL_CATEGORIES).map(([key, cat]) => (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedCategory(key)}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-1 ${
-                          selectedCategory === key
-                            ? categoryColors[key as JournalCategoryType]
-                            : 'border-gray-200 text-gray-600 hover:border-amber-300'
-                        }`}
-                      >
-                        <span>{cat.icon}</span>
-                        {cat.nameAr}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Era Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">الحقبة الزمنية</label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedEra('all')}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
-                        selectedEra === 'all'
-                          ? 'bg-amber-100 border-amber-300 text-amber-700'
-                          : 'border-gray-200 text-gray-600 hover:border-amber-300'
-                      }`}
-                    >
-                      جميع الحقب
-                    </button>
-                    {HISTORICAL_ERAS.map((era) => (
-                      <button
-                        key={era.key}
-                        onClick={() => setSelectedEra(era.key)}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
-                          selectedEra === era.key
-                            ? 'bg-amber-100 border-amber-300 text-amber-700'
-                            : 'border-gray-200 text-gray-600 hover:border-amber-300'
-                        }`}
-                      >
-                        {era.nameAr}
-                      </button>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -286,80 +214,12 @@ export default function JournalsPage() {
               </div>
             )}
 
-            {/* Timeline View */}
-            {viewMode === 'timeline' ? (
-              <div className="relative">
-                {/* Timeline Line */}
-                <div className="absolute right-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-300 via-amber-400 to-green-400 hidden md:block" />
-
-                {/* Timeline Items by Era */}
-                {HISTORICAL_ERAS.map((era, eraIndex) => {
-                  const eraJournals = journalsByEra[era.key] || [];
-                  if (eraJournals.length === 0 && selectedEra !== 'all' && selectedEra !== era.key) return null;
-
-                  return (
-                    <div key={era.key} className="mb-12">
-                      {/* Era Header */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="relative z-10 hidden md:flex w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full items-center justify-center text-white font-bold shadow-lg">
-                          <Calendar className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1 bg-gradient-to-l from-amber-50 to-transparent pr-4 py-3 rounded-lg">
-                          <h3 className="text-lg font-bold text-amber-800">{era.nameAr}</h3>
-                          <p className="text-sm text-amber-600">{era.yearRange} • {era.nameEn}</p>
-                        </div>
-                      </div>
-
-                      {/* Era Journals */}
-                      {eraJournals.length > 0 ? (
-                        <div className="md:pr-24 grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {eraJournals.map((journal) => (
-                            <JournalCard key={journal.id} journal={journal} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="md:pr-24 text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                          <p className="text-gray-400">لا توجد قصص مسجلة في هذه الحقبة</p>
-                          <Link
-                            href={`/journals/new?era=${era.key}`}
-                            className="text-amber-600 hover:text-amber-700 text-sm mt-2 inline-block"
-                          >
-                            + إضافة قصة من هذه الفترة
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Journals without era */}
-                {regularJournals.filter(j => !j.era).length > 0 && (
-                  <div className="mb-12">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="relative z-10 hidden md:flex w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full items-center justify-center text-white font-bold shadow-lg">
-                        <Clock className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1 bg-gradient-to-l from-gray-50 to-transparent pr-4 py-3 rounded-lg">
-                        <h3 className="text-lg font-bold text-gray-700">قصص أخرى</h3>
-                        <p className="text-sm text-gray-500">بدون تحديد الحقبة الزمنية</p>
-                      </div>
-                    </div>
-                    <div className="md:pr-24 grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {regularJournals.filter(j => !j.era).map((journal) => (
-                        <JournalCard key={journal.id} journal={journal} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Grid View */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {regularJournals.map((journal) => (
-                  <JournalCard key={journal.id} journal={journal} />
-                ))}
-              </div>
-            )}
+            {/* Stories Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {regularJournals.map((journal) => (
+                <JournalCard key={journal.id} journal={journal} />
+              ))}
+            </div>
           </>
         )}
       </div>
@@ -426,12 +286,6 @@ function JournalCard({ journal, featured = false }: { journal: FamilyJournal; fe
 
           {/* Meta Info */}
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-            {journal.era && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {HISTORICAL_ERAS.find(e => e.key === journal.era)?.nameAr}
-              </span>
-            )}
             {journal.locationAr && (
               <span className="flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5" />

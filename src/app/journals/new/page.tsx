@@ -5,22 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowRight, Save, Loader2, AlertCircle, CheckCircle, Image as ImageIcon,
-  Plus, X, Calendar, MapPin, User, Users, BookOpen, Scroll, Building2,
-  Tent, Star, Heart, FileText, Feather, TreePine, Info
+  Plus, X, Calendar, MapPin, User, Users, BookOpen, Scroll,
+  Tent, Heart, Feather, TreePine, Info
 } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
-import { JOURNAL_CATEGORIES, HISTORICAL_ERAS, type JournalCategoryType } from '@/lib/types';
-
-const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
-  ORAL_HISTORY: <Scroll className="w-5 h-5" />,
-  TRADITION: <Building2 className="w-5 h-5" />,
-  MIGRATION: <Tent className="w-5 h-5" />,
-  ACHIEVEMENT: <Star className="w-5 h-5" />,
-  MEMORY: <Heart className="w-5 h-5" />,
-  DOCUMENT: <FileText className="w-5 h-5" />,
-  POEM: <Feather className="w-5 h-5" />,
-  GENEALOGY: <TreePine className="w-5 h-5" />,
-};
+import { JOURNAL_CATEGORIES, type JournalCategoryType } from '@/lib/types';
 
 interface FormData {
   titleAr: string;
@@ -45,7 +34,6 @@ interface FormData {
 export default function NewJournalPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedEra = searchParams.get('era');
   const preselectedMemberId = searchParams.get('memberId');
   const preselectedMemberName = searchParams.get('memberName');
 
@@ -55,7 +43,7 @@ export default function NewJournalPage() {
     contentAr: '',
     contentEn: '',
     category: 'ORAL_HISTORY',
-    era: preselectedEra || '',
+    era: '',
     yearFrom: '',
     yearTo: '',
     dateDescription: '',
@@ -350,30 +338,6 @@ export default function NewJournalPage() {
                 <Calendar className="w-5 h-5 text-amber-600" />
                 الزمان والمكان
               </h2>
-
-              {/* Era Selection */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  الحقبة الزمنية
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {HISTORICAL_ERAS.map((era) => (
-                    <button
-                      key={era.key}
-                      type="button"
-                      onClick={() => handleChange('era', formData.era === era.key ? '' : era.key)}
-                      className={`p-3 rounded-xl border-2 transition-all text-center ${
-                        formData.era === era.key
-                          ? 'border-amber-500 bg-amber-50 text-amber-700'
-                          : 'border-gray-200 hover:border-amber-300 text-gray-600'
-                      }`}
-                    >
-                      <span className="text-sm font-medium block">{era.nameAr}</span>
-                      <span className="text-xs text-gray-400">{era.yearRange}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Year Range */}
               <div className="grid grid-cols-2 gap-4 mb-6">

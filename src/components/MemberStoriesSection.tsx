@@ -3,29 +3,23 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  BookOpen, Plus, Clock, Eye, ChevronLeft, Loader2,
-  Scroll, Building2, Tent, Star, Heart, FileText, Feather, TreePine
+  BookOpen, Plus, Eye, ChevronLeft, Loader2,
+  Scroll, Tent, Heart, Feather, TreePine
 } from 'lucide-react';
-import { JOURNAL_CATEGORIES, HISTORICAL_ERAS, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
+import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
   ORAL_HISTORY: <Scroll className="w-4 h-4" />,
-  TRADITION: <Building2 className="w-4 h-4" />,
   MIGRATION: <Tent className="w-4 h-4" />,
-  ACHIEVEMENT: <Star className="w-4 h-4" />,
   MEMORY: <Heart className="w-4 h-4" />,
-  DOCUMENT: <FileText className="w-4 h-4" />,
   POEM: <Feather className="w-4 h-4" />,
   GENEALOGY: <TreePine className="w-4 h-4" />,
 };
 
 const categoryColors: Record<JournalCategoryType, string> = {
   ORAL_HISTORY: 'bg-amber-100 text-amber-700',
-  TRADITION: 'bg-purple-100 text-purple-700',
   MIGRATION: 'bg-orange-100 text-orange-700',
-  ACHIEVEMENT: 'bg-yellow-100 text-yellow-700',
   MEMORY: 'bg-blue-100 text-blue-700',
-  DOCUMENT: 'bg-gray-100 text-gray-700',
   POEM: 'bg-rose-100 text-rose-700',
   GENEALOGY: 'bg-green-100 text-green-700',
 };
@@ -127,12 +121,6 @@ export default function MemberStoriesSection({ memberId, memberName }: MemberSto
                       <span className={`px-2 py-0.5 rounded-full ${categoryColors[story.category]}`}>
                         {JOURNAL_CATEGORIES[story.category].nameAr}
                       </span>
-                      {story.era && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {HISTORICAL_ERAS.find(e => e.key === story.era)?.nameAr}
-                        </span>
-                      )}
                       <span className="flex items-center gap-1">
                         <Eye size={12} />
                         {story.viewCount}
