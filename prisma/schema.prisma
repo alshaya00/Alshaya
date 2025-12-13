@@ -783,6 +783,95 @@ model EmailLog {
 }
 
 // ============================================
+// EMAIL BROADCASTS (Family Meeting Invites, Updates, Reminders)
+// ============================================
+
+model Broadcast {
+  id              String   @id @default(cuid())
+
+  // Content
+  titleAr         String   // Arabic title
+  titleEn         String?  // English title (optional)
+  contentAr       String   // Arabic content (HTML)
+  contentEn       String?  // English content (HTML)
+
+  // Type of broadcast
+  type            String   @default("ANNOUNCEMENT") // MEETING, ANNOUNCEMENT, REMINDER, UPDATE
+
+  // Meeting-specific fields
+  meetingDate     DateTime?  // Date and time of the meeting
+  meetingLocation String?    // Physical or virtual location
+  meetingUrl      String?    // Zoom/Teams/Google Meet link
+  rsvpRequired    Boolean    @default(false)
+  rsvpDeadline    DateTime?  // Deadline to respond
+
+  // Targeting
+  targetAudience  String   @default("ALL") // ALL, BRANCH, GENERATION, CUSTOM
+  targetBranch    String?  // Specific branch if targeting branch
+  targetGeneration Int?    // Specific generation if targeting generation
+  targetMemberIds String?  // JSON array of specific member IDs if custom
+
+  // Scheduling
+  status          String   @default("DRAFT") // DRAFT, SCHEDULED, SENDING, SENT, CANCELLED
+  scheduledAt     DateTime? // When to send (null = send immediately)
+  sentAt          DateTime? // When actually sent
+
+  // Statistics
+  totalRecipients Int      @default(0)
+  sentCount       Int      @default(0)
+  failedCount     Int      @default(0)
+  openCount       Int      @default(0)
+  rsvpYesCount    Int      @default(0)
+  rsvpNoCount     Int      @default(0)
+  rsvpMaybeCount  Int      @default(0)
+
+  // Metadata
+  createdBy       String   // User ID who created
+  createdByName   String   // User name for display
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  recipients      BroadcastRecipient[]
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([scheduledAt])
+}
+
+model BroadcastRecipient {
+  id              String   @id @default(cuid())
+
+  broadcastId     String
+  broadcast       Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  // Recipient info
+  memberId        String?  // Family member ID (if linked)
+  memberName      String   // Name for display
+  email           String   // Email address
+
+  // Delivery status
+  status          String   @default("PENDING") // PENDING, SENT, FAILED, BOUNCED
+  sentAt          DateTime?
+  errorMessage    String?
+
+  // Tracking
+  openedAt        DateTime?  // When email was opened
+  clickedAt       DateTime?  // When any link was clicked
+
+  // RSVP response (for meeting broadcasts)
+  rsvpResponse    String?    // YES, NO, MAYBE
+  rsvpRespondedAt DateTime?
+  rsvpNote        String?    // Optional note with RSVP
+
+  @@unique([broadcastId, email])
+  @@index([broadcastId])
+  @@index([status])
+  @@index([memberId])
+}
+
+// ============================================
 // SMS/OTP LOGS
 // ============================================
 
