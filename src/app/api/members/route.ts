@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllMembers, getMaleMembers, getMembersByGeneration, getMembersByBranch, FamilyMember, familyMembers } from '@/lib/data';
+import { prisma } from '@/lib/prisma';
 
 // Sanitize string input to prevent XSS attacks
 function sanitizeString(input: string | null | undefined): string | null {
@@ -157,15 +158,67 @@ export async function POST(request: NextRequest) {
       email: sanitizeString(body.email),
     };
 
-    // In real implementation with Prisma:
-    // const newMember = await prisma.familyMember.create({ data: newMember });
+    // Persist to database using Prisma
+    try {
+      const createdMember = await prisma.familyMember.create({
+        data: {
+          id: newMember.id,
+          firstName: newMember.firstName,
+          fatherName: newMember.fatherName,
+          grandfatherName: newMember.grandfatherName,
+          greatGrandfatherName: newMember.greatGrandfatherName,
+          familyName: newMember.familyName,
+          fatherId: newMember.fatherId,
+          gender: newMember.gender,
+          birthYear: newMember.birthYear ? parseInt(String(newMember.birthYear)) : null,
+          sonsCount: newMember.sonsCount,
+          daughtersCount: newMember.daughtersCount,
+          generation: newMember.generation,
+          branch: newMember.branch,
+          fullNameAr: newMember.fullNameAr,
+          fullNameEn: newMember.fullNameEn,
+          phone: newMember.phone,
+          city: newMember.city,
+          status: newMember.status,
+          photoUrl: newMember.photoUrl,
+          biography: newMember.biography,
+          occupation: newMember.occupation,
+          email: newMember.email,
+          createdBy: body.createdBy || 'system',
+        },
+      });
 
-    return NextResponse.json({
-      success: true,
-      data: newMember,
-      message: 'Member created successfully'
-    }, { status: 201 });
+      // Update parent's children count if fatherId is provided
+      if (newMember.fatherId) {
+        const countField = newMember.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
+        await prisma.familyMember.update({
+          where: { id: newMember.fatherId },
+          data: {
+            [countField]: {
+              increment: 1,
+            },
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: createdMember,
+        message: 'Member created successfully'
+      }, { status: 201 });
+    } catch (dbError) {
+      console.error('Database error creating member:', dbError);
+      // Fallback to returning the member object if database persistence fails
+      // This allows the app to work even without a database connection
+      return NextResponse.json({
+        success: true,
+        data: newMember,
+        message: 'Member created (local only - database unavailable)',
+        warning: 'Database persistence failed'
+      }, { status: 201 });
+    }
   } catch (error) {
+    console.error('Error creating member:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to create member' },
       { status: 500 }

@@ -55,6 +55,9 @@ export default function QuickAddPage() {
   const [newMemberId, setNewMemberId] = useState<string>('');
   const [savedMembers, setSavedMembers] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'dropdown' | 'graph'>('graph');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitWarning, setSubmitWarning] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<NewMemberData>({
     firstName: '',
@@ -158,46 +161,92 @@ export default function QuickAddPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateStep(3)) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitWarning(null);
 
     // Create new member object
     const newMember = {
       id: newMemberId,
-      ...formData,
-      ...autoFillData,
+      firstName: formData.firstName,
+      fatherId: formData.fatherId || null,
+      gender: formData.gender,
+      birthYear: formData.birthYear ? parseInt(formData.birthYear) : null,
+      city: formData.city || null,
+      occupation: formData.occupation || null,
+      phone: formData.phone || null,
+      email: formData.email || null,
+      biography: formData.biography || null,
+      fatherName: autoFillData?.fatherName || null,
+      grandfatherName: autoFillData?.grandfatherName || null,
+      greatGrandfatherName: autoFillData?.greatGrandfatherName || null,
+      generation: autoFillData?.generation || 1,
+      branch: autoFillData?.branch || 'الأصل',
+      fullNameAr: autoFillData?.fullNamePreview || `${formData.firstName} آل شايع`,
       familyName: 'آل شايع',
       status: 'Living',
-      createdAt: new Date().toISOString(),
+      sonsCount: 0,
+      daughtersCount: 0,
     };
 
-    // Save to local storage
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const members = saved ? JSON.parse(saved) : [];
-    members.push(newMember);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
-
-    console.log('New member saved:', newMember);
-
-    setSubmitted(true);
-    setSavedMembers(members.length);
-
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({
-        firstName: '',
-        fatherId: '',
-        gender: 'Male',
-        birthYear: '',
-        city: '',
-        occupation: '',
-        phone: '',
-        email: '',
-        biography: '',
+    try {
+      // Call the API to persist the member
+      const response = await fetch('/api/members', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newMember),
       });
-      setStep(1);
-      setNewMemberId(getNextId());
-    }, 3000);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create member');
+      }
+
+      // Also save to local storage as backup
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const members = saved ? JSON.parse(saved) : [];
+      members.push({ ...newMember, apiSaved: true, savedAt: new Date().toISOString() });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
+
+      console.log('New member saved:', result.data);
+
+      // Check if there's a warning (database unavailable)
+      if (result.warning) {
+        setSubmitWarning(result.warning);
+      }
+
+      setSubmitted(true);
+      setSavedMembers(members.length);
+
+      setTimeout(() => {
+        setSubmitted(false);
+        setSubmitWarning(null);
+        setFormData({
+          firstName: '',
+          fatherId: '',
+          gender: 'Male',
+          birthYear: '',
+          city: '',
+          occupation: '',
+          phone: '',
+          email: '',
+          biography: '',
+        });
+        setStep(1);
+        setNewMemberId(getNextId());
+      }, 3000);
+    } catch (error) {
+      console.error('Error saving member:', error);
+      setSubmitError(error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ العضو');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -251,7 +300,29 @@ export default function QuickAddPage() {
             <Check className="text-green-600" size={24} />
             <div>
               <p className="font-bold">تمت الإضافة بنجاح!</p>
-              <p className="text-sm">تم حفظ العضو الجديد في الذاكرة المحلية</p>
+              <p className="text-sm">تم حفظ العضو الجديد في قاعدة البيانات</p>
+            </div>
+          </div>
+        )}
+
+        {/* Warning Message (database unavailable) */}
+        {submitWarning && (
+          <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-bold">تنبيه</p>
+              <p className="text-sm">تم حفظ العضو محلياً فقط - قاعدة البيانات غير متاحة</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {submitError && (
+          <div className="bg-red-100 border-2 border-red-400 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+            <span className="text-2xl">❌</span>
+            <div>
+              <p className="font-bold">خطأ في الحفظ</p>
+              <p className="text-sm">{submitError}</p>
             </div>
           </div>
         )}
@@ -787,10 +858,24 @@ export default function QuickAddPage() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-l from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg"
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-2 px-8 py-3 font-bold rounded-xl transition-all shadow-md ${
+                    isSubmitting
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-l from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:shadow-lg'
+                  } text-white`}
                 >
-                  <Save size={20} />
-                  حفظ العضو
+                  {isSubmitting ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      جاري الحفظ...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={20} />
+                      حفظ العضو
+                    </>
+                  )}
                 </button>
               )}
             </div>
