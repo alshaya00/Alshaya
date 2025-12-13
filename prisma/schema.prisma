@@ -550,6 +550,39 @@ model AdminSession {
 }
 
 // ============================================
+// SEARCH HISTORY
+// ============================================
+
+model SearchHistory {
+  id              String   @id @default(cuid())
+
+  // Who searched
+  userId          String?  // null for guest/anonymous searches
+  sessionId       String?  // For tracking guest searches
+
+  // What was searched
+  query           String   // The search query
+  searchType      String   @default("member") // member, branch, generation, global
+  filters         String?  // JSON of applied filters
+
+  // Results
+  resultsCount    Int      @default(0)
+  clickedResultId String?  // If user clicked on a result
+
+  // Context
+  ipAddress       String?
+  userAgent       String?
+
+  // Metadata
+  searchedAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([query])
+  @@index([searchedAt])
+  @@index([searchType])
+}
+
+// ============================================
 // IMPORT/EXPORT TRACKING
 // ============================================
 
