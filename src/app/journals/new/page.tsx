@@ -8,7 +8,6 @@ import {
   Plus, X, Calendar, MapPin, User, Users, BookOpen, Scroll,
   Tent, Heart, Feather, TreePine, Info
 } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
 import { JOURNAL_CATEGORIES, type JournalCategoryType } from '@/lib/types';
 
 interface FormData {
@@ -140,7 +139,6 @@ export default function NewJournalPage() {
   if (success) {
     return (
       <div className="min-h-screen bg-amber-50">
-        <Navigation />
         <div className="flex flex-col items-center justify-center py-32">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
             <CheckCircle className="w-10 h-10 text-green-600" />
@@ -154,8 +152,6 @@ export default function NewJournalPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-amber-50">
-      <Navigation />
-
       {/* Header */}
       <div className="bg-gradient-to-l from-amber-600 to-amber-700 text-white py-8">
         <div className="container mx-auto px-4">
