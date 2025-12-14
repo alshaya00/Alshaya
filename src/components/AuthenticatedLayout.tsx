@@ -1,27 +1,29 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigation } from './Navigation';
+import { publicPages, noNavPages } from '@/config/navigation';
+import { familyInfo } from '@/config/constants';
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
 }
 
-// Pages that don't need the authenticated layout
-const PUBLIC_PAGES = ['/login', '/register', '/invite', '/forgot-password', '/reset-password'];
-
-// Pages that should show without navigation (landing pages, auth pages)
-const NO_NAV_PAGES = ['/login', '/register', '/invite', '/forgot-password', '/reset-password', '/welcome'];
+interface FamilyStats {
+  totalMembers: number;
+  generations: number;
+  yearsOfHistory: number;
+}
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Check if current page is public
-  const isPublicPage = PUBLIC_PAGES.some((page) => pathname.startsWith(page));
-  const isNoNavPage = NO_NAV_PAGES.some((page) => pathname.startsWith(page));
+  const isPublicPage = publicPages.some((page) => pathname.startsWith(page));
+  const isNoNavPage = noNavPages.some((page) => pathname.startsWith(page));
 
   // Show loading state
   if (isLoading) {
@@ -73,13 +75,37 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
 // Landing Page Component for Guests
 function LandingPage() {
+  const [stats, setStats] = useState<FamilyStats>({
+    totalMembers: 99,    // Default fallback
+    generations: 8,      // Default fallback
+    yearsOfHistory: 425, // Default fallback
+  });
+
+  // Fetch dynamic stats
+  useEffect(() => {
+    fetch('/api/statistics')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.totalMembers) {
+          setStats({
+            totalMembers: data.totalMembers,
+            generations: data.generations,
+            yearsOfHistory: data.yearsOfHistory || 425,
+          });
+        }
+      })
+      .catch(() => {
+        // Use defaults on error
+      });
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50" dir="rtl">
       {/* Header */}
       <header className="py-6 px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-2xl font-bold text-emerald-800">
-            آل شايع
+            {familyInfo.nameAr}
           </div>
           <div className="flex gap-4">
             <a
@@ -107,28 +133,28 @@ function LandingPage() {
             </svg>
           </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            شجرة عائلة آل شايع
+            {familyInfo.fullNameAr}
           </h1>
           <p className="text-2xl text-emerald-700 font-medium mb-2">
-            نحفظ إرثنا، نربط أجيالنا
+            {familyInfo.taglineAr}
           </p>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            منصة رقمية متكاملة لتوثيق وحفظ تاريخ عائلة آل شايع وربط أفرادها عبر الأجيال
+            منصة رقمية متكاملة لتوثيق وحفظ تاريخ {familyInfo.fullNameAr} وربط أفرادها عبر الأجيال
           </p>
         </div>
 
-        {/* Stats */}
+        {/* Stats - Now Dynamic */}
         <div className="flex justify-center gap-12 my-12">
           <div className="text-center">
-            <div className="text-4xl font-bold text-emerald-600">99</div>
+            <div className="text-4xl font-bold text-emerald-600">{stats.totalMembers}</div>
             <div className="text-gray-600">فرد من العائلة</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-emerald-600">8</div>
+            <div className="text-4xl font-bold text-emerald-600">{stats.generations}</div>
             <div className="text-gray-600">أجيال</div>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-emerald-600">425+</div>
+            <div className="text-4xl font-bold text-emerald-600">{stats.yearsOfHistory}+</div>
             <div className="text-gray-600">سنة من التاريخ</div>
           </div>
         </div>
@@ -216,10 +242,10 @@ function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h3 className="text-2xl font-bold mb-2">شجرة عائلة آل شايع</h3>
-          <p className="text-gray-400 mb-4">نحفظ إرثنا، نربط أجيالنا</p>
+          <h3 className="text-2xl font-bold mb-2">{familyInfo.fullNameAr}</h3>
+          <p className="text-gray-400 mb-4">{familyInfo.taglineAr}</p>
           <p className="text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} Al-Shaye Family Tree. جميع الحقوق محفوظة.
+            &copy; {new Date().getFullYear()} {familyInfo.fullNameEn}. جميع الحقوق محفوظة.
           </p>
         </div>
       </footer>
