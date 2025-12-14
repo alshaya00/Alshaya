@@ -7,7 +7,6 @@ import {
   Scroll, Tent, Heart, Feather, TreePine,
   Eye, Plus, Sparkles
 } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
 import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
@@ -63,7 +62,6 @@ export default function JournalsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-green-50">
-      <Navigation />
 
       {/* Hero Section */}
       <div className="relative bg-gradient-to-l from-amber-600 via-amber-700 to-amber-800 text-white overflow-hidden">

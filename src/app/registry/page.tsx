@@ -126,7 +126,7 @@ export default function RegistryPage() {
   }
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen py-8 pb-24 lg:pb-8">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">

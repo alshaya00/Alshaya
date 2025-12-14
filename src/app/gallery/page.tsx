@@ -181,7 +181,7 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className="min-h-screen bg-gray-100 py-8 pb-24 lg:pb-8">
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Back link */}
         <Link

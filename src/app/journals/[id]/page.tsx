@@ -8,7 +8,6 @@ import {
   BookOpen, ChevronLeft, Scroll, Tent, Star,
   Heart, FileText, Feather, TreePine, Loader2, AlertCircle
 } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
 import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
@@ -98,7 +97,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
   if (loading) {
     return (
       <div className="min-h-screen bg-amber-50">
-        <Navigation />
         <div className="flex flex-col items-center justify-center py-32">
           <Loader2 className="w-12 h-12 text-amber-600 animate-spin mb-4" />
           <p className="text-gray-500">جاري تحميل القصة...</p>
@@ -110,7 +108,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
   if (error || !journal) {
     return (
       <div className="min-h-screen bg-amber-50">
-        <Navigation />
         <div className="flex flex-col items-center justify-center py-32">
           <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">القصة غير موجودة</h2>
@@ -132,8 +129,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-amber-50">
-      <Navigation />
-
       {/* Hero Section */}
       <div className="relative">
         {journal.coverImageUrl ? (
