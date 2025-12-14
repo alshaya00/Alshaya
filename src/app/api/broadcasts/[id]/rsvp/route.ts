@@ -4,10 +4,10 @@ import { broadcastService, RSVPResponse } from '@/lib/services/broadcast';
 // GET /api/broadcasts/[id]/rsvp - Handle RSVP via email link
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const searchParams = request.nextUrl.searchParams;
     const email = searchParams.get('email');
     const response = searchParams.get('response') as RSVPResponse | null;
@@ -115,10 +115,10 @@ export async function GET(
 // POST /api/broadcasts/[id]/rsvp - Record RSVP via API
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
 
     if (!body.email || !body.response) {

@@ -4,10 +4,10 @@ import { broadcastService } from '@/lib/services/broadcast';
 // POST /api/broadcasts/[id]/send - Send a broadcast
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const result = await broadcastService.sendBroadcast(id);
 
     if (result.success) {

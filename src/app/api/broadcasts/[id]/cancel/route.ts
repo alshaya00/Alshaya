@@ -4,10 +4,10 @@ import { broadcastService } from '@/lib/services/broadcast';
 // POST /api/broadcasts/[id]/cancel - Cancel a scheduled broadcast
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const broadcast = await broadcastService.cancelBroadcast(id);
 
     return NextResponse.json({
