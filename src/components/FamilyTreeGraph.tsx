@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 import { FamilyMember, getGen2Branches } from '@/lib/data';
 import { ZoomIn, ZoomOut, Maximize2, Users, Home, GitBranch, Layers, Star } from 'lucide-react';
+import { generationColors, lineageColors, rootColor } from '@/config/theme';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -26,32 +27,10 @@ interface D3TreeNode {
   children?: D3TreeNode[];
 }
 
-const GENERATION_COLORS = {
-  1: { primary: '#dc2626', secondary: '#fecaca', gradient: ['#ef4444', '#dc2626'] },
-  2: { primary: '#ea580c', secondary: '#fed7aa', gradient: ['#f97316', '#ea580c'] },
-  3: { primary: '#d97706', secondary: '#fef3c7', gradient: ['#f59e0b', '#d97706'] },
-  4: { primary: '#16a34a', secondary: '#bbf7d0', gradient: ['#22c55e', '#16a34a'] },
-  5: { primary: '#0d9488', secondary: '#99f6e4', gradient: ['#14b8a6', '#0d9488'] },
-  6: { primary: '#2563eb', secondary: '#bfdbfe', gradient: ['#3b82f6', '#2563eb'] },
-  7: { primary: '#4f46e5', secondary: '#c7d2fe', gradient: ['#6366f1', '#4f46e5'] },
-  8: { primary: '#9333ea', secondary: '#e9d5ff', gradient: ['#a855f7', '#9333ea'] },
-};
-
-// Colors for lineage branches (Gen 2 ancestors)
-const LINEAGE_COLORS = [
-  { primary: '#ef4444', secondary: '#fecaca', gradient: ['#f87171', '#ef4444'] }, // red
-  { primary: '#3b82f6', secondary: '#bfdbfe', gradient: ['#60a5fa', '#3b82f6'] }, // blue
-  { primary: '#22c55e', secondary: '#bbf7d0', gradient: ['#4ade80', '#22c55e'] }, // green
-  { primary: '#f59e0b', secondary: '#fef3c7', gradient: ['#fbbf24', '#f59e0b'] }, // amber
-  { primary: '#a855f7', secondary: '#e9d5ff', gradient: ['#c084fc', '#a855f7'] }, // purple
-  { primary: '#ec4899', secondary: '#fbcfe8', gradient: ['#f472b6', '#ec4899'] }, // pink
-  { primary: '#6366f1', secondary: '#c7d2fe', gradient: ['#818cf8', '#6366f1'] }, // indigo
-  { primary: '#14b8a6', secondary: '#99f6e4', gradient: ['#2dd4bf', '#14b8a6'] }, // teal
-  { primary: '#f97316', secondary: '#fed7aa', gradient: ['#fb923c', '#f97316'] }, // orange
-  { primary: '#06b6d4', secondary: '#a5f3fc', gradient: ['#22d3ee', '#06b6d4'] }, // cyan
-];
-
-const ROOT_COLOR = { primary: '#78716c', secondary: '#d6d3d1', gradient: ['#a8a29e', '#78716c'] };
+// Use colors from centralized theme config
+const GENERATION_COLORS = generationColors;
+const LINEAGE_COLORS = lineageColors;
+const ROOT_COLOR = rootColor;
 
 export default function FamilyTreeGraph({ members, onSelectMember, highlightedId, currentUserId }: FamilyTreeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
