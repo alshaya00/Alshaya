@@ -1,12 +1,67 @@
 'use client';
 
-import { getStatistics, getAllMembers } from '@/lib/data';
+import { useState, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, GitBranch, Calendar, MapPin } from 'lucide-react';
 import ExportPDF, { ExportButton } from '@/components/ExportPDF';
 
+interface Statistics {
+  totalMembers: number;
+  males: number;
+  females: number;
+  generations: number;
+  branches: { name: string; count: number }[];
+  generationBreakdown: {
+    generation: number;
+    count: number;
+    males: number;
+    females: number;
+    percentage: number;
+  }[];
+}
+
+interface FamilyMember {
+  id: string;
+  firstName: string;
+  gender: 'Male' | 'Female';
+  status: string;
+  city: string | null;
+  occupation: string | null;
+  birthYear: number | null;
+}
+
 export default function DashboardPage() {
-  const stats = getStatistics();
-  const allMembers = getAllMembers();
+  const [stats, setStats] = useState<Statistics>({
+    totalMembers: 0,
+    males: 0,
+    females: 0,
+    generations: 0,
+    branches: [],
+    generationBreakdown: [],
+  });
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [statsRes, membersRes] = await Promise.all([
+          fetch('/api/statistics'),
+          fetch('/api/members?limit=500')
+        ]);
+
+        const statsData = await statsRes.json();
+        const membersData = await membersRes.json();
+
+        setStats(statsData);
+        setAllMembers(membersData.data || []);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   // Calculate additional statistics
   const livingMembers = allMembers.filter((m) => m.status === 'Living').length;
@@ -35,7 +90,7 @@ export default function DashboardPage() {
     .slice(0, 8);
 
   // Calculate age distribution
-  const ageGroups = {
+  const ageGroups: Record<string, number> = {
     'أطفال (0-14)': 0,
     'شباب (15-30)': 0,
     'بالغين (31-50)': 0,
@@ -54,6 +109,17 @@ export default function DashboardPage() {
       else ageGroups['كبار السن (70+)']++;
     }
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8 bg-gray-100">
@@ -133,12 +199,12 @@ export default function DashboardPage() {
                       <div className="h-full flex">
                         <div
                           className="bg-blue-500 h-full transition-all duration-500"
-                          style={{ width: `${(gen.males / gen.count) * 100}%` }}
+                          style={{ width: `${gen.count > 0 ? (gen.males / gen.count) * 100 : 0}%` }}
                           title={`ذكور: ${gen.males}`}
                         />
                         <div
                           className="bg-pink-500 h-full transition-all duration-500"
-                          style={{ width: `${(gen.females / gen.count) * 100}%` }}
+                          style={{ width: `${gen.count > 0 ? (gen.females / gen.count) * 100 : 0}%` }}
                           title={`إناث: ${gen.females}`}
                         />
                       </div>
@@ -169,7 +235,7 @@ export default function DashboardPage() {
                   <h3 className="font-bold text-gray-800">{branch.name}</h3>
                   <p className="text-2xl font-bold text-green-600">{branch.count}</p>
                   <p className="text-xs text-gray-500">
-                    {Math.round((branch.count / stats.totalMembers) * 100)}% من العائلة
+                    {stats.totalMembers > 0 ? Math.round((branch.count / stats.totalMembers) * 100) : 0}% من العائلة
                   </p>
                 </div>
               ))}
@@ -191,7 +257,7 @@ export default function DashboardPage() {
                   <div className="flex-1 bg-gray-200 rounded-full h-4">
                     <div
                       className="bg-orange-500 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${(count / livingMembers) * 100}%` }}
+                      style={{ width: `${livingMembers > 0 ? (count / livingMembers) * 100 : 0}%` }}
                     />
                   </div>
                   <span className="w-8 text-sm font-medium text-gray-700">{count}</span>
@@ -268,15 +334,15 @@ export default function DashboardPage() {
             <div className="h-10 rounded-full overflow-hidden flex">
               <div
                 className="bg-blue-500 flex items-center justify-center text-white font-bold"
-                style={{ width: `${(stats.males / stats.totalMembers) * 100}%` }}
+                style={{ width: `${stats.totalMembers > 0 ? (stats.males / stats.totalMembers) * 100 : 50}%` }}
               >
-                {Math.round((stats.males / stats.totalMembers) * 100)}%
+                {stats.totalMembers > 0 ? Math.round((stats.males / stats.totalMembers) * 100) : 0}%
               </div>
               <div
                 className="bg-pink-500 flex items-center justify-center text-white font-bold"
-                style={{ width: `${(stats.females / stats.totalMembers) * 100}%` }}
+                style={{ width: `${stats.totalMembers > 0 ? (stats.females / stats.totalMembers) * 100 : 50}%` }}
               >
-                {Math.round((stats.females / stats.totalMembers) * 100)}%
+                {stats.totalMembers > 0 ? Math.round((stats.females / stats.totalMembers) * 100) : 0}%
               </div>
             </div>
           </div>
