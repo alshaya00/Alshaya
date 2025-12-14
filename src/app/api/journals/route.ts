@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { safeJsonParseArray } from '@/lib/utils/safe-json';
-
-// Sanitize string input to prevent XSS attacks
-function sanitizeString(input: string | null | undefined): string | null {
-  if (!input) return null;
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .trim();
-}
+import { sanitizeString } from '@/lib/sanitize';
 
 // GET /api/journals - Get all journals with filters
 export async function GET(request: NextRequest) {
@@ -52,26 +39,50 @@ export async function GET(request: NextRequest) {
       where.generation = parseInt(generation);
     }
 
-    if (memberId) {
-      where.OR = [
-        { primaryMemberId: memberId },
-        { relatedMemberIds: { contains: memberId } }
-      ];
-    }
-
     if (era) {
       where.era = era;
     }
 
+    // Build OR conditions - combine memberId and search filters properly
     if (search) {
       const searchTerm = search.toLowerCase();
+      // If memberId filter exists, we need AND logic: (member matches) AND (search matches)
+      // If no memberId, just use OR for search fields
+      if (memberId) {
+        // Member filter already in AND, add search as separate AND condition
+        where.AND = [
+          {
+            OR: [
+              { primaryMemberId: memberId },
+              { relatedMemberIds: { contains: memberId } }
+            ]
+          },
+          {
+            OR: [
+              { titleAr: { contains: searchTerm } },
+              { titleEn: { contains: searchTerm } },
+              { contentAr: { contains: searchTerm } },
+              { excerpt: { contains: searchTerm } },
+              { narrator: { contains: searchTerm } },
+              { locationAr: { contains: searchTerm } }
+            ]
+          }
+        ];
+      } else {
+        where.OR = [
+          { titleAr: { contains: searchTerm } },
+          { titleEn: { contains: searchTerm } },
+          { contentAr: { contains: searchTerm } },
+          { excerpt: { contains: searchTerm } },
+          { narrator: { contains: searchTerm } },
+          { locationAr: { contains: searchTerm } }
+        ];
+      }
+    } else if (memberId) {
+      // Only memberId filter, no search
       where.OR = [
-        { titleAr: { contains: searchTerm } },
-        { titleEn: { contains: searchTerm } },
-        { contentAr: { contains: searchTerm } },
-        { excerpt: { contains: searchTerm } },
-        { narrator: { contains: searchTerm } },
-        { locationAr: { contains: searchTerm } }
+        { primaryMemberId: memberId },
+        { relatedMemberIds: { contains: memberId } }
       ];
     }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMaleMembers, getNextId, FamilyMember, getAllMembers } from '@/lib/data';
+import { FamilyMember, getNextId } from '@/lib/data';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import AddMemberGraph from '@/components/AddMemberGraph';
 import {
@@ -75,9 +75,28 @@ export default function QuickAddPage() {
 
   // Load data on mount
   useEffect(() => {
-    setFathers(getMaleMembers());
-    setAllMembers(getAllMembers());
-    setNewMemberId(getNextId());
+    const loadData = async () => {
+      try {
+        // Fetch all members from API
+        const res = await fetch('/api/members?limit=500');
+        const data = await res.json();
+        const members = data.data || [];
+
+        setAllMembers(members);
+        setFathers(members.filter((m: FamilyMember) => m.gender === 'Male'));
+
+        // Generate next ID based on max existing ID
+        if (members.length > 0) {
+          const maxId = Math.max(...members.map((m: FamilyMember) => parseInt(m.id.replace('P', ''))));
+          setNewMemberId(`P${String(maxId + 1).padStart(3, '0')}`);
+        } else {
+          setNewMemberId('P001');
+        }
+      } catch (error) {
+        console.error('Error loading members:', error);
+      }
+    };
+    loadData();
 
     // Load saved members count from local storage
     const saved = localStorage.getItem(STORAGE_KEY);

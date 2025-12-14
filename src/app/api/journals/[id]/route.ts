@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { safeJsonParseArray } from '@/lib/utils/safe-json';
-
-// Sanitize string input
-function sanitizeString(input: string | null | undefined): string | null {
-  if (!input) return null;
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .trim();
-}
+import { sanitizeString } from '@/lib/sanitize';
 
 // GET /api/journals/[id] - Get a single journal
 export async function GET(
