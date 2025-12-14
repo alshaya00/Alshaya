@@ -190,27 +190,27 @@ export async function getStatisticsFromDb() {
     }
 
     const totalMembers = members.length;
-    const males = members.filter(m => m.gender === 'Male').length;
-    const females = members.filter(m => m.gender === 'Female').length;
+    const males = members.filter((m: DbMember) => m.gender === 'Male').length;
+    const females = members.filter((m: DbMember) => m.gender === 'Female').length;
     const generations = members.length > 0
-      ? Math.max(...members.map(m => m.generation))
+      ? Math.max(...members.map((m: DbMember) => m.generation))
       : 0;
 
-    const branches = [...new Set(members.map(m => m.branch).filter(Boolean))] as string[];
+    const branches = [...new Set(members.map((m: DbMember) => m.branch).filter(Boolean))] as string[];
     const branchCounts = branches.map(branch => ({
       name: branch,
-      count: members.filter(m => m.branch === branch).length,
+      count: members.filter((m: DbMember) => m.branch === branch).length,
     }));
 
     const generationBreakdown = generations > 0
       ? Array.from({ length: generations }, (_, i) => {
           const gen = i + 1;
-          const genMembers = members.filter(m => m.generation === gen);
+          const genMembers = members.filter((m: DbMember) => m.generation === gen);
           return {
             generation: gen,
             count: genMembers.length,
-            males: genMembers.filter(m => m.gender === 'Male').length,
-            females: genMembers.filter(m => m.gender === 'Female').length,
+            males: genMembers.filter((m: DbMember) => m.gender === 'Male').length,
+            females: genMembers.filter((m: DbMember) => m.gender === 'Female').length,
             percentage: totalMembers > 0 ? Math.round((genMembers.length / totalMembers) * 100) : 0,
           };
         })
@@ -300,7 +300,7 @@ export async function getNextIdFromDb(): Promise<string> {
       return `P${String(maxId + 1).padStart(3, '0')}`;
     }
 
-    const maxId = Math.max(...members.map(m => parseInt(m.id.replace('P', ''))));
+    const maxId = Math.max(...members.map((m: DbMember) => parseInt(m.id.replace('P', ''))));
     return `P${String(maxId + 1).padStart(3, '0')}`;
   } catch (error) {
     console.error('Error getting next ID:', error);
@@ -406,7 +406,7 @@ export async function createMemberInDb(member: Omit<FamilyMember, 'createdAt' | 
       await prisma.familyMember.update({
         where: { id: member.fatherId },
         data: { [countField]: { increment: 1 } }
-      }).catch(err => console.error('Failed to update parent count:', err));
+      }).catch((err: Error) => console.error('Failed to update parent count:', err));
     }
 
     return toFamilyMember(created);

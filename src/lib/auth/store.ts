@@ -94,9 +94,9 @@ export interface StoredActivityLog {
 // IN-MEMORY STORES
 // ============================================
 
-// Default super admin - created on first run
-const DEFAULT_SUPER_ADMIN_EMAIL = 'admin@alshaye.family';
-const DEFAULT_SUPER_ADMIN_PASSWORD = 'Admin@123456';
+// Default super admin - MUST be set via environment variables in production
+const DEFAULT_SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || (process.env.NODE_ENV === 'production' ? '' : 'admin@alshaye.family');
+const DEFAULT_SUPER_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'Admin@123456');
 
 // In-memory stores
 let users: StoredUser[] = [];
@@ -153,6 +153,18 @@ export async function initializeStore() {
 
   // Create default super admin if no users exist
   if (users.length === 0) {
+    // SECURITY: In production, require ADMIN_EMAIL and ADMIN_PASSWORD environment variables
+    if (!DEFAULT_SUPER_ADMIN_EMAIL || !DEFAULT_SUPER_ADMIN_PASSWORD) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('CRITICAL: ADMIN_EMAIL and ADMIN_PASSWORD must be set in production');
+        // Don't create a default admin in production without env vars
+        initialized = true;
+        return;
+      } else {
+        console.warn('⚠️ WARNING: Using default admin credentials (dev only)');
+      }
+    }
+
     const passwordHash = await hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD);
     const superAdmin: StoredUser = {
       id: generateId(),
@@ -168,10 +180,14 @@ export async function initializeStore() {
     };
     users.push(superAdmin);
 
-    console.log('Created default super admin:');
-    console.log('  Email:', DEFAULT_SUPER_ADMIN_EMAIL);
-    console.log('  Password:', DEFAULT_SUPER_ADMIN_PASSWORD);
-    console.log('  (Please change this password after first login!)');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Created default super admin:');
+      console.log('  Email:', DEFAULT_SUPER_ADMIN_EMAIL);
+      console.log('  Password: [redacted - see environment variables]');
+      console.log('  (Please change this password after first login!)');
+    } else {
+      console.log('Created super admin from environment variables');
+    }
   }
 
   initialized = true;

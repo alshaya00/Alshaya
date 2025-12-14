@@ -563,7 +563,7 @@ export async function parseExcel(buffer: ArrayBuffer): Promise<{ members: Partia
     const worksheet = workbook.Sheets[sheetName];
 
     // Convert to JSON with headers
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
       header: 1,
       defval: ''
     }) as unknown[][];

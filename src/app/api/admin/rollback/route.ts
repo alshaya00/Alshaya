@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
 import { randomUUID } from 'crypto';
 
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
         memberId: batchChanges[0].memberId,
         memberName: batchChanges[0].member?.fullNameAr || batchChanges[0].member?.firstName,
         changeCount: batchChanges.length,
-        changes: batchChanges.map(c => ({
+        changes: batchChanges.map((c: typeof changes[0]) => ({
           id: c.id,
           fieldName: c.fieldName,
           oldValue: c.oldValue,
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Rollback single field
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Get current value for history
         const currentMember = await tx.familyMember.findUnique({
           where: { id: change.memberId },
@@ -200,7 +201,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         for (const change of batchChanges) {
           const currentMember = await tx.familyMember.findUnique({
             where: { id: change.memberId },
@@ -269,9 +270,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const snapshot = JSON.parse(snapshotChange.fullSnapshot);
+      let snapshot: Record<string, unknown> | null = null;
+      try {
+        snapshot = JSON.parse(snapshotChange.fullSnapshot);
+      } catch {
+        return NextResponse.json(
+          { success: false, message: 'Invalid snapshot data - cannot parse' },
+          { status: 400 }
+        );
+      }
+      if (!snapshot) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid snapshot data - cannot parse' },
+          { status: 400 }
+        );
+      }
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Get current state for history
         const currentMember = await tx.familyMember.findUnique({
           where: { id: snapshotChange.memberId },

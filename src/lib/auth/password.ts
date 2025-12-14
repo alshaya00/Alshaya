@@ -1,5 +1,6 @@
 // Password Hashing Utilities
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 const SALT_ROUNDS = 12;
 
@@ -61,44 +62,39 @@ export function validatePassword(password: string, minLength: number = 8): {
 }
 
 /**
- * Generate a secure random token
+ * Generate a cryptographically secure random token
+ * Uses Node.js crypto.randomBytes (secure)
  */
 export function generateToken(length: number = 32): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let token = '';
-  const randomValues = new Uint8Array(length);
 
-  // Use crypto.getRandomValues in browser, or fallback for Node
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(randomValues);
-  } else {
-    // Fallback for environments without crypto
-    for (let i = 0; i < length; i++) {
-      randomValues[i] = Math.floor(Math.random() * 256);
-    }
-  }
+  // Use Node.js crypto.randomBytes for secure random generation
+  const bytes = randomBytes(length);
 
   for (let i = 0; i < length; i++) {
-    token += chars[randomValues[i] % chars.length];
+    token += chars[bytes[i] % chars.length];
   }
 
   return token;
 }
 
 /**
- * Generate an invite code
- * Format: ALSHAYE-XXXX-XXXX
+ * Generate a cryptographically secure invite code
+ * Format: ALSHAYE-XXXX-XXXX (uses crypto.randomBytes instead of Math.random)
  */
 export function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars (I, O, 0, 1)
   let code = 'ALSHAYE-';
 
+  // Use cryptographically secure random bytes
+  const bytes = randomBytes(8);
   for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[bytes[i] % chars.length];
   }
   code += '-';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 4; i < 8; i++) {
+    code += chars[bytes[i] % chars.length];
   }
 
   return code;

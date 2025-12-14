@@ -151,7 +151,11 @@ export function createPendingImage(input: CreatePendingImageInput): PendingImage
 
   db.close();
 
-  return getPendingImageById(id)!;
+  const result = getPendingImageById(id);
+  if (!result) {
+    throw new Error(`Failed to retrieve newly created pending image with id: ${id}`);
+  }
+  return result;
 }
 
 export function getPendingImageById(id: string): PendingImage | null {
@@ -349,7 +353,11 @@ export function createMemberPhoto(input: CreateMemberPhotoInput): MemberPhoto {
 
   db.close();
 
-  return getMemberPhotoById(id)!;
+  const result = getMemberPhotoById(id);
+  if (!result) {
+    throw new Error(`Failed to retrieve newly created member photo with id: ${id}`);
+  }
+  return result;
 }
 
 export function getMemberPhotoById(id: string): MemberPhoto | null {
@@ -546,7 +554,8 @@ export function getPhotoTimeline(options?: {
   const yearMap = new Map<number, MemberPhoto[]>();
 
   for (const row of rows) {
-    const year = row.year!;
+    // year is guaranteed non-null by the WHERE clause
+    const year = row.year as number;
     const photo: MemberPhoto = {
       ...row,
       isFamilyAlbum: Boolean(row.isFamilyAlbum),
@@ -554,10 +563,12 @@ export function getPhotoTimeline(options?: {
       isPublic: Boolean(row.isPublic),
     };
 
-    if (!yearMap.has(year)) {
-      yearMap.set(year, []);
+    const existing = yearMap.get(year);
+    if (existing) {
+      existing.push(photo);
+    } else {
+      yearMap.set(year, [photo]);
     }
-    yearMap.get(year)!.push(photo);
   }
 
   const timeline = Array.from(yearMap.entries()).map(([year, photos]) => ({

@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { FamilyMember } from '@/lib/data';
 import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInDb } from '@/lib/db';
 import { sanitizeString } from '@/lib/sanitize';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+// Helper to get authenticated user from request
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 // Normalize gender input to handle case insensitivity
 function normalizeGender(gender: string): 'Male' | 'Female' | null {
@@ -14,6 +33,23 @@ function normalizeGender(gender: string): 'Male' | 'Female' | null {
 // GET /api/members - Get all members with optional filters
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Require authentication to view members
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.view_member_profiles) {
+      return NextResponse.json(
+        { success: false, message: 'No permission to view members', messageAr: 'لا تملك صلاحية عرض الأعضاء' },
+        { status: 403 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const gender = searchParams.get('gender');
     const generation = searchParams.get('generation');
@@ -96,6 +132,23 @@ export async function GET(request: NextRequest) {
 // POST /api/members - Create a new member
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Require authentication and add_members permission
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.add_member) {
+      return NextResponse.json(
+        { success: false, message: 'No permission to add members', messageAr: 'لا تملك صلاحية إضافة أعضاء' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Sanitize input fields to prevent XSS
@@ -175,6 +228,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating member:', error);
+    Sentry.captureException(error, {
+      tags: { endpoint: 'members', operation: 'create' },
+    });
     return NextResponse.json(
       { success: false, error: 'Failed to create member' },
       { status: 500 }

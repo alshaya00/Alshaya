@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { safeJsonParse } from '@/lib/utils/safe-json';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -71,8 +72,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Parse job config
-    const jobConfig = backupJob.jobConfig ? JSON.parse(backupJob.jobConfig) : {};
+    // Parse job config safely
+    const jobConfig = safeJsonParse<Record<string, unknown>>(backupJob.jobConfig, {});
 
     return NextResponse.json({
       success: true,
@@ -148,7 +149,7 @@ export async function PUT(request: NextRequest) {
       where: { name: 'AUTO_BACKUP' },
     });
 
-    const existingConfig = backupJob?.jobConfig ? JSON.parse(backupJob.jobConfig) : {};
+    const existingConfig = safeJsonParse<Record<string, unknown>>(backupJob?.jobConfig, {});
 
     // Merge new config
     const newJobConfig = {
@@ -190,7 +191,7 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    const config = backupJob.jobConfig ? JSON.parse(backupJob.jobConfig) : {};
+    const config = safeJsonParse<Record<string, unknown>>(backupJob.jobConfig, {});
 
     return NextResponse.json({
       success: true,

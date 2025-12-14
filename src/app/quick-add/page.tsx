@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FamilyMember } from '@/lib/data';
+import { FamilyMember, getNextId } from '@/lib/data';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import AddMemberGraph from '@/components/AddMemberGraph';
 import {

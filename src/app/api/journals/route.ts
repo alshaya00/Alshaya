@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { safeJsonParseArray } from '@/lib/utils/safe-json';
 import { sanitizeString } from '@/lib/sanitize';
 
 // GET /api/journals - Get all journals with filters
@@ -43,15 +44,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Build OR conditions - combine memberId and search filters properly
-    const orConditions: Record<string, unknown>[] = [];
-
-    if (memberId) {
-      orConditions.push(
-        { primaryMemberId: memberId },
-        { relatedMemberIds: { contains: memberId } }
-      );
-    }
-
     if (search) {
       const searchTerm = search.toLowerCase();
       // If memberId filter exists, we need AND logic: (member matches) AND (search matches)
@@ -115,11 +107,11 @@ export async function GET(request: NextRequest) {
       take: limit
     });
 
-    // Parse JSON fields
-    const parsedJournals = journals.map(journal => ({
+    // Parse JSON fields safely
+    const parsedJournals = journals.map((journal: typeof journals[0]) => ({
       ...journal,
-      tags: journal.tags ? JSON.parse(journal.tags) : [],
-      relatedMemberIds: journal.relatedMemberIds ? JSON.parse(journal.relatedMemberIds) : []
+      tags: safeJsonParseArray<string>(journal.tags),
+      relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
     }));
 
     return NextResponse.json({
@@ -203,8 +195,8 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         ...journal,
-        tags: journal.tags ? JSON.parse(journal.tags) : [],
-        relatedMemberIds: journal.relatedMemberIds ? JSON.parse(journal.relatedMemberIds) : []
+        tags: safeJsonParseArray<string>(journal.tags),
+        relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
       },
       message: 'تم إنشاء القصة بنجاح'
     }, { status: 201 });
