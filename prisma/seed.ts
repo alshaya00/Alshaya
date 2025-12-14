@@ -1812,35 +1812,450 @@ const familyMembers = [
   },
 ];
 
+// ============================================
+// PERMISSION CATEGORIES
+// ============================================
+const permissionCategories = [
+  { key: 'viewing', labelAr: 'العرض', labelEn: 'Viewing', displayOrder: 1 },
+  { key: 'members', labelAr: 'إدارة الأعضاء', labelEn: 'Member Management', displayOrder: 2 },
+  { key: 'data', labelAr: 'عمليات البيانات', labelEn: 'Data Operations', displayOrder: 3 },
+  { key: 'users', labelAr: 'إدارة المستخدمين', labelEn: 'User Management', displayOrder: 4 },
+  { key: 'settings', labelAr: 'إعدادات النظام', labelEn: 'System Settings', displayOrder: 5 },
+  { key: 'backup', labelAr: 'النسخ الاحتياطي', labelEn: 'Backup', displayOrder: 6 },
+  { key: 'audit', labelAr: 'المراجعة', labelEn: 'Audit', displayOrder: 7 },
+];
+
+// ============================================
+// PERMISSIONS
+// ============================================
+const permissions = [
+  // Viewing permissions
+  { key: 'view_family_tree', labelAr: 'عرض شجرة العائلة', labelEn: 'View Family Tree', category: 'viewing', displayOrder: 1 },
+  { key: 'view_member_profiles', labelAr: 'عرض ملفات الأعضاء', labelEn: 'View Member Profiles', category: 'viewing', displayOrder: 2 },
+  { key: 'view_member_contact', labelAr: 'عرض معلومات الاتصال', labelEn: 'View Contact Info', category: 'viewing', displayOrder: 3 },
+  { key: 'view_member_photos', labelAr: 'عرض صور الأعضاء', labelEn: 'View Member Photos', category: 'viewing', displayOrder: 4 },
+  { key: 'view_analytics', labelAr: 'عرض الإحصائيات', labelEn: 'View Analytics', category: 'viewing', displayOrder: 5 },
+  { key: 'view_change_history', labelAr: 'عرض سجل التغييرات', labelEn: 'View Change History', category: 'viewing', displayOrder: 6 },
+  // Member management
+  { key: 'add_member', labelAr: 'إضافة عضو', labelEn: 'Add Member', category: 'members', displayOrder: 7 },
+  { key: 'edit_member', labelAr: 'تعديل عضو', labelEn: 'Edit Member', category: 'members', displayOrder: 8 },
+  { key: 'delete_member', labelAr: 'حذف عضو', labelEn: 'Delete Member', category: 'members', displayOrder: 9 },
+  { key: 'suggest_edit', labelAr: 'اقتراح تعديل', labelEn: 'Suggest Edit', category: 'members', displayOrder: 10 },
+  { key: 'approve_pending_members', labelAr: 'الموافقة على الأعضاء', labelEn: 'Approve Pending Members', category: 'members', displayOrder: 11 },
+  // Data operations
+  { key: 'export_data', labelAr: 'تصدير البيانات', labelEn: 'Export Data', category: 'data', displayOrder: 12 },
+  { key: 'import_data', labelAr: 'استيراد البيانات', labelEn: 'Import Data', category: 'data', displayOrder: 13 },
+  { key: 'create_snapshot', labelAr: 'إنشاء نسخة احتياطية', labelEn: 'Create Snapshot', category: 'data', displayOrder: 14 },
+  { key: 'restore_snapshot', labelAr: 'استعادة نسخة احتياطية', labelEn: 'Restore Snapshot', category: 'data', displayOrder: 15 },
+  // User management
+  { key: 'view_users', labelAr: 'عرض المستخدمين', labelEn: 'View Users', category: 'users', displayOrder: 16 },
+  { key: 'invite_users', labelAr: 'دعوة مستخدمين', labelEn: 'Invite Users', category: 'users', displayOrder: 17 },
+  { key: 'approve_access_requests', labelAr: 'الموافقة على طلبات الوصول', labelEn: 'Approve Access Requests', category: 'users', displayOrder: 18 },
+  { key: 'change_user_roles', labelAr: 'تغيير أدوار المستخدمين', labelEn: 'Change User Roles', category: 'users', displayOrder: 19 },
+  { key: 'disable_users', labelAr: 'تعطيل المستخدمين', labelEn: 'Disable Users', category: 'users', displayOrder: 20 },
+  // System settings
+  { key: 'manage_site_settings', labelAr: 'إدارة إعدادات الموقع', labelEn: 'Manage Site Settings', category: 'settings', displayOrder: 21 },
+  { key: 'manage_privacy_settings', labelAr: 'إدارة إعدادات الخصوصية', labelEn: 'Manage Privacy Settings', category: 'settings', displayOrder: 22 },
+  { key: 'manage_permission_matrix', labelAr: 'إدارة صلاحيات الأدوار', labelEn: 'Manage Permission Matrix', category: 'settings', displayOrder: 23 },
+  { key: 'view_audit_logs', labelAr: 'عرض سجلات النظام', labelEn: 'View Audit Logs', category: 'audit', displayOrder: 24 },
+  { key: 'manage_branch_links', labelAr: 'إدارة روابط الفروع', labelEn: 'Manage Branch Links', category: 'settings', displayOrder: 25 },
+];
+
+// ============================================
+// ROLE DEFAULT PERMISSIONS MATRIX
+// ============================================
+const rolePermissionMatrix: Record<string, Record<string, boolean>> = {
+  GUEST: {
+    view_family_tree: true,
+    view_member_profiles: false,
+    view_member_contact: false,
+    view_member_photos: false,
+    view_analytics: false,
+    view_change_history: false,
+    add_member: false,
+    edit_member: false,
+    delete_member: false,
+    suggest_edit: false,
+    approve_pending_members: false,
+    export_data: false,
+    import_data: false,
+    create_snapshot: false,
+    restore_snapshot: false,
+    view_users: false,
+    invite_users: false,
+    approve_access_requests: false,
+    change_user_roles: false,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: false,
+    manage_branch_links: false,
+  },
+  MEMBER: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: false,
+    add_member: false,
+    edit_member: false,
+    delete_member: false,
+    suggest_edit: true,
+    approve_pending_members: false,
+    export_data: false,
+    import_data: false,
+    create_snapshot: false,
+    restore_snapshot: false,
+    view_users: false,
+    invite_users: false,
+    approve_access_requests: false,
+    change_user_roles: false,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: false,
+    manage_branch_links: false,
+  },
+  BRANCH_LEADER: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: true,
+    add_member: true,
+    edit_member: true,
+    delete_member: false,
+    suggest_edit: true,
+    approve_pending_members: true,
+    export_data: false,
+    import_data: false,
+    create_snapshot: false,
+    restore_snapshot: false,
+    view_users: false,
+    invite_users: true,
+    approve_access_requests: false,
+    change_user_roles: false,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: false,
+    manage_branch_links: true,
+  },
+  ADMIN: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: true,
+    add_member: true,
+    edit_member: true,
+    delete_member: false,
+    suggest_edit: true,
+    approve_pending_members: true,
+    export_data: true,
+    import_data: false,
+    create_snapshot: true,
+    restore_snapshot: false,
+    view_users: true,
+    invite_users: true,
+    approve_access_requests: true,
+    change_user_roles: true,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: true,
+    manage_branch_links: true,
+  },
+  SUPER_ADMIN: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: true,
+    add_member: true,
+    edit_member: true,
+    delete_member: true,
+    suggest_edit: true,
+    approve_pending_members: true,
+    export_data: true,
+    import_data: true,
+    create_snapshot: true,
+    restore_snapshot: true,
+    view_users: true,
+    invite_users: true,
+    approve_access_requests: true,
+    change_user_roles: true,
+    disable_users: true,
+    manage_site_settings: true,
+    manage_privacy_settings: true,
+    manage_permission_matrix: true,
+    view_audit_logs: true,
+    manage_branch_links: true,
+  },
+};
+
+// ============================================
+// EXPORT FIELD CATEGORIES
+// ============================================
+const exportFieldCategories = [
+  { key: 'identity', labelEn: 'Identity', labelAr: 'الهوية', displayOrder: 1 },
+  { key: 'family', labelEn: 'Family', labelAr: 'العائلة', displayOrder: 2 },
+  { key: 'personal', labelEn: 'Personal', labelAr: 'شخصي', displayOrder: 3 },
+  { key: 'contact', labelEn: 'Contact', labelAr: 'التواصل', displayOrder: 4 },
+  { key: 'meta', labelEn: 'Metadata', labelAr: 'البيانات الوصفية', displayOrder: 5 },
+];
+
+// ============================================
+// EXPORT FIELDS
+// ============================================
+const exportFields = [
+  // Identity fields
+  { key: 'id', labelEn: 'ID', labelAr: 'الرقم', category: 'identity', selectedByDefault: true, displayOrder: 1 },
+  { key: 'firstName', labelEn: 'First Name', labelAr: 'الاسم الأول', category: 'identity', selectedByDefault: true, displayOrder: 2 },
+  { key: 'fatherName', labelEn: 'Father Name', labelAr: 'اسم الأب', category: 'identity', selectedByDefault: true, displayOrder: 3 },
+  { key: 'grandfatherName', labelEn: 'Grandfather Name', labelAr: 'اسم الجد', category: 'identity', selectedByDefault: true, displayOrder: 4 },
+  { key: 'greatGrandfatherName', labelEn: 'Great Grandfather', labelAr: 'اسم الجد الثاني', category: 'identity', selectedByDefault: false, displayOrder: 5 },
+  { key: 'familyName', labelEn: 'Family Name', labelAr: 'اسم العائلة', category: 'identity', selectedByDefault: true, displayOrder: 6 },
+  { key: 'fullNameAr', labelEn: 'Full Name (Arabic)', labelAr: 'الاسم الكامل', category: 'identity', selectedByDefault: true, displayOrder: 7 },
+  { key: 'fullNameEn', labelEn: 'Full Name (English)', labelAr: 'الاسم بالإنجليزية', category: 'identity', selectedByDefault: false, displayOrder: 8 },
+  // Family fields
+  { key: 'fatherId', labelEn: 'Father ID', labelAr: 'رقم الأب', category: 'family', selectedByDefault: true, displayOrder: 9 },
+  { key: 'gender', labelEn: 'Gender', labelAr: 'الجنس', category: 'family', selectedByDefault: true, displayOrder: 10 },
+  { key: 'generation', labelEn: 'Generation', labelAr: 'الجيل', category: 'family', selectedByDefault: true, displayOrder: 11 },
+  { key: 'branch', labelEn: 'Branch', labelAr: 'الفرع', category: 'family', selectedByDefault: true, displayOrder: 12 },
+  { key: 'sonsCount', labelEn: 'Sons Count', labelAr: 'عدد الأبناء', category: 'family', selectedByDefault: true, displayOrder: 13 },
+  { key: 'daughtersCount', labelEn: 'Daughters Count', labelAr: 'عدد البنات', category: 'family', selectedByDefault: true, displayOrder: 14 },
+  // Personal fields
+  { key: 'birthYear', labelEn: 'Birth Year', labelAr: 'سنة الميلاد', category: 'personal', selectedByDefault: true, displayOrder: 15 },
+  { key: 'deathYear', labelEn: 'Death Year', labelAr: 'سنة الوفاة', category: 'personal', selectedByDefault: false, displayOrder: 16 },
+  { key: 'status', labelEn: 'Status', labelAr: 'الحالة', category: 'personal', selectedByDefault: true, displayOrder: 17 },
+  { key: 'occupation', labelEn: 'Occupation', labelAr: 'المهنة', category: 'personal', selectedByDefault: true, displayOrder: 18 },
+  { key: 'biography', labelEn: 'Biography', labelAr: 'السيرة', category: 'personal', selectedByDefault: false, displayOrder: 19 },
+  { key: 'photoUrl', labelEn: 'Photo URL', labelAr: 'رابط الصورة', category: 'personal', selectedByDefault: false, displayOrder: 20 },
+  // Contact fields
+  { key: 'phone', labelEn: 'Phone', labelAr: 'الهاتف', category: 'contact', selectedByDefault: true, displayOrder: 21 },
+  { key: 'email', labelEn: 'Email', labelAr: 'البريد', category: 'contact', selectedByDefault: true, displayOrder: 22 },
+  { key: 'city', labelEn: 'City', labelAr: 'المدينة', category: 'contact', selectedByDefault: true, displayOrder: 23 },
+];
+
+// ============================================
+// JOURNAL CATEGORIES
+// ============================================
+const journalCategories = [
+  { key: 'ORAL_HISTORY', nameAr: 'الروايات الشفهية', nameEn: 'Oral History', icon: '📜', color: 'amber', displayOrder: 1 },
+  { key: 'MIGRATION', nameAr: 'الهجرات والتنقلات', nameEn: 'Migration', icon: '🐪', color: 'orange', displayOrder: 2 },
+  { key: 'MEMORY', nameAr: 'الذكريات', nameEn: 'Memories', icon: '💭', color: 'blue', displayOrder: 3 },
+  { key: 'POEM', nameAr: 'الشعر والأدب', nameEn: 'Poetry', icon: '✒️', color: 'rose', displayOrder: 4 },
+  { key: 'GENEALOGY', nameAr: 'الأنساب', nameEn: 'Genealogy', icon: '🌳', color: 'green', displayOrder: 5 },
+];
+
+// ============================================
+// EVENT TYPES
+// ============================================
+const eventTypes = [
+  { key: 'gathering', labelEn: 'Gathering', labelAr: 'لقاء', color: 'text-green-700', bgColor: 'bg-green-100', displayOrder: 1 },
+  { key: 'wedding', labelEn: 'Wedding', labelAr: 'زفاف', color: 'text-pink-700', bgColor: 'bg-pink-100', displayOrder: 2 },
+  { key: 'eid', labelEn: 'Eid', labelAr: 'عيد', color: 'text-amber-700', bgColor: 'bg-amber-100', displayOrder: 3 },
+  { key: 'memorial', labelEn: 'Memorial', labelAr: 'ذكرى', color: 'text-gray-700', bgColor: 'bg-gray-100', displayOrder: 4 },
+  { key: 'celebration', labelEn: 'Celebration', labelAr: 'احتفال', color: 'text-purple-700', bgColor: 'bg-purple-100', displayOrder: 5 },
+];
+
+// ============================================
+// SAMPLE GATHERINGS
+// ============================================
+const sampleGatherings = [
+  {
+    title: 'Eid Al-Fitr Family Gathering',
+    titleAr: 'لقاء عيد الفطر العائلي',
+    description: 'Annual Eid gathering at the family estate. All family members are welcome!',
+    descriptionAr: 'اللقاء السنوي للعيد في ديوانية العائلة. جميع أفراد العائلة مدعوون!',
+    date: new Date('2025-03-30T10:00:00'),
+    time: '10:00',
+    location: 'Family Estate, Riyadh',
+    locationAr: 'ديوانية العائلة، الرياض',
+    type: 'eid',
+    organizerName: 'Mohammed Al-Shaye',
+    organizerNameAr: 'محمد آل شايع',
+    status: 'UPCOMING',
+  },
+  {
+    title: 'Ahmed & Sara Wedding',
+    titleAr: 'زفاف أحمد وسارة',
+    description: 'Join us in celebrating the wedding of Ahmed bin Khalid and Sara.',
+    descriptionAr: 'شاركونا فرحة زفاف أحمد بن خالد وسارة.',
+    date: new Date('2025-02-15T19:00:00'),
+    time: '19:00',
+    location: 'Ritz Carlton, Riyadh',
+    locationAr: 'ريتز كارلتون، الرياض',
+    type: 'wedding',
+    organizerName: 'Khalid Al-Shaye',
+    organizerNameAr: 'خالد آل شايع',
+    status: 'UPCOMING',
+  },
+  {
+    title: 'Monthly Family Dinner',
+    titleAr: 'العشاء العائلي الشهري',
+    description: 'Our monthly family dinner - great food, great company!',
+    descriptionAr: 'عشاؤنا العائلي الشهري - طعام رائع وصحبة أروع!',
+    date: new Date('2025-01-25T20:00:00'),
+    time: '20:00',
+    location: 'Al-Shaye House',
+    locationAr: 'بيت آل شايع',
+    type: 'gathering',
+    organizerName: 'Fatima Al-Shaye',
+    organizerNameAr: 'فاطمة آل شايع',
+    status: 'UPCOMING',
+  },
+];
+
 async function main() {
   console.log('🌳 Seeding آل شايع family database...');
   console.log(`📊 Total members to insert: ${familyMembers.length}`);
 
   // Clear existing data
+  console.log('\n🗑️  Clearing existing data...');
+  await prisma.gatheringAttendee.deleteMany();
+  await prisma.gathering.deleteMany();
+  await prisma.roleDefaultPermission.deleteMany();
+  await prisma.permission.deleteMany();
+  await prisma.permissionCategory.deleteMany();
+  await prisma.exportField.deleteMany();
+  await prisma.exportFieldCategory.deleteMany();
+  await prisma.journalCategory.deleteMany();
+  await prisma.eventType.deleteMany();
   await prisma.familyMember.deleteMany();
 
-  // Insert all family members
+  // Insert family members
+  console.log('\n👨‍👩‍👧‍👦 Inserting family members...');
   for (const member of familyMembers) {
     await prisma.familyMember.create({
       data: member,
     });
   }
 
+  // Insert permission categories
+  console.log('🔐 Inserting permission categories...');
+  for (const cat of permissionCategories) {
+    await prisma.permissionCategory.create({ data: cat });
+  }
+
+  // Insert permissions
+  console.log('🔐 Inserting permissions...');
+  const createdPermissions: Record<string, string> = {};
+  for (const perm of permissions) {
+    const created = await prisma.permission.create({ data: perm });
+    createdPermissions[perm.key] = created.id;
+  }
+
+  // Insert role default permissions
+  console.log('👥 Inserting role default permissions...');
+  for (const [role, perms] of Object.entries(rolePermissionMatrix)) {
+    for (const [permKey, allowed] of Object.entries(perms)) {
+      const permissionId = createdPermissions[permKey];
+      if (permissionId) {
+        await prisma.roleDefaultPermission.create({
+          data: {
+            role,
+            permissionId,
+            allowed,
+          },
+        });
+      }
+    }
+  }
+
+  // Insert export field categories
+  console.log('📤 Inserting export field categories...');
+  for (const cat of exportFieldCategories) {
+    await prisma.exportFieldCategory.create({ data: cat });
+  }
+
+  // Insert export fields
+  console.log('📤 Inserting export fields...');
+  for (const field of exportFields) {
+    await prisma.exportField.create({ data: field });
+  }
+
+  // Insert journal categories
+  console.log('📚 Inserting journal categories...');
+  for (const cat of journalCategories) {
+    await prisma.journalCategory.create({ data: cat });
+  }
+
+  // Insert event types
+  console.log('🎉 Inserting event types...');
+  for (const type of eventTypes) {
+    await prisma.eventType.create({ data: type });
+  }
+
+  // Insert sample gatherings
+  console.log('🎊 Inserting sample gatherings...');
+  for (const gathering of sampleGatherings) {
+    await prisma.gathering.create({ data: gathering });
+  }
+
+  // Create default site settings if not exists
+  console.log('⚙️  Setting up site settings...');
+  await prisma.siteSettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      familyNameArabic: 'آل شايع',
+      familyNameEnglish: 'Al-Shaye',
+      taglineArabic: 'نحفظ إرثنا، نربط أجيالنا',
+      taglineEnglish: 'Preserving Our Legacy, Connecting Generations',
+    },
+  });
+
+  // Create default privacy settings if not exists
+  console.log('🔒 Setting up privacy settings...');
+  await prisma.privacySettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+    },
+  });
+
+  // Create default backup config if not exists
+  console.log('💾 Setting up backup configuration...');
+  await prisma.backupConfig.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      enabled: true,
+      intervalHours: 24,
+      maxBackups: 10,
+      retentionDays: 30,
+    },
+  });
+
   // Verify statistics
   const totalMembers = await prisma.familyMember.count();
   const males = await prisma.familyMember.count({ where: { gender: 'Male' } });
   const females = await prisma.familyMember.count({ where: { gender: 'Female' } });
-  const generations = await prisma.familyMember.groupBy({
-    by: ['generation'],
-    _count: true,
-  });
+  const totalPermissions = await prisma.permission.count();
+  const totalExportFields = await prisma.exportField.count();
+  const totalGatherings = await prisma.gathering.count();
 
   console.log('\n✅ Database seeded successfully!');
   console.log('📊 Statistics:');
   console.log(`   - Total members: ${totalMembers}`);
   console.log(`   - Males: ${males}`);
   console.log(`   - Females: ${females}`);
-  console.log(`   - Generations: ${generations.length}`);
+  console.log(`   - Permissions: ${totalPermissions}`);
+  console.log(`   - Export fields: ${totalExportFields}`);
+  console.log(`   - Gatherings: ${totalGatherings}`);
   console.log('\n🌳 شجرة آل شايع جاهزة!');
 }
 

@@ -1193,3 +1193,251 @@ model JournalCategory {
   @@index([key])
   @@index([displayOrder])
 }
+
+// ============================================
+// PERMISSION DEFINITIONS (Database-driven)
+// ============================================
+
+model Permission {
+  id              String   @id @default(cuid())
+
+  // Permission info
+  key             String   @unique  // VIEW_MEMBERS, ADD_MEMBERS, etc.
+  labelAr         String             // عرض الأعضاء
+  labelEn         String             // View Members
+  description     String?            // Can view family members
+  descriptionAr   String?            // يمكنه عرض أعضاء العائلة
+
+  // Categorization
+  category        String             // members, data, history, admin, audit, backup
+
+  // Display
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  // Relations
+  rolePermissions RoleDefaultPermission[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([key])
+  @@index([category])
+  @@index([displayOrder])
+}
+
+model PermissionCategory {
+  id              String   @id @default(cuid())
+
+  // Category info
+  key             String   @unique  // members, data, history, admin, etc.
+  labelAr         String             // الأعضاء
+  labelEn         String             // Members
+  descriptionAr   String?
+  descriptionEn   String?
+  icon            String?
+
+  // Display
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  @@index([key])
+  @@index([displayOrder])
+}
+
+model RoleDefaultPermission {
+  id              String   @id @default(cuid())
+
+  // Role (SUPER_ADMIN, ADMIN, BRANCH_LEADER, MEMBER, GUEST)
+  role            String
+
+  // Permission
+  permissionId    String
+  permission      Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  // Whether this role has this permission by default
+  allowed         Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([role, permissionId])
+  @@index([role])
+  @@index([permissionId])
+}
+
+// ============================================
+// EXPORT FIELD DEFINITIONS (Database-driven)
+// ============================================
+
+model ExportField {
+  id              String   @id @default(cuid())
+
+  // Field info
+  key             String   @unique  // firstName, fatherName, etc.
+  labelEn         String             // First Name
+  labelAr         String             // الاسم الأول
+
+  // Categorization
+  category        String             // identity, family, personal, contact, meta
+
+  // Defaults
+  selectedByDefault Boolean @default(false)
+
+  // Display
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  @@index([key])
+  @@index([category])
+  @@index([displayOrder])
+}
+
+model ExportFieldCategory {
+  id              String   @id @default(cuid())
+
+  // Category info
+  key             String   @unique  // identity, family, personal, contact, meta
+  labelEn         String             // Identity
+  labelAr         String             // الهوية
+
+  // Display
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  @@index([key])
+  @@index([displayOrder])
+}
+
+// ============================================
+// GATHERINGS & EVENTS
+// ============================================
+
+model Gathering {
+  id              String   @id @default(cuid())
+
+  // Titles
+  title           String             // Eid Al-Fitr Family Gathering
+  titleAr         String             // لقاء عيد الفطر العائلي
+
+  // Description
+  description     String?
+  descriptionAr   String?
+
+  // Date & Time
+  date            DateTime
+  endDate         DateTime?          // For multi-day events
+  time            String?            // "10:00"
+
+  // Location
+  location        String?
+  locationAr      String?
+  locationUrl     String?            // Google Maps link
+
+  // Type
+  type            String   @default("gathering") // gathering, wedding, eid, memorial, celebration
+
+  // Media
+  coverImage      String?            // Base64 or URL
+
+  // Organizer
+  organizerId     String?            // User ID
+  organizerName   String
+  organizerNameAr String
+
+  // Status
+  status          String   @default("UPCOMING") // DRAFT, UPCOMING, ONGOING, COMPLETED, CANCELLED
+  isPublic        Boolean  @default(true)
+
+  // Metadata
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  attendees       GatheringAttendee[]
+
+  @@index([date])
+  @@index([type])
+  @@index([status])
+  @@index([organizerId])
+}
+
+model GatheringAttendee {
+  id              String   @id @default(cuid())
+
+  gatheringId     String
+  gathering       Gathering @relation(fields: [gatheringId], references: [id], onDelete: Cascade)
+
+  // Attendee info
+  userId          String?            // User ID if registered
+  memberId        String?            // Family member ID
+  name            String             // Name for display
+  email           String?
+
+  // RSVP
+  rsvpStatus      String   @default("PENDING") // PENDING, YES, MAYBE, NO
+  rsvpNote        String?
+  rsvpAt          DateTime?
+
+  // Attendance tracking
+  attended        Boolean  @default(false)
+  attendedAt      DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([gatheringId, userId])
+  @@index([gatheringId])
+  @@index([userId])
+  @@index([rsvpStatus])
+}
+
+// ============================================
+// BACKUP CONFIGURATION
+// ============================================
+
+model BackupConfig {
+  id                  String   @id @default("default")
+
+  // Schedule
+  enabled             Boolean  @default(true)
+  intervalHours       Int      @default(24)
+  maxBackups          Int      @default(10)
+  retentionDays       Int      @default(30)
+
+  // Last backup info
+  lastBackupAt        DateTime?
+  lastBackupStatus    String?  // SUCCESS, FAILED
+  lastBackupError     String?
+  lastBackupSize      Int?     // bytes
+
+  // Metadata
+  updatedAt           DateTime @updatedAt
+  updatedBy           String?
+}
+
+// ============================================
+// EVENT TYPE CONFIGURATION
+// ============================================
+
+model EventType {
+  id              String   @id @default(cuid())
+
+  // Type info
+  key             String   @unique  // gathering, wedding, eid, memorial, celebration
+  labelEn         String             // Gathering
+  labelAr         String             // لقاء
+
+  // Styling
+  color           String?            // text-green-700
+  bgColor         String?            // bg-green-100
+  icon            String?
+
+  // Display
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  @@index([key])
+  @@index([displayOrder])
+}
