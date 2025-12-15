@@ -13,6 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import { imageCategories as configImageCategories } from '@/config/constants';
 
 interface Member {
   id: string;
@@ -281,12 +282,12 @@ export default function ImageUploadForm({
     }
   };
 
-  const categories = [
-    { value: 'profile', label: 'صورة شخصية', description: 'صورة البروفايل للعضو' },
-    { value: 'memory', label: 'ذكرى', description: 'لحظات ومناسبات عائلية' },
-    { value: 'document', label: 'وثيقة', description: 'شهادات وأوراق رسمية' },
-    { value: 'historical', label: 'تاريخية', description: 'صور قديمة ونادرة' },
-  ];
+  // Use categories from centralized config
+  const categories = configImageCategories.map(c => ({
+    value: c.value,
+    label: c.labelAr,
+    description: c.descriptionAr,
+  }));
 
   if (uploadStatus === 'success') {
     return (

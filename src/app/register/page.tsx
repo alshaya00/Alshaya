@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
 import { familyMembers } from '@/lib/data';
+import { relationshipTypes } from '@/config/constants';
 
 interface FormData {
   email: string;
@@ -18,13 +19,8 @@ interface FormData {
   message: string;
 }
 
-const RELATIONSHIP_TYPES = [
-  { value: 'CHILD', labelAr: 'ابن/ابنة', labelEn: 'Child' },
-  { value: 'SPOUSE', labelAr: 'زوج/زوجة', labelEn: 'Spouse' },
-  { value: 'SIBLING', labelAr: 'أخ/أخت', labelEn: 'Sibling' },
-  { value: 'GRANDCHILD', labelAr: 'حفيد/حفيدة', labelEn: 'Grandchild' },
-  { value: 'OTHER', labelAr: 'أخرى', labelEn: 'Other' },
-];
+// Use relationship types from centralized config
+const RELATIONSHIP_TYPES = relationshipTypes;
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<FormData>({

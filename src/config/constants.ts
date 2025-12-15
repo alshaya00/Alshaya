@@ -104,10 +104,10 @@ export const relationshipTypes = [
 // ============================================
 
 export const imageCategories = [
-  { value: 'profile', labelAr: 'صورة شخصية', labelEn: 'Profile Picture' },
-  { value: 'memory', labelAr: 'ذكرى', labelEn: 'Memory' },
-  { value: 'document', labelAr: 'وثيقة', labelEn: 'Document' },
-  { value: 'historical', labelAr: 'تاريخية', labelEn: 'Historical' },
+  { value: 'profile', labelAr: 'صورة شخصية', labelEn: 'Profile Picture', descriptionAr: 'صورة البروفايل للعضو', descriptionEn: 'Member profile picture' },
+  { value: 'memory', labelAr: 'ذكرى', labelEn: 'Memory', descriptionAr: 'لحظات ومناسبات عائلية', descriptionEn: 'Family moments and occasions' },
+  { value: 'document', labelAr: 'وثيقة', labelEn: 'Document', descriptionAr: 'شهادات وأوراق رسمية', descriptionEn: 'Certificates and official documents' },
+  { value: 'historical', labelAr: 'تاريخية', labelEn: 'Historical', descriptionAr: 'صور قديمة ونادرة', descriptionEn: 'Old and rare photos' },
 ] as const;
 
 // ============================================
@@ -115,18 +115,18 @@ export const imageCategories = [
 // ============================================
 
 export const emailProviders = [
-  { value: 'none', label: 'None (Disabled)' },
-  { value: 'resend', label: 'Resend' },
-  { value: 'sendgrid', label: 'SendGrid' },
-  { value: 'mailgun', label: 'Mailgun' },
-  { value: 'smtp', label: 'Custom SMTP' },
+  { value: 'none', labelAr: 'غير مفعل', labelEn: 'Not Configured' },
+  { value: 'resend', labelAr: 'Resend', labelEn: 'Resend' },
+  { value: 'sendgrid', labelAr: 'SendGrid', labelEn: 'SendGrid' },
+  { value: 'mailgun', labelAr: 'Mailgun', labelEn: 'Mailgun' },
+  { value: 'smtp', labelAr: 'SMTP مخصص', labelEn: 'Custom SMTP' },
 ] as const;
 
 export const otpProviders = [
-  { value: 'none', label: 'None (Disabled)' },
-  { value: 'twilio', label: 'Twilio' },
-  { value: 'vonage', label: 'Vonage' },
-  { value: 'messagebird', label: 'MessageBird' },
+  { value: 'none', labelAr: 'غير مفعل', labelEn: 'Not Configured' },
+  { value: 'twilio', labelAr: 'Twilio', labelEn: 'Twilio' },
+  { value: 'vonage', labelAr: 'Vonage (Nexmo)', labelEn: 'Vonage (Nexmo)' },
+  { value: 'messagebird', labelAr: 'MessageBird', labelEn: 'MessageBird' },
 ] as const;
 
 // ============================================
