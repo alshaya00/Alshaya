@@ -9,6 +9,7 @@ import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
   Users, Lock, ArrowRight, Loader2, X, Search
 } from 'lucide-react';
+import { relationshipTypes } from '@/config/constants';
 
 // ============================================
 // TYPES
@@ -29,13 +30,8 @@ interface FormData {
 
 type JoinPath = 'invite' | 'request' | 'browse' | null;
 
-const RELATIONSHIP_TYPES = [
-  { value: 'CHILD', labelAr: 'ابن/ابنة', labelEn: 'Child' },
-  { value: 'SPOUSE', labelAr: 'زوج/زوجة', labelEn: 'Spouse' },
-  { value: 'SIBLING', labelAr: 'أخ/أخت', labelEn: 'Sibling' },
-  { value: 'GRANDCHILD', labelAr: 'حفيد/حفيدة', labelEn: 'Grandchild' },
-  { value: 'OTHER', labelAr: 'أخرى', labelEn: 'Other' },
-];
+// Use relationship types from centralized config
+const RELATIONSHIP_TYPES = relationshipTypes;
 
 // ============================================
 // MAIN COMPONENT

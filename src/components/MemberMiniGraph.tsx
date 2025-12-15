@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 import Link from 'next/link';
 import { FamilyMember, MilkFamily } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Home } from 'lucide-react';
+import { relationshipColors, genderColors } from '@/config/theme';
 
 interface MemberMiniGraphProps {
   person: FamilyMember;
@@ -35,29 +36,30 @@ interface GraphLink {
   type: 'blood' | 'milk';
 }
 
+// Use colors from centralized theme config
 const COLORS = {
   blood: {
-    line: '#3b82f6',
-    lineShadow: '#93c5fd',
+    line: relationshipColors.blood.line,
+    lineShadow: relationshipColors.blood.shadow,
   },
   milk: {
-    line: '#14b8a6',
-    lineShadow: '#5eead4',
-    background: '#f0fdfa',
+    line: relationshipColors.milk.line,
+    lineShadow: relationshipColors.milk.shadow,
+    background: relationshipColors.milk.background,
   },
   male: {
-    bg: '#dbeafe',
-    border: '#3b82f6',
-    gradient: ['#60a5fa', '#3b82f6'],
+    bg: genderColors.male.secondary,
+    border: genderColors.male.primary,
+    gradient: genderColors.male.gradient,
   },
   female: {
-    bg: '#fce7f3',
-    border: '#ec4899',
-    gradient: ['#f472b6', '#ec4899'],
+    bg: genderColors.female.secondary,
+    border: genderColors.female.primary,
+    gradient: genderColors.female.gradient,
   },
   mainPerson: {
-    ring: '#fbbf24',
-    glow: '#fef3c7',
+    ring: relationshipColors.mainPerson.ring,
+    glow: relationshipColors.mainPerson.glow,
   },
 };
 

@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 import { FamilyMember } from '@/lib/data';
 import { PendingMember } from '@/lib/branchEntry';
 import { ZoomIn, ZoomOut, Maximize2, Home, X, Users, Eye } from 'lucide-react';
+import { generationColors } from '@/config/theme';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -28,16 +29,8 @@ interface D3TreeNode {
   children?: D3TreeNode[];
 }
 
-const GENERATION_COLORS = {
-  1: { primary: '#dc2626', secondary: '#fecaca', gradient: ['#ef4444', '#dc2626'] },
-  2: { primary: '#ea580c', secondary: '#fed7aa', gradient: ['#f97316', '#ea580c'] },
-  3: { primary: '#d97706', secondary: '#fef3c7', gradient: ['#f59e0b', '#d97706'] },
-  4: { primary: '#16a34a', secondary: '#bbf7d0', gradient: ['#22c55e', '#16a34a'] },
-  5: { primary: '#0d9488', secondary: '#99f6e4', gradient: ['#14b8a6', '#0d9488'] },
-  6: { primary: '#2563eb', secondary: '#bfdbfe', gradient: ['#3b82f6', '#2563eb'] },
-  7: { primary: '#4f46e5', secondary: '#c7d2fe', gradient: ['#6366f1', '#4f46e5'] },
-  8: { primary: '#9333ea', secondary: '#e9d5ff', gradient: ['#a855f7', '#9333ea'] },
-};
+// Use colors from centralized theme config
+const GENERATION_COLORS = generationColors;
 
 export default function BranchTreeViewer({
   branchHead,
