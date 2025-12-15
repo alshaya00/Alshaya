@@ -1812,21 +1812,272 @@ const familyMembers = [
   },
 ];
 
+// Default Permission Matrix
+const DEFAULT_PERMISSIONS = {
+  GUEST: {
+    view_family_tree: true,
+    view_member_profiles: false,
+    view_member_contact: false,
+    view_member_photos: false,
+    view_analytics: false,
+    view_change_history: false,
+    add_member: false,
+    edit_member: false,
+    delete_member: false,
+    suggest_edit: false,
+    approve_pending_members: false,
+    export_data: false,
+    import_data: false,
+    create_snapshot: false,
+    restore_snapshot: false,
+    view_users: false,
+    invite_users: false,
+    approve_access_requests: false,
+    change_user_roles: false,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: false,
+    manage_branch_links: false,
+  },
+  MEMBER: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: false,
+    add_member: false,
+    edit_member: false,
+    delete_member: false,
+    suggest_edit: true,
+    approve_pending_members: false,
+    export_data: false,
+    import_data: false,
+    create_snapshot: false,
+    restore_snapshot: false,
+    view_users: false,
+    invite_users: false,
+    approve_access_requests: false,
+    change_user_roles: false,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: false,
+    manage_branch_links: false,
+  },
+  BRANCH_LEADER: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: true,
+    add_member: true,
+    edit_member: true,
+    delete_member: false,
+    suggest_edit: true,
+    approve_pending_members: true,
+    export_data: false,
+    import_data: false,
+    create_snapshot: false,
+    restore_snapshot: false,
+    view_users: false,
+    invite_users: true,
+    approve_access_requests: false,
+    change_user_roles: false,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: false,
+    manage_branch_links: true,
+  },
+  ADMIN: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: true,
+    add_member: true,
+    edit_member: true,
+    delete_member: false,
+    suggest_edit: true,
+    approve_pending_members: true,
+    export_data: true,
+    import_data: false,
+    create_snapshot: true,
+    restore_snapshot: false,
+    view_users: true,
+    invite_users: true,
+    approve_access_requests: true,
+    change_user_roles: true,
+    disable_users: false,
+    manage_site_settings: false,
+    manage_privacy_settings: false,
+    manage_permission_matrix: false,
+    view_audit_logs: true,
+    manage_branch_links: true,
+  },
+  SUPER_ADMIN: {
+    view_family_tree: true,
+    view_member_profiles: true,
+    view_member_contact: true,
+    view_member_photos: true,
+    view_analytics: true,
+    view_change_history: true,
+    add_member: true,
+    edit_member: true,
+    delete_member: true,
+    suggest_edit: true,
+    approve_pending_members: true,
+    export_data: true,
+    import_data: true,
+    create_snapshot: true,
+    restore_snapshot: true,
+    view_users: true,
+    invite_users: true,
+    approve_access_requests: true,
+    change_user_roles: true,
+    disable_users: true,
+    manage_site_settings: true,
+    manage_privacy_settings: true,
+    manage_permission_matrix: true,
+    view_audit_logs: true,
+    manage_branch_links: true,
+  },
+};
+
+// Journal Categories
+const JOURNAL_CATEGORIES = [
+  { key: 'ORAL_HISTORY', nameAr: 'الروايات الشفهية', nameEn: 'Oral History', descriptionAr: 'القصص المتوارثة شفهياً عبر الأجيال', descriptionEn: 'Stories passed down orally through generations', icon: '📜', color: '#f59e0b', displayOrder: 1 },
+  { key: 'MIGRATION', nameAr: 'قصص الهجرة', nameEn: 'Migration Stories', descriptionAr: 'رحلات وهجرات أفراد العائلة', descriptionEn: 'Family migration and travel stories', icon: '🐪', color: '#14b8a6', displayOrder: 2 },
+  { key: 'MEMORY', nameAr: 'ذكريات', nameEn: 'Memories', descriptionAr: 'ذكريات ومواقف عائلية', descriptionEn: 'Family memories and moments', icon: '💭', color: '#8b5cf6', displayOrder: 3 },
+  { key: 'POEM', nameAr: 'شعر', nameEn: 'Poetry', descriptionAr: 'قصائد وأشعار العائلة', descriptionEn: 'Family poems and poetry', icon: '📝', color: '#ec4899', displayOrder: 4 },
+  { key: 'GENEALOGY', nameAr: 'أنساب', nameEn: 'Genealogy', descriptionAr: 'معلومات عن الأنساب والسلالة', descriptionEn: 'Genealogical information', icon: '🌳', color: '#22c55e', displayOrder: 5 },
+];
+
 async function main() {
   console.log('🌳 Seeding آل شايع family database...');
   console.log(`📊 Total members to insert: ${familyMembers.length}`);
 
-  // Clear existing data
+  // ============================================
+  // SEED FAMILY MEMBERS
+  // ============================================
+  console.log('\n📦 Seeding family members...');
   await prisma.familyMember.deleteMany();
 
-  // Insert all family members
   for (const member of familyMembers) {
     await prisma.familyMember.create({
       data: member,
     });
   }
 
-  // Verify statistics
+  // ============================================
+  // SEED SITE SETTINGS
+  // ============================================
+  console.log('⚙️  Seeding site settings...');
+  await prisma.siteSettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      familyNameArabic: 'آل شايع',
+      familyNameEnglish: 'Al-Shaye',
+      taglineArabic: 'نحفظ إرثنا، نربط أجيالنا',
+      taglineEnglish: 'Preserving Our Legacy, Connecting Generations',
+      defaultLanguage: 'ar',
+      sessionDurationDays: 7,
+      rememberMeDurationDays: 30,
+      allowSelfRegistration: true,
+      requireEmailVerification: false,
+      requireApprovalForRegistration: true,
+      maxLoginAttempts: 5,
+      lockoutDurationMinutes: 15,
+      require2FAForAdmins: false,
+      minPasswordLength: 8,
+      allowGuestPreview: true,
+      guestPreviewMemberCount: 20,
+    },
+  });
+
+  // ============================================
+  // SEED PRIVACY SETTINGS
+  // ============================================
+  console.log('🔒 Seeding privacy settings...');
+  await prisma.privacySettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      profileVisibility: JSON.stringify({
+        GUEST: false,
+        MEMBER: true,
+        BRANCH_LEADER: true,
+        ADMIN: true,
+        SUPER_ADMIN: true,
+      }),
+      showPhoneToRoles: JSON.stringify(['ADMIN', 'SUPER_ADMIN']),
+      showEmailToRoles: JSON.stringify(['ADMIN', 'SUPER_ADMIN']),
+      showBirthYearToRoles: JSON.stringify(['MEMBER', 'BRANCH_LEADER', 'ADMIN', 'SUPER_ADMIN']),
+      showAgeForLiving: false,
+      showOccupation: true,
+      showCity: true,
+      showBiography: true,
+      showPhotosToRoles: JSON.stringify(['MEMBER', 'BRANCH_LEADER', 'ADMIN', 'SUPER_ADMIN']),
+      showDeathYear: true,
+      showFullDeathDate: false,
+    },
+  });
+
+  // ============================================
+  // SEED PERMISSION MATRIX
+  // ============================================
+  console.log('🔐 Seeding permission matrix...');
+  await prisma.permissionMatrix.upsert({
+    where: { id: 'default' },
+    update: { permissions: JSON.stringify(DEFAULT_PERMISSIONS) },
+    create: {
+      id: 'default',
+      permissions: JSON.stringify(DEFAULT_PERMISSIONS),
+    },
+  });
+
+  // ============================================
+  // SEED API SERVICE CONFIG
+  // ============================================
+  console.log('📧 Seeding API service config...');
+  await prisma.apiServiceConfig.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      emailProvider: 'none',
+      otpProvider: 'none',
+      enableEmailNotifications: false,
+      enableSMSNotifications: false,
+      testMode: true,
+    },
+  });
+
+  // ============================================
+  // SEED JOURNAL CATEGORIES
+  // ============================================
+  console.log('📚 Seeding journal categories...');
+  await prisma.journalCategory.deleteMany();
+
+  for (const category of JOURNAL_CATEGORIES) {
+    await prisma.journalCategory.create({
+      data: category,
+    });
+  }
+
+  // ============================================
+  // VERIFY & REPORT
+  // ============================================
   const totalMembers = await prisma.familyMember.count();
   const males = await prisma.familyMember.count({ where: { gender: 'Male' } });
   const females = await prisma.familyMember.count({ where: { gender: 'Female' } });
@@ -1834,6 +2085,7 @@ async function main() {
     by: ['generation'],
     _count: true,
   });
+  const categoryCount = await prisma.journalCategory.count();
 
   console.log('\n✅ Database seeded successfully!');
   console.log('📊 Statistics:');
@@ -1841,6 +2093,11 @@ async function main() {
   console.log(`   - Males: ${males}`);
   console.log(`   - Females: ${females}`);
   console.log(`   - Generations: ${generations.length}`);
+  console.log(`   - Journal categories: ${categoryCount}`);
+  console.log('   - Site settings: ✓');
+  console.log('   - Privacy settings: ✓');
+  console.log('   - Permission matrix: ✓');
+  console.log('   - API service config: ✓');
   console.log('\n🌳 شجرة آل شايع جاهزة!');
 }
 
