@@ -105,7 +105,7 @@ export default function HomePage() {
   const { showOnboarding, completeOnboarding, dismissOnboarding } = useOnboarding();
 
   // State for RSVP
-  const [rsvpStatus, setRsvpStatus] = useState<'yes' | 'maybe' | 'no' | null>(mockGathering.userRsvp);
+  const [rsvpStatus, setRsvpStatus] = useState<'yes' | 'maybe' | 'no' | null>(mockGathering.userRsvp ?? null);
   const [showChecklist, setShowChecklist] = useState(true);
 
   // Handle RSVP

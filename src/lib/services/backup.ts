@@ -261,8 +261,7 @@ export class BackupService {
         // Re-create members
         for (const member of members) {
           await tx.familyMember.create({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            data: member as any,
+            data: member,
           });
         }
       });
