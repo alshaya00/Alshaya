@@ -9,10 +9,10 @@ import {
 // GET - Get a specific pending image
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const pendingImage = getPendingImageById(id);
 
     if (!pendingImage) {
@@ -36,10 +36,10 @@ export async function GET(
 // PATCH - Approve or reject a pending image
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
 
     const { action, reviewedBy, reviewedByName, reviewNotes } = body;
@@ -141,10 +141,10 @@ export async function PATCH(
 // DELETE - Delete a pending image
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
 
     // Check if exists
     const pendingImage = getPendingImageById(id);

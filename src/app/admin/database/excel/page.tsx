@@ -28,29 +28,10 @@ import {
   FileUp,
   Undo2,
 } from 'lucide-react';
+import { memberFields } from '@/config/fields';
 
-// Member field definitions
-const MEMBER_FIELDS = [
-  { key: 'id', label: 'المعرف', labelEn: 'ID', type: 'text', required: true, editable: false },
-  { key: 'firstName', label: 'الاسم', labelEn: 'First Name', type: 'text', required: true, editable: true },
-  { key: 'fatherName', label: 'اسم الأب', labelEn: 'Father Name', type: 'text', required: false, editable: true },
-  { key: 'grandfatherName', label: 'اسم الجد', labelEn: 'Grandfather', type: 'text', required: false, editable: true },
-  { key: 'greatGrandfatherName', label: 'الجد الثاني', labelEn: 'Great Grandfather', type: 'text', required: false, editable: true },
-  { key: 'familyName', label: 'اسم العائلة', labelEn: 'Family Name', type: 'text', required: true, editable: true },
-  { key: 'fatherId', label: 'معرف الأب', labelEn: 'Father ID', type: 'text', required: false, editable: true },
-  { key: 'gender', label: 'الجنس', labelEn: 'Gender', type: 'select', options: ['Male', 'Female'], required: true, editable: true },
-  { key: 'birthYear', label: 'سنة الميلاد', labelEn: 'Birth Year', type: 'number', required: false, editable: true },
-  { key: 'deathYear', label: 'سنة الوفاة', labelEn: 'Death Year', type: 'number', required: false, editable: true },
-  { key: 'status', label: 'الحالة', labelEn: 'Status', type: 'select', options: ['Living', 'Deceased'], required: true, editable: true },
-  { key: 'generation', label: 'الجيل', labelEn: 'Generation', type: 'number', required: true, editable: true },
-  { key: 'branch', label: 'الفرع', labelEn: 'Branch', type: 'text', required: false, editable: true },
-  { key: 'sonsCount', label: 'عدد الأبناء', labelEn: 'Sons', type: 'number', required: false, editable: true },
-  { key: 'daughtersCount', label: 'عدد البنات', labelEn: 'Daughters', type: 'number', required: false, editable: true },
-  { key: 'phone', label: 'الهاتف', labelEn: 'Phone', type: 'text', required: false, editable: true },
-  { key: 'city', label: 'المدينة', labelEn: 'City', type: 'text', required: false, editable: true },
-  { key: 'occupation', label: 'المهنة', labelEn: 'Occupation', type: 'text', required: false, editable: true },
-  { key: 'email', label: 'البريد', labelEn: 'Email', type: 'email', required: false, editable: true },
-];
+// Use centralized field definitions from config
+const MEMBER_FIELDS = memberFields;
 
 interface Member {
   id: string;

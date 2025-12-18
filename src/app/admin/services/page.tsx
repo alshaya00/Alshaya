@@ -19,6 +19,7 @@ import {
   Send,
   Smartphone,
 } from 'lucide-react';
+import { emailProviders, otpProviders } from '@/config/constants';
 
 interface ApiConfig {
   emailProvider: string;
@@ -39,20 +40,9 @@ interface ApiConfig {
   testMode: boolean;
 }
 
-const EMAIL_PROVIDERS = [
-  { value: 'none', label: 'غير مفعل', labelEn: 'Not Configured' },
-  { value: 'resend', label: 'Resend', labelEn: 'Resend' },
-  { value: 'sendgrid', label: 'SendGrid', labelEn: 'SendGrid' },
-  { value: 'mailgun', label: 'Mailgun', labelEn: 'Mailgun' },
-  { value: 'smtp', label: 'SMTP مخصص', labelEn: 'Custom SMTP' },
-];
-
-const OTP_PROVIDERS = [
-  { value: 'none', label: 'غير مفعل', labelEn: 'Not Configured' },
-  { value: 'twilio', label: 'Twilio', labelEn: 'Twilio' },
-  { value: 'vonage', label: 'Vonage (Nexmo)', labelEn: 'Vonage (Nexmo)' },
-  { value: 'messagebird', label: 'MessageBird', labelEn: 'MessageBird' },
-];
+// Use providers from centralized config
+const EMAIL_PROVIDERS = emailProviders.map(p => ({ ...p, label: p.labelAr }));
+const OTP_PROVIDERS = otpProviders.map(p => ({ ...p, label: p.labelAr }));
 
 export default function ApiServicesPage() {
   const [config, setConfig] = useState<ApiConfig>({

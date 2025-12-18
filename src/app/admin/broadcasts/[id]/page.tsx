@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -102,8 +102,8 @@ const statusLabels: Record<BroadcastStatus, { ar: string; color: string; bgColor
   CANCELLED: { ar: 'ملغي', color: 'text-red-700', bgColor: 'bg-red-100' },
 };
 
-export default function BroadcastDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function BroadcastDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null);
   const [rsvpSummary, setRsvpSummary] = useState<RSVPSummary | null>(null);

@@ -4,10 +4,10 @@ import { broadcastService } from '@/lib/services/broadcast';
 // GET /api/broadcasts/[id] - Get a specific broadcast
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const broadcast = await broadcastService.getBroadcast(id);
 
     if (!broadcast) {
@@ -33,10 +33,10 @@ export async function GET(
 // PUT /api/broadcasts/[id] - Update a broadcast
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
 
     // Parse dates if provided
@@ -65,10 +65,10 @@ export async function PUT(
 // DELETE /api/broadcasts/[id] - Delete a broadcast
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     await broadcastService.deleteBroadcast(id);
 
     return NextResponse.json({

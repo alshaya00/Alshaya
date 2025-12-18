@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -26,8 +26,7 @@ const categoryColors: Record<JournalCategoryType, { bg: string; text: string; bo
   GENEALOGY: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
 };
 
-export default function JournalDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function JournalDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [journal, setJournal] = useState<FamilyJournal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,13 +36,13 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     fetchJournal();
-  }, [resolvedParams.id]);
+  }, [params.id]);
 
   const fetchJournal = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/journals/${resolvedParams.id}`);
+      const response = await fetch(`/api/journals/${params.id}`);
       const data = await response.json();
 
       if (data.success) {

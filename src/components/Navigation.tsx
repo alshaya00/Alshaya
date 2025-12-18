@@ -5,45 +5,16 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  Home, Users, TreePine, PlusCircle, BarChart3, Search, Menu, X,
-  GitBranch, Download, Upload, History, Settings, Edit, Copy,
-  MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, BookOpen
+  Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
+import { mainNavItems, mobileNavItems, moreNavItems as configMoreNavItems } from '@/config/navigation';
 
-// Updated labels for better UX (Fix #6: Rename Confusing Labels)
-const navItems = [
-  { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
-  { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
-  { href: '/journals', label: 'القصص', labelEn: 'Stories', icon: BookOpen },
-  { href: '/gatherings', label: 'اللقاءات', labelEn: 'Gatherings', icon: GitBranch },
-  { href: '/registry', label: 'العائلة', labelEn: 'Family', icon: Users },
-];
-
-// Mobile bottom nav items (5 main + More) - Simplified for UX (Fix #2)
-const mobileNavItems = [
-  { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
-  { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
-  { href: '/journals', label: 'القصص', labelEn: 'Stories', icon: BookOpen },
-  { href: '/gatherings', label: 'اللقاءات', labelEn: 'Gatherings', icon: GitBranch },
-  { href: '/registry', label: 'العائلة', labelEn: 'Family', icon: Users },
-];
-
-// More menu items with renamed labels (Fix #6)
-const moreNavItems = [
-  { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
-  { href: '/gallery', label: 'الصور', labelEn: 'Photos', icon: PlusCircle },
-  { href: '/quick-add', label: 'إضافة فرد', labelEn: 'Add Member', icon: PlusCircle },
-  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Family Stats', icon: BarChart3 },
-  { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
-  { href: '/tree-editor', label: 'تعديل الشجرة', labelEn: 'Edit Tree', icon: Edit, permission: 'edit_member' },
-  { href: '/export', label: 'تصدير البيانات', labelEn: 'Export', icon: Download, permission: 'export_data' },
-  { href: '/import', label: 'استيراد البيانات', labelEn: 'Import', icon: Upload, permission: 'import_data' },
-  { href: '/duplicates', label: 'إدارة التكرارات', labelEn: 'Duplicates', icon: Copy, permission: 'edit_member' },
-  { href: '/history', label: 'سجل التغييرات', labelEn: 'Change History', icon: History, permission: 'view_change_history' },
-  { href: '/admin', label: 'إدارة العائلة', labelEn: 'Family Management', icon: Settings },
-];
+// Using centralized navigation config
+const navItems = mainNavItems;
+const mobileNavItemsList = mobileNavItems;
+const moreNavItems = configMoreNavItems;
 
 export function Navigation() {
   const pathname = usePathname();
@@ -336,7 +307,7 @@ export function Navigation() {
           aria-label="التنقل السريع"
         >
           <div className="grid grid-cols-6 gap-0.5 px-1 py-1.5">
-            {mobileNavItems.map((item) => {
+            {mobileNavItemsList.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (

@@ -1,5 +1,22 @@
-// آل شايع Family Data - 99 members across 8 generations
-// This can be replaced with Prisma database queries when available
+/**
+ * آل شايع Family Data - Types and Fallback Data
+ *
+ * IMPORTANT: This file serves two purposes:
+ * 1. Defines the FamilyMember TypeScript interface used throughout the app
+ * 2. Provides fallback data when the database is unavailable
+ *
+ * PRIMARY DATA SOURCE: Database (Prisma/SQLite)
+ * - Run `npm run db:seed` to populate the database with family members
+ * - The database should always be the source of truth
+ * - This in-memory array is only used as a fallback for development/testing
+ *
+ * To migrate fully to database:
+ * - Ensure database is seeded: npm run db:generate && npm run db:push && npm run db:seed
+ * - The db.ts functions will automatically use database when available
+ *
+ * @see prisma/seed.ts - Contains the same data for database seeding
+ * @see src/lib/db.ts - Database access layer with fallback to this data
+ */
 
 export interface FamilyMember {
   id: string;
