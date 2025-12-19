@@ -3,6 +3,9 @@
  * Manages admin permissions and access control across the application
  */
 
+import { storageKeys } from '@/config/storage-keys';
+import { accessCodeConfig } from '@/config/admin-config';
+
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'EDITOR' | 'VIEWER';
 
 export interface Permission {
@@ -126,10 +129,10 @@ export const CATEGORY_LABELS: Record<string, { label: string; labelEn: string }>
 export function getCurrentAdmin(): Admin | null {
   if (typeof window === 'undefined') return null;
 
-  const currentAdminId = localStorage.getItem('alshaye_current_admin');
+  const currentAdminId = localStorage.getItem(storageKeys.currentAdmin);
   if (!currentAdminId) return null;
 
-  const admins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]') as Admin[];
+  const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]') as Admin[];
   return admins.find(a => a.id === currentAdminId && a.isActive) || null;
 }
 
@@ -177,7 +180,7 @@ export function hasAllPermissions(permissions: string[]): boolean {
  */
 export function setCurrentAdmin(adminId: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('alshaye_current_admin', adminId);
+  localStorage.setItem(storageKeys.currentAdmin, adminId);
 }
 
 /**
@@ -185,7 +188,7 @@ export function setCurrentAdmin(adminId: string): void {
  */
 export function clearCurrentAdmin(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('alshaye_current_admin');
+  localStorage.removeItem(storageKeys.currentAdmin);
 }
 
 /**
@@ -194,8 +197,8 @@ export function clearCurrentAdmin(): void {
 export function validateAccessCode(code: string): Admin | null {
   if (typeof window === 'undefined') return null;
 
-  const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
-  const admins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]') as Admin[];
+  const codes = JSON.parse(localStorage.getItem(storageKeys.adminCodes) || '{}');
+  const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]') as Admin[];
 
   // Find admin with matching code
   for (const [adminId, adminCode] of Object.entries(codes)) {
@@ -207,8 +210,8 @@ export function validateAccessCode(code: string): Admin | null {
     }
   }
 
-  // Check default admin code
-  if (code === 'admin123') {
+  // Check default admin code from config
+  if (code === accessCodeConfig.defaultAdminCode) {
     const superAdmin = admins.find(a => a.role === 'SUPER_ADMIN' && a.isActive);
     return superAdmin || null;
   }

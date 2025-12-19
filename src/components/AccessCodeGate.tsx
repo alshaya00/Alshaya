@@ -2,11 +2,13 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { Lock, Eye, EyeOff, LogOut, Key, Shield, AlertCircle } from 'lucide-react';
+import { storageKeys } from '@/config/storage-keys';
+import { accessCodeConfig } from '@/config/admin-config';
 
-// Access code configuration
-const ACCESS_CODE = 'alshaye2024'; // This should be moved to env in production
-const STORAGE_KEY = 'alshaye_access_granted';
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+// Access code configuration from centralized config
+const ACCESS_CODE = accessCodeConfig.defaultCode;
+const STORAGE_KEY = storageKeys.accessGranted;
+const SESSION_DURATION = accessCodeConfig.sessionDurationMs;
 
 interface AccessContextType {
   isAuthenticated: boolean;
@@ -103,7 +105,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
     }
   };
 
-  const isLocked = attempts >= 5;
+  const isLocked = attempts >= accessCodeConfig.maxAttempts;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 via-white to-green-50 p-4">
@@ -179,9 +181,9 @@ export function AccessGate({ children }: { children: ReactNode }) {
                 )}
 
                 {/* Attempts Warning */}
-                {attempts > 0 && attempts < 5 && (
+                {attempts > 0 && attempts < accessCodeConfig.maxAttempts && (
                   <p className="text-center text-sm text-orange-500">
-                    المحاولات المتبقية: {5 - attempts}
+                    المحاولات المتبقية: {accessCodeConfig.maxAttempts - attempts}
                   </p>
                 )}
 

@@ -18,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import type { BranchEntryLink } from '@/lib/types';
+import { storageKeys } from '@/config/storage-keys';
+import { tokenConfig } from '@/config/admin-config';
 
 export default function BranchLinksPage() {
   const [links, setLinks] = useState<BranchEntryLink[]>([]);
@@ -43,7 +45,7 @@ export default function BranchLinksPage() {
     } catch (error) {
       console.error('Error loading links:', error);
       // Load from localStorage as fallback
-      const stored = localStorage.getItem('alshaye_branch_links');
+      const stored = localStorage.getItem(storageKeys.branchLinks);
       if (stored) {
         setLinks(JSON.parse(stored));
       }
@@ -53,9 +55,9 @@ export default function BranchLinksPage() {
   };
 
   const generateToken = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const chars = tokenConfig.codeCharacters;
     let token = '';
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < tokenConfig.branchTokenLength; i++) {
       token += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return token;
@@ -87,9 +89,9 @@ export default function BranchLinksPage() {
         body: JSON.stringify(link),
       }).catch(() => {
         // Fallback to localStorage
-        const stored = JSON.parse(localStorage.getItem('alshaye_branch_links') || '[]');
+        const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
         stored.push(link);
-        localStorage.setItem('alshaye_branch_links', JSON.stringify(stored));
+        localStorage.setItem(storageKeys.branchLinks, JSON.stringify(stored));
       });
 
       setLinks((prev) => [...prev, link]);
@@ -111,11 +113,11 @@ export default function BranchLinksPage() {
         body: JSON.stringify({ isActive: !link.isActive }),
       }).catch(() => {
         // Fallback
-        const stored = JSON.parse(localStorage.getItem('alshaye_branch_links') || '[]');
+        const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
         const updated = stored.map((l: BranchEntryLink) =>
           l.id === id ? { ...l, isActive: !l.isActive } : l
         );
-        localStorage.setItem('alshaye_branch_links', JSON.stringify(updated));
+        localStorage.setItem(storageKeys.branchLinks, JSON.stringify(updated));
       });
 
       setLinks((prev) =>
@@ -132,9 +134,9 @@ export default function BranchLinksPage() {
     try {
       await fetch(`/api/admin/branch-links/${id}`, { method: 'DELETE' }).catch(() => {
         // Fallback
-        const stored = JSON.parse(localStorage.getItem('alshaye_branch_links') || '[]');
+        const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
         localStorage.setItem(
-          'alshaye_branch_links',
+          storageKeys.branchLinks,
           JSON.stringify(stored.filter((l: BranchEntryLink) => l.id !== id))
         );
       });

@@ -30,6 +30,7 @@ import {
   type AuditAction,
   type AuditSeverity,
 } from '@/lib/audit';
+import { paginationSettings } from '@/config/constants';
 
 const ACTION_LABELS: Record<AuditAction, { label: string; icon: React.ReactNode; color: string }> = {
   MEMBER_CREATE: { label: 'إنشاء عضو', icon: null, color: 'bg-green-100 text-green-700' },
@@ -82,7 +83,7 @@ export default function AuditLogPage() {
     success: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = paginationSettings.auditLogItemsPerPage;
 
   useEffect(() => {
     loadAuditLogs();

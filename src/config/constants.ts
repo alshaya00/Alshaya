@@ -39,6 +39,45 @@ export const dbSettings = {
 };
 
 // ============================================
+// PAGINATION & LIMITS
+// ============================================
+
+export const paginationSettings = {
+  // Default items per page for different views
+  auditLogItemsPerPage: 50,
+  membersPerPage: 25,
+  searchResultsLimit: 100,
+
+  // API fetch limits
+  defaultFetchLimit: 500,
+  maxFetchLimit: 1000,
+
+  // Activity log limits
+  maxActivityLogs: 10000,
+  maxAuditEntries: 10000,
+};
+
+// ============================================
+// BACKUP CONFIGURATION
+// ============================================
+
+export const backupSettings = {
+  // Default backup interval (24 hours)
+  defaultIntervalHours: 24,
+
+  // Maximum number of backups to keep
+  maxBackups: 10,
+
+  // Backup scheduler settings
+  schedule: '0 3 * * *', // Daily at 3 AM
+  retentionDays: 30,
+  timezone: 'Asia/Riyadh',
+
+  // Audit log retention
+  auditLogRetentionDays: 90,
+};
+
+// ============================================
 // SECURITY SETTINGS
 // ============================================
 

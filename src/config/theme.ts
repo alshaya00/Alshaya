@@ -8,6 +8,30 @@ export interface ColorPalette {
 }
 
 // ============================================
+// BRAND COLORS
+// ============================================
+
+export const brandColors = {
+  // Primary brand color (dark blue)
+  primary: '#1E3A5F',
+  primaryLight: '#2D5A87',
+  primaryDark: '#152A47',
+
+  // Secondary brand color
+  secondary: '#22c55e',
+  secondaryLight: '#4ade80',
+  secondaryDark: '#16a34a',
+
+  // Accent colors
+  accent: '#fbbf24',
+  accentLight: '#fef3c7',
+
+  // Theme colors for meta tags
+  themeDark: '#1E3A5F',
+  themeLight: '#ffffff',
+} as const;
+
+// ============================================
 // GENERATION COLORS (8 generations)
 // Used in family tree visualization
 // ============================================
@@ -171,7 +195,7 @@ export const chartColorClasses: Record<string, string> = {
 // ============================================
 
 export const exportStyles = {
-  headerGradient: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A87 100%)',
+  headerGradient: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.primaryLight} 100%)`,
   familyName: {
     ar: 'شجرة آل شايع العائلية',
     en: 'Al-Shaye Family Tree',

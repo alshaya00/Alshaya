@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { FamilyMember, getNextId } from '@/lib/data';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import AddMemberGraph from '@/components/AddMemberGraph';
+import { storageKeys } from '@/config/storage-keys';
+import { paginationSettings, dbSettings } from '@/config/constants';
 import {
   PlusCircle,
   Check,
@@ -44,7 +46,7 @@ interface AutoFillData {
   fullNamePreview: string;
 }
 
-const STORAGE_KEY = 'alshaye_new_members';
+const STORAGE_KEY = storageKeys.newMembers;
 
 export default function QuickAddPage() {
   const [step, setStep] = useState(1);
@@ -78,7 +80,7 @@ export default function QuickAddPage() {
     const loadData = async () => {
       try {
         // Fetch all members from API
-        const res = await fetch('/api/members?limit=500');
+        const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`);
         const data = await res.json();
         const members = data.data || [];
 
@@ -87,10 +89,10 @@ export default function QuickAddPage() {
 
         // Generate next ID based on max existing ID
         if (members.length > 0) {
-          const maxId = Math.max(...members.map((m: FamilyMember) => parseInt(m.id.replace('P', ''))));
-          setNewMemberId(`P${String(maxId + 1).padStart(3, '0')}`);
+          const maxId = Math.max(...members.map((m: FamilyMember) => parseInt(m.id.replace(dbSettings.idPrefix, ''))));
+          setNewMemberId(`${dbSettings.idPrefix}${String(maxId + 1).padStart(dbSettings.idPadding, '0')}`);
         } else {
-          setNewMemberId('P001');
+          setNewMemberId(`${dbSettings.idPrefix}${'1'.padStart(dbSettings.idPadding, '0')}`);
         }
       } catch (error) {
         console.error('Error loading members:', error);

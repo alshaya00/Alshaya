@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { storageKeys } from '@/config/storage-keys';
+import { brandColors } from '@/config/theme';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -13,7 +15,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'alshaye-theme';
+const STORAGE_KEY = storageKeys.theme;
 
 function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
@@ -45,7 +47,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Update meta theme-color
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', resolved === 'dark' ? '#1E3A5F' : '#ffffff');
+      metaThemeColor.setAttribute('content', resolved === 'dark' ? brandColors.themeDark : brandColors.themeLight);
     }
   }, [theme]);
 
