@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { FamilyMember, getNextId } from '@/lib/data';
+import { useState, useEffect, useCallback } from 'react';
+import { FamilyMember } from '@/lib/types';
+import { MatchCandidate } from '@/lib/matching';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import AddMemberGraph from '@/components/AddMemberGraph';
 import { storageKeys } from '@/config/storage-keys';
 import { paginationSettings, dbSettings } from '@/config/constants';
+import { MatchConfirmation, MatchComparisonGraphs } from '@/components/quick-add';
 import {
   PlusCircle,
   Check,
@@ -23,10 +25,19 @@ import {
   RotateCcw,
   GitBranch,
   List,
+  Search,
+  AlertCircle,
+  Loader2,
+  TreeDeciduous,
+  Clock,
 } from 'lucide-react';
+import { useNameMatch, useSubmitPendingMember } from '@/lib/hooks/useQueries';
 
 interface NewMemberData {
   firstName: string;
+  fatherName: string;
+  grandfatherName: string;
+  greatGrandfatherName: string;
   fatherId: string;
   gender: 'Male' | 'Female';
   birthYear: string;
@@ -44,25 +55,36 @@ interface AutoFillData {
   generation: number;
   branch: string | null;
   fullNamePreview: string;
+  lineagePath: string[];
 }
+
+type MatchingState = 'idle' | 'searching' | 'found' | 'multiple' | 'no_match' | 'manual';
 
 const STORAGE_KEY = storageKeys.newMembers;
 
 export default function QuickAddPage() {
   const [step, setStep] = useState(1);
-  const [fathers, setFathers] = useState<FamilyMember[]>([]);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [autoFillData, setAutoFillData] = useState<AutoFillData | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [newMemberId, setNewMemberId] = useState<string>('');
   const [savedMembers, setSavedMembers] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'dropdown' | 'graph'>('graph');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitWarning, setSubmitWarning] = useState<string | null>(null);
+
+  // Matching state
+  const [matchingState, setMatchingState] = useState<MatchingState>('idle');
+  const [matchResults, setMatchResults] = useState<MatchCandidate[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<MatchCandidate | null>(null);
+
+  const nameMatch = useNameMatch();
+  const submitPending = useSubmitPendingMember();
 
   const [formData, setFormData] = useState<NewMemberData>({
     firstName: '',
+    fatherName: '',
+    grandfatherName: '',
+    greatGrandfatherName: '',
     fatherId: '',
     gender: 'Male',
     birthYear: '',
@@ -83,11 +105,8 @@ export default function QuickAddPage() {
         const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`);
         const data = await res.json();
         const members = data.data || [];
-
         setAllMembers(members);
-        setFathers(members.filter((m: FamilyMember) => m.gender === 'Male'));
 
-        // Generate next ID based on max existing ID
         if (members.length > 0) {
           const maxId = Math.max(...members.map((m: FamilyMember) => parseInt(m.id.replace(dbSettings.idPrefix, ''))));
           setNewMemberId(`${dbSettings.idPrefix}${String(maxId + 1).padStart(dbSettings.idPadding, '0')}`);
@@ -100,7 +119,6 @@ export default function QuickAddPage() {
     };
     loadData();
 
-    // Load saved members count from local storage
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const members = JSON.parse(saved);
@@ -108,40 +126,28 @@ export default function QuickAddPage() {
     }
   }, []);
 
-  // Auto-fill data when father or name changes
+  // Update auto-fill data when match is selected
   useEffect(() => {
-    if (formData.fatherId && formData.firstName) {
-      const father = fathers.find((f) => f.id === formData.fatherId);
-      if (father) {
-        const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
-        setAutoFillData({
-          fatherName: father.firstName,
-          grandfatherName: father.fatherName,
-          greatGrandfatherName: father.grandfatherName,
-          generation: father.generation + 1,
-          branch: father.branch,
-          fullNamePreview: `${formData.firstName} ${connector} ${father.firstName} ${
-            father.fatherName ? `${connector} ${father.fatherName}` : ''
-          } آل شايع`,
-        });
-      }
-    } else if (formData.firstName) {
+    if (selectedMatch) {
+      const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
       setAutoFillData({
-        fatherName: null,
-        grandfatherName: null,
-        greatGrandfatherName: null,
-        generation: 1,
-        branch: 'الأصل',
-        fullNamePreview: `${formData.firstName} آل شايع`,
+        fatherName: selectedMatch.father.firstName,
+        grandfatherName: selectedMatch.grandfather?.firstName || null,
+        greatGrandfatherName: selectedMatch.greatGrandfather?.firstName || null,
+        generation: selectedMatch.generation,
+        branch: selectedMatch.branch,
+        fullNamePreview: selectedMatch.fullNamePreview.replace(
+          formData.firstName || '?',
+          formData.firstName
+        ),
+        lineagePath: selectedMatch.lineagePath,
       });
-    } else {
-      setAutoFillData(null);
+      setFormData(prev => ({ ...prev, fatherId: selectedMatch.fatherId }));
     }
-  }, [formData.fatherId, formData.firstName, formData.gender, fathers]);
+  }, [selectedMatch, formData.firstName, formData.gender]);
 
   const updateField = (field: keyof NewMemberData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when field is updated
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -154,9 +160,12 @@ export default function QuickAddPage() {
       if (!formData.firstName.trim()) {
         newErrors.firstName = 'الاسم الأول مطلوب';
       }
+      if (!formData.fatherName.trim()) {
+        newErrors.fatherName = 'اسم الأب مطلوب';
+      }
     }
 
-    if (stepNum === 3) {
+    if (stepNum === 4) {
       if (formData.birthYear) {
         const year = parseInt(formData.birthYear);
         if (isNaN(year) || year < 1500 || year > new Date().getFullYear()) {
@@ -172,84 +181,146 @@ export default function QuickAddPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleSearch = useCallback(async () => {
+    if (!validateStep(1)) return;
+
+    setMatchingState('searching');
+    setMatchResults([]);
+    setSelectedMatch(null);
+
+    try {
+      const result = await nameMatch.mutateAsync({
+        firstName: formData.firstName,
+        fatherName: formData.fatherName,
+        grandfatherName: formData.grandfatherName || undefined,
+        greatGrandfatherName: formData.greatGrandfatherName || undefined,
+      });
+
+      if (result.success && result.data) {
+        const allMatches = result.data.allMatches || [];
+        setMatchResults(allMatches);
+
+        if (allMatches.length === 0) {
+          setMatchingState('no_match');
+        } else if (allMatches.length === 1 && allMatches[0].matchScore >= 80) {
+          setSelectedMatch(allMatches[0]);
+          setMatchingState('found');
+        } else {
+          setMatchingState('multiple');
+        }
+      } else {
+        setMatchingState('no_match');
+      }
+    } catch (error) {
+      console.error('Matching error:', error);
+      setMatchingState('no_match');
+    }
+  }, [formData.firstName, formData.fatherName, formData.grandfatherName, formData.greatGrandfatherName, nameMatch]);
+
+  const handleSelectMatch = (candidate: MatchCandidate) => {
+    setSelectedMatch(candidate);
+    setMatchingState('found');
+  };
+
+  const handleConfirmMatch = () => {
+    if (selectedMatch) {
+      setStep(3); // Go to gender step
+    }
+  };
+
+  const handleManualSelect = () => {
+    setMatchingState('manual');
+  };
+
+  const handleGraphFatherSelect = (member: FamilyMember | null) => {
+    if (member) {
+      // Build manual match from selected father
+      const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
+      setAutoFillData({
+        fatherName: member.firstName,
+        grandfatherName: member.fatherName,
+        greatGrandfatherName: member.grandfatherName,
+        generation: member.generation + 1,
+        branch: member.branch,
+        fullNamePreview: `${formData.firstName} ${connector} ${member.firstName} ${
+          member.fatherName ? `${connector} ${member.fatherName}` : ''
+        } آل شايع`,
+        lineagePath: member.lineagePath || [],
+      });
+      setFormData(prev => ({ ...prev, fatherId: member.id }));
+    } else {
+      setAutoFillData(null);
+      setFormData(prev => ({ ...prev, fatherId: '' }));
+    }
+  };
+
   const nextStep = () => {
+    if (step === 1) {
+      handleSearch();
+      return;
+    }
     if (validateStep(step)) {
-      setStep((prev) => Math.min(prev + 1, 4));
+      setStep((prev) => Math.min(prev + 1, 5));
     }
   };
 
   const prevStep = () => {
+    if (step === 2 && matchingState !== 'manual') {
+      setMatchingState('idle');
+      setMatchResults([]);
+      setSelectedMatch(null);
+    }
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(3)) return;
+    if (!validateStep(4)) return;
+    if (!formData.fatherId && !autoFillData) {
+      setSubmitError('يجب اختيار الأب أولاً');
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
-    setSubmitWarning(null);
 
-    // Create new member object
-    const newMember = {
-      id: newMemberId,
+    const pendingMember = {
       firstName: formData.firstName,
-      fatherId: formData.fatherId || null,
-      gender: formData.gender,
-      birthYear: formData.birthYear ? parseInt(formData.birthYear) : null,
-      city: formData.city || null,
-      occupation: formData.occupation || null,
-      phone: formData.phone || null,
-      email: formData.email || null,
-      biography: formData.biography || null,
-      fatherName: autoFillData?.fatherName || null,
-      grandfatherName: autoFillData?.grandfatherName || null,
-      greatGrandfatherName: autoFillData?.greatGrandfatherName || null,
-      generation: autoFillData?.generation || 1,
-      branch: autoFillData?.branch || 'الأصل',
-      fullNameAr: autoFillData?.fullNamePreview || `${formData.firstName} آل شايع`,
+      fatherName: autoFillData?.fatherName || formData.fatherName || undefined,
+      grandfatherName: autoFillData?.grandfatherName || formData.grandfatherName || undefined,
+      greatGrandfatherName: autoFillData?.greatGrandfatherName || formData.greatGrandfatherName || undefined,
       familyName: 'آل شايع',
-      status: 'Living',
-      sonsCount: 0,
-      daughtersCount: 0,
+      proposedFatherId: formData.fatherId,
+      gender: formData.gender,
+      birthYear: formData.birthYear ? parseInt(formData.birthYear) : undefined,
+      generation: autoFillData?.generation || 1,
+      branch: autoFillData?.branch || undefined,
+      fullNameAr: autoFillData?.fullNamePreview || `${formData.firstName} آل شايع`,
+      phone: formData.phone || undefined,
+      city: formData.city || undefined,
+      occupation: formData.occupation || undefined,
+      email: formData.email || undefined,
     };
 
     try {
-      // Call the API to persist the member
-      const response = await fetch('/api/members', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newMember),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create member');
-      }
+      // Submit to pending members for admin approval
+      await submitPending.mutateAsync(pendingMember);
 
       // Also save to local storage as backup
       const saved = localStorage.getItem(STORAGE_KEY);
       const members = saved ? JSON.parse(saved) : [];
-      members.push({ ...newMember, apiSaved: true, savedAt: new Date().toISOString() });
+      members.push({ ...pendingMember, id: newMemberId, status: 'PENDING', savedAt: new Date().toISOString() });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
-
-      console.log('New member saved:', result.data);
-
-      // Check if there's a warning (database unavailable)
-      if (result.warning) {
-        setSubmitWarning(result.warning);
-      }
 
       setSubmitted(true);
       setSavedMembers(members.length);
 
       setTimeout(() => {
         setSubmitted(false);
-        setSubmitWarning(null);
         setFormData({
           firstName: '',
+          fatherName: '',
+          grandfatherName: '',
+          greatGrandfatherName: '',
           fatherId: '',
           gender: 'Male',
           birthYear: '',
@@ -260,7 +331,10 @@ export default function QuickAddPage() {
           biography: '',
         });
         setStep(1);
-        setNewMemberId(getNextId());
+        setMatchingState('idle');
+        setMatchResults([]);
+        setSelectedMatch(null);
+        setAutoFillData(null);
       }, 3000);
     } catch (error) {
       console.error('Error saving member:', error);
@@ -273,6 +347,9 @@ export default function QuickAddPage() {
   const resetForm = () => {
     setFormData({
       firstName: '',
+      fatherName: '',
+      grandfatherName: '',
+      greatGrandfatherName: '',
       fatherId: '',
       gender: 'Male',
       birthYear: '',
@@ -284,55 +361,44 @@ export default function QuickAddPage() {
     });
     setStep(1);
     setErrors({});
-  };
-
-  // Handle father selection from graph
-  const handleGraphFatherSelect = (member: FamilyMember | null) => {
-    updateField('fatherId', member?.id || '');
+    setMatchingState('idle');
+    setMatchResults([]);
+    setSelectedMatch(null);
+    setAutoFillData(null);
   };
 
   const steps = [
-    { num: 1, title: 'الهوية', icon: User },
-    { num: 2, title: 'النسب', icon: User },
-    { num: 3, title: 'التفاصيل', icon: FileText },
-    { num: 4, title: 'المراجعة', icon: Eye },
+    { num: 1, title: 'الأسماء', icon: User },
+    { num: 2, title: 'المطابقة', icon: Search },
+    { num: 3, title: 'الجنس', icon: User },
+    { num: 4, title: 'التفاصيل', icon: FileText },
+    { num: 5, title: 'المراجعة', icon: Eye },
   ];
 
   return (
-    <div className="min-h-screen py-8 bg-gradient-to-b from-green-50 to-white">
-      <div className="container mx-auto px-4 max-w-3xl">
+    <div className="min-h-screen py-8 bg-gradient-to-b from-indigo-50 to-white">
+      <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full mb-4 shadow-lg">
             <PlusCircle className="text-white" size={40} />
           </div>
           <h1 className="text-3xl font-bold text-gray-800">إضافة عضو جديد</h1>
-          <p className="text-gray-600 mt-2">Add New Family Member</p>
+          <p className="text-gray-600 mt-2">Quick Add with Smart Name Matching</p>
           {savedMembers > 0 && (
-            <p className="text-sm text-green-600 mt-2">
-              ✓ تم حفظ {savedMembers} عضو جديد محلياً
+            <p className="text-sm text-indigo-600 mt-2">
+              ✓ تم حفظ {savedMembers} عضو محلياً (في انتظار الموافقة)
             </p>
           )}
         </div>
 
         {/* Success Message */}
         {submitted && (
-          <div className="bg-green-100 border-2 border-green-400 text-green-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3 animate-pulse">
-            <Check className="text-green-600" size={24} />
+          <div className="bg-green-100 border-2 border-green-400 text-green-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+            <Clock className="text-green-600" size={24} />
             <div>
-              <p className="font-bold">تمت الإضافة بنجاح!</p>
-              <p className="text-sm">تم حفظ العضو الجديد في قاعدة البيانات</p>
-            </div>
-          </div>
-        )}
-
-        {/* Warning Message (database unavailable) */}
-        {submitWarning && (
-          <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <p className="font-bold">تنبيه</p>
-              <p className="text-sm">تم حفظ العضو محلياً فقط - قاعدة البيانات غير متاحة</p>
+              <p className="font-bold">تم إرسال طلب الإضافة!</p>
+              <p className="text-sm">سيتم مراجعة الطلب من قبل المسؤول وإعلامك بالنتيجة</p>
             </div>
           </div>
         )}
@@ -340,7 +406,7 @@ export default function QuickAddPage() {
         {/* Error Message */}
         {submitError && (
           <div className="bg-red-100 border-2 border-red-400 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
-            <span className="text-2xl">❌</span>
+            <AlertCircle size={24} />
             <div>
               <p className="font-bold">خطأ في الحفظ</p>
               <p className="text-sm">{submitError}</p>
@@ -354,43 +420,21 @@ export default function QuickAddPage() {
           <div className="sm:hidden mb-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-500">الخطوة {step} من {steps.length}</span>
-              <span className="text-sm font-bold text-green-600">{steps[step - 1].title}</span>
+              <span className="text-sm font-bold text-indigo-600">{steps[step - 1].title}</span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-green-500 transition-all duration-500 rounded-full"
+                className="h-full bg-indigo-500 transition-all duration-500 rounded-full"
                 style={{ width: `${(step / steps.length) * 100}%` }}
-                role="progressbar"
-                aria-valuenow={step}
-                aria-valuemin={1}
-                aria-valuemax={steps.length}
-                aria-label={`الخطوة ${step} من ${steps.length}`}
               />
-            </div>
-            <div className="flex justify-between mt-2">
-              {steps.map((s) => (
-                <div
-                  key={s.num}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                    s.num < step
-                      ? 'bg-green-500 text-white'
-                      : s.num === step
-                      ? 'bg-green-500 text-white ring-2 ring-green-200'
-                      : 'bg-gray-200 text-gray-400'
-                  }`}
-                >
-                  {s.num < step ? <Check size={14} /> : s.num}
-                </div>
-              ))}
             </div>
           </div>
 
           {/* Desktop Step Indicator */}
           <div className="hidden sm:flex items-center justify-between relative">
-            {/* Progress Line */}
             <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 mx-12 z-0">
               <div
-                className="h-full bg-green-500 transition-all duration-500"
+                className="h-full bg-indigo-500 transition-all duration-500"
                 style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
               />
             </div>
@@ -399,8 +443,6 @@ export default function QuickAddPage() {
               <button
                 key={s.num}
                 onClick={() => s.num < step && setStep(s.num)}
-                aria-label={`${s.title} - الخطوة ${s.num}`}
-                aria-current={s.num === step ? 'step' : undefined}
                 className={`relative z-10 flex flex-col items-center gap-2 transition-all duration-300 ${
                   s.num < step ? 'cursor-pointer' : s.num === step ? '' : 'cursor-not-allowed opacity-50'
                 }`}
@@ -408,17 +450,17 @@ export default function QuickAddPage() {
                 <div
                   className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                     s.num < step
-                      ? 'bg-green-500 text-white'
+                      ? 'bg-indigo-500 text-white'
                       : s.num === step
-                      ? 'bg-green-500 text-white ring-4 ring-green-200 scale-110'
+                      ? 'bg-indigo-500 text-white ring-4 ring-indigo-200 scale-110'
                       : 'bg-gray-200 text-gray-400'
                   }`}
                 >
-                  {s.num < step ? <Check size={20} aria-hidden="true" /> : <s.icon size={20} aria-hidden="true" />}
+                  {s.num < step ? <Check size={20} /> : <s.icon size={20} />}
                 </div>
                 <span
                   className={`text-sm font-medium ${
-                    s.num <= step ? 'text-green-600' : 'text-gray-400'
+                    s.num <= step ? 'text-indigo-600' : 'text-gray-400'
                   }`}
                 >
                   {s.title}
@@ -431,129 +473,188 @@ export default function QuickAddPage() {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Step Header */}
-          <div className="bg-gradient-to-l from-green-500 to-green-600 px-6 py-4 text-white">
+          <div className="bg-gradient-to-l from-indigo-500 to-indigo-600 px-6 py-4 text-white">
             <h2 className="text-xl font-bold">
               الخطوة {step}: {steps[step - 1].title}
             </h2>
-            <p className="text-green-100 text-sm">
-              {step === 1 && 'أدخل الاسم الأول والجنس'}
-              {step === 2 && 'اختر الأب من شجرة العائلة'}
-              {step === 3 && 'أضف تفاصيل إضافية (اختياري)'}
-              {step === 4 && 'راجع البيانات قبل الحفظ'}
+            <p className="text-indigo-100 text-sm">
+              {step === 1 && 'أدخل اسمك واسم أبيك وجدك'}
+              {step === 2 && 'تأكيد مكانك في شجرة العائلة'}
+              {step === 3 && 'اختر الجنس'}
+              {step === 4 && 'أضف تفاصيل إضافية (اختياري)'}
+              {step === 5 && 'راجع البيانات قبل الإرسال للموافقة'}
             </p>
           </div>
 
           <div className="p-6">
-            {/* Step 1: Identity */}
+            {/* Step 1: Names Input */}
             {step === 1 && (
-              <div className="space-y-6">
-                {/* New ID Display */}
-                <div className="bg-gradient-to-l from-green-100 to-green-50 rounded-xl p-4 text-center border border-green-200">
-                  <p className="text-sm text-gray-500">رقم التعريف الجديد</p>
-                  <p className="text-3xl font-bold text-green-600">{newMemberId}</p>
+              <div className="space-y-5">
+                <div className="bg-indigo-50 rounded-xl p-4 text-center border border-indigo-100">
+                  <p className="text-sm text-gray-600 mb-1">رقم التعريف المتوقع</p>
+                  <p className="text-2xl font-bold text-indigo-600">{newMemberId}</p>
                 </div>
 
-                {/* First Name */}
-                <div>
-                  <label htmlFor="firstName" className="flex items-center gap-2 font-bold text-gray-700 mb-2">
-                    <User size={18} aria-hidden="true" />
-                    الاسم الأول <span className="text-red-500" aria-hidden="true">*</span>
-                    <span className="sr-only">(مطلوب)</span>
-                  </label>
-                  <input
-                    id="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e) => updateField('firstName', e.target.value)}
-                    className={`w-full px-4 py-3 border-2 rounded-xl text-lg bg-yellow-50 focus:bg-yellow-100 focus:outline-none transition-all ${
-                      errors.firstName ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-green-500'
-                    }`}
-                    placeholder="أدخل الاسم الأول فقط..."
-                    dir="rtl"
-                    aria-required="true"
-                    aria-invalid={!!errors.firstName}
-                    aria-describedby={errors.firstName ? 'firstName-error' : undefined}
-                  />
-                  {errors.firstName && (
-                    <p id="firstName-error" className="text-red-500 text-sm mt-1" role="alert">{errors.firstName}</p>
-                  )}
-                </div>
-
-                {/* Gender */}
-                <fieldset>
-                  <legend className="font-bold text-gray-700 mb-3">الجنس <span className="text-red-500" aria-hidden="true">*</span></legend>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => updateField('gender', 'Male')}
-                      aria-pressed={formData.gender === 'Male'}
-                      className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-3 ${
-                        formData.gender === 'Male'
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 hover:border-blue-300'
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* First Name */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <User size={18} />
+                      الاسم الأول <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => updateField('firstName', e.target.value)}
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-lg focus:outline-none transition-all ${
+                        errors.firstName ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500 bg-amber-50'
                       }`}
-                    >
-                      <span className="text-3xl" role="img" aria-label="ذكر">👨</span>
-                      <span className="font-semibold">ذكر / Male</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateField('gender', 'Female')}
-                      aria-pressed={formData.gender === 'Female'}
-                      className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-3 ${
-                        formData.gender === 'Female'
-                          ? 'border-pink-500 bg-pink-50 text-pink-700'
-                          : 'border-gray-200 hover:border-pink-300'
-                      }`}
-                    >
-                      <span className="text-3xl" role="img" aria-label="أنثى">👩</span>
-                      <span className="font-semibold">أنثى / Female</span>
-                    </button>
+                      placeholder="مثال: أحمد"
+                      dir="rtl"
+                    />
+                    {errors.firstName && (
+                      <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+                    )}
                   </div>
-                </fieldset>
+
+                  {/* Father Name */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <User size={18} />
+                      اسم الأب <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.fatherName}
+                      onChange={(e) => updateField('fatherName', e.target.value)}
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-lg focus:outline-none transition-all ${
+                        errors.fatherName ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500'
+                      }`}
+                      placeholder="مثال: محمد"
+                      dir="rtl"
+                    />
+                    {errors.fatherName && (
+                      <p className="text-red-500 text-sm mt-1">{errors.fatherName}</p>
+                    )}
+                  </div>
+
+                  {/* Grandfather Name */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <User size={18} />
+                      اسم الجد
+                      <span className="text-xs text-gray-400 font-normal">(يحسّن دقة البحث)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.grandfatherName}
+                      onChange={(e) => updateField('grandfatherName', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
+                      placeholder="مثال: حمد"
+                      dir="rtl"
+                    />
+                  </div>
+
+                  {/* Great-Grandfather Name */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <User size={18} />
+                      اسم جد الأب
+                      <span className="text-xs text-gray-400 font-normal">(اختياري)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.greatGrandfatherName}
+                      onChange={(e) => updateField('greatGrandfatherName', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
+                      placeholder="مثال: شايع"
+                      dir="rtl"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                  <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                    <AlertCircle size={18} />
+                    ملاحظة مهمة
+                  </h4>
+                  <p className="text-sm text-amber-700">
+                    لا تدخل اسم العائلة (آل شايع) - سيتم إضافته تلقائياً. كلما أدخلت أسماء أكثر، زادت دقة المطابقة.
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* Step 2: Lineage */}
+            {/* Step 2: Matching Results */}
             {step === 2 && (
               <div className="space-y-6">
-                {/* View Mode Toggle */}
-                <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
-                  <label className="flex items-center gap-2 font-bold text-gray-700">
-                    <User size={18} />
-                    اختر الأب من شجرة العائلة
-                  </label>
-                  <div className="flex items-center gap-1 bg-white rounded-lg p-1 border shadow-sm">
+                {/* Searching State */}
+                {matchingState === 'searching' && (
+                  <div className="text-center py-12">
+                    <Loader2 size={48} className="mx-auto text-indigo-500 animate-spin mb-4" />
+                    <p className="text-gray-600 font-medium">جاري البحث عن تطابق...</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      نبحث عن "{formData.firstName} بن {formData.fatherName}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Single Match Found */}
+                {matchingState === 'found' && selectedMatch && (
+                  <MatchConfirmation
+                    candidate={selectedMatch}
+                    newPersonName={formData.firstName}
+                    newPersonGender={formData.gender}
+                    onConfirm={handleConfirmMatch}
+                    onSelectDifferent={() => setMatchingState('multiple')}
+                    onManualSelect={handleManualSelect}
+                  />
+                )}
+
+                {/* Multiple Matches */}
+                {matchingState === 'multiple' && (
+                  <MatchComparisonGraphs
+                    candidates={matchResults}
+                    newPersonName={formData.firstName}
+                    newPersonGender={formData.gender}
+                    selectedId={selectedMatch?.fatherId}
+                    onSelect={handleSelectMatch}
+                  />
+                )}
+
+                {/* No Match Found */}
+                {matchingState === 'no_match' && (
+                  <div className="text-center py-8">
+                    <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                      <AlertCircle size={40} className="text-amber-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">لم يتم العثور على تطابق</h3>
+                    <p className="text-gray-600 mb-6">
+                      لم نجد "{formData.fatherName}" في قاعدة البيانات. يمكنك البحث يدوياً في الشجرة.
+                    </p>
                     <button
-                      type="button"
-                      onClick={() => setViewMode('graph')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        viewMode === 'graph'
-                          ? 'bg-green-500 text-white shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
+                      onClick={handleManualSelect}
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
                     >
-                      <GitBranch size={16} />
-                      الشجرة
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('dropdown')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        viewMode === 'dropdown'
-                          ? 'bg-green-500 text-white shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <List size={16} />
-                      القائمة
+                      <TreeDeciduous size={18} className="inline mr-2" />
+                      التنقل في الشجرة يدوياً
                     </button>
                   </div>
-                </div>
+                )}
 
-                {/* Graph View */}
-                {viewMode === 'graph' && (
+                {/* Manual Selection */}
+                {matchingState === 'manual' && (
                   <div className="space-y-4">
+                    <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                      <span className="font-medium text-gray-700">اختر الأب من الشجرة</span>
+                      <button
+                        onClick={() => setMatchingState(matchResults.length > 0 ? 'multiple' : 'no_match')}
+                        className="text-sm text-indigo-600 hover:text-indigo-800"
+                      >
+                        العودة للنتائج
+                      </button>
+                    </div>
+
                     <AddMemberGraph
                       members={allMembers}
                       selectedFatherId={formData.fatherId || null}
@@ -563,104 +664,109 @@ export default function QuickAddPage() {
                         gender: formData.gender
                       } : null}
                     />
-                    {formData.fatherId && (
-                      <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 rounded-xl py-3">
-                        <Check size={20} />
-                        <span className="font-medium">
-                          تم اختيار: {fathers.find(f => f.id === formData.fatherId)?.firstName || formData.fatherId}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateField('fatherId', '')}
-                          className="text-gray-400 hover:text-red-500 mr-2"
-                          title="إلغاء الاختيار"
-                        >
-                          ✕
-                        </button>
+
+                    {formData.fatherId && autoFillData && (
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Check size={18} className="text-green-600" />
+                          <span className="font-bold text-green-800">تم اختيار الأب</span>
+                        </div>
+                        <p className="text-green-700">{autoFillData.fullNamePreview}</p>
+                        <p className="text-sm text-green-600 mt-1">
+                          الجيل {autoFillData.generation} • {autoFillData.branch || 'الأصل'}
+                        </p>
                       </div>
-                    )}
-                    {!formData.fatherId && (
-                      <p className="text-center text-gray-500 text-sm">
-                        انقر على أي ذكر في الشجرة لاختياره كأب للعضو الجديد
-                      </p>
                     )}
                   </div>
                 )}
 
-                {/* Dropdown View */}
-                {viewMode === 'dropdown' && (
-                  <SearchableDropdown
-                    options={fathers}
-                    value={formData.fatherId}
-                    onChange={(value) => updateField('fatherId', value)}
-                    placeholder="ابحث واختر الأب..."
-                    allowEmpty={true}
-                    emptyLabel="-- إضافة كجذر جديد (بدون أب) --"
-                  />
-                )}
-
-                {/* Auto-filled Data Preview */}
-                {autoFillData && (
-                  <div className="bg-blue-50 rounded-xl p-5 border-2 border-blue-200">
-                    <h3 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
-                      <span className="text-xl">🔄</span>
-                      البيانات المُحسوبة تلقائياً
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white rounded-lg p-3">
-                        <span className="text-gray-500 text-sm">اسم الأب</span>
-                        <p className="font-bold text-lg">{autoFillData.fatherName || '—'}</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3">
-                        <span className="text-gray-500 text-sm">اسم الجد</span>
-                        <p className="font-bold text-lg">{autoFillData.grandfatherName || '—'}</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3">
-                        <span className="text-gray-500 text-sm">الجيل</span>
-                        <p className="font-bold text-lg text-green-600">الجيل {autoFillData.generation}</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3">
-                        <span className="text-gray-500 text-sm">الفرع</span>
-                        <p className="font-bold text-lg">{autoFillData.branch || '—'}</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-blue-200">
-                      <span className="text-gray-500 text-sm">الاسم الكامل</span>
-                      <p className="font-bold text-xl text-blue-900">{autoFillData.fullNamePreview}</p>
-                    </div>
+                {/* Confirm button for multiple matches */}
+                {matchingState === 'multiple' && selectedMatch && (
+                  <div className="pt-4 border-t">
+                    <button
+                      onClick={handleConfirmMatch}
+                      className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg"
+                    >
+                      <Check size={18} className="inline mr-2" />
+                      تأكيد الاختيار والمتابعة
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Step 3: Details */}
+            {/* Step 3: Gender Selection */}
             {step === 3 && (
+              <div className="space-y-6">
+                {autoFillData && (
+                  <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 mb-6">
+                    <p className="text-sm text-gray-500 mb-1">الاسم الكامل</p>
+                    <p className="text-xl font-bold text-indigo-900">{autoFillData.fullNamePreview}</p>
+                  </div>
+                )}
+
+                <fieldset>
+                  <legend className="font-bold text-gray-700 mb-4 text-lg">اختر الجنس</legend>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => updateField('gender', 'Male')}
+                      className={`p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
+                        formData.gender === 'Male'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className="text-5xl">👨</span>
+                      <span className="font-bold text-lg">ذكر</span>
+                      <span className="text-sm text-gray-500">Male</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateField('gender', 'Female')}
+                      className={`p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
+                        formData.gender === 'Female'
+                          ? 'border-pink-500 bg-pink-50 text-pink-700 ring-2 ring-pink-200'
+                          : 'border-gray-200 hover:border-pink-300'
+                      }`}
+                    >
+                      <span className="text-5xl">👩</span>
+                      <span className="font-bold text-lg">أنثى</span>
+                      <span className="text-sm text-gray-500">Female</span>
+                    </button>
+                  </div>
+                </fieldset>
+              </div>
+            )}
+
+            {/* Step 4: Details */}
+            {step === 4 && (
               <div className="space-y-5">
                 <p className="text-gray-500 text-center mb-4">
                   جميع الحقول اختيارية - يمكنك تخطي هذه الخطوة
                 </p>
 
-                {/* Birth Year */}
-                <div>
-                  <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
-                    <Calendar size={18} />
-                    سنة الميلاد
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.birthYear}
-                    onChange={(e) => updateField('birthYear', e.target.value)}
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
-                      errors.birthYear ? 'border-red-400' : 'border-gray-200 focus:border-green-500'
-                    }`}
-                    placeholder="مثال: 1990"
-                  />
-                  {errors.birthYear && (
-                    <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>
-                  )}
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Birth Year */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <Calendar size={18} />
+                      سنة الميلاد
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.birthYear}
+                      onChange={(e) => updateField('birthYear', e.target.value)}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
+                        errors.birthYear ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
+                      }`}
+                      placeholder="مثال: 1990"
+                    />
+                    {errors.birthYear && (
+                      <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>
+                    )}
+                  </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   {/* City */}
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
@@ -671,7 +777,7 @@ export default function QuickAddPage() {
                       type="text"
                       value={formData.city}
                       onChange={(e) => updateField('city', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-all"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all"
                       placeholder="الرياض، جدة..."
                     />
                   </div>
@@ -686,13 +792,11 @@ export default function QuickAddPage() {
                       type="text"
                       value={formData.occupation}
                       onChange={(e) => updateField('occupation', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-all"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all"
                       placeholder="مهندس، طبيب..."
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   {/* Phone */}
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
@@ -703,32 +807,32 @@ export default function QuickAddPage() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => updateField('phone', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-all"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all"
                       placeholder="+966..."
                       dir="ltr"
                     />
                   </div>
+                </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
-                      <Mail size={18} />
-                      البريد الإلكتروني
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => updateField('email', e.target.value)}
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
-                        errors.email ? 'border-red-400' : 'border-gray-200 focus:border-green-500'
-                      }`}
-                      placeholder="email@example.com"
-                      dir="ltr"
-                    />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                    )}
-                  </div>
+                {/* Email */}
+                <div>
+                  <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                    <Mail size={18} />
+                    البريد الإلكتروني
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => updateField('email', e.target.value)}
+                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
+                      errors.email ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
+                    }`}
+                    placeholder="email@example.com"
+                    dir="ltr"
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                  )}
                 </div>
 
                 {/* Biography */}
@@ -740,20 +844,30 @@ export default function QuickAddPage() {
                   <textarea
                     value={formData.biography}
                     onChange={(e) => updateField('biography', e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-all resize-none"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all resize-none"
                     rows={3}
-                    placeholder="أضف نبذة عن العضو..."
+                    placeholder="أضف نبذة عن نفسك..."
                   />
                 </div>
               </div>
             )}
 
-            {/* Step 4: Review */}
-            {step === 4 && (
+            {/* Step 5: Review */}
+            {step === 5 && (
               <div className="space-y-6">
+                {/* Approval Notice */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                  <Clock size={24} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-amber-800">يتطلب موافقة المسؤول</h4>
+                    <p className="text-sm text-amber-700">
+                      سيتم إرسال طلب الإضافة للمراجعة. ستتلقى إشعاراً عند الموافقة.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Preview Card */}
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border-2 border-gray-200">
-                  {/* Header */}
                   <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl ${
                       formData.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
@@ -761,17 +875,15 @@ export default function QuickAddPage() {
                       {formData.gender === 'Male' ? '👨' : '👩'}
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">رقم التعريف: {newMemberId}</p>
                       <h3 className="text-xl font-bold text-gray-800">
                         {autoFillData?.fullNamePreview || formData.firstName + ' آل شايع'}
                       </h3>
-                      <p className="text-green-600">
+                      <p className="text-indigo-600">
                         الجيل {autoFillData?.generation || 1} • {autoFillData?.branch || 'الأصل'}
                       </p>
                     </div>
                   </div>
 
-                  {/* Details Grid */}
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
                       <User className="text-gray-400" size={16} />
@@ -819,25 +931,17 @@ export default function QuickAddPage() {
                       </div>
                     )}
                   </div>
-
-                  {formData.biography && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-gray-500 text-sm mb-1">نبذة:</p>
-                      <p className="text-gray-700">{formData.biography}</p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Lineage Info */}
+                {/* Lineage Chain */}
                 {autoFillData && (
-                  <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                    <h4 className="font-bold text-green-800 mb-2">سلسلة النسب</h4>
-                    <p className="text-green-700">
-                      {formData.firstName}
-                      {autoFillData.fatherName && <span> ← {autoFillData.fatherName}</span>}
-                      {autoFillData.grandfatherName && <span> ← {autoFillData.grandfatherName}</span>}
-                      {autoFillData.greatGrandfatherName && <span> ← {autoFillData.greatGrandfatherName}</span>}
-                      <span> ← آل شايع</span>
+                  <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200">
+                    <h4 className="font-bold text-indigo-800 mb-2 flex items-center gap-2">
+                      <TreeDeciduous size={18} />
+                      سلسلة النسب الكاملة
+                    </h4>
+                    <p className="text-indigo-700 text-lg font-medium">
+                      {autoFillData.fullNamePreview}
                     </p>
                   </div>
                 )}
@@ -866,16 +970,50 @@ export default function QuickAddPage() {
                 </button>
               )}
 
-              {step < 4 ? (
+              {step === 1 && (
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-l from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg"
+                  disabled={nameMatch.isPending}
+                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-l from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                >
+                  {nameMatch.isPending ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      جاري البحث...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={18} />
+                      بحث ومطابقة
+                    </>
+                  )}
+                </button>
+              )}
+
+              {step === 2 && matchingState === 'manual' && formData.fatherId && (
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-l from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg"
+                >
+                  المتابعة
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+
+              {step > 2 && step < 5 && (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-l from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg"
                 >
                   التالي
                   <ChevronLeft size={20} />
                 </button>
-              ) : (
+              )}
+
+              {step === 5 && (
                 <button
                   type="button"
                   onClick={handleSubmit}
@@ -888,13 +1026,13 @@ export default function QuickAddPage() {
                 >
                   {isSubmitting ? (
                     <>
-                      <span className="animate-spin">⏳</span>
-                      جاري الحفظ...
+                      <Loader2 size={18} className="animate-spin" />
+                      جاري الإرسال...
                     </>
                   ) : (
                     <>
                       <Save size={20} />
-                      حفظ العضو
+                      إرسال للموافقة
                     </>
                   )}
                 </button>
@@ -904,13 +1042,13 @@ export default function QuickAddPage() {
         </div>
 
         {/* Tips */}
-        <div className="mt-8 bg-yellow-50 rounded-xl p-6 border border-yellow-200">
-          <h3 className="font-bold text-yellow-800 mb-3">💡 نصائح للإضافة</h3>
-          <ul className="space-y-2 text-sm text-yellow-700">
-            <li>• استخدم البحث في خطوة النسب للعثور على الأب بسرعة</li>
-            <li>• الحقول الاختيارية يمكن تعبئتها لاحقاً من صفحة العضو</li>
-            <li>• البيانات تُحفظ محلياً في المتصفح حتى يتم ربط قاعدة البيانات</li>
-            <li>• يمكنك العودة للخطوات السابقة لتعديل البيانات</li>
+        <div className="mt-8 bg-indigo-50 rounded-xl p-6 border border-indigo-200">
+          <h3 className="font-bold text-indigo-800 mb-3">💡 نصائح للإضافة السريعة</h3>
+          <ul className="space-y-2 text-sm text-indigo-700">
+            <li>• أدخل اسم جدك وجد أبيك للحصول على مطابقة أدق</li>
+            <li>• النظام يتعرف على الأسماء العربية بجميع أشكالها (محمد = محمّد = مُحَمَّد)</li>
+            <li>• إذا لم تجد تطابقاً، استخدم التنقل اليدوي في الشجرة</li>
+            <li>• جميع الإضافات تخضع لمراجعة المسؤول قبل النشر</li>
           </ul>
         </div>
       </div>

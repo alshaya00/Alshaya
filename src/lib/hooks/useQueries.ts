@@ -23,7 +23,16 @@ export const queryKeys = {
   duplicates: ['duplicates'] as const,
   branchLinks: ['branchLinks'] as const,
   auditLogs: ['auditLogs'] as const,
+  nameMatch: (input: NameMatchInput) => ['nameMatch', input] as const,
 };
+
+// Name matching types
+export interface NameMatchInput {
+  firstName: string;
+  fatherName: string;
+  grandfatherName?: string;
+  greatGrandfatherName?: string;
+}
 
 // ============================================
 // API FUNCTIONS
@@ -385,4 +394,78 @@ export function usePrefetchMember(queryClient: ReturnType<typeof useQueryClient>
       staleTime: 5 * 60 * 1000,
     });
   };
+}
+
+// ============================================
+// NAME MATCHING HOOKS
+// ============================================
+
+import type { MatchResult, MatchCandidate } from '@/lib/matching';
+
+export interface NameMatchResponse {
+  success: boolean;
+  data: MatchResult & {
+    allMatches: (MatchCandidate & {
+      explanation: {
+        summary: string;
+        summaryAr: string;
+        details: string[];
+        detailsAr: string[];
+      };
+    })[];
+  };
+  input: NameMatchInput;
+  errors?: string[];
+  errorsAr?: string[];
+  message?: string;
+  messageAr?: string;
+}
+
+/**
+ * Hook to perform name matching for quick-add
+ * Uses mutation since this is a POST request that performs a search
+ */
+export function useNameMatch() {
+  return useMutation({
+    mutationFn: (input: NameMatchInput) =>
+      fetchJson<NameMatchResponse>('/api/members/match', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+  });
+}
+
+/**
+ * Hook to submit a pending member for approval
+ */
+export function useSubmitPendingMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      firstName: string;
+      fatherName?: string;
+      grandfatherName?: string;
+      greatGrandfatherName?: string;
+      familyName?: string;
+      proposedFatherId: string;
+      gender: 'Male' | 'Female';
+      birthYear?: number;
+      generation: number;
+      branch?: string;
+      fullNameAr?: string;
+      fullNameEn?: string;
+      phone?: string;
+      city?: string;
+      occupation?: string;
+      email?: string;
+    }) =>
+      fetchJson<{ success: boolean; pending: unknown }>('/api/pending-members', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pendingMembers });
+    },
+  });
 }
