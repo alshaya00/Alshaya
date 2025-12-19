@@ -2,7 +2,8 @@
 // Enhanced with change history, audit trail, and permissions
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

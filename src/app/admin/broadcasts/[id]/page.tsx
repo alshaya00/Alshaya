@@ -586,7 +586,7 @@ export default function BroadcastDetailPage({ params }: { params: { id: string }
                             <span className="text-gray-500 text-sm mr-2">({r.email})</span>
                           </div>
                           {r.rsvpNote && (
-                            <span className="text-sm text-gray-600 italic">"{r.rsvpNote}"</span>
+                            <span className="text-sm text-gray-600 italic">&quot;{r.rsvpNote}&quot;</span>
                           )}
                         </div>
                       ))}
@@ -611,7 +611,7 @@ export default function BroadcastDetailPage({ params }: { params: { id: string }
                             <span className="text-gray-500 text-sm mr-2">({r.email})</span>
                           </div>
                           {r.rsvpNote && (
-                            <span className="text-sm text-gray-600 italic">"{r.rsvpNote}"</span>
+                            <span className="text-sm text-gray-600 italic">&quot;{r.rsvpNote}&quot;</span>
                           )}
                         </div>
                       ))}
@@ -636,7 +636,7 @@ export default function BroadcastDetailPage({ params }: { params: { id: string }
                             <span className="text-gray-500 text-sm mr-2">({r.email})</span>
                           </div>
                           {r.rsvpNote && (
-                            <span className="text-sm text-gray-600 italic">"{r.rsvpNote}"</span>
+                            <span className="text-sm text-gray-600 italic">&quot;{r.rsvpNote}&quot;</span>
                           )}
                         </div>
                       ))}

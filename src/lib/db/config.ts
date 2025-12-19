@@ -12,7 +12,7 @@
  * - Backup configuration
  */
 
-import { getPrismaClient } from '../prisma';
+import { prisma } from '../prisma';
 
 // ============================================
 // TYPES
@@ -179,7 +179,7 @@ export async function getAllPermissions(): Promise<Permission[]> {
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const permissions = await prisma.permission.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
@@ -199,7 +199,7 @@ export async function getPermissionCategories(): Promise<PermissionCategory[]> {
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const categories = await prisma.permissionCategory.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
@@ -219,7 +219,7 @@ export async function getRolePermissionMatrix(): Promise<Map<string, Map<string,
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const rolePermissions = await prisma.roleDefaultPermission.findMany({
       include: { permission: true },
     });
@@ -258,7 +258,7 @@ export async function getAllExportFields(): Promise<ExportField[]> {
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const fields = await prisma.exportField.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
@@ -278,7 +278,7 @@ export async function getExportFieldCategories(): Promise<ExportFieldCategory[]>
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const categories = await prisma.exportFieldCategory.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
@@ -302,7 +302,7 @@ export async function getJournalCategories(): Promise<JournalCategory[]> {
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const categories = await prisma.journalCategory.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
@@ -326,7 +326,7 @@ export async function getEventTypes(): Promise<EventType[]> {
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const types = await prisma.eventType.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
@@ -352,7 +352,7 @@ export async function getGatherings(options?: {
   offset?: number;
 }): Promise<Gathering[]> {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const gatherings = await prisma.gathering.findMany({
       where: {
         ...(options?.status && { status: options.status }),
@@ -374,7 +374,7 @@ export async function getGatherings(options?: {
 
 export async function getGatheringById(id: string, includeAttendees = true): Promise<Gathering | null> {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const gathering = await prisma.gathering.findUnique({
       where: { id },
       include: includeAttendees ? { attendees: true } : undefined,
@@ -389,7 +389,7 @@ export async function getGatheringById(id: string, includeAttendees = true): Pro
 
 export async function createGathering(data: Omit<Gathering, 'id' | 'createdAt' | 'updatedAt' | 'attendees'>): Promise<Gathering | null> {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const gathering = await prisma.gathering.create({
       data,
     });
@@ -409,7 +409,7 @@ export async function updateGatheringRsvp(
   email?: string
 ): Promise<GatheringAttendee | null> {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const attendee = await prisma.gatheringAttendee.upsert({
       where: {
         gatheringId_userId: { gatheringId, userId },
@@ -445,7 +445,7 @@ export async function getBackupConfig(): Promise<BackupConfig | null> {
   }
 
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const config = await prisma.backupConfig.findUnique({
       where: { id: 'default' },
     });
@@ -460,7 +460,7 @@ export async function getBackupConfig(): Promise<BackupConfig | null> {
 
 export async function updateBackupConfig(data: Partial<Omit<BackupConfig, 'id'>>): Promise<BackupConfig | null> {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const config = await prisma.backupConfig.upsert({
       where: { id: 'default' },
       update: data,
@@ -489,7 +489,7 @@ export async function updateBackupConfig(data: Partial<Omit<BackupConfig, 'id'>>
 
 export async function getSiteSettings() {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const settings = await prisma.siteSettings.findUnique({
       where: { id: 'default' },
     });
@@ -502,7 +502,7 @@ export async function getSiteSettings() {
 
 export async function updateSiteSettings(data: Record<string, unknown>) {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const settings = await prisma.siteSettings.upsert({
       where: { id: 'default' },
       update: data,
@@ -524,7 +524,7 @@ export async function updateSiteSettings(data: Record<string, unknown>) {
 
 export async function getPrivacySettings() {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const settings = await prisma.privacySettings.findUnique({
       where: { id: 'default' },
     });
@@ -537,7 +537,7 @@ export async function getPrivacySettings() {
 
 export async function updatePrivacySettings(data: Record<string, unknown>) {
   try {
-    const prisma = await getPrismaClient();
+    // prisma is imported from ../prisma
     const settings = await prisma.privacySettings.upsert({
       where: { id: 'default' },
       update: data,
