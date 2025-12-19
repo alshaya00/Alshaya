@@ -3,10 +3,10 @@ import { getMemberPhotos, getProfilePhoto, getPhotoTimeline, type MemberPhoto } 
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ memberId: string }> }
+  { params }: { params: { memberId: string } }
 ) {
   try {
-    const { memberId } = await params;
+    const { memberId } = params;
     const { searchParams } = new URL(request.url);
 
     const category = searchParams.get('category');

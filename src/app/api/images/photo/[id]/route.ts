@@ -9,10 +9,10 @@ import {
 // GET - Get a specific photo with full image data
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const photo = getMemberPhotoById(id);
 
     if (!photo) {
@@ -36,10 +36,10 @@ export async function GET(
 // PATCH - Update photo metadata
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
 
     // Check if photo exists
@@ -138,10 +138,10 @@ export async function PATCH(
 // DELETE - Delete a photo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
 
     // Check if photo exists
     const existing = getMemberPhotoById(id);

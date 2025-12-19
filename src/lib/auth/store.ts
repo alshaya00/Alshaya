@@ -96,7 +96,7 @@ export interface StoredActivityLog {
 // IN-MEMORY STORES
 // ============================================
 
-// Default super admin - configured in admin-config.ts
+// Default super admin - configured in admin-config.ts (reads from env vars with fallbacks)
 const DEFAULT_SUPER_ADMIN_EMAIL = defaultAdminConfig.email;
 const DEFAULT_SUPER_ADMIN_PASSWORD = defaultAdminConfig.password;
 
@@ -155,16 +155,12 @@ export async function initializeStore() {
 
   // Create default super admin if no users exist
   if (users.length === 0) {
-    // SECURITY: In production, require ADMIN_EMAIL and ADMIN_PASSWORD environment variables
+    // SECURITY: Always require ADMIN_EMAIL and ADMIN_PASSWORD environment variables
     if (!DEFAULT_SUPER_ADMIN_EMAIL || !DEFAULT_SUPER_ADMIN_PASSWORD) {
-      if (process.env.NODE_ENV === 'production') {
-        console.error('CRITICAL: ADMIN_EMAIL and ADMIN_PASSWORD must be set in production');
-        // Don't create a default admin in production without env vars
-        initialized = true;
-        return;
-      } else {
-        console.warn('⚠️ WARNING: Using default admin credentials (dev only)');
-      }
+      console.warn('⚠️ ADMIN_EMAIL and ADMIN_PASSWORD environment variables not set.');
+      console.warn('   No admin user will be created. Set these in your .env file.');
+      initialized = true;
+      return;
     }
 
     const passwordHash = await hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD);
@@ -181,15 +177,7 @@ export async function initializeStore() {
       emailVerifiedAt: new Date(),
     };
     users.push(superAdmin);
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Created default super admin:');
-      console.log('  Email:', DEFAULT_SUPER_ADMIN_EMAIL);
-      console.log('  Password: [redacted - see environment variables]');
-      console.log('  (Please change this password after first login!)');
-    } else {
-      console.log('Created super admin from environment variables');
-    }
+    console.log('Created super admin from environment variables');
   }
 
   initialized = true;

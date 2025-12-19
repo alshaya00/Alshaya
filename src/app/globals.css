@@ -179,3 +179,131 @@ body {
 .gen-6 { @apply bg-blue-500; }
 .gen-7 { @apply bg-indigo-500; }
 .gen-8 { @apply bg-purple-500; }
+
+/* ============================================
+   TOAST ANIMATIONS
+   ============================================ */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* ============================================
+   MODAL ANIMATIONS
+   ============================================ */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* ============================================
+   PULSE ANIMATION FOR FIND ME
+   ============================================ */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+/* ============================================
+   SAFE AREA FOR MOBILE BOTTOM NAV
+   ============================================ */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ============================================
+   WHAT'S NEW FEED CARD HOVER
+   ============================================ */
+.feed-card {
+  @apply transition-all duration-200;
+}
+
+.feed-card:hover {
+  @apply shadow-md -translate-y-0.5;
+}
+
+/* ============================================
+   QUICK RSVP BUTTONS
+   ============================================ */
+.rsvp-btn {
+  @apply flex-1 py-3 px-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2;
+}
+
+.rsvp-btn:hover {
+  @apply transform scale-105;
+}
+
+.rsvp-btn:active {
+  @apply transform scale-95;
+}
+
+.rsvp-yes {
+  @apply bg-green-100 text-green-700 hover:bg-green-200;
+}
+
+.rsvp-yes.selected {
+  @apply bg-green-500 text-white;
+}
+
+.rsvp-maybe {
+  @apply bg-amber-100 text-amber-700 hover:bg-amber-200;
+}
+
+.rsvp-maybe.selected {
+  @apply bg-amber-500 text-white;
+}
+
+.rsvp-no {
+  @apply bg-red-100 text-red-700 hover:bg-red-200;
+}
+
+.rsvp-no.selected {
+  @apply bg-red-500 text-white;
+}

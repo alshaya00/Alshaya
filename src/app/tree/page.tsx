@@ -358,7 +358,7 @@ export default function TreePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 py-4">
+    <div className="min-h-screen bg-gray-100 py-4 pb-24 lg:pb-4">
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-6">

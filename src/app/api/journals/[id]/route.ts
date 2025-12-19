@@ -6,10 +6,10 @@ import { sanitizeString } from '@/lib/sanitize';
 // GET /api/journals/[id] - Get a single journal
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
 
     const journal = await prisma.familyJournal.findUnique({
       where: { id },
@@ -56,10 +56,10 @@ export async function GET(
 // PUT /api/journals/[id] - Update a journal
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
 
     // Check if journal exists
@@ -132,10 +132,10 @@ export async function PUT(
 // DELETE /api/journals/[id] - Delete a journal
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
 
     // Check if journal exists
     const existing = await prisma.familyJournal.findUnique({

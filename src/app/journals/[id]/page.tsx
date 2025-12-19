@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -8,7 +8,6 @@ import {
   BookOpen, ChevronLeft, Scroll, Tent, Star,
   Heart, FileText, Feather, TreePine, Loader2, AlertCircle
 } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
 import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
@@ -27,8 +26,7 @@ const categoryColors: Record<JournalCategoryType, { bg: string; text: string; bo
   GENEALOGY: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
 };
 
-export default function JournalDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function JournalDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [journal, setJournal] = useState<FamilyJournal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,13 +36,13 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     fetchJournal();
-  }, [resolvedParams.id]);
+  }, [params.id]);
 
   const fetchJournal = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/journals/${resolvedParams.id}`);
+      const response = await fetch(`/api/journals/${params.id}`);
       const data = await response.json();
 
       if (data.success) {
@@ -98,7 +96,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
   if (loading) {
     return (
       <div className="min-h-screen bg-amber-50">
-        <Navigation />
         <div className="flex flex-col items-center justify-center py-32">
           <Loader2 className="w-12 h-12 text-amber-600 animate-spin mb-4" />
           <p className="text-gray-500">جاري تحميل القصة...</p>
@@ -110,7 +107,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
   if (error || !journal) {
     return (
       <div className="min-h-screen bg-amber-50">
-        <Navigation />
         <div className="flex flex-col items-center justify-center py-32">
           <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">القصة غير موجودة</h2>
@@ -132,8 +128,6 @@ export default function JournalDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-amber-50">
-      <Navigation />
-
       {/* Hero Section */}
       <div className="relative">
         {journal.coverImageUrl ? (

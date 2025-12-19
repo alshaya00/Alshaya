@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
 import { mainNavItems, mobileNavItems, moreNavItems as configMoreNavItems } from '@/config/navigation';
 
-// Re-export config items for use in this component
+// Using centralized navigation config
 const navItems = mainNavItems;
 const mobileNavItemsList = mobileNavItems;
 const moreNavItems = configMoreNavItems;

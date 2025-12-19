@@ -4,10 +4,10 @@ import { broadcastService } from '@/lib/services/broadcast';
 // GET /api/broadcasts/[id]/recipients - Get recipients and RSVP summary
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const summary = await broadcastService.getRSVPSummary(id);
 
     return NextResponse.json({

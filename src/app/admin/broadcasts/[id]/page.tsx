@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -102,8 +102,8 @@ const statusLabels: Record<BroadcastStatus, { ar: string; color: string; bgColor
   CANCELLED: { ar: 'ملغي', color: 'text-red-700', bgColor: 'bg-red-100' },
 };
 
-export default function BroadcastDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function BroadcastDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null);
   const [rsvpSummary, setRsvpSummary] = useState<RSVPSummary | null>(null);
@@ -586,7 +586,7 @@ export default function BroadcastDetailPage({ params }: { params: Promise<{ id: 
                             <span className="text-gray-500 text-sm mr-2">({r.email})</span>
                           </div>
                           {r.rsvpNote && (
-                            <span className="text-sm text-gray-600 italic">"{r.rsvpNote}"</span>
+                            <span className="text-sm text-gray-600 italic">&quot;{r.rsvpNote}&quot;</span>
                           )}
                         </div>
                       ))}
@@ -611,7 +611,7 @@ export default function BroadcastDetailPage({ params }: { params: Promise<{ id: 
                             <span className="text-gray-500 text-sm mr-2">({r.email})</span>
                           </div>
                           {r.rsvpNote && (
-                            <span className="text-sm text-gray-600 italic">"{r.rsvpNote}"</span>
+                            <span className="text-sm text-gray-600 italic">&quot;{r.rsvpNote}&quot;</span>
                           )}
                         </div>
                       ))}
@@ -636,7 +636,7 @@ export default function BroadcastDetailPage({ params }: { params: Promise<{ id: 
                             <span className="text-gray-500 text-sm mr-2">({r.email})</span>
                           </div>
                           {r.rsvpNote && (
-                            <span className="text-sm text-gray-600 italic">"{r.rsvpNote}"</span>
+                            <span className="text-sm text-gray-600 italic">&quot;{r.rsvpNote}&quot;</span>
                           )}
                         </div>
                       ))}
