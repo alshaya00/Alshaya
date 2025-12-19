@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { FamilyMember } from '@/lib/types';
 import { MatchCandidate } from '@/lib/matching';
 import SearchableDropdown from '@/components/SearchableDropdown';
@@ -63,6 +64,7 @@ type MatchingState = 'idle' | 'searching' | 'found' | 'multiple' | 'no_match' | 
 const STORAGE_KEY = storageKeys.newMembers;
 
 export default function QuickAddPage() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [autoFillData, setAutoFillData] = useState<AutoFillData | null>(null);
@@ -71,6 +73,7 @@ export default function QuickAddPage() {
   const [savedMembers, setSavedMembers] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [prefilledFromLink, setPrefilledFromLink] = useState(false);
 
   // Matching state
   const [matchingState, setMatchingState] = useState<MatchingState>('idle');
@@ -125,6 +128,35 @@ export default function QuickAddPage() {
       setSavedMembers(members.length);
     }
   }, []);
+
+  // Handle URL parameters for pre-filled links
+  useEffect(() => {
+    const fatherId = searchParams.get('father');
+    const branch = searchParams.get('branch');
+
+    if (fatherId && allMembers.length > 0) {
+      const father = allMembers.find(m => m.id === fatherId);
+      if (father) {
+        // Pre-fill with father from URL
+        const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
+        setAutoFillData({
+          fatherName: father.firstName,
+          grandfatherName: father.fatherName,
+          greatGrandfatherName: father.grandfatherName,
+          generation: father.generation + 1,
+          branch: father.branch || branch,
+          fullNamePreview: `? ${connector} ${father.firstName} ${
+            father.fatherName ? `${connector} ${father.fatherName}` : ''
+          } آل شايع`,
+          lineagePath: father.lineagePath || [],
+        });
+        setFormData(prev => ({ ...prev, fatherId }));
+        setPrefilledFromLink(true);
+        // Skip to step 1 (names) but mark matching as done
+        setMatchingState('manual');
+      }
+    }
+  }, [searchParams, allMembers, formData.gender]);
 
   // Update auto-fill data when match is selected
   useEffect(() => {
