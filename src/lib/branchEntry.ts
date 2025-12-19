@@ -1,5 +1,7 @@
 // Branch Entry System - Types and Utilities
 
+import { storageKeys } from '@/config/storage-keys';
+
 export interface BranchEntryLink {
   id: string;
   branchHeadId: string;
@@ -30,8 +32,8 @@ export interface PendingMember {
   reviewNote?: string;
 }
 
-const LINKS_STORAGE_KEY = 'alshaye_branch_links';
-const PENDING_STORAGE_KEY = 'alshaye_pending_members';
+const LINKS_STORAGE_KEY = storageKeys.branchLinks;
+const PENDING_STORAGE_KEY = storageKeys.pendingMembers;
 
 // Generate a simple token
 export function generateToken(): string {

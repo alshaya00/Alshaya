@@ -2,6 +2,8 @@
 // This service handles all backup operations with configurable intervals
 
 import { logBackupCreate, logBackupRestore, logAudit } from './audit';
+import { storageKeys } from '@/config/storage-keys';
+import { backupSettings } from '@/config/constants';
 
 export interface BackupConfig {
   enabled: boolean;
@@ -25,15 +27,15 @@ export interface BackupEntry {
   checksum: string;
 }
 
-const BACKUP_CONFIG_KEY = 'alshaye_backup_config';
-const BACKUPS_KEY = 'alshaye_backups';
-const BACKUP_TIMER_KEY = 'alshaye_backup_timer';
+const BACKUP_CONFIG_KEY = storageKeys.backupConfig;
+const BACKUPS_KEY = storageKeys.backups;
+const BACKUP_TIMER_KEY = storageKeys.backupTimer;
 
-// Default backup configuration
+// Default backup configuration from centralized config
 const defaultConfig: BackupConfig = {
   enabled: true,
-  intervalHours: 24,
-  maxBackups: 10,
+  intervalHours: backupSettings.defaultIntervalHours,
+  maxBackups: backupSettings.maxBackups,
   lastBackupTime: null,
   nextBackupTime: null,
 };
@@ -113,7 +115,7 @@ export async function createBackup(options: {
     members = data.members || [];
   } catch {
     // Use localStorage fallback
-    const stored = localStorage.getItem('alshaye_family_data');
+    const stored = localStorage.getItem(storageKeys.familyData);
     if (stored) {
       members = JSON.parse(stored);
     }
@@ -126,15 +128,15 @@ export async function createBackup(options: {
   };
 
   if (includeConfig) {
-    backupData.config = JSON.parse(localStorage.getItem('alshaye_system_config') || '{}');
+    backupData.config = JSON.parse(localStorage.getItem(storageKeys.systemConfig) || '{}');
   }
 
   if (includeAdmins) {
-    backupData.admins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]');
+    backupData.admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
   }
 
   // Include audit logs in backup
-  backupData.auditLogs = JSON.parse(localStorage.getItem('alshaye_audit_log') || '[]').slice(0, 1000);
+  backupData.auditLogs = JSON.parse(localStorage.getItem(storageKeys.auditLog) || '[]').slice(0, 1000);
 
   const dataString = JSON.stringify(backupData);
   const admin = getCurrentAdmin();
@@ -201,12 +203,12 @@ export async function restoreBackup(backupId: string): Promise<{ success: boolea
 
     // Restore config
     if (data.config) {
-      localStorage.setItem('alshaye_system_config', JSON.stringify(data.config));
+      localStorage.setItem(storageKeys.systemConfig, JSON.stringify(data.config));
     }
 
     // Restore admins
     if (data.admins) {
-      localStorage.setItem('alshaye_admins', JSON.stringify(data.admins));
+      localStorage.setItem(storageKeys.admins, JSON.stringify(data.admins));
     }
 
     // Log restore action
@@ -324,7 +326,7 @@ export function stopBackupScheduler(): void {
 // Get admin info helper
 function getCurrentAdmin(): { id: string; name: string } {
   try {
-    const admins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]');
+    const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
     if (admins.length > 0) {
       return { id: admins[0].id || 'admin', name: admins[0].name || 'المدير' };
     }

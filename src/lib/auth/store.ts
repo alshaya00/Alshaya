@@ -3,6 +3,8 @@
 
 import { hashPassword, verifyPassword, generateSessionToken, generateInviteCode } from './password';
 import { UserRole, UserStatus, DEFAULT_PERMISSION_MATRIX, PermissionMatrix, SiteSettings, PrivacySettings } from './types';
+import { familyInfo, securitySettings, paginationSettings } from '@/config/constants';
+import { defaultAdminConfig, sessionConfig } from '@/config/admin-config';
 
 // ============================================
 // USER STORE
@@ -94,10 +96,9 @@ export interface StoredActivityLog {
 // IN-MEMORY STORES
 // ============================================
 
-// Super admin credentials - MUST be set via environment variables
-// SECURITY: No default credentials are provided. Set ADMIN_EMAIL and ADMIN_PASSWORD in .env
-const DEFAULT_SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
-const DEFAULT_SUPER_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+// Default super admin - configured in admin-config.ts (reads from env vars with fallbacks)
+const DEFAULT_SUPER_ADMIN_EMAIL = defaultAdminConfig.email;
+const DEFAULT_SUPER_ADMIN_PASSWORD = defaultAdminConfig.password;
 
 // In-memory stores
 let users: StoredUser[] = [];
@@ -107,23 +108,23 @@ let accessRequests: StoredAccessRequest[] = [];
 let activityLogs: StoredActivityLog[] = [];
 let permissionMatrix: PermissionMatrix = DEFAULT_PERMISSION_MATRIX;
 
-// Site settings
+// Site settings - using values from centralized config
 let siteSettings: SiteSettings = {
-  familyNameArabic: 'آل شايع',
-  familyNameEnglish: 'Al-Shaye',
-  taglineArabic: 'نحفظ إرثنا، نربط أجيالنا',
-  taglineEnglish: 'Preserving Our Legacy, Connecting Generations',
+  familyNameArabic: familyInfo.nameAr,
+  familyNameEnglish: familyInfo.nameEn,
+  taglineArabic: familyInfo.taglineAr,
+  taglineEnglish: familyInfo.taglineEn,
   defaultLanguage: 'ar',
-  sessionDurationDays: 7,
-  rememberMeDurationDays: 30,
+  sessionDurationDays: sessionConfig.defaultDurationDays,
+  rememberMeDurationDays: sessionConfig.rememberMeDurationDays,
   allowSelfRegistration: true,
   requireEmailVerification: false,
   requireApprovalForRegistration: true,
-  maxLoginAttempts: 5,
-  lockoutDurationMinutes: 15,
+  maxLoginAttempts: securitySettings.maxLoginAttempts,
+  lockoutDurationMinutes: securitySettings.lockoutDurationMinutes,
   allowGuestPreview: true,
   guestPreviewMemberCount: 20,
-  minPasswordLength: 8,
+  minPasswordLength: securitySettings.minPasswordLength,
 };
 
 let privacySettings: PrivacySettings = {
@@ -522,9 +523,9 @@ export async function logActivity(data: {
 
   activityLogs.push(log);
 
-  // Keep only last 10000 logs
-  if (activityLogs.length > 10000) {
-    activityLogs = activityLogs.slice(-10000);
+  // Keep only last N logs (from centralized config)
+  if (activityLogs.length > paginationSettings.maxActivityLogs) {
+    activityLogs = activityLogs.slice(-paginationSettings.maxActivityLogs);
   }
 
   return log;

@@ -63,14 +63,17 @@ export interface AuditLogFilter {
   success?: boolean;
 }
 
-const AUDIT_LOG_KEY = 'alshaye_audit_log';
-const MAX_AUDIT_ENTRIES = 10000;
+import { storageKeys } from '@/config/storage-keys';
+import { paginationSettings } from '@/config/constants';
+
+const AUDIT_LOG_KEY = storageKeys.auditLog;
+const MAX_AUDIT_ENTRIES = paginationSettings.maxAuditEntries;
 
 // Get current admin info
 function getCurrentAdmin(): { id: string; name: string; role: string } {
   try {
-    const admins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]');
-    const authStatus = localStorage.getItem('alshaye_admin_auth');
+    const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
+    const authStatus = localStorage.getItem(storageKeys.adminAuth);
     if (authStatus === 'true' && admins.length > 0) {
       return {
         id: admins[0].id || 'admin',
@@ -160,7 +163,7 @@ export function logAudit(params: {
     newState: params.newState || null,
     ipAddress: null,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    sessionId: localStorage.getItem('alshaye_session_id'),
+    sessionId: localStorage.getItem(storageKeys.sessionId),
     success: params.success !== false,
     errorMessage: params.errorMessage || null,
   };

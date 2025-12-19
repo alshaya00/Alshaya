@@ -2,14 +2,16 @@
 import { SessionUser, UserRole, PermissionKey, AuthSession } from './types';
 import { getPermissionsForRole } from './permissions';
 import { generateSessionToken } from './password';
+import { storageKeys } from '@/config/storage-keys';
+import { sessionConfig } from '@/config/admin-config';
 
-// Session storage key
-const SESSION_STORAGE_KEY = 'alshaye_session';
-const SESSION_TOKEN_KEY = 'alshaye_token';
+// Session storage key from centralized config
+const SESSION_STORAGE_KEY = storageKeys.session;
+const SESSION_TOKEN_KEY = storageKeys.token;
 
-// Default session durations
-const DEFAULT_SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-const REMEMBER_ME_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Default session durations from centralized config
+const DEFAULT_SESSION_DURATION = sessionConfig.defaultDurationMs;
+const REMEMBER_ME_DURATION = sessionConfig.rememberMeDurationMs;
 
 /**
  * Create a new session for a user

@@ -34,6 +34,8 @@ import {
   setCurrentAdmin,
   validateAccessCode,
 } from '@/lib/permissions';
+import { storageKeys } from '@/config/storage-keys';
+import { accessCodeConfig, defaultAdminConfig } from '@/config/admin-config';
 
 export default function AdminSettingsPage() {
   // State
@@ -60,24 +62,24 @@ export default function AdminSettingsPage() {
 
   // Load admins from localStorage
   useEffect(() => {
-    const storedAdmins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]');
+    const storedAdmins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
 
     // Create default super admin if none exists
     if (storedAdmins.length === 0) {
       const defaultAdmin: Admin = {
-        id: 'admin_1',
-        name: 'المدير العام',
-        email: 'admin@alshaye.com',
-        role: 'SUPER_ADMIN',
+        id: defaultAdminConfig.defaultAdmin.id,
+        name: defaultAdminConfig.defaultAdmin.nameAr,
+        email: defaultAdminConfig.defaultAdmin.email,
+        role: defaultAdminConfig.defaultAdmin.role,
         permissions: ROLE_DEFAULT_PERMISSIONS['SUPER_ADMIN'],
         isActive: true,
         lastLoginAt: null,
         createdAt: new Date().toISOString()
       };
       storedAdmins.push(defaultAdmin);
-      localStorage.setItem('alshaye_admins', JSON.stringify(storedAdmins));
-      // Set default access code
-      localStorage.setItem('alshaye_admin_codes', JSON.stringify({ admin_1: 'admin123' }));
+      localStorage.setItem(storageKeys.admins, JSON.stringify(storedAdmins));
+      // Set default access code from config
+      localStorage.setItem(storageKeys.adminCodes, JSON.stringify({ [defaultAdminConfig.defaultAdmin.id]: accessCodeConfig.defaultAdminCode }));
     }
 
     setAdmins(storedAdmins);
@@ -135,12 +137,12 @@ export default function AdminSettingsPage() {
 
     const updatedAdmins = [...admins, admin];
     setAdmins(updatedAdmins);
-    localStorage.setItem('alshaye_admins', JSON.stringify(updatedAdmins));
+    localStorage.setItem(storageKeys.admins, JSON.stringify(updatedAdmins));
 
     // Save access code
-    const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
+    const codes = JSON.parse(localStorage.getItem(storageKeys.adminCodes) || '{}');
     codes[admin.id] = code;
-    localStorage.setItem('alshaye_admin_codes', JSON.stringify(codes));
+    localStorage.setItem(storageKeys.adminCodes, JSON.stringify(codes));
 
     // Reset form
     setNewAdmin({
@@ -163,7 +165,7 @@ export default function AdminSettingsPage() {
       a.id === editingAdmin.id ? editingAdmin : a
     );
     setAdmins(updatedAdmins);
-    localStorage.setItem('alshaye_admins', JSON.stringify(updatedAdmins));
+    localStorage.setItem(storageKeys.admins, JSON.stringify(updatedAdmins));
     setEditingAdmin(null);
   };
 
@@ -173,7 +175,7 @@ export default function AdminSettingsPage() {
       a.id === adminId ? { ...a, isActive: !a.isActive } : a
     );
     setAdmins(updatedAdmins);
-    localStorage.setItem('alshaye_admins', JSON.stringify(updatedAdmins));
+    localStorage.setItem(storageKeys.admins, JSON.stringify(updatedAdmins));
   };
 
   // Delete admin
@@ -182,26 +184,26 @@ export default function AdminSettingsPage() {
 
     const updatedAdmins = admins.filter(a => a.id !== adminId);
     setAdmins(updatedAdmins);
-    localStorage.setItem('alshaye_admins', JSON.stringify(updatedAdmins));
+    localStorage.setItem(storageKeys.admins, JSON.stringify(updatedAdmins));
 
     // Remove access code
-    const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
+    const codes = JSON.parse(localStorage.getItem(storageKeys.adminCodes) || '{}');
     delete codes[adminId];
-    localStorage.setItem('alshaye_admin_codes', JSON.stringify(codes));
+    localStorage.setItem(storageKeys.adminCodes, JSON.stringify(codes));
   };
 
   // Reset access code
   const resetAccessCode = (adminId: string) => {
     const newCode = generateAccessCode();
-    const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
+    const codes = JSON.parse(localStorage.getItem(storageKeys.adminCodes) || '{}');
     codes[adminId] = newCode;
-    localStorage.setItem('alshaye_admin_codes', JSON.stringify(codes));
+    localStorage.setItem(storageKeys.adminCodes, JSON.stringify(codes));
     alert(`رمز الوصول الجديد: ${newCode}`);
   };
 
   // Copy access code
   const copyAccessCode = (adminId: string) => {
-    const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
+    const codes = JSON.parse(localStorage.getItem(storageKeys.adminCodes) || '{}');
     const code = codes[adminId];
     if (code) {
       navigator.clipboard.writeText(code);
