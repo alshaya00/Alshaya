@@ -460,7 +460,7 @@ export function useSubmitPendingMember() {
       occupation?: string;
       email?: string;
     }) =>
-      fetchJson<{ success: boolean; pending: unknown }>('/api/pending-members', {
+      fetchJson<{ success: boolean; pending: unknown }>('/api/admin/pending', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
