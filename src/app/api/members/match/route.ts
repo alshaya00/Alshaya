@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { getAllMembersFromDb } from '@/lib/db';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
-import { getPermissionsForRole } from '@/lib/auth/permissions';
 import {
   findMatches,
   validateInput,
@@ -10,22 +8,6 @@ import {
   NameInput,
   MatchResult,
 } from '@/lib/matching';
-
-// Helper to get authenticated user from request
-async function getAuthUser(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-
-  if (!token) return null;
-
-  const session = await findSessionByToken(token);
-  if (!session) return null;
-
-  const user = await findUserById(session.userId);
-  if (!user || user.status !== 'ACTIVE') return null;
-
-  return user;
-}
 
 /**
  * POST /api/members/match
@@ -48,31 +30,9 @@ async function getAuthUser(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // SECURITY: Require authentication
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Unauthorized',
-          messageAr: 'غير مصرح'
-        },
-        { status: 401 }
-      );
-    }
-
-    // Check permission - need at least add_member permission to use matching
-    const permissions = getPermissionsForRole(user.role);
-    if (!permissions.add_member && !permissions.view_member_profiles) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'No permission to search members',
-          messageAr: 'لا تملك صلاحية البحث عن الأعضاء'
-        },
-        { status: 403 }
-      );
-    }
+    // NOTE: This endpoint is intentionally public to support the quick-add feature
+    // which allows family members to add themselves via shared links without login.
+    // The actual member addition still requires admin approval via pending members.
 
     // Parse request body
     const body = await request.json();

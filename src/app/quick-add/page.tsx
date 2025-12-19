@@ -216,6 +216,7 @@ export default function QuickAddPage() {
   const handleSearch = useCallback(async () => {
     if (!validateStep(1)) return;
 
+    setStep(2); // Move to step 2 to show matching results
     setMatchingState('searching');
     setMatchResults([]);
     setSelectedMatch(null);
