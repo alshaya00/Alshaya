@@ -16,6 +16,7 @@ import {
   User,
   Users,
   X,
+  Zap,
 } from 'lucide-react';
 import type { BranchEntryLink } from '@/lib/types';
 import { storageKeys } from '@/config/storage-keys';
@@ -218,6 +219,25 @@ export default function BranchLinksPage() {
           كل رابط خاص بفرع معين ويمكن تحديد عدد مرات الاستخدام.
         </p>
       </div>
+
+      {/* Quick Add Link Generator Card */}
+      <Link
+        href="/quick-add/link"
+        className="block mb-6 bg-gradient-to-l from-emerald-500 to-emerald-600 rounded-xl p-5 text-white hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Zap size={24} />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-lg">مولد رابط الإضافة السريعة</h3>
+            <p className="text-emerald-100 text-sm mt-1">
+              أنشئ رابطاً سريعاً مع مطابقة ذكية للأسماء العربية - بدون تسجيل دخول
+            </p>
+          </div>
+          <ChevronLeft size={24} className="text-white/70" />
+        </div>
+      </Link>
 
       {/* Links List */}
       {links.length === 0 ? (

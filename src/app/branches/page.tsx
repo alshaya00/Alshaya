@@ -14,7 +14,7 @@ import {
 import {
   GitBranch, Link2, Copy, Check, Users, ChevronDown,
   ChevronRight, ExternalLink, Bell, Share2, MessageCircle,
-  TreePine, Eye, QrCode
+  TreePine, Eye, QrCode, UserPlus, Zap
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -204,6 +204,28 @@ ${url}
             <p className="text-sm text-gray-500">بانتظار المراجعة</p>
           </Link>
         </div>
+
+        {/* Quick Add Link Generator */}
+        <Link
+          href="/quick-add/link"
+          className="block mb-6 bg-gradient-to-l from-emerald-500 to-emerald-600 rounded-xl p-5 text-white hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Zap size={28} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <UserPlus size={20} />
+                مولد رابط الإضافة السريعة
+              </h3>
+              <p className="text-emerald-100 text-sm mt-1">
+                أنشئ رابطاً سريعاً لإضافة أعضاء جدد مع مطابقة ذكية للأسماء العربية
+              </p>
+            </div>
+            <ChevronRight size={24} className="text-white/70" />
+          </div>
+        </Link>
 
         {/* Note: Pending approval notifications are shown in admin dashboard only */}
 
