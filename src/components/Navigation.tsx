@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield
+  Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, Search, BarChart3
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
