@@ -3,6 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthenticatedLayout } from '@/components/AuthenticatedLayout';
 import { ToastProvider } from '@/components/ui/Toast';
+import { QueryProvider } from '@/lib/providers/QueryProvider';
 
 export const metadata: Metadata = {
   title: 'شجرة عائلة آل شايع | Al-Shaye Family Tree',
@@ -17,11 +18,13 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body className="min-h-screen bg-gray-50">
-        <AuthProvider>
-          <ToastProvider>
-            <AuthenticatedLayout>{children}</AuthenticatedLayout>
-          </ToastProvider>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <AuthenticatedLayout>{children}</AuthenticatedLayout>
+            </ToastProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
