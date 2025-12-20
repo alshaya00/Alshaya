@@ -1,50 +1,10 @@
 /**
  * Database-first data access layer
- * All functions query Prisma first, fall back to in-memory data if DB unavailable
+ * Uses SQLite via better-sqlite3 directly, falls back to in-memory data if unavailable
  */
 
-import { prisma } from './prisma';
+import * as sqliteDb from './sqlite-db';
 import { familyMembers, FamilyMember } from './data';
-
-// Type for database member (matches Prisma schema)
-type DbMember = {
-  id: string;
-  firstName: string;
-  fatherName: string | null;
-  grandfatherName: string | null;
-  greatGrandfatherName: string | null;
-  familyName: string;
-  fatherId: string | null;
-  gender: string;
-  birthYear: number | null;
-  deathYear: number | null;
-  sonsCount: number;
-  daughtersCount: number;
-  generation: number;
-  branch: string | null;
-  fullNameAr: string | null;
-  fullNameEn: string | null;
-  phone: string | null;
-  city: string | null;
-  status: string;
-  photoUrl: string | null;
-  biography: string | null;
-  occupation: string | null;
-  email: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string | null;
-  lastModifiedBy: string | null;
-  version: number;
-};
-
-// Convert DB member to FamilyMember type
-function toFamilyMember(m: DbMember): FamilyMember {
-  return {
-    ...m,
-    gender: m.gender as 'Male' | 'Female',
-  };
-}
 
 // Cache for database availability check
 let dbAvailable: boolean | null = null;
@@ -57,16 +17,9 @@ async function isDatabaseAvailable(): Promise<boolean> {
     return dbAvailable;
   }
 
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    dbAvailable = true;
-    lastDbCheck = now;
-    return true;
-  } catch {
-    dbAvailable = false;
-    lastDbCheck = now;
-    return false;
-  }
+  dbAvailable = sqliteDb.isDatabaseAvailable();
+  lastDbCheck = now;
+  return dbAvailable;
 }
 
 /**
@@ -79,16 +32,14 @@ export async function getAllMembersFromDb(): Promise<FamilyMember[]> {
       return familyMembers;
     }
 
-    const members = await prisma.familyMember.findMany({
-      orderBy: { id: 'asc' }
-    });
+    const members = sqliteDb.getAllMembers();
 
     if (members.length === 0) {
       console.warn('Database empty, using in-memory data');
       return familyMembers;
     }
 
-    return members.map(toFamilyMember);
+    return members;
   } catch (error) {
     console.error('Error fetching members from database:', error);
     return familyMembers;
@@ -104,16 +55,14 @@ export async function getMemberByIdFromDb(id: string): Promise<FamilyMember | nu
       return familyMembers.find(m => m.id === id) || null;
     }
 
-    const member = await prisma.familyMember.findUnique({
-      where: { id }
-    });
+    const member = sqliteDb.getMemberById(id);
 
     if (!member) {
       // Fallback to in-memory
       return familyMembers.find(m => m.id === id) || null;
     }
 
-    return toFamilyMember(member);
+    return member;
   } catch (error) {
     console.error('Error fetching member from database:', error);
     return familyMembers.find(m => m.id === id) || null;
@@ -129,16 +78,13 @@ export async function getMaleMembersFromDb(): Promise<FamilyMember[]> {
       return familyMembers.filter(m => m.gender === 'Male');
     }
 
-    const members = await prisma.familyMember.findMany({
-      where: { gender: 'Male' },
-      orderBy: { id: 'asc' }
-    });
+    const members = sqliteDb.getMaleMembers();
 
     if (members.length === 0) {
       return familyMembers.filter(m => m.gender === 'Male');
     }
 
-    return members.map(toFamilyMember);
+    return members;
   } catch (error) {
     console.error('Error fetching male members:', error);
     return familyMembers.filter(m => m.gender === 'Male');
@@ -154,10 +100,7 @@ export async function getChildrenFromDb(parentId: string): Promise<FamilyMember[
       return familyMembers.filter(m => m.fatherId === parentId);
     }
 
-    const members = await prisma.familyMember.findMany({
-      where: { fatherId: parentId },
-      orderBy: { id: 'asc' }
-    });
+    const members = sqliteDb.getChildren(parentId);
 
     if (members.length === 0) {
       // Could be no children, or DB doesn't have data
@@ -167,7 +110,7 @@ export async function getChildrenFromDb(parentId: string): Promise<FamilyMember[
       }
     }
 
-    return members.map(toFamilyMember);
+    return members;
   } catch (error) {
     console.error('Error fetching children:', error);
     return familyMembers.filter(m => m.fatherId === parentId);
@@ -183,47 +126,13 @@ export async function getStatisticsFromDb() {
       return getStatisticsFromMemory();
     }
 
-    const members = await prisma.familyMember.findMany();
+    const stats = sqliteDb.getStatistics();
 
-    if (members.length === 0) {
+    if (stats.totalMembers === 0) {
       return getStatisticsFromMemory();
     }
 
-    const totalMembers = members.length;
-    const males = members.filter((m: DbMember) => m.gender === 'Male').length;
-    const females = members.filter((m: DbMember) => m.gender === 'Female').length;
-    const generations = members.length > 0
-      ? Math.max(...members.map((m: DbMember) => m.generation))
-      : 0;
-
-    const branches = [...new Set(members.map((m: DbMember) => m.branch).filter(Boolean))] as string[];
-    const branchCounts = branches.map(branch => ({
-      name: branch,
-      count: members.filter((m: DbMember) => m.branch === branch).length,
-    }));
-
-    const generationBreakdown = generations > 0
-      ? Array.from({ length: generations }, (_, i) => {
-          const gen = i + 1;
-          const genMembers = members.filter((m: DbMember) => m.generation === gen);
-          return {
-            generation: gen,
-            count: genMembers.length,
-            males: genMembers.filter((m: DbMember) => m.gender === 'Male').length,
-            females: genMembers.filter((m: DbMember) => m.gender === 'Female').length,
-            percentage: totalMembers > 0 ? Math.round((genMembers.length / totalMembers) * 100) : 0,
-          };
-        })
-      : [];
-
-    return {
-      totalMembers,
-      males,
-      females,
-      generations,
-      branches: branchCounts,
-      generationBreakdown,
-    };
+    return stats;
   } catch (error) {
     console.error('Error fetching statistics:', error);
     return getStatisticsFromMemory();
@@ -289,19 +198,7 @@ export async function getNextIdFromDb(): Promise<string> {
       return `P${String(maxId + 1).padStart(3, '0')}`;
     }
 
-    const members = await prisma.familyMember.findMany({
-      select: { id: true }
-    });
-
-    if (members.length === 0) {
-      // Check in-memory as well
-      if (familyMembers.length === 0) return 'P001';
-      const maxId = Math.max(...familyMembers.map(m => parseInt(m.id.replace('P', ''))));
-      return `P${String(maxId + 1).padStart(3, '0')}`;
-    }
-
-    const maxId = Math.max(...members.map((m: DbMember) => parseInt(m.id.replace('P', ''))));
-    return `P${String(maxId + 1).padStart(3, '0')}`;
+    return sqliteDb.getNextId();
   } catch (error) {
     console.error('Error getting next ID:', error);
     if (familyMembers.length === 0) return 'P001';
@@ -319,16 +216,13 @@ export async function getGen2BranchesFromDb(): Promise<FamilyMember[]> {
       return familyMembers.filter(m => m.generation === 2);
     }
 
-    const members = await prisma.familyMember.findMany({
-      where: { generation: 2 },
-      orderBy: { id: 'asc' }
-    });
+    const members = sqliteDb.getGen2Branches();
 
     if (members.length === 0) {
       return familyMembers.filter(m => m.generation === 2);
     }
 
-    return members.map(toFamilyMember);
+    return members;
   } catch (error) {
     console.error('Error fetching Gen 2 branches:', error);
     return familyMembers.filter(m => m.generation === 2);
@@ -372,44 +266,7 @@ export async function createMemberInDb(member: Omit<FamilyMember, 'createdAt' | 
       return null;
     }
 
-    const created = await prisma.familyMember.create({
-      data: {
-        id: member.id,
-        firstName: member.firstName,
-        fatherName: member.fatherName,
-        grandfatherName: member.grandfatherName,
-        greatGrandfatherName: member.greatGrandfatherName,
-        familyName: member.familyName,
-        fatherId: member.fatherId,
-        gender: member.gender,
-        birthYear: member.birthYear,
-        sonsCount: member.sonsCount,
-        daughtersCount: member.daughtersCount,
-        generation: member.generation,
-        branch: member.branch,
-        fullNameAr: member.fullNameAr,
-        fullNameEn: member.fullNameEn,
-        phone: member.phone,
-        city: member.city,
-        status: member.status,
-        photoUrl: member.photoUrl,
-        biography: member.biography,
-        occupation: member.occupation,
-        email: member.email,
-        createdBy: member.createdBy || 'system',
-      }
-    });
-
-    // Update parent's child count
-    if (member.fatherId) {
-      const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
-      await prisma.familyMember.update({
-        where: { id: member.fatherId },
-        data: { [countField]: { increment: 1 } }
-      }).catch((err: Error) => console.error('Failed to update parent count:', err));
-    }
-
-    return toFamilyMember(created);
+    return sqliteDb.createMember(member);
   } catch (error) {
     console.error('Error creating member:', error);
     return null;
@@ -426,15 +283,7 @@ export async function updateMemberInDb(id: string, updates: Partial<FamilyMember
       return null;
     }
 
-    const updated = await prisma.familyMember.update({
-      where: { id },
-      data: {
-        ...updates,
-        updatedAt: new Date(),
-      }
-    });
-
-    return toFamilyMember(updated);
+    return sqliteDb.updateMember(id, updates);
   } catch (error) {
     console.error('Error updating member:', error);
     return null;
@@ -451,11 +300,7 @@ export async function deleteMemberFromDb(id: string): Promise<boolean> {
       return false;
     }
 
-    await prisma.familyMember.delete({
-      where: { id }
-    });
-
-    return true;
+    return sqliteDb.deleteMember(id);
   } catch (error) {
     console.error('Error deleting member:', error);
     return false;
@@ -471,11 +316,7 @@ export async function memberExistsInDb(id: string): Promise<boolean> {
       return familyMembers.some(m => m.id === id);
     }
 
-    const member = await prisma.familyMember.findUnique({
-      where: { id },
-      select: { id: true }
-    });
-
+    const member = sqliteDb.getMemberById(id);
     return member !== null;
   } catch (error) {
     console.error('Error checking member existence:', error);
