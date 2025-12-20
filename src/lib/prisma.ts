@@ -82,6 +82,7 @@ interface ModelMethods<T> {
   count: (args?: Record<string, unknown>) => Promise<number>;
   updateMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
   groupBy: (args: Record<string, unknown>) => Promise<Record<string, unknown>[]>;
+  createMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
 }
 
 // Build WHERE clause from object
@@ -418,6 +419,47 @@ function createModel<T extends { id: string }>(tableName: string): ModelMethods<
         console.error(`Error in ${tableName}.groupBy:`, error);
         return [];
       }
+    },
+
+    async createMany(args) {
+      const db = getDb();
+      if (!db) return { count: 0 };
+
+      const dataArray = args.data as Record<string, unknown>[];
+      if (!dataArray || dataArray.length === 0) {
+        return { count: 0 };
+      }
+
+      const skipDuplicates = args.skipDuplicates as boolean | undefined;
+      let insertedCount = 0;
+
+      try {
+        const insertTransaction = db.transaction((items: Record<string, unknown>[]) => {
+          for (const item of items) {
+            const data = { ...item, id: item.id || randomUUID() };
+            const columns = Object.keys(data);
+            const placeholders = columns.map(() => '?').join(', ');
+            const values = Object.values(data);
+
+            const sql = skipDuplicates
+              ? `INSERT OR IGNORE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`
+              : `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+
+            try {
+              const result = db.prepare(sql).run(...values);
+              insertedCount += result.changes;
+            } catch (e) {
+              if (!skipDuplicates) throw e;
+            }
+          }
+        });
+
+        insertTransaction(dataArray);
+        return { count: insertedCount };
+      } catch (error) {
+        console.error(`Error in ${tableName}.createMany:`, error);
+        return { count: 0 };
+      }
     }
   };
 }
@@ -469,7 +511,11 @@ interface PrismaClient {
   exportFieldCategory: ModelMethods<any>;
   backupConfig: ModelMethods<any>;
   eventType: ModelMethods<any>;
-  $transaction: <T>(fn: (tx: PrismaClient) => Promise<T>) => Promise<T>;
+  featureFlag: ModelMethods<any>;
+  $transaction: {
+    <T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T>;
+    <T>(promises: Promise<T>[]): Promise<T[]>;
+  };
   $queryRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
   $executeRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<number>;
   $connect: () => Promise<void>;
@@ -523,14 +569,21 @@ export const prisma: PrismaClient = {
   exportFieldCategory: createModel<any>('ExportFieldCategory'),
   backupConfig: createModel<any>('BackupConfig'),
   eventType: createModel<any>('EventType'),
+  featureFlag: createModel<any>('FeatureFlag'),
 
-  // Transaction support
-  async $transaction<T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> {
+  // Transaction support - handles both array of promises and callback function
+  $transaction: async function<T>(fnOrPromises: ((tx: PrismaClient) => Promise<T>) | Promise<T>[]): Promise<T | T[]> {
     const db = getDb();
     if (!db) throw new Error('Database not available');
 
+    // If it's an array of promises, execute them all
+    if (Array.isArray(fnOrPromises)) {
+      return Promise.all(fnOrPromises);
+    }
+
+    // Otherwise it's a callback function
     return db.transaction(() => {
-      return fn(prisma);
+      return fnOrPromises(prisma);
     })() as T;
   },
 
