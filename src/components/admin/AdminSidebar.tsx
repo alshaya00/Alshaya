@@ -26,6 +26,7 @@ import {
   Server,
   Image,
   Mail,
+  Layers,
 } from 'lucide-react';
 
 interface NavItem {
@@ -68,6 +69,12 @@ const adminNavItems: NavItem[] = [
     label: 'البث البريدي',
     labelEn: 'Email Broadcasts',
     icon: Mail,
+  },
+  {
+    href: '/admin/features',
+    label: 'معاينة الميزات',
+    labelEn: 'Feature Preview',
+    icon: Layers,
   },
   {
     href: '/admin/config',

@@ -8,8 +8,9 @@ import {
   Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, Search, BarChart3
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlags, routeToFeature, FeatureKey } from '@/contexts/FeatureFlagsContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
-import { mainNavItems, mobileNavItems, moreNavItems as configMoreNavItems } from '@/config/navigation';
+import { mainNavItems, mobileNavItems, moreNavItems as configMoreNavItems, NavItem } from '@/config/navigation';
 
 // Using centralized navigation config
 const navItems = mainNavItems;
@@ -20,6 +21,7 @@ export function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, hasPermission } = useAuth();
+  const { isFeatureEnabled } = useFeatureFlags();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
@@ -29,6 +31,17 @@ export function Navigation() {
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const mobileMoreRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to check if a nav item should be visible based on feature flags
+  const isNavItemEnabled = (item: NavItem): boolean => {
+    const featureKey = routeToFeature[item.href];
+    if (!featureKey) return true; // If no feature mapping, show by default
+    return isFeatureEnabled(featureKey);
+  };
+
+  // Filter navigation items based on feature flags
+  const filteredNavItems = navItems.filter(isNavItemEnabled);
+  const filteredMobileNavItems = mobileNavItemsList.filter(isNavItemEnabled);
 
   // Close menus on route change
   useEffect(() => {
@@ -92,8 +105,11 @@ export function Navigation() {
     router.push('/login');
   };
 
-  // Filter more nav items based on permissions
+  // Filter more nav items based on permissions AND feature flags
   const filteredMoreNavItems = moreNavItems.filter((item) => {
+    // First check feature flags
+    if (!isNavItemEnabled(item)) return false;
+    // Then check permissions
     if (!item.permission) return true;
     return hasPermission(item.permission as Parameters<typeof hasPermission>[0]);
   });
@@ -148,7 +164,7 @@ export function Navigation() {
 
             {/* Desktop Navigation Links */}
             <nav className="hidden lg:flex items-center gap-1 shrink-0" role="navigation" aria-label="التنقل الرئيسي">
-              {navItems.map((item) => {
+              {filteredNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
                 return (
@@ -307,7 +323,7 @@ export function Navigation() {
           aria-label="التنقل السريع"
         >
           <div className="grid grid-cols-6 gap-0.5 px-1 py-1.5">
-            {mobileNavItemsList.map((item) => {
+            {filteredMobileNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -451,7 +467,7 @@ export function Navigation() {
               <div className="mb-3">
                 <p className="text-xs text-gray-400 px-3 mb-2" id="main-nav-label">التنقل الرئيسي</p>
                 <ul role="list" aria-labelledby="main-nav-label" className="space-y-1">
-                  {[...navItems, { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 }].map((item) => {
+                  {[...filteredNavItems, ...(isFeatureEnabled('dashboard') ? [{ href: '/dashboard', label: 'الإحصائيات', labelEn: 'Stats', icon: BarChart3 }] : [])].map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
                     return (

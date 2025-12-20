@@ -1442,3 +1442,51 @@ model EventType {
   @@index([key])
   @@index([displayOrder])
 }
+
+// ============================================
+// FEATURE FLAGS (Admin Feature Preview System)
+// ============================================
+
+model FeatureFlag {
+  id              String   @id @default("default")
+
+  // Core Pages
+  familyTree      Boolean  @default(true)   // شجرة العائلة
+  registry        Boolean  @default(true)   // سجل الأعضاء
+  journals        Boolean  @default(true)   // السجل التاريخي
+  gallery         Boolean  @default(true)   // معرض الصور
+  gatherings      Boolean  @default(true)   // المناسبات والتجمعات
+  dashboard       Boolean  @default(true)   // لوحة الإحصائيات
+  search          Boolean  @default(true)   // البحث
+  branches        Boolean  @default(true)   // الفروع
+
+  // Data Management
+  quickAdd        Boolean  @default(true)   // إضافة سريعة
+  importData      Boolean  @default(true)   // استيراد البيانات
+  exportData      Boolean  @default(true)   // تصدير البيانات
+  treeEditor      Boolean  @default(true)   // محرر الشجرة
+  duplicates      Boolean  @default(true)   // كشف التكرارات
+  changeHistory   Boolean  @default(true)   // سجل التغييرات
+
+  // User Features
+  registration    Boolean  @default(true)   // التسجيل
+  invitations     Boolean  @default(true)   // الدعوات
+  accessRequests  Boolean  @default(true)   // طلبات الانضمام
+  profiles        Boolean  @default(true)   // الملفات الشخصية
+
+  // Special Features
+  breastfeeding   Boolean  @default(true)   // علاقات الرضاعة
+  branchEntries   Boolean  @default(true)   // روابط الفروع
+  onboarding      Boolean  @default(true)   // دليل البداية
+
+  // Admin Features
+  imageModeration Boolean  @default(true)   // إدارة الصور
+  broadcasts      Boolean  @default(true)   // البث البريدي
+  reports         Boolean  @default(true)   // التقارير
+  audit           Boolean  @default(true)   // سجل المراجعة
+  apiServices     Boolean  @default(true)   // الخدمات الخارجية
+
+  // Metadata
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+}
