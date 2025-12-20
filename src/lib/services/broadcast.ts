@@ -552,9 +552,10 @@ export class BroadcastService {
     };
 
     for (const count of counts) {
-      if (count.rsvpResponse === 'YES') rsvpCounts.rsvpYesCount = count._count.rsvpResponse;
-      if (count.rsvpResponse === 'NO') rsvpCounts.rsvpNoCount = count._count.rsvpResponse;
-      if (count.rsvpResponse === 'MAYBE') rsvpCounts.rsvpMaybeCount = count._count.rsvpResponse;
+      const countObj = count as { rsvpResponse: string; _count: { rsvpResponse: number } };
+      if (countObj.rsvpResponse === 'YES') rsvpCounts.rsvpYesCount = countObj._count.rsvpResponse;
+      if (countObj.rsvpResponse === 'NO') rsvpCounts.rsvpNoCount = countObj._count.rsvpResponse;
+      if (countObj.rsvpResponse === 'MAYBE') rsvpCounts.rsvpMaybeCount = countObj._count.rsvpResponse;
     }
 
     await prisma.broadcast.update({
