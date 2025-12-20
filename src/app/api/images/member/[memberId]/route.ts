@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMemberPhotos, getProfilePhoto, getPhotoTimeline, type MemberPhoto } from '@/lib/db/images';
+import { getMemberPhotos, getProfilePhoto, getPhotoTimeline } from '@/lib/db/images';
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function GET(
 
     // If requesting profile photo only
     if (view === 'profile') {
-      const profilePhoto = getProfilePhoto(memberId);
+      const profilePhoto = await getProfilePhoto(memberId);
       return NextResponse.json({
         profilePhoto: profilePhoto ? {
           id: profilePhoto.id,
@@ -29,19 +29,19 @@ export async function GET(
 
     // If requesting timeline view
     if (view === 'timeline') {
-      const timeline = getPhotoTimeline({ memberId, limit: 5 });
+      const timeline = await getPhotoTimeline({ memberId, limit: 5 });
       return NextResponse.json({ timeline });
     }
 
     // Regular gallery view
-    const result = getMemberPhotos(memberId, {
+    const result = await getMemberPhotos(memberId, {
       category: category || undefined,
       limit,
       offset,
     });
 
     // Get profile photo
-    const profilePhoto = getProfilePhoto(memberId);
+    const profilePhoto = await getProfilePhoto(memberId);
 
     // Return photos without full image data in list (use thumbnails)
     const photosWithThumbnails = result.photos.map(photo => ({

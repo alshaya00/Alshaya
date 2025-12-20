@@ -1,6 +1,5 @@
-// Database module for image management using better-sqlite3
-import Database from 'better-sqlite3';
-import path from 'path';
+// Database module for image management using Prisma
+import { prisma } from '../prisma';
 import { randomUUID } from 'crypto';
 
 // Types
@@ -53,13 +52,6 @@ export interface MemberPhoto {
   updatedAt: string;
 }
 
-// Raw database row type (SQLite stores booleans as integers)
-interface MemberPhotoRow extends Omit<MemberPhoto, 'isFamilyAlbum' | 'isProfilePhoto' | 'isPublic'> {
-  isFamilyAlbum: number;
-  isProfilePhoto: number;
-  isPublic: number;
-}
-
 export interface CreatePendingImageInput {
   imageData: string;
   thumbnailData?: string;
@@ -98,471 +90,382 @@ export interface CreateMemberPhotoInput {
   isPublic?: boolean;
 }
 
-// Get database connection
-function getDb() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'family.db');
-  const db = new Database(dbPath);
-  db.pragma('foreign_keys = ON');
-  return db;
-}
-
 // Generate CUID-like ID
 function generateId(): string {
   return randomUUID();
+}
+
+// Convert Prisma result to PendingImage
+function toPendingImage(row: Record<string, unknown>): PendingImage {
+  return {
+    id: row.id as string,
+    imageData: row.imageData as string,
+    thumbnailData: row.thumbnailData as string | null,
+    category: row.category as 'profile' | 'memory' | 'document' | 'historical',
+    title: row.title as string | null,
+    titleAr: row.titleAr as string | null,
+    caption: row.caption as string | null,
+    captionAr: row.captionAr as string | null,
+    year: row.year as number | null,
+    memberId: row.memberId as string | null,
+    memberName: row.memberName as string | null,
+    taggedMemberIds: row.taggedMemberIds as string | null,
+    uploadedBy: row.uploadedBy as string | null,
+    uploadedByName: row.uploadedByName as string,
+    uploadedByEmail: row.uploadedByEmail as string | null,
+    uploadedAt: (row.uploadedAt as Date).toISOString(),
+    ipAddress: row.ipAddress as string | null,
+    reviewStatus: row.reviewStatus as 'PENDING' | 'APPROVED' | 'REJECTED',
+    reviewedBy: row.reviewedBy as string | null,
+    reviewedByName: row.reviewedByName as string | null,
+    reviewedAt: row.reviewedAt ? (row.reviewedAt as Date).toISOString() : null,
+    reviewNotes: row.reviewNotes as string | null,
+    approvedPhotoId: row.approvedPhotoId as string | null,
+  };
+}
+
+// Convert Prisma result to MemberPhoto
+function toMemberPhoto(row: Record<string, unknown>): MemberPhoto {
+  return {
+    id: row.id as string,
+    imageData: row.imageData as string,
+    thumbnailData: row.thumbnailData as string | null,
+    category: row.category as 'profile' | 'memory' | 'document' | 'historical',
+    title: row.title as string | null,
+    titleAr: row.titleAr as string | null,
+    caption: row.caption as string | null,
+    captionAr: row.captionAr as string | null,
+    year: row.year as number | null,
+    memberId: row.memberId as string | null,
+    taggedMemberIds: row.taggedMemberIds as string | null,
+    isFamilyAlbum: row.isFamilyAlbum as boolean,
+    uploadedBy: row.uploadedBy as string | null,
+    uploadedByName: row.uploadedByName as string,
+    originalPendingId: row.originalPendingId as string | null,
+    isProfilePhoto: row.isProfilePhoto as boolean,
+    displayOrder: row.displayOrder as number,
+    isPublic: row.isPublic as boolean,
+    createdAt: (row.createdAt as Date).toISOString(),
+    updatedAt: (row.updatedAt as Date).toISOString(),
+  };
 }
 
 // ======================
 // PENDING IMAGE OPERATIONS
 // ======================
 
-export function createPendingImage(input: CreatePendingImageInput): PendingImage {
-  const db = getDb();
+export async function createPendingImage(input: CreatePendingImageInput): Promise<PendingImage> {
   const id = generateId();
-  const now = new Date().toISOString();
 
-  const stmt = db.prepare(`
-    INSERT INTO PendingImage (
-      id, imageData, thumbnailData, category, title, titleAr, caption, captionAr,
-      year, memberId, memberName, taggedMemberIds, uploadedBy, uploadedByName,
-      uploadedByEmail, uploadedAt, ipAddress, reviewStatus
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  const result = await prisma.pendingImage.create({
+    data: {
+      id,
+      imageData: input.imageData,
+      thumbnailData: input.thumbnailData || null,
+      category: input.category || 'memory',
+      title: input.title || null,
+      titleAr: input.titleAr || null,
+      caption: input.caption || null,
+      captionAr: input.captionAr || null,
+      year: input.year || null,
+      memberId: input.memberId || null,
+      memberName: input.memberName || null,
+      taggedMemberIds: input.taggedMemberIds ? JSON.stringify(input.taggedMemberIds) : null,
+      uploadedBy: input.uploadedBy || null,
+      uploadedByName: input.uploadedByName,
+      uploadedByEmail: input.uploadedByEmail || null,
+      ipAddress: input.ipAddress || null,
+      reviewStatus: 'PENDING',
+    },
+  });
 
-  stmt.run(
-    id,
-    input.imageData,
-    input.thumbnailData || null,
-    input.category || 'memory',
-    input.title || null,
-    input.titleAr || null,
-    input.caption || null,
-    input.captionAr || null,
-    input.year || null,
-    input.memberId || null,
-    input.memberName || null,
-    input.taggedMemberIds ? JSON.stringify(input.taggedMemberIds) : null,
-    input.uploadedBy || null,
-    input.uploadedByName,
-    input.uploadedByEmail || null,
-    now,
-    input.ipAddress || null,
-    'PENDING'
-  );
-
-  db.close();
-
-  const result = getPendingImageById(id);
-  if (!result) {
-    throw new Error(`Failed to retrieve newly created pending image with id: ${id}`);
-  }
-  return result;
+  return toPendingImage(result as unknown as Record<string, unknown>);
 }
 
-export function getPendingImageById(id: string): PendingImage | null {
-  const db = getDb();
-  const stmt = db.prepare('SELECT * FROM PendingImage WHERE id = ?');
-  const row = stmt.get(id) as PendingImage | undefined;
-  db.close();
-  return row || null;
+export async function getPendingImageById(id: string): Promise<PendingImage | null> {
+  const row = await prisma.pendingImage.findUnique({
+    where: { id },
+  });
+
+  return row ? toPendingImage(row as unknown as Record<string, unknown>) : null;
 }
 
-export function getPendingImages(options?: {
+export async function getPendingImages(options?: {
   status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   category?: string;
   memberId?: string;
   limit?: number;
   offset?: number;
-}): { images: PendingImage[]; total: number } {
-  const db = getDb();
-
-  let whereClause = '1=1';
-  const params: unknown[] = [];
+}): Promise<{ images: PendingImage[]; total: number }> {
+  const where: Record<string, unknown> = {};
 
   if (options?.status) {
-    whereClause += ' AND reviewStatus = ?';
-    params.push(options.status);
+    where.reviewStatus = options.status;
   }
   if (options?.category) {
-    whereClause += ' AND category = ?';
-    params.push(options.category);
+    where.category = options.category;
   }
   if (options?.memberId) {
-    whereClause += ' AND memberId = ?';
-    params.push(options.memberId);
+    where.memberId = options.memberId;
   }
 
-  // Get total count
-  const countStmt = db.prepare(`SELECT COUNT(*) as count FROM PendingImage WHERE ${whereClause}`);
-  const countResult = countStmt.get(...params) as { count: number };
-  const total = countResult.count;
+  const [total, rows] = await Promise.all([
+    prisma.pendingImage.count({ where }),
+    prisma.pendingImage.findMany({
+      where,
+      orderBy: { uploadedAt: 'desc' },
+      take: options?.limit,
+      skip: options?.offset,
+    }),
+  ]);
 
-  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
-  let query = `SELECT * FROM PendingImage WHERE ${whereClause} ORDER BY uploadedAt DESC`;
-  if (options?.limit) {
-    // Validate limit and offset are positive integers
-    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
-    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-  }
-
-  const stmt = db.prepare(query);
-  const images = stmt.all(...params) as PendingImage[];
-
-  db.close();
+  const images = rows.map(row => toPendingImage(row as unknown as Record<string, unknown>));
 
   return { images, total };
 }
 
-export function approvePendingImage(
+export async function approvePendingImage(
   id: string,
   reviewedBy: string,
   reviewedByName: string,
   reviewNotes?: string
-): MemberPhoto | null {
-  const db = getDb();
-
-  // Get the pending image
-  const pendingStmt = db.prepare('SELECT * FROM PendingImage WHERE id = ?');
-  const pending = pendingStmt.get(id) as PendingImage | undefined;
+): Promise<MemberPhoto | null> {
+  const pending = await prisma.pendingImage.findUnique({
+    where: { id },
+  });
 
   if (!pending) {
-    db.close();
     return null;
   }
 
   const photoId = generateId();
-  const now = new Date().toISOString();
 
-  // Create the approved photo
-  const insertStmt = db.prepare(`
-    INSERT INTO MemberPhoto (
-      id, imageData, thumbnailData, category, title, titleAr, caption, captionAr,
-      year, memberId, taggedMemberIds, isFamilyAlbum, uploadedBy, uploadedByName,
-      originalPendingId, isProfilePhoto, displayOrder, isPublic, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  // Use transaction to create photo and update pending image
+  await prisma.$transaction(async (tx) => {
+    // Create the approved photo
+    await tx.memberPhoto.create({
+      data: {
+        id: photoId,
+        imageData: pending.imageData,
+        thumbnailData: pending.thumbnailData,
+        category: pending.category,
+        title: pending.title,
+        titleAr: pending.titleAr,
+        caption: pending.caption,
+        captionAr: pending.captionAr,
+        year: pending.year,
+        memberId: pending.memberId,
+        taggedMemberIds: pending.taggedMemberIds,
+        isFamilyAlbum: !pending.memberId,
+        uploadedBy: pending.uploadedBy,
+        uploadedByName: pending.uploadedByName,
+        originalPendingId: pending.id,
+        isProfilePhoto: pending.category === 'profile',
+        displayOrder: 0,
+        isPublic: true,
+      },
+    });
 
-  insertStmt.run(
-    photoId,
-    pending.imageData,
-    pending.thumbnailData,
-    pending.category,
-    pending.title,
-    pending.titleAr,
-    pending.caption,
-    pending.captionAr,
-    pending.year,
-    pending.memberId,
-    pending.taggedMemberIds,
-    pending.memberId ? 0 : 1, // Family album if no member specified
-    pending.uploadedBy,
-    pending.uploadedByName,
-    pending.id,
-    pending.category === 'profile' ? 1 : 0,
-    0,
-    1,
-    now,
-    now
-  );
-
-  // Update pending image status
-  const updateStmt = db.prepare(`
-    UPDATE PendingImage
-    SET reviewStatus = 'APPROVED', reviewedBy = ?, reviewedByName = ?,
-        reviewedAt = ?, reviewNotes = ?, approvedPhotoId = ?
-    WHERE id = ?
-  `);
-
-  updateStmt.run(reviewedBy, reviewedByName, now, reviewNotes || null, photoId, id);
-
-  db.close();
+    // Update pending image status
+    await tx.pendingImage.update({
+      where: { id },
+      data: {
+        reviewStatus: 'APPROVED',
+        reviewedBy,
+        reviewedByName,
+        reviewedAt: new Date(),
+        reviewNotes: reviewNotes || null,
+        approvedPhotoId: photoId,
+      },
+    });
+  });
 
   return getMemberPhotoById(photoId);
 }
 
-export function rejectPendingImage(
+export async function rejectPendingImage(
   id: string,
   reviewedBy: string,
   reviewedByName: string,
   reviewNotes: string
-): PendingImage | null {
-  const db = getDb();
-  const now = new Date().toISOString();
-
-  const stmt = db.prepare(`
-    UPDATE PendingImage
-    SET reviewStatus = 'REJECTED', reviewedBy = ?, reviewedByName = ?,
-        reviewedAt = ?, reviewNotes = ?
-    WHERE id = ?
-  `);
-
-  stmt.run(reviewedBy, reviewedByName, now, reviewNotes, id);
-
-  db.close();
+): Promise<PendingImage | null> {
+  await prisma.pendingImage.update({
+    where: { id },
+    data: {
+      reviewStatus: 'REJECTED',
+      reviewedBy,
+      reviewedByName,
+      reviewedAt: new Date(),
+      reviewNotes,
+    },
+  });
 
   return getPendingImageById(id);
 }
 
-export function deletePendingImage(id: string): boolean {
-  const db = getDb();
-  const stmt = db.prepare('DELETE FROM PendingImage WHERE id = ?');
-  const result = stmt.run(id);
-  db.close();
-  return result.changes > 0;
+export async function deletePendingImage(id: string): Promise<boolean> {
+  try {
+    await prisma.pendingImage.delete({
+      where: { id },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ======================
 // MEMBER PHOTO OPERATIONS
 // ======================
 
-export function createMemberPhoto(input: CreateMemberPhotoInput): MemberPhoto {
-  const db = getDb();
+export async function createMemberPhoto(input: CreateMemberPhotoInput): Promise<MemberPhoto> {
   const id = generateId();
-  const now = new Date().toISOString();
 
-  const stmt = db.prepare(`
-    INSERT INTO MemberPhoto (
-      id, imageData, thumbnailData, category, title, titleAr, caption, captionAr,
-      year, memberId, taggedMemberIds, isFamilyAlbum, uploadedBy, uploadedByName,
-      originalPendingId, isProfilePhoto, displayOrder, isPublic, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  const result = await prisma.memberPhoto.create({
+    data: {
+      id,
+      imageData: input.imageData,
+      thumbnailData: input.thumbnailData || null,
+      category: input.category || 'memory',
+      title: input.title || null,
+      titleAr: input.titleAr || null,
+      caption: input.caption || null,
+      captionAr: input.captionAr || null,
+      year: input.year || null,
+      memberId: input.memberId || null,
+      taggedMemberIds: input.taggedMemberIds ? JSON.stringify(input.taggedMemberIds) : null,
+      isFamilyAlbum: input.isFamilyAlbum || false,
+      uploadedBy: input.uploadedBy || null,
+      uploadedByName: input.uploadedByName,
+      originalPendingId: input.originalPendingId || null,
+      isProfilePhoto: input.isProfilePhoto || false,
+      displayOrder: input.displayOrder || 0,
+      isPublic: input.isPublic !== false,
+    },
+  });
 
-  stmt.run(
-    id,
-    input.imageData,
-    input.thumbnailData || null,
-    input.category || 'memory',
-    input.title || null,
-    input.titleAr || null,
-    input.caption || null,
-    input.captionAr || null,
-    input.year || null,
-    input.memberId || null,
-    input.taggedMemberIds ? JSON.stringify(input.taggedMemberIds) : null,
-    input.isFamilyAlbum ? 1 : 0,
-    input.uploadedBy || null,
-    input.uploadedByName,
-    input.originalPendingId || null,
-    input.isProfilePhoto ? 1 : 0,
-    input.displayOrder || 0,
-    input.isPublic !== false ? 1 : 0,
-    now,
-    now
-  );
-
-  db.close();
-
-  const result = getMemberPhotoById(id);
-  if (!result) {
-    throw new Error(`Failed to retrieve newly created member photo with id: ${id}`);
-  }
-  return result;
+  return toMemberPhoto(result as unknown as Record<string, unknown>);
 }
 
-export function getMemberPhotoById(id: string): MemberPhoto | null {
-  const db = getDb();
-  const stmt = db.prepare('SELECT * FROM MemberPhoto WHERE id = ?');
-  const row = stmt.get(id) as MemberPhotoRow | undefined;
-  db.close();
+export async function getMemberPhotoById(id: string): Promise<MemberPhoto | null> {
+  const row = await prisma.memberPhoto.findUnique({
+    where: { id },
+  });
 
-  if (!row) return null;
-
-  // Convert SQLite integers to booleans
-  return {
-    ...row,
-    isFamilyAlbum: Boolean(row.isFamilyAlbum),
-    isProfilePhoto: Boolean(row.isProfilePhoto),
-    isPublic: Boolean(row.isPublic),
-  };
+  return row ? toMemberPhoto(row as unknown as Record<string, unknown>) : null;
 }
 
-export function getMemberPhotos(memberId: string, options?: {
+export async function getMemberPhotos(memberId: string, options?: {
   category?: string;
   limit?: number;
   offset?: number;
-}): { photos: MemberPhoto[]; total: number } {
-  const db = getDb();
-
-  let whereClause = 'memberId = ?';
-  const params: unknown[] = [memberId];
+}): Promise<{ photos: MemberPhoto[]; total: number }> {
+  const where: Record<string, unknown> = { memberId };
 
   if (options?.category) {
-    whereClause += ' AND category = ?';
-    params.push(options.category);
+    where.category = options.category;
   }
 
-  // Get total count
-  const countStmt = db.prepare(`SELECT COUNT(*) as count FROM MemberPhoto WHERE ${whereClause}`);
-  const countResult = countStmt.get(...params) as { count: number };
-  const total = countResult.count;
+  const [total, rows] = await Promise.all([
+    prisma.memberPhoto.count({ where }),
+    prisma.memberPhoto.findMany({
+      where,
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+      take: options?.limit,
+      skip: options?.offset,
+    }),
+  ]);
 
-  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
-  let query = `SELECT * FROM MemberPhoto WHERE ${whereClause} ORDER BY displayOrder ASC, createdAt DESC`;
-  if (options?.limit) {
-    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
-    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-  }
-
-  const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as MemberPhotoRow[];
-
-  db.close();
-
-  const photos = rows.map(row => ({
-    ...row,
-    isFamilyAlbum: Boolean(row.isFamilyAlbum),
-    isProfilePhoto: Boolean(row.isProfilePhoto),
-    isPublic: Boolean(row.isPublic),
-  }));
+  const photos = rows.map(row => toMemberPhoto(row as unknown as Record<string, unknown>));
 
   return { photos, total };
 }
 
-export function getFamilyAlbumPhotos(options?: {
+export async function getFamilyAlbumPhotos(options?: {
   category?: string;
   year?: number;
   limit?: number;
   offset?: number;
-}): { photos: MemberPhoto[]; total: number } {
-  const db = getDb();
-
-  let whereClause = 'isFamilyAlbum = 1';
-  const params: unknown[] = [];
+}): Promise<{ photos: MemberPhoto[]; total: number }> {
+  const where: Record<string, unknown> = { isFamilyAlbum: true };
 
   if (options?.category) {
-    whereClause += ' AND category = ?';
-    params.push(options.category);
+    where.category = options.category;
   }
   if (options?.year) {
-    whereClause += ' AND year = ?';
-    params.push(options.year);
+    where.year = options.year;
   }
 
-  // Get total count
-  const countStmt = db.prepare(`SELECT COUNT(*) as count FROM MemberPhoto WHERE ${whereClause}`);
-  const countResult = countStmt.get(...params) as { count: number };
-  const total = countResult.count;
+  const [total, rows] = await Promise.all([
+    prisma.memberPhoto.count({ where }),
+    prisma.memberPhoto.findMany({
+      where,
+      orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+      take: options?.limit,
+      skip: options?.offset,
+    }),
+  ]);
 
-  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
-  let query = `SELECT * FROM MemberPhoto WHERE ${whereClause} ORDER BY year DESC, createdAt DESC`;
-  if (options?.limit) {
-    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
-    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-  }
-
-  const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as MemberPhotoRow[];
-
-  db.close();
-
-  const photos = rows.map(row => ({
-    ...row,
-    isFamilyAlbum: Boolean(row.isFamilyAlbum),
-    isProfilePhoto: Boolean(row.isProfilePhoto),
-    isPublic: Boolean(row.isPublic),
-  }));
+  const photos = rows.map(row => toMemberPhoto(row as unknown as Record<string, unknown>));
 
   return { photos, total };
 }
 
-export function getAllPhotos(options?: {
+export async function getAllPhotos(options?: {
   category?: string;
   year?: number;
   uploadedBy?: string;
   limit?: number;
   offset?: number;
-}): { photos: MemberPhoto[]; total: number } {
-  const db = getDb();
-
-  let whereClause = '1=1';
-  const params: unknown[] = [];
+}): Promise<{ photos: MemberPhoto[]; total: number }> {
+  const where: Record<string, unknown> = {};
 
   if (options?.category) {
-    whereClause += ' AND category = ?';
-    params.push(options.category);
+    where.category = options.category;
   }
   if (options?.year) {
-    whereClause += ' AND year = ?';
-    params.push(options.year);
+    where.year = options.year;
   }
   if (options?.uploadedBy) {
-    whereClause += ' AND uploadedBy = ?';
-    params.push(options.uploadedBy);
+    where.uploadedBy = options.uploadedBy;
   }
 
-  // Get total count
-  const countStmt = db.prepare(`SELECT COUNT(*) as count FROM MemberPhoto WHERE ${whereClause}`);
-  const countResult = countStmt.get(...params) as { count: number };
-  const total = countResult.count;
+  const [total, rows] = await Promise.all([
+    prisma.memberPhoto.count({ where }),
+    prisma.memberPhoto.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: options?.limit,
+      skip: options?.offset,
+    }),
+  ]);
 
-  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
-  let query = `SELECT * FROM MemberPhoto WHERE ${whereClause} ORDER BY createdAt DESC`;
-  if (options?.limit) {
-    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
-    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-  }
-
-  const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as MemberPhotoRow[];
-
-  db.close();
-
-  const photos = rows.map(row => ({
-    ...row,
-    isFamilyAlbum: Boolean(row.isFamilyAlbum),
-    isProfilePhoto: Boolean(row.isProfilePhoto),
-    isPublic: Boolean(row.isPublic),
-  }));
+  const photos = rows.map(row => toMemberPhoto(row as unknown as Record<string, unknown>));
 
   return { photos, total };
 }
 
-export function getPhotoTimeline(options?: {
+export async function getPhotoTimeline(options?: {
   memberId?: string;
   limit?: number;
-}): { year: number; count: number; photos: MemberPhoto[] }[] {
-  const db = getDb();
-
-  let whereClause = 'year IS NOT NULL';
-  const params: unknown[] = [];
+}): Promise<{ year: number; count: number; photos: MemberPhoto[] }[]> {
+  const where: Record<string, unknown> = { year: { not: null } };
 
   if (options?.memberId) {
-    whereClause += ' AND memberId = ?';
-    params.push(options.memberId);
+    where.memberId = options.memberId;
   }
 
-  // Get photos grouped by year
-  const query = `
-    SELECT * FROM MemberPhoto
-    WHERE ${whereClause}
-    ORDER BY year DESC, createdAt DESC
-  `;
-
-  const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as MemberPhotoRow[];
-
-  db.close();
+  const rows = await prisma.memberPhoto.findMany({
+    where,
+    orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+  });
 
   // Group by year
   const yearMap = new Map<number, MemberPhoto[]>();
 
   for (const row of rows) {
-    // year is guaranteed non-null by the WHERE clause
     const year = row.year as number;
-    const photo: MemberPhoto = {
-      ...row,
-      isFamilyAlbum: Boolean(row.isFamilyAlbum),
-      isProfilePhoto: Boolean(row.isProfilePhoto),
-      isPublic: Boolean(row.isPublic),
-    };
+    const photo = toMemberPhoto(row as unknown as Record<string, unknown>);
 
     const existing = yearMap.get(year);
     if (existing) {
@@ -581,139 +484,124 @@ export function getPhotoTimeline(options?: {
   return timeline;
 }
 
-export function updateMemberPhoto(
+export async function updateMemberPhoto(
   id: string,
   updates: Partial<Omit<CreateMemberPhotoInput, 'imageData' | 'uploadedBy' | 'uploadedByName'>>
-): MemberPhoto | null {
-  const db = getDb();
-  const now = new Date().toISOString();
-
-  const fields: string[] = ['updatedAt = ?'];
-  const params: unknown[] = [now];
+): Promise<MemberPhoto | null> {
+  const data: Record<string, unknown> = {};
 
   if (updates.category !== undefined) {
-    fields.push('category = ?');
-    params.push(updates.category);
+    data.category = updates.category;
   }
   if (updates.title !== undefined) {
-    fields.push('title = ?');
-    params.push(updates.title);
+    data.title = updates.title;
   }
   if (updates.titleAr !== undefined) {
-    fields.push('titleAr = ?');
-    params.push(updates.titleAr);
+    data.titleAr = updates.titleAr;
   }
   if (updates.caption !== undefined) {
-    fields.push('caption = ?');
-    params.push(updates.caption);
+    data.caption = updates.caption;
   }
   if (updates.captionAr !== undefined) {
-    fields.push('captionAr = ?');
-    params.push(updates.captionAr);
+    data.captionAr = updates.captionAr;
   }
   if (updates.year !== undefined) {
-    fields.push('year = ?');
-    params.push(updates.year);
+    data.year = updates.year;
   }
   if (updates.memberId !== undefined) {
-    fields.push('memberId = ?');
-    params.push(updates.memberId);
+    data.memberId = updates.memberId;
   }
   if (updates.taggedMemberIds !== undefined) {
-    fields.push('taggedMemberIds = ?');
-    params.push(JSON.stringify(updates.taggedMemberIds));
+    data.taggedMemberIds = JSON.stringify(updates.taggedMemberIds);
   }
   if (updates.isFamilyAlbum !== undefined) {
-    fields.push('isFamilyAlbum = ?');
-    params.push(updates.isFamilyAlbum ? 1 : 0);
+    data.isFamilyAlbum = updates.isFamilyAlbum;
   }
   if (updates.isProfilePhoto !== undefined) {
-    fields.push('isProfilePhoto = ?');
-    params.push(updates.isProfilePhoto ? 1 : 0);
+    data.isProfilePhoto = updates.isProfilePhoto;
   }
   if (updates.displayOrder !== undefined) {
-    fields.push('displayOrder = ?');
-    params.push(updates.displayOrder);
+    data.displayOrder = updates.displayOrder;
   }
   if (updates.isPublic !== undefined) {
-    fields.push('isPublic = ?');
-    params.push(updates.isPublic ? 1 : 0);
+    data.isPublic = updates.isPublic;
   }
 
-  params.push(id);
-
-  const stmt = db.prepare(`UPDATE MemberPhoto SET ${fields.join(', ')} WHERE id = ?`);
-  stmt.run(...params);
-
-  db.close();
+  await prisma.memberPhoto.update({
+    where: { id },
+    data,
+  });
 
   return getMemberPhotoById(id);
 }
 
-export function deleteMemberPhoto(id: string): boolean {
-  const db = getDb();
-  const stmt = db.prepare('DELETE FROM MemberPhoto WHERE id = ?');
-  const result = stmt.run(id);
-  db.close();
-  return result.changes > 0;
+export async function deleteMemberPhoto(id: string): Promise<boolean> {
+  try {
+    await prisma.memberPhoto.delete({
+      where: { id },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function setProfilePhoto(memberId: string, photoId: string): boolean {
-  const db = getDb();
+export async function setProfilePhoto(memberId: string, photoId: string): Promise<boolean> {
+  try {
+    // First, unset any existing profile photos for this member
+    await prisma.memberPhoto.updateMany({
+      where: { memberId },
+      data: { isProfilePhoto: false },
+    });
 
-  // First, unset any existing profile photos for this member
-  const unsetStmt = db.prepare('UPDATE MemberPhoto SET isProfilePhoto = 0 WHERE memberId = ?');
-  unsetStmt.run(memberId);
+    // Set the new profile photo
+    const result = await prisma.memberPhoto.updateMany({
+      where: { id: photoId, memberId },
+      data: { isProfilePhoto: true },
+    });
 
-  // Set the new profile photo
-  const setStmt = db.prepare('UPDATE MemberPhoto SET isProfilePhoto = 1 WHERE id = ? AND memberId = ?');
-  const result = setStmt.run(photoId, memberId);
-
-  db.close();
-  return result.changes > 0;
+    return result.count > 0;
+  } catch {
+    return false;
+  }
 }
 
-export function getProfilePhoto(memberId: string): MemberPhoto | null {
-  const db = getDb();
-  const stmt = db.prepare('SELECT * FROM MemberPhoto WHERE memberId = ? AND isProfilePhoto = 1 LIMIT 1');
-  const row = stmt.get(memberId) as MemberPhotoRow | undefined;
-  db.close();
+export async function getProfilePhoto(memberId: string): Promise<MemberPhoto | null> {
+  const row = await prisma.memberPhoto.findFirst({
+    where: { memberId, isProfilePhoto: true },
+  });
 
-  if (!row) return null;
-
-  return {
-    ...row,
-    isFamilyAlbum: Boolean(row.isFamilyAlbum),
-    isProfilePhoto: Boolean(row.isProfilePhoto),
-    isPublic: Boolean(row.isPublic),
-  };
+  return row ? toMemberPhoto(row as unknown as Record<string, unknown>) : null;
 }
 
 // ======================
 // STATISTICS
 // ======================
 
-export function getImageStats(): {
+export async function getImageStats(): Promise<{
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
   totalPhotos: number;
   familyAlbumCount: number;
   byCategory: { category: string; count: number }[];
-} {
-  const db = getDb();
+}> {
+  const [pendingCount, approvedCount, rejectedCount, totalPhotos, familyAlbumCount, categoryGroups] = await Promise.all([
+    prisma.pendingImage.count({ where: { reviewStatus: 'PENDING' } }),
+    prisma.pendingImage.count({ where: { reviewStatus: 'APPROVED' } }),
+    prisma.pendingImage.count({ where: { reviewStatus: 'REJECTED' } }),
+    prisma.memberPhoto.count(),
+    prisma.memberPhoto.count({ where: { isFamilyAlbum: true } }),
+    prisma.memberPhoto.groupBy({
+      by: ['category'],
+      _count: true,
+    }),
+  ]);
 
-  const pendingCount = (db.prepare('SELECT COUNT(*) as count FROM PendingImage WHERE reviewStatus = ?').get('PENDING') as { count: number }).count;
-  const approvedCount = (db.prepare('SELECT COUNT(*) as count FROM PendingImage WHERE reviewStatus = ?').get('APPROVED') as { count: number }).count;
-  const rejectedCount = (db.prepare('SELECT COUNT(*) as count FROM PendingImage WHERE reviewStatus = ?').get('REJECTED') as { count: number }).count;
-  const totalPhotos = (db.prepare('SELECT COUNT(*) as count FROM MemberPhoto').get() as { count: number }).count;
-  const familyAlbumCount = (db.prepare('SELECT COUNT(*) as count FROM MemberPhoto WHERE isFamilyAlbum = 1').get() as { count: number }).count;
-
-  const byCategory = db.prepare(`
-    SELECT category, COUNT(*) as count FROM MemberPhoto GROUP BY category
-  `).all() as { category: string; count: number }[];
-
-  db.close();
+  const byCategory = categoryGroups.map(group => ({
+    category: group.category,
+    count: group._count,
+  }));
 
   return {
     pendingCount,

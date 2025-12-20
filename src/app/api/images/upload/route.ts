@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Create the pending image
-    const pendingImage = createPendingImage(input);
+    const pendingImage = await createPendingImage(input);
 
     return NextResponse.json({
       success: true,

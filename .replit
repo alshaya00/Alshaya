@@ -11,7 +11,7 @@ channel = "stable-24_05"
 [env]
 PATH = "/home/runner/$REPL_SLUG/.config/npm/node_global/bin:/home/runner/$REPL_SLUG/node_modules/.bin:./node_modules/.bin"
 npm_config_prefix = "/home/runner/$REPL_SLUG/.config/npm/node_global"
-DATABASE_URL = "file:./prisma/family.db"
+# DATABASE_URL is now set via Replit Secrets (PostgreSQL connection string)
 
 [packager]
 language = "nodejs"

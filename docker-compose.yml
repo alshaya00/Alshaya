@@ -2,6 +2,27 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: alshaye-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: alshaye
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alshaye_secure_password}
+      POSTGRES_DB: alshaye_family_tree
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alshaye -d alshaye_family_tree"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - alshaye-network
+
   # Main application
   app:
     build:
@@ -13,14 +34,15 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/prisma/family.db
+      - DATABASE_URL=postgresql://alshaye:${POSTGRES_PASSWORD:-alshaye_secure_password}@postgres:5432/alshaye_family_tree
       # Add your environment variables here:
       # - NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
       # - SENTRY_ORG=your_org
       # - SENTRY_PROJECT=your_project
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      # Persist database
-      - ./prisma/family.db:/app/prisma/family.db
       # Persist uploads (if using local storage)
       - ./uploads:/app/uploads
     healthcheck:
@@ -55,5 +77,7 @@ networks:
     driver: bridge
 
 volumes:
+  postgres-data:
+    driver: local
   redis-data:
     driver: local

@@ -3,10 +3,6 @@ import {
   getFamilyAlbumPhotos,
   getAllPhotos,
   getPhotoTimeline,
-  getMemberPhotoById,
-  updateMemberPhoto,
-  deleteMemberPhoto,
-  setProfilePhoto,
   getImageStats,
 } from '@/lib/db/images';
 
@@ -24,19 +20,19 @@ export async function GET(request: NextRequest) {
 
     // Stats view
     if (view === 'stats') {
-      const stats = getImageStats();
+      const stats = await getImageStats();
       return NextResponse.json({ stats });
     }
 
     // Timeline view
     if (view === 'timeline') {
-      const timeline = getPhotoTimeline({ limit: 3 });
+      const timeline = await getPhotoTimeline({ limit: 3 });
       return NextResponse.json({ timeline });
     }
 
     // Family album only
     if (view === 'family') {
-      const result = getFamilyAlbumPhotos({
+      const result = await getFamilyAlbumPhotos({
         category: category || undefined,
         year,
         limit,
@@ -64,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
     // All photos (default)
-    const result = getAllPhotos({
+    const result = await getAllPhotos({
       category: category || undefined,
       year,
       uploadedBy: uploadedBy || undefined,
