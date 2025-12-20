@@ -1,6 +1,7 @@
 // In-memory data store for authentication
 // This will be replaced with Prisma database calls in production
 
+import { randomBytes } from 'crypto';
 import { hashPassword, verifyPassword, generateSessionToken, generateInviteCode } from './password';
 import { UserRole, UserStatus, DEFAULT_PERMISSION_MATRIX, PermissionMatrix, SiteSettings, PrivacySettings } from './types';
 import { familyInfo, securitySettings, paginationSettings } from '@/config/constants';
@@ -187,8 +188,9 @@ export async function initializeStore() {
 // HELPERS
 // ============================================
 
+// SECURITY: Generate cryptographically secure ID
 function generateId(): string {
-  return 'id_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+  return 'id_' + randomBytes(8).toString('hex') + '_' + Date.now().toString(36);
 }
 
 // ============================================

@@ -1,6 +1,7 @@
 // Branch Entry System - Types and Utilities
 
 import { storageKeys } from '@/config/storage-keys';
+import { randomBytes } from 'crypto';
 
 export interface BranchEntryLink {
   id: string;
@@ -35,19 +36,20 @@ export interface PendingMember {
 const LINKS_STORAGE_KEY = storageKeys.branchLinks;
 const PENDING_STORAGE_KEY = storageKeys.pendingMembers;
 
-// Generate a simple token
+// SECURITY: Generate cryptographically secure token
 export function generateToken(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = randomBytes(8);
   let token = '';
   for (let i = 0; i < 8; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
+    token += chars[bytes[i] % chars.length];
   }
   return token;
 }
 
-// Generate unique temp ID for pending members
+// SECURITY: Generate unique temp ID for pending members
 export function generateTempId(): string {
-  return 'TEMP_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  return 'TEMP_' + Date.now() + '_' + randomBytes(4).toString('hex');
 }
 
 // Get all branch links

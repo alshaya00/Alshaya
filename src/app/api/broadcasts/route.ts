@@ -1,9 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService, BroadcastType, BroadcastStatus, TargetAudience } from '@/lib/services/broadcast';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+
+// Helper to get authenticated user from request
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 // GET /api/broadcasts - List all broadcasts
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Require authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', messageAr: 'يتطلب تسجيل الدخول' },
+        { status: 401 }
+      );
+    }
+
+    // SECURITY: Only ADMIN and SUPER_ADMIN can list broadcasts
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') as BroadcastStatus | null;
     const type = searchParams.get('type') as BroadcastType | null;
@@ -39,6 +73,23 @@ export async function GET(request: NextRequest) {
 // POST /api/broadcasts - Create a new broadcast
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Require authentication
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', messageAr: 'يتطلب تسجيل الدخول' },
+        { status: 401 }
+      );
+    }
+
+    // SECURITY: Only ADMIN and SUPER_ADMIN can create broadcasts
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -80,9 +131,9 @@ export async function POST(request: NextRequest) {
     const rsvpDeadline = body.rsvpDeadline ? new Date(body.rsvpDeadline) : undefined;
     const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : undefined;
 
-    // TODO: Get actual user from auth context
-    const createdBy = body.createdBy || 'system';
-    const createdByName = body.createdByName || 'System';
+    // Use authenticated user info
+    const createdBy = user.id;
+    const createdByName = user.nameArabic || user.nameEnglish || user.email;
 
     const broadcast = await broadcastService.createBroadcast({
       titleAr: body.titleAr,

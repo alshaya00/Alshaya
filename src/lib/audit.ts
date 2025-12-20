@@ -87,9 +87,14 @@ function getCurrentAdmin(): { id: string; name: string; role: string } {
   return { id: 'system', name: 'النظام', role: 'SYSTEM' };
 }
 
-// Generate unique ID
+// SECURITY: Generate unique ID using Web Crypto API
 function generateId(): string {
-  return `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const array = new Uint8Array(8);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  }
+  const hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `audit_${Date.now()}_${hex}`;
 }
 
 // Get all audit logs

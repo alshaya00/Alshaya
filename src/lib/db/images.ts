@@ -196,13 +196,14 @@ export function getPendingImages(options?: {
   const countResult = countStmt.get(...params) as { count: number };
   const total = countResult.count;
 
-  // Get images
+  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
   let query = `SELECT * FROM PendingImage WHERE ${whereClause} ORDER BY uploadedAt DESC`;
   if (options?.limit) {
-    query += ` LIMIT ${options.limit}`;
-    if (options?.offset) {
-      query += ` OFFSET ${options.offset}`;
-    }
+    // Validate limit and offset are positive integers
+    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
+    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
   }
 
   const stmt = db.prepare(query);
@@ -397,13 +398,13 @@ export function getMemberPhotos(memberId: string, options?: {
   const countResult = countStmt.get(...params) as { count: number };
   const total = countResult.count;
 
-  // Get photos
+  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
   let query = `SELECT * FROM MemberPhoto WHERE ${whereClause} ORDER BY displayOrder ASC, createdAt DESC`;
   if (options?.limit) {
-    query += ` LIMIT ${options.limit}`;
-    if (options?.offset) {
-      query += ` OFFSET ${options.offset}`;
-    }
+    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
+    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
   }
 
   const stmt = db.prepare(query);
@@ -446,13 +447,13 @@ export function getFamilyAlbumPhotos(options?: {
   const countResult = countStmt.get(...params) as { count: number };
   const total = countResult.count;
 
-  // Get photos
+  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
   let query = `SELECT * FROM MemberPhoto WHERE ${whereClause} ORDER BY year DESC, createdAt DESC`;
   if (options?.limit) {
-    query += ` LIMIT ${options.limit}`;
-    if (options?.offset) {
-      query += ` OFFSET ${options.offset}`;
-    }
+    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
+    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
   }
 
   const stmt = db.prepare(query);
@@ -500,13 +501,13 @@ export function getAllPhotos(options?: {
   const countResult = countStmt.get(...params) as { count: number };
   const total = countResult.count;
 
-  // Get photos
+  // SECURITY: Use parameterized queries for LIMIT/OFFSET to prevent SQL injection
   let query = `SELECT * FROM MemberPhoto WHERE ${whereClause} ORDER BY createdAt DESC`;
   if (options?.limit) {
-    query += ` LIMIT ${options.limit}`;
-    if (options?.offset) {
-      query += ` OFFSET ${options.offset}`;
-    }
+    const limit = Math.max(1, Math.floor(Number(options.limit) || 100));
+    const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
   }
 
   const stmt = db.prepare(query);
