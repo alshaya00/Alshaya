@@ -133,15 +133,15 @@ export function AdminSidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/database']);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // Check if a nav item should be visible based on feature flags
-  const isNavItemEnabled = (item: NavItem): boolean => {
-    const featureKey = adminRouteToFeature[item.href];
-    if (!featureKey) return true; // If no feature mapping, show by default
-    return isFeatureEnabled(featureKey);
-  };
-
   // Filter admin nav items based on feature flags
   const filteredAdminNavItems = useMemo(() => {
+    // Check if a nav item should be visible based on feature flags
+    const isNavItemEnabled = (item: NavItem): boolean => {
+      const featureKey = adminRouteToFeature[item.href];
+      if (!featureKey) return true; // If no feature mapping, show by default
+      return isFeatureEnabled(featureKey);
+    };
+
     return adminNavItems
       .filter(isNavItemEnabled)
       .map(item => {
