@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import FamilyTreeGraph from '@/components/FamilyTreeGraph';
+import { FeatureGate } from '@/components/FeatureGate';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
@@ -16,7 +17,7 @@ interface TreeNodeData extends FamilyMember {
   isExpanded: boolean;
 }
 
-export default function TreePage() {
+function TreePageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['P001']));
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
@@ -654,5 +655,14 @@ export default function TreePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap with FeatureGate to check if the family tree feature is enabled
+export default function TreePage() {
+  return (
+    <FeatureGate feature="familyTree">
+      <TreePageContent />
+    </FeatureGate>
   );
 }

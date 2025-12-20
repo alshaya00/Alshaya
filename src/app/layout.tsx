@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { FeatureFlagsProvider } from '@/contexts/FeatureFlagsContext';
 import { AuthenticatedLayout } from '@/components/AuthenticatedLayout';
 import { ToastProvider } from '@/components/ui/Toast';
 
@@ -20,9 +21,11 @@ export default function RootLayout({
       <body className="min-h-screen bg-gray-50">
         <QueryProvider>
           <AuthProvider>
-            <ToastProvider>
-              <AuthenticatedLayout>{children}</AuthenticatedLayout>
-            </ToastProvider>
+            <FeatureFlagsProvider>
+              <ToastProvider>
+                <AuthenticatedLayout>{children}</AuthenticatedLayout>
+              </ToastProvider>
+            </FeatureFlagsProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

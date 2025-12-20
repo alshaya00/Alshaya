@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,9 @@ import {
   Server,
   Image,
   Mail,
+  Layers,
 } from 'lucide-react';
+import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
 interface NavItem {
   href: string;
@@ -34,7 +36,19 @@ interface NavItem {
   labelEn: string;
   icon: React.ElementType;
   children?: NavItem[];
+  featureKey?: FeatureKey; // Optional feature flag to check
 }
+
+// Mapping of admin routes to feature keys
+const adminRouteToFeature: Record<string, FeatureKey> = {
+  '/admin/images': 'imageModeration',
+  '/admin/broadcasts': 'broadcasts',
+  '/admin/reports': 'reports',
+  '/admin/audit': 'audit',
+  '/admin/services': 'apiServices',
+  '/admin/database/history': 'changeHistory',
+  '/admin/database/branches': 'branchEntries',
+};
 
 const adminNavItems: NavItem[] = [
   {
@@ -68,6 +82,12 @@ const adminNavItems: NavItem[] = [
     label: 'البث البريدي',
     labelEn: 'Email Broadcasts',
     icon: Mail,
+  },
+  {
+    href: '/admin/features',
+    label: 'معاينة الميزات',
+    labelEn: 'Feature Preview',
+    icon: Layers,
   },
   {
     href: '/admin/config',
@@ -109,8 +129,34 @@ const adminNavItems: NavItem[] = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { isFeatureEnabled } = useFeatureFlags();
   const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/database']);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Check if a nav item should be visible based on feature flags
+  const isNavItemEnabled = (item: NavItem): boolean => {
+    const featureKey = adminRouteToFeature[item.href];
+    if (!featureKey) return true; // If no feature mapping, show by default
+    return isFeatureEnabled(featureKey);
+  };
+
+  // Filter admin nav items based on feature flags
+  const filteredAdminNavItems = useMemo(() => {
+    return adminNavItems
+      .filter(isNavItemEnabled)
+      .map(item => {
+        // Also filter children if they exist
+        if (item.children) {
+          return {
+            ...item,
+            children: item.children.filter(isNavItemEnabled)
+          };
+        }
+        return item;
+      })
+      // Remove parent items that have no visible children
+      .filter(item => !item.children || item.children.length > 0);
+  }, [isFeatureEnabled]);
 
   const toggleExpanded = (href: string) => {
     setExpandedItems((prev) =>
@@ -213,7 +259,7 @@ export function AdminSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-auto">
-        {adminNavItems.map((item) => renderNavItem(item))}
+        {filteredAdminNavItems.map((item) => renderNavItem(item))}
       </nav>
 
       {/* Footer */}
