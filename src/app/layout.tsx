@@ -4,7 +4,6 @@ import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthenticatedLayout } from '@/components/AuthenticatedLayout';
 import { ToastProvider } from '@/components/ui/Toast';
-import { QueryProvider } from '@/lib/providers/QueryProvider';
 
 export const metadata: Metadata = {
   title: 'شجرة عائلة آل شايع | Al-Shaye Family Tree',
