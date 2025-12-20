@@ -3,6 +3,7 @@
 // Supports multiple providers: Twilio, Vonage, MessageBird
 
 import { prisma } from '@/lib/prisma';
+import { randomInt } from 'crypto';
 
 // ============================================
 // TYPES
@@ -245,11 +246,11 @@ export class SmsService {
     return result;
   }
 
-  // Generate a random OTP code
+  // SECURITY: Generate a cryptographically secure OTP code
   generateOtp(length: number = 6): string {
     let code = '';
     for (let i = 0; i < length; i++) {
-      code += Math.floor(Math.random() * 10).toString();
+      code += randomInt(0, 10).toString();
     }
     return code;
   }

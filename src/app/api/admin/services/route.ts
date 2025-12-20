@@ -6,10 +6,38 @@ import { prisma } from '@/lib/prisma';
 import { apiServiceConfigSchema, validateInput, formatZodErrors } from '@/lib/validations';
 import { emailService } from '@/lib/services/email';
 import { smsService } from '@/lib/services/sms';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+
+// Helper to get authenticated admin user from request
+async function getAuthAdmin(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  // Only allow SUPER_ADMIN and ADMIN
+  if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') return null;
+
+  return user;
+}
 
 // GET - Retrieve current API service configuration
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Require ADMIN authentication
+    const user = await getAuthAdmin(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
     let config = await prisma.apiServiceConfig?.findUnique({
       where: { id: 'default' },
     });
@@ -51,6 +79,21 @@ export async function GET() {
 // POST - Update API service configuration
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Require SUPER_ADMIN authentication for updates
+    const user = await getAuthAdmin(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
+    if (user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'Super admin access required', messageAr: 'يتطلب صلاحيات المدير الأعلى' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate input
@@ -144,6 +187,15 @@ export async function POST(request: NextRequest) {
 // PUT - Test email/SMS configuration
 export async function PUT(request: NextRequest) {
   try {
+    // SECURITY: Require ADMIN authentication for testing
+    const user = await getAuthAdmin(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { type, to } = body;
 

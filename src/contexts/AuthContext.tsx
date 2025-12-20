@@ -28,10 +28,12 @@ interface AuthContextType {
   isGuest: boolean;
 
   // Actions
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>;
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
+  setSessionFromOAuth: (data: { user: SessionUser; token: string; expiresAt: string }) => void;
+  verify2FA: (email: string, code: string, isBackupCode?: boolean, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>;
 
   // Permission checks
   hasPermission: (permission: PermissionKey) => boolean;
@@ -68,6 +70,8 @@ const defaultContext: AuthContextType = {
   logout: async () => {},
   register: async () => ({ success: false, error: 'Context not initialized' }),
   refreshUser: async () => {},
+  setSessionFromOAuth: () => {},
+  verify2FA: async () => ({ success: false, error: 'Context not initialized' }),
   hasPermission: () => false,
   canActOnBranch: () => false,
   canAssignRole: () => false,
@@ -264,6 +268,79 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   // ============================================
+  // SET SESSION FROM OAUTH
+  // ============================================
+
+  const setSessionFromOAuth = useCallback(
+    (data: { user: SessionUser; token: string; expiresAt: string }) => {
+      const newSession: AuthSession = {
+        user: {
+          ...data.user,
+          permissions: getPermissionsForRole(data.user.role),
+        },
+        token: data.token,
+        expiresAt: new Date(data.expiresAt),
+      };
+
+      storeSession(newSession, true); // Always remember OAuth sessions
+      setSession(newSession);
+    },
+    []
+  );
+
+  // ============================================
+  // 2FA VERIFICATION
+  // ============================================
+
+  const verify2FA = useCallback(
+    async (
+      email: string,
+      code: string,
+      isBackupCode: boolean = false,
+      rememberMe: boolean = false
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const response = await fetch('/api/auth/2fa/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code, isBackupCode, rememberMe }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: data.messageAr || data.message || '2FA verification failed',
+          };
+        }
+
+        if (data.success && data.user && data.token) {
+          const newSession: AuthSession = {
+            user: {
+              ...data.user,
+              permissions: getPermissionsForRole(data.user.role),
+            },
+            token: data.token,
+            expiresAt: new Date(data.expiresAt),
+          };
+
+          storeSession(newSession, rememberMe);
+          setSession(newSession);
+
+          return { success: true };
+        }
+
+        return { success: false, error: data.message || '2FA verification failed' };
+      } catch (error) {
+        console.error('2FA verification error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+      }
+    },
+    []
+  );
+
+  // ============================================
   // REFRESH USER
   // ============================================
 
@@ -371,6 +448,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     register,
     refreshUser,
+    setSessionFromOAuth,
+    verify2FA,
     hasPermission,
     canActOnBranch,
     canAssignRole,

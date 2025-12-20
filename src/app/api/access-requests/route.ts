@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import {
   findSessionByToken,
   findUserById,
@@ -11,6 +12,17 @@ import {
 } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/auth/types';
+
+// SECURITY: Generate cryptographically secure temporary password
+function generateSecureTempPassword(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+  const bytes = randomBytes(12);
+  let password = 'Temp@';
+  for (let i = 0; i < 10; i++) {
+    password += chars[bytes[i] % chars.length];
+  }
+  return password;
+}
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -151,8 +163,8 @@ export async function POST(request: NextRequest) {
       // Create user account
       const assignedRole = (role as UserRole) || 'MEMBER';
 
-      // For approval, we need a temporary password (in real app, would send email)
-      const tempPassword = password || 'TempPass@' + Math.random().toString(36).slice(2, 10);
+      // SECURITY: Generate cryptographically secure temporary password
+      const tempPassword = password || generateSecureTempPassword();
 
       const newUser = await createUser({
         email: accessRequest.email,

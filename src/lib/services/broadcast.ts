@@ -384,95 +384,108 @@ export class BroadcastService {
     // Get recipients
     const recipients = await this.getRecipients(broadcast);
 
-    // Create recipient records
-    for (const recipient of recipients) {
-      await prisma.broadcastRecipient.upsert({
+    // PERFORMANCE FIX: Batch create recipient records using createMany
+    // This replaces N individual upsert queries with a single batch operation
+    const recipientData = recipients.map(recipient => ({
+      broadcastId,
+      memberId: recipient.memberId || null,
+      memberName: recipient.memberName,
+      email: recipient.email,
+      status: 'PENDING' as const,
+    }));
+
+    try {
+      await prisma.broadcastRecipient.createMany({
+        data: recipientData,
+        skipDuplicates: true, // Skip if already exists
+      });
+    } catch {
+      // If createMany not supported, fallback to individual creates
+      // but wrap in transaction for better performance
+      await prisma.$transaction(
+        recipientData.map(data =>
+          prisma.broadcastRecipient.upsert({
+            where: { broadcastId_email: { broadcastId, email: data.email } },
+            update: {},
+            create: data,
+          })
+        )
+      );
+    }
+
+    // Send emails and collect results
+    const errors: string[] = [];
+    const sentEmails: string[] = [];
+    const failedEmails: { email: string; error: string }[] = [];
+
+    // Send emails in parallel batches for better performance
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+      const batch = recipients.slice(i, i + BATCH_SIZE);
+
+      await Promise.all(
+        batch.map(async (recipient) => {
+          try {
+            const emailContent = renderBroadcastEmail(
+              broadcast,
+              recipient,
+              this.baseUrl,
+              broadcastId
+            );
+
+            const result = await emailService.sendEmail({
+              to: recipient.email,
+              subject: emailContent.subject,
+              html: emailContent.html,
+              text: emailContent.text,
+            });
+
+            if (result.success) {
+              sentEmails.push(recipient.email);
+            } else {
+              failedEmails.push({ email: recipient.email, error: result.error || 'Unknown error' });
+              errors.push(`${recipient.email}: ${result.error}`);
+            }
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            failedEmails.push({ email: recipient.email, error: errorMsg });
+            errors.push(`${recipient.email}: ${errorMsg}`);
+          }
+        })
+      );
+    }
+
+    // PERFORMANCE FIX: Batch update statuses using updateMany
+    // Update all successful recipients in one query
+    if (sentEmails.length > 0) {
+      await prisma.broadcastRecipient.updateMany({
         where: {
-          broadcastId_email: {
-            broadcastId,
-            email: recipient.email,
-          },
-        },
-        update: {},
-        create: {
           broadcastId,
-          memberId: recipient.memberId,
-          memberName: recipient.memberName,
-          email: recipient.email,
-          status: 'PENDING',
+          email: { in: sentEmails },
+        },
+        data: {
+          status: 'SENT',
+          sentAt: new Date(),
         },
       });
     }
 
-    // Send emails
-    const errors: string[] = [];
-    let sentCount = 0;
-    let failedCount = 0;
-
-    for (const recipient of recipients) {
-      try {
-        const emailContent = renderBroadcastEmail(
-          broadcast,
-          recipient,
-          this.baseUrl,
-          broadcastId
-        );
-
-        const result = await emailService.sendEmail({
-          to: recipient.email,
-          subject: emailContent.subject,
-          html: emailContent.html,
-          text: emailContent.text,
-        });
-
-        if (result.success) {
-          sentCount++;
-          await prisma.broadcastRecipient.update({
-            where: {
-              broadcastId_email: {
-                broadcastId,
-                email: recipient.email,
-              },
-            },
-            data: {
-              status: 'SENT',
-              sentAt: new Date(),
-            },
-          });
-        } else {
-          failedCount++;
-          errors.push(`${recipient.email}: ${result.error}`);
-          await prisma.broadcastRecipient.update({
-            where: {
-              broadcastId_email: {
-                broadcastId,
-                email: recipient.email,
-              },
-            },
-            data: {
-              status: 'FAILED',
-              errorMessage: result.error,
-            },
-          });
-        }
-      } catch (error) {
-        failedCount++;
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        errors.push(`${recipient.email}: ${errorMsg}`);
-        await prisma.broadcastRecipient.update({
-          where: {
-            broadcastId_email: {
-              broadcastId,
-              email: recipient.email,
-            },
-          },
-          data: {
-            status: 'FAILED',
-            errorMessage: errorMsg,
-          },
-        });
-      }
+    // Update all failed recipients in one query (with generic error for batch)
+    if (failedEmails.length > 0) {
+      await prisma.broadcastRecipient.updateMany({
+        where: {
+          broadcastId,
+          email: { in: failedEmails.map(f => f.email) },
+        },
+        data: {
+          status: 'FAILED',
+          errorMessage: 'Email delivery failed - see logs for details',
+        },
+      });
     }
+
+    const sentCount = sentEmails.length;
+    const failedCount = failedEmails.length;
 
     // Update broadcast status
     await prisma.broadcast.update({
@@ -539,9 +552,10 @@ export class BroadcastService {
     };
 
     for (const count of counts) {
-      if (count.rsvpResponse === 'YES') rsvpCounts.rsvpYesCount = count._count.rsvpResponse;
-      if (count.rsvpResponse === 'NO') rsvpCounts.rsvpNoCount = count._count.rsvpResponse;
-      if (count.rsvpResponse === 'MAYBE') rsvpCounts.rsvpMaybeCount = count._count.rsvpResponse;
+      const countObj = count as { rsvpResponse: string; _count: { rsvpResponse: number } };
+      if (countObj.rsvpResponse === 'YES') rsvpCounts.rsvpYesCount = countObj._count.rsvpResponse;
+      if (countObj.rsvpResponse === 'NO') rsvpCounts.rsvpNoCount = countObj._count.rsvpResponse;
+      if (countObj.rsvpResponse === 'MAYBE') rsvpCounts.rsvpMaybeCount = countObj._count.rsvpResponse;
     }
 
     await prisma.broadcast.update({

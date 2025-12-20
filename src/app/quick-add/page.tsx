@@ -627,7 +627,7 @@ export default function QuickAddPage() {
                     <Loader2 size={48} className="mx-auto text-indigo-500 animate-spin mb-4" />
                     <p className="text-gray-600 font-medium">جاري البحث عن تطابق...</p>
                     <p className="text-gray-400 text-sm mt-1">
-                      نبحث عن "{formData.firstName} بن {formData.fatherName}"
+                      نبحث عن &quot;{formData.firstName} بن {formData.fatherName}&quot;
                     </p>
                   </div>
                 )}
@@ -663,7 +663,7 @@ export default function QuickAddPage() {
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">لم يتم العثور على تطابق</h3>
                     <p className="text-gray-600 mb-6">
-                      لم نجد "{formData.fatherName}" في قاعدة البيانات. يمكنك البحث يدوياً في الشجرة.
+                      لم نجد &quot;{formData.fatherName}&quot; في قاعدة البيانات. يمكنك البحث يدوياً في الشجرة.
                     </p>
                     <button
                       onClick={handleManualSelect}

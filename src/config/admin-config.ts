@@ -1,14 +1,17 @@
 // Admin Configuration for Al-Shaye Family Tree
 // Centralized admin defaults, access codes, and credentials
-// IMPORTANT: Sensitive values should be overridden via environment variables in production
+// SECURITY: All sensitive values MUST be set via environment variables
+
+import { randomBytes } from 'crypto';
 
 // ============================================
 // ACCESS CODE CONFIGURATION
 // ============================================
 
 export const accessCodeConfig = {
-  // Default access code - override via env in production
-  defaultCode: process.env.NEXT_PUBLIC_ACCESS_CODE || 'alshaye2024',
+  // SECURITY: Access code MUST be set via environment variable
+  // No default fallback - will be empty string if not set
+  defaultCode: process.env.NEXT_PUBLIC_ACCESS_CODE || '',
 
   // Session duration for access code authentication (24 hours)
   sessionDurationMs: 24 * 60 * 60 * 1000,
@@ -16,8 +19,8 @@ export const accessCodeConfig = {
   // Max login attempts before lockout
   maxAttempts: 5,
 
-  // Default admin access code (for initial setup)
-  defaultAdminCode: process.env.ADMIN_ACCESS_CODE || 'admin123',
+  // SECURITY: Admin access code MUST be set via environment variable
+  defaultAdminCode: process.env.ADMIN_ACCESS_CODE || '',
 } as const;
 
 // ============================================
@@ -25,11 +28,12 @@ export const accessCodeConfig = {
 // ============================================
 
 export const defaultAdminConfig = {
-  // Default super admin - MUST be set via env in production
-  email: process.env.ADMIN_EMAIL || (process.env.NODE_ENV === 'production' ? '' : 'admin@alshaye.family'),
-  password: process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'Admin@123456'),
+  // SECURITY: Admin credentials MUST be set via environment variables
+  // Empty strings in all environments if not set - require explicit configuration
+  email: process.env.ADMIN_EMAIL || '',
+  password: process.env.ADMIN_PASSWORD || '',
 
-  // Default admin display info
+  // Default admin display info (non-sensitive)
   defaultAdmin: {
     id: 'admin_1',
     email: 'admin@alshaye.com',
@@ -106,19 +110,21 @@ export const sessionConfig = {
 // ============================================
 
 /**
- * Generate a random token/code
+ * SECURITY: Generate a cryptographically secure random token/code
+ * Uses crypto.randomBytes instead of Math.random for security
  */
 export function generateRandomCode(length: number = tokenConfig.accessCodeLength): string {
   const chars = tokenConfig.codeCharacters;
+  const bytes = randomBytes(length);
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars[bytes[i] % chars.length];
   }
   return result;
 }
 
 /**
- * Generate a branch link token
+ * Generate a cryptographically secure branch link token
  */
 export function generateBranchToken(): string {
   return generateRandomCode(tokenConfig.branchTokenLength);
@@ -138,9 +144,32 @@ export function validateProductionConfig(): { valid: boolean; errors: string[] }
       errors.push('ADMIN_PASSWORD environment variable is required in production');
     }
     if (!process.env.NEXT_PUBLIC_ACCESS_CODE) {
-      errors.push('NEXT_PUBLIC_ACCESS_CODE should be set in production');
+      errors.push('NEXT_PUBLIC_ACCESS_CODE environment variable is required in production');
+    }
+    if (!process.env.JWT_SECRET) {
+      errors.push('JWT_SECRET environment variable is required in production');
+    }
+    if (!process.env.ENCRYPTION_SECRET) {
+      errors.push('ENCRYPTION_SECRET environment variable is required in production');
     }
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Assert that production configuration is valid
+ * Throws if any required env vars are missing
+ */
+export function assertValidProductionConfig(): void {
+  const result = validateProductionConfig();
+  if (!result.valid) {
+    const message = [
+      '❌ Production configuration validation failed:',
+      ...result.errors.map(e => `  - ${e}`),
+      '',
+      'Please set all required environment variables.',
+    ].join('\n');
+    throw new Error(message);
+  }
 }
