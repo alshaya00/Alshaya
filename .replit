@@ -1,7 +1,8 @@
 # Al-Shaye Family Tree Application
 
-run = "npm install && npx prisma generate && npm run dev"
-entrypoint = "src/app/page.tsx"
+run = "npm run dev"
+entrypoint = "package.json"
+onBoot = "npm install && npx prisma generate"
 
 hidden = [".config", "package-lock.json", ".next", "node_modules"]
 
