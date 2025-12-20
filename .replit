@@ -1,8 +1,8 @@
 # Al-Shaye Family Tree Application
+# Run 'npm install && npx prisma generate' manually after import
 
 run = "npm run dev"
 entrypoint = "package.json"
-onBoot = "npm install && npx prisma generate"
 
 hidden = [".config", "package-lock.json", ".next", "node_modules"]
 
@@ -12,7 +12,6 @@ channel = "stable-24_05"
 [env]
 PATH = "/home/runner/$REPL_SLUG/.config/npm/node_global/bin:/home/runner/$REPL_SLUG/node_modules/.bin:./node_modules/.bin"
 npm_config_prefix = "/home/runner/$REPL_SLUG/.config/npm/node_global"
-# DATABASE_URL is now set via Replit Secrets (PostgreSQL connection string)
 
 [packager]
 language = "nodejs"
