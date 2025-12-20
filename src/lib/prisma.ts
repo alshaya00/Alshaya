@@ -1,7 +1,4 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import Database from 'better-sqlite3';
-import path from 'path';
 
 export { Prisma };
 
@@ -51,20 +48,21 @@ const globalForPrisma = globalThis as unknown as {
 let prisma: PrismaClientType;
 
 try {
-  // Initialize better-sqlite3 database
-  const dbPath = path.join(process.cwd(), 'prisma', 'family.db');
-  const sqlite = new Database(dbPath);
-  const adapter = new PrismaBetterSqlite3(sqlite);
+  // Check if DATABASE_URL is set
+  if (!process.env.DATABASE_URL) {
+    console.warn('DATABASE_URL not set, using mock client');
+    prisma = createMockPrismaClient();
+  } else {
+    // Initialize Prisma with PostgreSQL
+    prisma =
+      globalForPrisma.prisma ??
+      new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      }) as PrismaClientType;
 
-  prisma =
-    globalForPrisma.prisma ??
-    new PrismaClient({
-      adapter,
-      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    }) as PrismaClientType;
-
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = prisma;
+    if (process.env.NODE_ENV !== 'production') {
+      globalForPrisma.prisma = prisma;
+    }
   }
 } catch (error) {
   console.warn('Prisma client not initialized. Using mock client for build.', error);

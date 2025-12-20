@@ -5,5 +5,6 @@
     pkgs.yarn
     pkgs.openssl
     pkgs.libuuid
+    pkgs.postgresql
   ];
 }

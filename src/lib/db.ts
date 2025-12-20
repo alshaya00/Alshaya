@@ -1,19 +1,19 @@
 /**
  * Database-first data access layer
- * Uses SQLite via better-sqlite3 directly, falls back to in-memory data if unavailable
+ * Uses PostgreSQL via Prisma, falls back to in-memory data if unavailable
  *
  * CONCURRENCY FEATURES:
  * - Atomic ID generation prevents duplicate IDs when multiple users add members
  * - Optimistic locking prevents lost updates when editing the same member
  * - Transaction-based operations ensure data consistency
- * - Retry mechanism handles temporary lock conflicts
+ * - Retry mechanism handles temporary connection issues
  */
 
-import * as sqliteDb from './sqlite-db';
+import * as postgresDb from './postgres-db';
 import { familyMembers, FamilyMember } from './data';
 
 // Re-export error types for use by consumers
-export { DatabaseError, ConcurrencyError, DuplicateIdError } from './sqlite-db';
+export { DatabaseError, ConcurrencyError, DuplicateIdError } from './postgres-db';
 
 // Cache for database availability check
 let dbAvailable: boolean | null = null;
@@ -26,7 +26,7 @@ async function isDatabaseAvailable(): Promise<boolean> {
     return dbAvailable;
   }
 
-  dbAvailable = sqliteDb.isDatabaseAvailable();
+  dbAvailable = await postgresDb.isDatabaseAvailable();
   lastDbCheck = now;
   return dbAvailable;
 }
@@ -41,7 +41,7 @@ export async function getAllMembersFromDb(): Promise<FamilyMember[]> {
       return familyMembers;
     }
 
-    const members = sqliteDb.getAllMembers();
+    const members = await postgresDb.getAllMembers();
 
     if (members.length === 0) {
       console.warn('Database empty, using in-memory data');
@@ -64,7 +64,7 @@ export async function getMemberByIdFromDb(id: string): Promise<FamilyMember | nu
       return familyMembers.find(m => m.id === id) || null;
     }
 
-    const member = sqliteDb.getMemberById(id);
+    const member = await postgresDb.getMemberById(id);
 
     if (!member) {
       // Fallback to in-memory
@@ -87,7 +87,7 @@ export async function getMaleMembersFromDb(): Promise<FamilyMember[]> {
       return familyMembers.filter(m => m.gender === 'Male');
     }
 
-    const members = sqliteDb.getMaleMembers();
+    const members = await postgresDb.getMaleMembers();
 
     if (members.length === 0) {
       return familyMembers.filter(m => m.gender === 'Male');
@@ -109,7 +109,7 @@ export async function getChildrenFromDb(parentId: string): Promise<FamilyMember[
       return familyMembers.filter(m => m.fatherId === parentId);
     }
 
-    const members = sqliteDb.getChildren(parentId);
+    const members = await postgresDb.getChildren(parentId);
 
     if (members.length === 0) {
       // Could be no children, or DB doesn't have data
@@ -135,7 +135,7 @@ export async function getStatisticsFromDb() {
       return getStatisticsFromMemory();
     }
 
-    const stats = sqliteDb.getStatistics();
+    const stats = await postgresDb.getStatistics();
 
     if (stats.totalMembers === 0) {
       return getStatisticsFromMemory();
@@ -207,7 +207,7 @@ export async function getNextIdFromDb(): Promise<string> {
       return `P${String(maxId + 1).padStart(3, '0')}`;
     }
 
-    return sqliteDb.getNextId();
+    return await postgresDb.getNextId();
   } catch (error) {
     console.error('Error getting next ID:', error);
     if (familyMembers.length === 0) return 'P001';
@@ -225,7 +225,7 @@ export async function getGen2BranchesFromDb(): Promise<FamilyMember[]> {
       return familyMembers.filter(m => m.generation === 2);
     }
 
-    const members = sqliteDb.getGen2Branches();
+    const members = await postgresDb.getGen2Branches();
 
     if (members.length === 0) {
       return familyMembers.filter(m => m.generation === 2);
@@ -241,7 +241,7 @@ export async function getGen2BranchesFromDb(): Promise<FamilyMember[]> {
 /**
  * Build family tree from database
  */
-export async function buildFamilyTreeFromDb(): Promise<(FamilyMember & { children: any[] }) | null> {
+export async function buildFamilyTreeFromDb(): Promise<(FamilyMember & { children: unknown[] }) | null> {
   try {
     const members = await getAllMembersFromDb();
 
@@ -250,7 +250,7 @@ export async function buildFamilyTreeFromDb(): Promise<(FamilyMember & { childre
     const root = members.find(m => !m.fatherId);
     if (!root) return null;
 
-    const addChildren = (member: FamilyMember): FamilyMember & { children: any[] } => {
+    const addChildren = (member: FamilyMember): FamilyMember & { children: unknown[] } => {
       const children = members.filter(m => m.fatherId === member.id);
       return {
         ...member,
@@ -276,14 +276,14 @@ export async function createMemberInDb(member: Omit<FamilyMember, 'createdAt' | 
       return null;
     }
 
-    return await sqliteDb.createMember(member);
+    return await postgresDb.createMember(member);
   } catch (error) {
     console.error('Error creating member:', error);
     // Re-throw specific errors for handling upstream
-    if (error instanceof sqliteDb.DuplicateIdError) {
+    if (error instanceof postgresDb.DuplicateIdError) {
       throw error;
     }
-    if (error instanceof sqliteDb.ConcurrencyError) {
+    if (error instanceof postgresDb.ConcurrencyError) {
       throw error;
     }
     return null;
@@ -303,10 +303,10 @@ export async function createMemberWithAutoIdInDb(
       return null;
     }
 
-    return await sqliteDb.createMemberWithAutoId(memberData);
+    return await postgresDb.createMemberWithAutoId(memberData);
   } catch (error) {
     console.error('Error creating member with auto ID:', error);
-    if (error instanceof sqliteDb.DatabaseError) {
+    if (error instanceof postgresDb.DatabaseError) {
       throw error;
     }
     return null;
@@ -330,14 +330,14 @@ export async function updateMemberInDb(
       return null;
     }
 
-    return await sqliteDb.updateMember(id, updates, expectedVersion);
+    return await postgresDb.updateMember(id, updates, expectedVersion);
   } catch (error) {
     console.error('Error updating member:', error);
     // Re-throw concurrency errors for handling upstream
-    if (error instanceof sqliteDb.ConcurrencyError) {
+    if (error instanceof postgresDb.ConcurrencyError) {
       throw error;
     }
-    if (error instanceof sqliteDb.DatabaseError) {
+    if (error instanceof postgresDb.DatabaseError) {
       throw error;
     }
     return null;
@@ -355,11 +355,11 @@ export async function deleteMemberFromDb(id: string): Promise<boolean> {
       return false;
     }
 
-    return await sqliteDb.deleteMember(id);
+    return await postgresDb.deleteMember(id);
   } catch (error) {
     console.error('Error deleting member:', error);
     // Re-throw specific errors for handling upstream
-    if (error instanceof sqliteDb.DatabaseError) {
+    if (error instanceof postgresDb.DatabaseError) {
       throw error;
     }
     return false;
@@ -375,8 +375,7 @@ export async function memberExistsInDb(id: string): Promise<boolean> {
       return familyMembers.some(m => m.id === id);
     }
 
-    const member = sqliteDb.getMemberById(id);
-    return member !== null;
+    return await postgresDb.memberExists(id);
   } catch (error) {
     console.error('Error checking member existence:', error);
     return familyMembers.some(m => m.id === id);
@@ -395,7 +394,7 @@ export async function bulkCreateMembersInDb(
       return { success: 0, failed: members.length, errors: ['Database unavailable'] };
     }
 
-    return await sqliteDb.bulkCreateMembers(members);
+    return await postgresDb.bulkCreateMembers(members);
   } catch (error) {
     console.error('Error bulk creating members:', error);
     return { success: 0, failed: members.length, errors: [(error as Error).message] };
@@ -412,5 +411,5 @@ export async function withDbLock<T>(
   lockKey: string,
   operation: () => Promise<T>
 ): Promise<T> {
-  return sqliteDb.withLock(lockKey, operation);
+  return postgresDb.withLock(lockKey, operation);
 }
