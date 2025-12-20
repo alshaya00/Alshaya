@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limit by IP address
     const clientIp = getClientIp(request);
-    const rateLimitResult = checkRateLimit(clientIp, rateLimiters.registration);
+    const rateLimitResult = checkRateLimit(clientIp, rateLimiters.register);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });

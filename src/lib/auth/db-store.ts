@@ -151,103 +151,98 @@ function parseDate(value: string | null | undefined): Date | null {
 }
 
 // Convert SQL row to StoredUser
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToUser(row: any): StoredUser {
+function rowToUser(row: Record<string, unknown>): StoredUser {
   return {
-    id: row.id,
-    email: row.email,
-    passwordHash: row.passwordHash,
-    nameArabic: row.nameArabic,
-    nameEnglish: row.nameEnglish,
-    phone: row.phone,
-    avatarUrl: row.avatarUrl,
+    id: row.id as string,
+    email: row.email as string,
+    passwordHash: row.passwordHash as string,
+    nameArabic: row.nameArabic as string,
+    nameEnglish: row.nameEnglish as string | null,
+    phone: row.phone as string | null,
+    avatarUrl: row.avatarUrl as string | null,
     role: row.role as UserRole,
     status: row.status as UserStatus,
-    linkedMemberId: row.linkedMemberId,
-    assignedBranch: row.assignedBranch,
-    createdAt: parseDate(row.createdAt) || new Date(),
-    updatedAt: parseDate(row.updatedAt) || new Date(),
-    lastLoginAt: parseDate(row.lastLoginAt),
-    emailVerifiedAt: parseDate(row.emailVerifiedAt),
+    linkedMemberId: row.linkedMemberId as string | null,
+    assignedBranch: row.assignedBranch as string | null,
+    createdAt: parseDate(row.createdAt as string) || new Date(),
+    updatedAt: parseDate(row.updatedAt as string) || new Date(),
+    lastLoginAt: parseDate(row.lastLoginAt as string | null),
+    emailVerifiedAt: parseDate(row.emailVerifiedAt as string | null),
     twoFactorEnabled: !!row.twoFactorEnabled,
-    twoFactorSecret: row.twoFactorSecret,
-    twoFactorBackupCodes: row.twoFactorBackupCodes,
+    twoFactorSecret: row.twoFactorSecret as string | null,
+    twoFactorBackupCodes: row.twoFactorBackupCodes as string | null,
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToSession(row: any): StoredSession {
+function rowToSession(row: Record<string, unknown>): StoredSession {
   return {
-    id: row.id,
-    userId: row.userId,
-    token: row.token,
-    expiresAt: parseDate(row.expiresAt) || new Date(),
+    id: row.id as string,
+    userId: row.userId as string,
+    token: row.token as string,
+    expiresAt: parseDate(row.expiresAt as string) || new Date(),
     rememberMe: !!row.rememberMe,
-    ipAddress: row.ipAddress,
-    userAgent: row.userAgent,
-    createdAt: parseDate(row.createdAt) || new Date(),
-    lastActiveAt: parseDate(row.lastActiveAt) || new Date(),
+    ipAddress: row.ipAddress as string | null,
+    userAgent: row.userAgent as string | null,
+    createdAt: parseDate(row.createdAt as string) || new Date(),
+    lastActiveAt: parseDate(row.lastActiveAt as string) || new Date(),
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToInvite(row: any): StoredInvite {
+function rowToInvite(row: Record<string, unknown>): StoredInvite {
   return {
-    id: row.id,
-    code: row.code,
-    email: row.email,
+    id: row.id as string,
+    code: row.code as string,
+    email: row.email as string,
     role: row.role as UserRole,
-    branch: row.branch,
-    sentById: row.sentById,
-    expiresAt: parseDate(row.expiresAt) || new Date(),
-    usedAt: parseDate(row.usedAt),
-    usedById: row.usedById,
-    message: row.message,
-    createdAt: parseDate(row.createdAt) || new Date(),
+    branch: row.branch as string | null,
+    sentById: row.sentById as string,
+    expiresAt: parseDate(row.expiresAt as string | null) || new Date(),
+    usedAt: parseDate(row.usedAt as string | null),
+    usedById: row.usedById as string | null,
+    message: row.message as string | null,
+    createdAt: parseDate(row.createdAt as string) || new Date(),
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToAccessRequest(row: any): StoredAccessRequest {
+function rowToAccessRequest(row: Record<string, unknown>): StoredAccessRequest {
   return {
-    id: row.id,
-    email: row.email,
-    nameArabic: row.nameArabic,
-    nameEnglish: row.nameEnglish,
-    phone: row.phone,
-    claimedRelation: row.claimedRelation,
-    relatedMemberId: row.relatedMemberId,
-    relationshipType: row.relationshipType,
-    message: row.message,
-    status: row.status,
-    reviewedById: row.reviewedById,
-    reviewedAt: parseDate(row.reviewedAt),
-    reviewNote: row.reviewNote,
-    userId: row.userId,
+    id: row.id as string,
+    email: row.email as string,
+    nameArabic: row.nameArabic as string,
+    nameEnglish: row.nameEnglish as string | null,
+    phone: row.phone as string | null,
+    claimedRelation: row.claimedRelation as string,
+    relatedMemberId: row.relatedMemberId as string | null,
+    relationshipType: row.relationshipType as string | null,
+    message: row.message as string | null,
+    status: row.status as 'PENDING' | 'APPROVED' | 'REJECTED' | 'MORE_INFO',
+    reviewedById: row.reviewedById as string | null,
+    reviewedAt: parseDate(row.reviewedAt as string | null),
+    reviewNote: row.reviewNote as string | null,
+    userId: row.userId as string | null,
     approvedRole: row.approvedRole as UserRole | null,
-    createdAt: parseDate(row.createdAt) || new Date(),
-    updatedAt: parseDate(row.updatedAt) || new Date(),
+    createdAt: parseDate(row.createdAt as string) || new Date(),
+    updatedAt: parseDate(row.updatedAt as string) || new Date(),
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToActivityLog(row: any): StoredActivityLog {
+function rowToActivityLog(row: Record<string, unknown>): StoredActivityLog {
   return {
-    id: row.id,
-    userId: row.userId,
-    userEmail: row.userEmail,
-    userName: row.userName,
-    action: row.action,
-    category: row.category,
-    targetType: row.targetType,
-    targetId: row.targetId,
-    targetName: row.targetName,
-    details: row.details,
-    ipAddress: row.ipAddress,
-    userAgent: row.userAgent,
+    id: row.id as string,
+    userId: row.userId as string | null,
+    userEmail: row.userEmail as string | null,
+    userName: row.userName as string | null,
+    action: row.action as string,
+    category: row.category as string,
+    targetType: row.targetType as string | null,
+    targetId: row.targetId as string | null,
+    targetName: row.targetName as string | null,
+    details: row.details as string | null,
+    ipAddress: row.ipAddress as string | null,
+    userAgent: row.userAgent as string | null,
     success: !!row.success,
-    errorMessage: row.errorMessage,
-    createdAt: parseDate(row.createdAt) || new Date(),
+    errorMessage: row.errorMessage as string | null,
+    createdAt: parseDate(row.createdAt as string) || new Date(),
   };
 }
 
@@ -339,7 +334,7 @@ export async function createUser(data: {
   );
 
   const user = database.prepare('SELECT * FROM User WHERE id = ?').get(id);
-  return rowToUser(user);
+  return rowToUser(user as Record<string, unknown>);
 }
 
 export async function findUserByEmail(email: string): Promise<StoredUser | null> {
@@ -347,7 +342,7 @@ export async function findUserByEmail(email: string): Promise<StoredUser | null>
 
   const database = getDb();
   const user = database.prepare('SELECT * FROM User WHERE email = ?').get(email.toLowerCase());
-  return user ? rowToUser(user) : null;
+  return user ? rowToUser(user as Record<string, unknown>) : null;
 }
 
 export async function findUserById(id: string): Promise<StoredUser | null> {
@@ -355,7 +350,7 @@ export async function findUserById(id: string): Promise<StoredUser | null> {
 
   const database = getDb();
   const user = database.prepare('SELECT * FROM User WHERE id = ?').get(id);
-  return user ? rowToUser(user) : null;
+  return user ? rowToUser(user as Record<string, unknown>) : null;
 }
 
 export async function updateUser(id: string, data: Partial<StoredUser>): Promise<StoredUser | null> {
@@ -455,7 +450,7 @@ export async function getAllUsers(): Promise<StoredUser[]> {
 
   const database = getDb();
   const users = database.prepare('SELECT * FROM User ORDER BY createdAt DESC').all();
-  return users.map(rowToUser);
+  return users.map(u => rowToUser(u as Record<string, unknown>));
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
@@ -499,7 +494,7 @@ export async function createSession(
   `).run(id, userId, token, expiresAt, rememberMe ? 1 : 0, ipAddress || null, userAgent || null, now, now);
 
   const session = database.prepare('SELECT * FROM Session WHERE id = ?').get(id);
-  return rowToSession(session);
+  return rowToSession(session as Record<string, unknown>);
 }
 
 export async function findSessionByToken(token: string): Promise<StoredSession | null> {
@@ -510,7 +505,7 @@ export async function findSessionByToken(token: string): Promise<StoredSession |
 
   if (!session) return null;
 
-  const sessionData = rowToSession(session);
+  const sessionData = rowToSession(session as Record<string, unknown>);
 
   // Check if expired
   if (sessionData.expiresAt < new Date()) {
@@ -741,7 +736,7 @@ export async function createInvite(data: {
   `).run(id, code, data.email.toLowerCase(), data.role, data.branch || null, data.sentById, expiresAt, data.message || null, now);
 
   const invite = database.prepare('SELECT * FROM Invite WHERE id = ?').get(id);
-  return rowToInvite(invite);
+  return rowToInvite(invite as Record<string, unknown>);
 }
 
 export async function findInviteByCode(code: string): Promise<StoredInvite | null> {
@@ -752,7 +747,7 @@ export async function findInviteByCode(code: string): Promise<StoredInvite | nul
 
   if (!invite) return null;
 
-  const inviteData = rowToInvite(invite);
+  const inviteData = rowToInvite(invite as Record<string, unknown>);
 
   // Check if expired or used
   if (inviteData.expiresAt < new Date() || inviteData.usedAt) {
@@ -775,7 +770,7 @@ export async function getAllInvites(): Promise<StoredInvite[]> {
 
   const database = getDb();
   const invites = database.prepare('SELECT * FROM Invite ORDER BY createdAt DESC').all();
-  return invites.map(rowToInvite);
+  return invites.map(i => rowToInvite(i as Record<string, unknown>));
 }
 
 // ============================================
@@ -827,7 +822,7 @@ export async function createAccessRequest(data: {
   );
 
   const request = database.prepare('SELECT * FROM AccessRequest WHERE id = ?').get(id);
-  return rowToAccessRequest(request);
+  return rowToAccessRequest(request as Record<string, unknown>);
 }
 
 export async function findAccessRequestById(id: string): Promise<StoredAccessRequest | null> {
@@ -835,7 +830,7 @@ export async function findAccessRequestById(id: string): Promise<StoredAccessReq
 
   const database = getDb();
   const request = database.prepare('SELECT * FROM AccessRequest WHERE id = ?').get(id);
-  return request ? rowToAccessRequest(request) : null;
+  return request ? rowToAccessRequest(request as Record<string, unknown>) : null;
 }
 
 export async function findAccessRequestByEmail(email: string): Promise<StoredAccessRequest | null> {
@@ -845,7 +840,7 @@ export async function findAccessRequestByEmail(email: string): Promise<StoredAcc
   const request = database.prepare(
     'SELECT * FROM AccessRequest WHERE email = ? ORDER BY createdAt DESC LIMIT 1'
   ).get(email.toLowerCase());
-  return request ? rowToAccessRequest(request) : null;
+  return request ? rowToAccessRequest(request as Record<string, unknown>) : null;
 }
 
 export async function updateAccessRequest(
@@ -904,7 +899,7 @@ export async function getPendingAccessRequests(): Promise<StoredAccessRequest[]>
   const requests = database.prepare(
     'SELECT * FROM AccessRequest WHERE status = ? ORDER BY createdAt DESC'
   ).all('PENDING');
-  return requests.map(rowToAccessRequest);
+  return requests.map(r => rowToAccessRequest(r as Record<string, unknown>));
 }
 
 export async function getAllAccessRequests(): Promise<StoredAccessRequest[]> {
@@ -912,7 +907,7 @@ export async function getAllAccessRequests(): Promise<StoredAccessRequest[]> {
 
   const database = getDb();
   const requests = database.prepare('SELECT * FROM AccessRequest ORDER BY createdAt DESC').all();
-  return requests.map(rowToAccessRequest);
+  return requests.map(r => rowToAccessRequest(r as Record<string, unknown>));
 }
 
 // ============================================
@@ -973,7 +968,7 @@ export async function logActivity(data: {
   }
 
   const log = database.prepare('SELECT * FROM ActivityLog WHERE id = ?').get(id);
-  return rowToActivityLog(log);
+  return rowToActivityLog(log as Record<string, unknown>);
 }
 
 export async function getActivityLogs(options?: {
@@ -1017,7 +1012,7 @@ export async function getActivityLogs(options?: {
   }
 
   const logs = database.prepare(query).all(...params);
-  return logs.map(rowToActivityLog);
+  return logs.map(l => rowToActivityLog(l as Record<string, unknown>));
 }
 
 // ============================================

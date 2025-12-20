@@ -304,6 +304,8 @@ export interface SessionUser {
   linkedMemberId?: string | null;
   assignedBranch?: string | null;
   permissions: Record<PermissionKey, boolean>;
+  emailVerifiedAt?: Date | string | null;
+  twoFactorEnabled?: boolean;
 }
 
 export interface AuthSession {
