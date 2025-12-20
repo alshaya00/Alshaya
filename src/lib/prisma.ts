@@ -1,4 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import Database from 'better-sqlite3';
+import path from 'path';
 
 export { Prisma };
 
@@ -48,9 +51,15 @@ const globalForPrisma = globalThis as unknown as {
 let prisma: PrismaClientType;
 
 try {
+  // Initialize better-sqlite3 database
+  const dbPath = path.join(process.cwd(), 'prisma', 'family.db');
+  const sqlite = new Database(dbPath);
+  const adapter = new PrismaBetterSqlite3(sqlite);
+
   prisma =
     globalForPrisma.prisma ??
     new PrismaClient({
+      adapter,
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     }) as PrismaClientType;
 
@@ -58,7 +67,7 @@ try {
     globalForPrisma.prisma = prisma;
   }
 } catch (error) {
-  console.warn('Prisma client not initialized. Using mock client for build.');
+  console.warn('Prisma client not initialized. Using mock client for build.', error);
   prisma = createMockPrismaClient();
 }
 
