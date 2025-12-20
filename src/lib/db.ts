@@ -1,10 +1,19 @@
 /**
  * Database-first data access layer
  * Uses SQLite via better-sqlite3 directly, falls back to in-memory data if unavailable
+ *
+ * CONCURRENCY FEATURES:
+ * - Atomic ID generation prevents duplicate IDs when multiple users add members
+ * - Optimistic locking prevents lost updates when editing the same member
+ * - Transaction-based operations ensure data consistency
+ * - Retry mechanism handles temporary lock conflicts
  */
 
 import * as sqliteDb from './sqlite-db';
 import { familyMembers, FamilyMember } from './data';
+
+// Re-export error types for use by consumers
+export { DatabaseError, ConcurrencyError, DuplicateIdError } from './sqlite-db';
 
 // Cache for database availability check
 let dbAvailable: boolean | null = null;
@@ -257,7 +266,8 @@ export async function buildFamilyTreeFromDb(): Promise<(FamilyMember & { childre
 }
 
 /**
- * Create a new member in database
+ * Create a new member in database with a specific ID
+ * For concurrent-safe operations, use createMemberWithAutoIdInDb instead
  */
 export async function createMemberInDb(member: Omit<FamilyMember, 'createdAt' | 'updatedAt'>): Promise<FamilyMember | null> {
   try {
@@ -266,32 +276,77 @@ export async function createMemberInDb(member: Omit<FamilyMember, 'createdAt' | 
       return null;
     }
 
-    return sqliteDb.createMember(member);
+    return await sqliteDb.createMember(member);
   } catch (error) {
     console.error('Error creating member:', error);
+    // Re-throw specific errors for handling upstream
+    if (error instanceof sqliteDb.DuplicateIdError) {
+      throw error;
+    }
+    if (error instanceof sqliteDb.ConcurrencyError) {
+      throw error;
+    }
     return null;
   }
 }
 
 /**
- * Update a member in database
+ * Create a new member with automatic ID generation (RECOMMENDED)
+ * This is concurrent-safe and prevents duplicate IDs
  */
-export async function updateMemberInDb(id: string, updates: Partial<FamilyMember>): Promise<FamilyMember | null> {
+export async function createMemberWithAutoIdInDb(
+  memberData: Omit<FamilyMember, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<FamilyMember | null> {
+  try {
+    if (!await isDatabaseAvailable()) {
+      console.error('Database unavailable, cannot create member');
+      return null;
+    }
+
+    return await sqliteDb.createMemberWithAutoId(memberData);
+  } catch (error) {
+    console.error('Error creating member with auto ID:', error);
+    if (error instanceof sqliteDb.DatabaseError) {
+      throw error;
+    }
+    return null;
+  }
+}
+
+/**
+ * Update a member in database with optimistic locking support
+ * @param id - Member ID to update
+ * @param updates - Fields to update
+ * @param expectedVersion - Optional: Pass the version for optimistic locking
+ */
+export async function updateMemberInDb(
+  id: string,
+  updates: Partial<FamilyMember>,
+  expectedVersion?: number
+): Promise<FamilyMember | null> {
   try {
     if (!await isDatabaseAvailable()) {
       console.error('Database unavailable, cannot update member');
       return null;
     }
 
-    return sqliteDb.updateMember(id, updates);
+    return await sqliteDb.updateMember(id, updates, expectedVersion);
   } catch (error) {
     console.error('Error updating member:', error);
+    // Re-throw concurrency errors for handling upstream
+    if (error instanceof sqliteDb.ConcurrencyError) {
+      throw error;
+    }
+    if (error instanceof sqliteDb.DatabaseError) {
+      throw error;
+    }
     return null;
   }
 }
 
 /**
  * Delete a member from database
+ * Note: Will fail if member has children (delete children first)
  */
 export async function deleteMemberFromDb(id: string): Promise<boolean> {
   try {
@@ -300,9 +355,13 @@ export async function deleteMemberFromDb(id: string): Promise<boolean> {
       return false;
     }
 
-    return sqliteDb.deleteMember(id);
+    return await sqliteDb.deleteMember(id);
   } catch (error) {
     console.error('Error deleting member:', error);
+    // Re-throw specific errors for handling upstream
+    if (error instanceof sqliteDb.DatabaseError) {
+      throw error;
+    }
     return false;
   }
 }
@@ -322,4 +381,36 @@ export async function memberExistsInDb(id: string): Promise<boolean> {
     console.error('Error checking member existence:', error);
     return familyMembers.some(m => m.id === id);
   }
+}
+
+/**
+ * Bulk create members (for seeding/import)
+ * Uses a single transaction for atomicity and performance
+ */
+export async function bulkCreateMembersInDb(
+  members: Omit<FamilyMember, 'createdAt' | 'updatedAt'>[]
+): Promise<{ success: number; failed: number; errors: string[] }> {
+  try {
+    if (!await isDatabaseAvailable()) {
+      return { success: 0, failed: members.length, errors: ['Database unavailable'] };
+    }
+
+    return await sqliteDb.bulkCreateMembers(members);
+  } catch (error) {
+    console.error('Error bulk creating members:', error);
+    return { success: 0, failed: members.length, errors: [(error as Error).message] };
+  }
+}
+
+/**
+ * Execute an operation with an advisory lock
+ * Use this for critical sections that need serialized access
+ * @param lockKey - Unique key for the lock (e.g., 'create-member')
+ * @param operation - Async operation to execute
+ */
+export async function withDbLock<T>(
+  lockKey: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  return sqliteDb.withLock(lockKey, operation);
 }
