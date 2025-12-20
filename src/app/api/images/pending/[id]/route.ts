@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    const pendingImage = getPendingImageById(id);
+    const pendingImage = await getPendingImageById(id);
 
     if (!pendingImage) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export async function PATCH(
     }
 
     // Check if pending image exists
-    const pendingImage = getPendingImageById(id);
+    const pendingImage = await getPendingImageById(id);
     if (!pendingImage) {
       return NextResponse.json(
         { error: 'Pending image not found', errorAr: 'الصورة المعلقة غير موجودة' },
@@ -77,7 +77,7 @@ export async function PATCH(
     }
 
     if (action === 'approve') {
-      const photo = approvePendingImage(id, reviewedBy, reviewedByName, reviewNotes);
+      const photo = await approvePendingImage(id, reviewedBy, reviewedByName, reviewNotes);
 
       if (!photo) {
         return NextResponse.json(
@@ -108,7 +108,7 @@ export async function PATCH(
         );
       }
 
-      const rejected = rejectPendingImage(id, reviewedBy, reviewedByName, reviewNotes);
+      const rejected = await rejectPendingImage(id, reviewedBy, reviewedByName, reviewNotes);
 
       if (!rejected) {
         return NextResponse.json(
@@ -147,7 +147,7 @@ export async function DELETE(
     const { id } = params;
 
     // Check if exists
-    const pendingImage = getPendingImageById(id);
+    const pendingImage = await getPendingImageById(id);
     if (!pendingImage) {
       return NextResponse.json(
         { error: 'Pending image not found', errorAr: 'الصورة المعلقة غير موجودة' },
@@ -155,7 +155,7 @@ export async function DELETE(
       );
     }
 
-    const deleted = deletePendingImage(id);
+    const deleted = await deletePendingImage(id);
 
     if (!deleted) {
       return NextResponse.json(

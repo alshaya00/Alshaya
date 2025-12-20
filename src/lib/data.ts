@@ -5,7 +5,7 @@
  * 1. Defines the FamilyMember TypeScript interface used throughout the app
  * 2. Provides fallback data when the database is unavailable
  *
- * PRIMARY DATA SOURCE: Database (Prisma/SQLite)
+ * PRIMARY DATA SOURCE: Database (Prisma/PostgreSQL)
  * - Run `npm run db:seed` to populate the database with family members
  * - The database should always be the source of truth
  * - This in-memory array is only used as a fallback for development/testing

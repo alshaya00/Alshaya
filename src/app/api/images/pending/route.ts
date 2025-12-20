@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get pending images
-    const result = getPendingImages({
+    const result = await getPendingImages({
       status: status || undefined,
       category: category || undefined,
       memberId: memberId || undefined,
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Get stats if requested
     let stats = null;
     if (includeStats) {
-      stats = getImageStats();
+      stats = await getImageStats();
     }
 
     // Don't include full image data in list response (for performance)

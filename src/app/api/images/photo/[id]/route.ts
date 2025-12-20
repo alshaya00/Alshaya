@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    const photo = getMemberPhotoById(id);
+    const photo = await getMemberPhotoById(id);
 
     if (!photo) {
       return NextResponse.json(
@@ -43,7 +43,7 @@ export async function PATCH(
     const body = await request.json();
 
     // Check if photo exists
-    const existing = getMemberPhotoById(id);
+    const existing = await getMemberPhotoById(id);
     if (!existing) {
       return NextResponse.json(
         { error: 'Photo not found', errorAr: 'الصورة غير موجودة' },
@@ -88,11 +88,11 @@ export async function PATCH(
 
     // If setting as profile photo
     if (setAsProfile && existing.memberId) {
-      setProfilePhoto(existing.memberId, id);
+      await setProfilePhoto(existing.memberId, id);
     }
 
     // Update the photo
-    const updated = updateMemberPhoto(id, {
+    const updated = await updateMemberPhoto(id, {
       category,
       title,
       titleAr,
@@ -144,7 +144,7 @@ export async function DELETE(
     const { id } = params;
 
     // Check if photo exists
-    const existing = getMemberPhotoById(id);
+    const existing = await getMemberPhotoById(id);
     if (!existing) {
       return NextResponse.json(
         { error: 'Photo not found', errorAr: 'الصورة غير موجودة' },
@@ -152,7 +152,7 @@ export async function DELETE(
       );
     }
 
-    const deleted = deleteMemberPhoto(id);
+    const deleted = await deleteMemberPhoto(id);
 
     if (!deleted) {
       return NextResponse.json(
