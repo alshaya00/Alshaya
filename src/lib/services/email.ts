@@ -449,8 +449,31 @@ export class EmailService {
       return this.config;
     }
 
+    // First, check environment variables
+    const envProvider = process.env.EMAIL_PROVIDER as EmailProvider | undefined;
+    const envApiKey = process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY || process.env.MAILGUN_API_KEY;
+    const envFromAddress = process.env.EMAIL_FROM_ADDRESS;
+    const envFromName = process.env.EMAIL_FROM_NAME;
+    const envTestMode = process.env.TEST_MODE === 'true';
+
+    if (envProvider && envProvider !== 'none' && envApiKey) {
+      this.config = {
+        provider: envProvider,
+        apiKey: envApiKey,
+        fromAddress: envFromAddress || 'noreply@alshaye.com',
+        fromName: envFromName || 'شجرة عائلة آل شايع',
+        smtpHost: process.env.SMTP_HOST,
+        smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : undefined,
+        smtpUser: process.env.SMTP_USER,
+        smtpPassword: process.env.SMTP_PASSWORD,
+        smtpSecure: process.env.SMTP_SECURE !== 'false',
+        testMode: envTestMode,
+      };
+      return this.config;
+    }
+
     try {
-      // Try to get from database first
+      // Fall back to database configuration
       const dbConfig = await prisma.apiServiceConfig?.findUnique({
         where: { id: 'default' },
       });
