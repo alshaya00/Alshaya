@@ -55,11 +55,14 @@ export default function BranchLinksPage() {
     }
   };
 
+  // SECURITY: Generate cryptographically secure token using Web Crypto API
   const generateToken = () => {
     const chars = tokenConfig.codeCharacters;
+    const array = new Uint8Array(tokenConfig.branchTokenLength);
+    crypto.getRandomValues(array);
     let token = '';
     for (let i = 0; i < tokenConfig.branchTokenLength; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length));
+      token += chars[array[i] % chars.length];
     }
     return token;
   };

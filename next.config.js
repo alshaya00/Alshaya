@@ -7,15 +7,57 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
-  // Allow Replit hostname for development
+  // SECURITY: Configure CORS based on environment
   async headers() {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // In production, restrict CORS to the app's own domain
+    // In development, allow all origins for easier testing
+    const corsOrigin = isProduction
+      ? (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://alshaye.family')
+      : '*';
+
     return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: corsOrigin,
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Access-Control-Max-Age',
+            value: '86400',
+          },
+        ],
+      },
+      // Security headers for all routes
       {
         source: '/:path*',
         headers: [
           {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
           },
         ],
       },
