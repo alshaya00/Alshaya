@@ -105,6 +105,10 @@ export default function RegisterPage() {
     if (!/[0-9]/.test(formData.password)) return 'كلمة المرور يجب أن تحتوي على رقم';
     if (formData.password !== formData.confirmPassword) return 'كلمتا المرور غير متطابقتين';
     if (!formData.nameArabic) return 'الاسم بالعربي مطلوب';
+    if (!formData.phone) return 'رقم الاتصال مطلوب';
+    if (!/^[\d\s+()-]{9,15}$/.test(formData.phone.replace(/\s/g, ''))) {
+      return 'صيغة رقم الاتصال غير صحيحة';
+    }
     if (!formData.claimedRelation && !formData.relatedMemberId) {
       return 'يرجى تحديد صلة القرابة أو اختيار أحد أفراد العائلة';
     }
@@ -434,7 +438,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      رقم الهاتف
+                      رقم الاتصال <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -444,6 +448,7 @@ export default function RegisterPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       placeholder="+966 5XX XXX XXXX"
                       dir="ltr"
+                      required
                     />
                   </div>
                 </div>
