@@ -1,4 +1,5 @@
-// OAuth Provider Configuration
+// OAuth Provider Configuration - Replit Compatible
+// Providers are optional and gracefully disabled if not configured
 import crypto from 'crypto';
 
 export type OAuthProvider = 'google' | 'github';
@@ -10,6 +11,7 @@ export interface OAuthConfig {
   tokenUrl: string;
   userInfoUrl: string;
   scopes: string[];
+  enabled: boolean;
 }
 
 export interface OAuthUserInfo {
@@ -21,30 +23,56 @@ export interface OAuthUserInfo {
   provider: OAuthProvider;
 }
 
-// Provider configurations
+// Helper to check if OAuth credentials are configured
+function getOAuthCredentials(provider: 'google' | 'github'): { clientId: string; clientSecret: string; enabled: boolean } {
+  if (provider === 'google') {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+    return {
+      clientId,
+      clientSecret,
+      enabled: !!(clientId && clientSecret && clientId !== 'undefined'),
+    };
+  } else {
+    const clientId = process.env.GITHUB_CLIENT_ID || '';
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET || '';
+    return {
+      clientId,
+      clientSecret,
+      enabled: !!(clientId && clientSecret && clientId !== 'undefined'),
+    };
+  }
+}
+
+// Provider configurations - Replit compatible with graceful fallbacks
+const googleCreds = getOAuthCredentials('google');
+const githubCreds = getOAuthCredentials('github');
+
 const providers: Record<OAuthProvider, OAuthConfig> = {
   google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || '',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    clientId: googleCreds.clientId,
+    clientSecret: googleCreds.clientSecret,
     authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
     scopes: ['email', 'profile'],
+    enabled: googleCreds.enabled,
   },
   github: {
-    clientId: process.env.GITHUB_CLIENT_ID || '',
-    clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+    clientId: githubCreds.clientId,
+    clientSecret: githubCreds.clientSecret,
     authorizationUrl: 'https://github.com/login/oauth/authorize',
     tokenUrl: 'https://github.com/login/oauth/access_token',
     userInfoUrl: 'https://api.github.com/user',
     scopes: ['user:email', 'read:user'],
+    enabled: githubCreds.enabled,
   },
 };
 
 // Check if a provider is configured
 export function isProviderConfigured(provider: OAuthProvider): boolean {
   const config = providers[provider];
-  return !!(config.clientId && config.clientSecret);
+  return config.enabled;
 }
 
 // Get configured providers

@@ -153,6 +153,76 @@ async function ensureAdmin() {
       console.log('✅ API service config exists');
     }
 
+    // Ensure backup config exists (Replit-compatible)
+    console.log('💾 Checking backup config...');
+    const backupConfig = await prisma.backupConfig.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (!backupConfig) {
+      await prisma.backupConfig.create({
+        data: {
+          id: 'default',
+          enabled: true,
+          intervalHours: 24,
+          maxBackups: 10,
+          retentionDays: 30,
+        },
+      });
+      console.log('✅ Backup config created');
+    } else {
+      console.log('✅ Backup config exists');
+    }
+
+    // Ensure feature flags exist
+    console.log('🚩 Checking feature flags...');
+    const featureFlags = await prisma.featureFlag.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (!featureFlags) {
+      await prisma.featureFlag.create({
+        data: {
+          id: 'default',
+        },
+      });
+      console.log('✅ Feature flags created');
+    } else {
+      console.log('✅ Feature flags exist');
+    }
+
+    // Check environment variables
+    console.log('🔧 Environment check...');
+    const requiredInProd = ['DATABASE_URL'];
+    const recommended = ['JWT_SECRET', 'ENCRYPTION_SECRET', 'ADMIN_EMAIL', 'ADMIN_PASSWORD'];
+
+    const missing: string[] = [];
+    const warnings: string[] = [];
+
+    for (const key of requiredInProd) {
+      if (!process.env[key]) {
+        missing.push(key);
+      }
+    }
+
+    for (const key of recommended) {
+      if (!process.env[key]) {
+        warnings.push(key);
+      }
+    }
+
+    if (missing.length > 0) {
+      console.warn(`⚠️  Missing required env vars: ${missing.join(', ')}`);
+    }
+
+    if (warnings.length > 0) {
+      console.warn(`ℹ️  Recommended env vars not set: ${warnings.join(', ')}`);
+    }
+
+    if (missing.length === 0 && warnings.length === 0) {
+      console.log('✅ All environment variables configured');
+    }
+
     console.log('🚀 Startup checks complete!');
   } catch (error) {
     console.error('❌ Error during startup:', error);

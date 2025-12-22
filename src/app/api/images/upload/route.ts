@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createPendingImage, type CreatePendingImageInput } from '@/lib/db/images';
 import sharp from 'sharp';
 
-// Maximum file size (5MB)
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+// Replit-compatible: Lower memory limits for constrained environments
+const IS_REPLIT = !!process.env.REPL_ID;
 
-// Thumbnail settings
-const THUMBNAIL_MAX_SIZE = 200;
-const THUMBNAIL_QUALITY = 80;
+// Maximum file size - lower on Replit to avoid memory issues
+const MAX_FILE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024; // 2MB on Replit, 5MB elsewhere
+
+// Thumbnail settings - smaller on Replit
+const THUMBNAIL_MAX_SIZE = IS_REPLIT ? 150 : 200;
+const THUMBNAIL_QUALITY = IS_REPLIT ? 70 : 80;
+
+// Sharp concurrency limit for memory management
+if (IS_REPLIT) {
+  sharp.concurrency(1); // Single-threaded to reduce memory usage
+}
 
 // Allowed image types
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

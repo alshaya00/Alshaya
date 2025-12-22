@@ -1,5 +1,6 @@
 // آل شايع Family Tree - Backup Scheduler Service
-// Handles automatic backup scheduling and management
+// Replit-compatible: Uses database-triggered approach instead of setInterval
+// Backups are triggered on-demand or via API calls, not continuous timers
 
 import { prisma } from '@/lib/prisma';
 
@@ -21,12 +22,95 @@ const DEFAULT_CONFIG: BackupConfig = {
   retentionDays: 30,
 };
 
-let currentConfig: BackupConfig = { ...DEFAULT_CONFIG };
-let scheduledBackupTimer: ReturnType<typeof setTimeout> | null = null;
-
 // ============================================
 // BACKUP OPERATIONS
 // ============================================
+
+/**
+ * Get backup configuration from database
+ * Replit-compatible: Reads from database instead of memory
+ */
+export async function getBackupConfigFromDB(): Promise<BackupConfig> {
+  try {
+    const config = await prisma.backupConfig.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (config) {
+      return {
+        enabled: config.enabled,
+        intervalHours: config.intervalHours,
+        maxBackups: config.maxBackups,
+        retentionDays: config.retentionDays,
+      };
+    }
+  } catch (error) {
+    console.warn('[Backup Scheduler] Could not read config from DB:', error);
+  }
+
+  return { ...DEFAULT_CONFIG };
+}
+
+/**
+ * Save backup configuration to database
+ */
+export async function saveBackupConfigToDB(config: Partial<BackupConfig>): Promise<BackupConfig> {
+  try {
+    const updated = await prisma.backupConfig.upsert({
+      where: { id: 'default' },
+      update: config,
+      create: {
+        id: 'default',
+        ...DEFAULT_CONFIG,
+        ...config,
+      },
+    });
+
+    return {
+      enabled: updated.enabled,
+      intervalHours: updated.intervalHours,
+      maxBackups: updated.maxBackups,
+      retentionDays: updated.retentionDays,
+    };
+  } catch (error) {
+    console.error('[Backup Scheduler] Failed to save config:', error);
+    return { ...DEFAULT_CONFIG, ...config };
+  }
+}
+
+/**
+ * Check if a backup is needed based on last backup time
+ * Replit-compatible: No timers, just time-based checks
+ */
+export async function isBackupNeeded(): Promise<boolean> {
+  try {
+    const config = await getBackupConfigFromDB();
+
+    if (!config.enabled) {
+      return false;
+    }
+
+    // Get the last auto backup
+    const lastBackup = await prisma.snapshot.findFirst({
+      where: { snapshotType: 'AUTO_BACKUP' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    if (!lastBackup) {
+      return true; // No backup exists, create one
+    }
+
+    // Check if enough time has passed
+    const hoursSinceLastBackup =
+      (Date.now() - lastBackup.createdAt.getTime()) / (1000 * 60 * 60);
+
+    return hoursSinceLastBackup >= config.intervalHours;
+  } catch (error) {
+    console.error('[Backup Scheduler] Error checking backup status:', error);
+    return false;
+  }
+}
 
 /**
  * Create an automatic backup snapshot
@@ -53,6 +137,17 @@ export async function createAutoBackup(): Promise<{
       },
     });
 
+    // Update backup config with last backup time
+    await prisma.backupConfig.upsert({
+      where: { id: 'default' },
+      update: { lastBackupAt: new Date(), lastBackupStatus: 'SUCCESS' },
+      create: {
+        id: 'default',
+        lastBackupAt: new Date(),
+        lastBackupStatus: 'SUCCESS',
+      },
+    });
+
     // Clean up old backups if we exceed maxBackups
     await cleanupOldBackups();
 
@@ -61,6 +156,25 @@ export async function createAutoBackup(): Promise<{
     return { success: true, snapshotId: snapshot.id };
   } catch (error) {
     console.error('[Backup Scheduler] Failed to create auto backup:', error);
+
+    // Update backup config with failure status
+    try {
+      await prisma.backupConfig.upsert({
+        where: { id: 'default' },
+        update: {
+          lastBackupStatus: 'FAILED',
+          lastBackupError: error instanceof Error ? error.message : 'Unknown error',
+        },
+        create: {
+          id: 'default',
+          lastBackupStatus: 'FAILED',
+          lastBackupError: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    } catch {
+      // Ignore config update errors
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -69,10 +183,37 @@ export async function createAutoBackup(): Promise<{
 }
 
 /**
+ * Run backup if needed - call this from API routes or startup
+ * Replit-compatible: Stateless, can be called from anywhere
+ */
+export async function runBackupIfNeeded(): Promise<{
+  ran: boolean;
+  success?: boolean;
+  snapshotId?: string;
+  error?: string;
+}> {
+  const needed = await isBackupNeeded();
+
+  if (!needed) {
+    return { ran: false };
+  }
+
+  const result = await createAutoBackup();
+  return {
+    ran: true,
+    success: result.success,
+    snapshotId: result.snapshotId,
+    error: result.error,
+  };
+}
+
+/**
  * Clean up old backups based on configuration
  */
 export async function cleanupOldBackups(): Promise<number> {
   try {
+    const config = await getBackupConfigFromDB();
+
     // Get all auto backups ordered by creation date
     const autoBackups = await prisma.snapshot.findMany({
       where: { snapshotType: 'AUTO_BACKUP' },
@@ -82,8 +223,8 @@ export async function cleanupOldBackups(): Promise<number> {
     let deletedCount = 0;
 
     // Delete backups exceeding maxBackups
-    if (autoBackups.length > currentConfig.maxBackups) {
-      const toDelete = autoBackups.slice(currentConfig.maxBackups);
+    if (autoBackups.length > config.maxBackups) {
+      const toDelete = autoBackups.slice(config.maxBackups);
       for (const backup of toDelete) {
         await prisma.snapshot.delete({ where: { id: backup.id } });
         deletedCount++;
@@ -92,7 +233,7 @@ export async function cleanupOldBackups(): Promise<number> {
 
     // Delete backups older than retentionDays
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - currentConfig.retentionDays);
+    cutoffDate.setDate(cutoffDate.getDate() - config.retentionDays);
 
     const oldBackups = await prisma.snapshot.findMany({
       where: {
@@ -120,72 +261,60 @@ export async function cleanupOldBackups(): Promise<number> {
 /**
  * Get the next scheduled backup time
  */
-export function getNextBackupTime(): Date | null {
-  if (!currentConfig.enabled) return null;
+export async function getNextBackupTime(): Promise<Date | null> {
+  const config = await getBackupConfigFromDB();
 
-  const nextTime = new Date();
-  nextTime.setHours(nextTime.getHours() + currentConfig.intervalHours);
-  return nextTime;
+  if (!config.enabled) return null;
+
+  try {
+    const lastBackup = await prisma.snapshot.findFirst({
+      where: { snapshotType: 'AUTO_BACKUP' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    const baseTime = lastBackup?.createdAt || new Date();
+    const nextTime = new Date(baseTime.getTime() + config.intervalHours * 60 * 60 * 1000);
+    return nextTime;
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Get current backup configuration
+ * Get current backup configuration (sync version for backwards compatibility)
  */
 export function getBackupConfig(): BackupConfig {
-  return { ...currentConfig };
+  return { ...DEFAULT_CONFIG };
 }
 
 /**
- * Update backup configuration
+ * Update backup configuration (sync version for backwards compatibility)
  */
 export function updateBackupConfig(config: Partial<BackupConfig>): BackupConfig {
-  currentConfig = { ...currentConfig, ...config };
-
-  // Restart scheduler if interval changed or enabled status changed
-  if (config.intervalHours !== undefined || config.enabled !== undefined) {
-    stopBackupScheduler();
-    if (currentConfig.enabled) {
-      startBackupScheduler();
-    }
-  }
-
-  return { ...currentConfig };
+  // This is now async internally but returns sync for backwards compatibility
+  saveBackupConfigToDB(config).catch(console.error);
+  return { ...DEFAULT_CONFIG, ...config };
 }
 
 /**
  * Start the backup scheduler
+ * Replit-compatible: No-op, backups are triggered via API
+ * @deprecated Use runBackupIfNeeded() instead
  */
 export function startBackupScheduler(): void {
-  if (scheduledBackupTimer) {
-    console.log('[Backup Scheduler] Scheduler already running');
-    return;
-  }
-
-  if (!currentConfig.enabled) {
-    console.log('[Backup Scheduler] Scheduler is disabled');
-    return;
-  }
-
-  const intervalMs = currentConfig.intervalHours * 60 * 60 * 1000;
-
-  // Schedule the next backup
-  scheduledBackupTimer = setInterval(async () => {
-    console.log('[Backup Scheduler] Running scheduled backup...');
-    await createAutoBackup();
-  }, intervalMs);
-
-  console.log(`[Backup Scheduler] Started with ${currentConfig.intervalHours} hour interval`);
+  console.log('[Backup Scheduler] Replit mode: Backups triggered via API, not setInterval');
+  // Run once on startup to check if backup is needed
+  runBackupIfNeeded().catch(console.error);
 }
 
 /**
  * Stop the backup scheduler
+ * Replit-compatible: No-op, nothing to stop
+ * @deprecated No longer needed in Replit mode
  */
 export function stopBackupScheduler(): void {
-  if (scheduledBackupTimer) {
-    clearInterval(scheduledBackupTimer);
-    scheduledBackupTimer = null;
-    console.log('[Backup Scheduler] Scheduler stopped');
-  }
+  console.log('[Backup Scheduler] Replit mode: No scheduler to stop');
 }
 
 /**
@@ -220,7 +349,7 @@ export async function getBackupStats(): Promise<{
     autoBackups,
     manualBackups,
     lastBackupTime: lastBackup?.createdAt || null,
-    nextBackupTime: getNextBackupTime(),
+    nextBackupTime: await getNextBackupTime(),
     totalStorageBytes,
   };
 }
