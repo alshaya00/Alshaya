@@ -2,6 +2,8 @@
 const { withSentryConfig } = require('@sentry/nextjs');
 
 const nextConfig = {
+  // Replit deployment: standalone output for smaller deployments
+  output: 'standalone',
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',

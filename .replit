@@ -1,8 +1,8 @@
-# Al-Shaye Family Tree Application
-# Run 'npm install && npx prisma generate' manually after import
+# Al-Shaye Family Tree Application - Replit Configuration
+# Following Replit deployment best practices
 
 run = "npm run dev"
-entrypoint = "package.json"
+entrypoint = "src/app/page.tsx"
 
 hidden = [".config", "package-lock.json", ".next", "node_modules"]
 
@@ -12,6 +12,8 @@ channel = "stable-24_05"
 [env]
 PATH = "/home/runner/$REPL_SLUG/.config/npm/node_global/bin:/home/runner/$REPL_SLUG/node_modules/.bin:./node_modules/.bin"
 npm_config_prefix = "/home/runner/$REPL_SLUG/.config/npm/node_global"
+# Memory optimization for Node.js builds
+NODE_OPTIONS = "--max-old-space-size=2048"
 
 [packager]
 language = "nodejs"
@@ -29,11 +31,16 @@ pattern = "**/{*.ts,*.tsx}"
 [languages.typescript.languageServer]
 start = "typescript-language-server --stdio"
 
+# Deployment Configuration
+# IMPORTANT: Build command uses prisma generate only (NOT prisma db push)
+# Run migrations manually via Shell when schema changes: npx prisma migrate deploy
 [deployment]
-run = ["sh", "-c", "npm install && npx prisma generate && npx prisma db push && npm run build && npm start"]
+build = ["sh", "-c", "npm run build"]
+run = ["sh", "-c", "npm run start"]
 deploymentTarget = "cloudrun"
 ignorePorts = false
 
+# Port configuration - Frontend on port 5000
 [[ports]]
-localPort = 3000
+localPort = 5000
 externalPort = 80
