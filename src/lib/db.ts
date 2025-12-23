@@ -158,3 +158,31 @@ export async function deleteMemberFromDb(id: string): Promise<boolean> {
 export async function isDatabaseAvailable(): Promise<boolean> {
   return await postgresDb.isDatabaseAvailable();
 }
+
+/**
+ * Check if a member exists in the database
+ */
+export async function memberExistsInDb(id: string): Promise<boolean> {
+  try {
+    return await postgresDb.memberExists(id);
+  } catch (error) {
+    console.error('Error checking member existence:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a member with a specific ID in the database
+ */
+export async function createMemberInDb(member: FamilyMember): Promise<FamilyMember> {
+  try {
+    const result = await postgresDb.createMember(member);
+    if (!result) {
+      throw new Error('Failed to create member');
+    }
+    return result;
+  } catch (error) {
+    console.error('Error creating member:', error);
+    throw error;
+  }
+}

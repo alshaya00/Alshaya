@@ -21,24 +21,27 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [stats, setStats] = useState<Statistics>({ totalMembers: 0, males: 0, females: 0, generations: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [membersRes, statsRes] = await Promise.all([
-          fetch('/api/members?limit=500'),
-          fetch('/api/statistics')
-        ]);
+        const statsRes = await fetch('/api/statistics');
+        if (!statsRes.ok) {
+          throw new Error(`Failed to load statistics: ${statsRes.status}`);
+        }
+        const statsData = await statsRes.json();
+        setStats(statsData);
+
+        const membersRes = await fetch('/api/members?limit=1000');
         if (membersRes.ok) {
-          const data = await membersRes.json();
-          setMembers(data.data || []);
+          const membersData = await membersRes.json();
+          setMembers(membersData.data || []);
         }
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          setStats(data);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'فشل في تحميل البيانات';
+        setError(message);
+        console.error('Error fetching data:', err);
       } finally {
         setIsLoading(false);
       }
@@ -264,11 +267,19 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
     }
   };
 
+  if (error) {
+    return (
+      <div className={`${className} text-red-600 text-sm`}>
+        خطأ: {error}
+      </div>
+    );
+  }
+
   return (
     <div className={`${className}`}>
       <button
         onClick={handleExport}
-        disabled={isExporting || isLoading}
+        disabled={isExporting || isLoading || members.length === 0}
         className={`
           flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
           ${exportComplete
@@ -296,7 +307,7 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
         ) : (
           <>
             <Download size={18} />
-            <span>تصدير PDF</span>
+            <span>تصدير PDF {members.length > 0 ? `(${members.length} عضو)` : '(إحصائيات)'}</span>
           </>
         )}
       </button>

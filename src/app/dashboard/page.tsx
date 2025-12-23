@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, GitBranch, Calendar, MapPin } from 'lucide-react';
-import ExportPDF, { ExportButton } from '@/components/ExportPDF';
+import ExportPDF from '@/components/ExportPDF';
 
 interface Statistics {
   totalMembers: number;
@@ -44,16 +44,15 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [statsRes, membersRes] = await Promise.all([
-          fetch('/api/statistics'),
-          fetch('/api/members?limit=500')
-        ]);
-
+        const statsRes = await fetch('/api/statistics');
         const statsData = await statsRes.json();
-        const membersData = await membersRes.json();
-
         setStats(statsData);
-        setAllMembers(membersData.data || []);
+
+        const membersRes = await fetch('/api/members?limit=500');
+        if (membersRes.ok) {
+          const membersData = await membersRes.json();
+          setAllMembers(membersData.data || []);
+        }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       } finally {
@@ -132,10 +131,9 @@ export default function DashboardPage() {
           </h1>
           <p className="text-gray-600 mt-2">Advanced Analytics Dashboard</p>
 
-          {/* Export Buttons */}
+          {/* Export Button */}
           <div className="flex items-center justify-center gap-3 mt-4">
             <ExportPDF />
-            <ExportButton />
           </div>
         </div>
 
