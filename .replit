@@ -1,7 +1,4 @@
-# Al-Shaye Family Tree - Replit Configuration
-# Following Replit deployment best practices (2025)
-
-modules = ["nodejs-20", "postgresql-16"]
+modules = ["nodejs-20", "web", "nix"]
 
 [nix]
 channel = "stable-25_05"
@@ -25,13 +22,13 @@ args = "Dev Server"
 name = "Dev Server"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[ports]]
 localPort = 5000
@@ -41,3 +38,6 @@ externalPort = 80
 deploymentTarget = "autoscale"
 run = ["npm", "run", "start"]
 build = ["npm", "run", "build"]
+
+[agent]
+expertMode = true
