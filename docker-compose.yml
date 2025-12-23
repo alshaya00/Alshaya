@@ -35,10 +35,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://alshaye:${POSTGRES_PASSWORD:-alshaye_secure_password}@postgres:5432/alshaye_family_tree
-      # Add your environment variables here:
-      # - NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
-      # - SENTRY_ORG=your_org
-      # - SENTRY_PROJECT=your_project
+      # Add your environment variables here
     depends_on:
       postgres:
         condition: service_healthy
