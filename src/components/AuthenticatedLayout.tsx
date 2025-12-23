@@ -76,8 +76,8 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 // Landing Page Component for Guests
 function LandingPage() {
   const [stats, setStats] = useState<FamilyStats>({
-    totalMembers: 99,    // Default fallback
-    generations: 8,      // Default fallback
+    totalMembers: 0,     // Fetched from API
+    generations: 0,      // Fetched from API
     yearsOfHistory: 425, // Default fallback
   });
 

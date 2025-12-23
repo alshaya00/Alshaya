@@ -41,8 +41,8 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     icon: <TreePine size={32} />,
     title: 'Family Tree',
     titleAr: 'شجرة العائلة',
-    description: 'Explore your family tree. See where you fit among 99 members across 8 generations.',
-    descriptionAr: 'استكشف شجرة عائلتك. اكتشف مكانك بين 99 فرداً عبر 8 أجيال.',
+    description: 'Explore your family tree. See where you fit among hundreds of members across multiple generations.',
+    descriptionAr: 'استكشف شجرة عائلتك. اكتشف مكانك بين مئات الأفراد عبر أجيال متعددة.',
     action: {
       label: 'View Tree',
       labelAr: 'استعرض الشجرة',
@@ -182,8 +182,8 @@ export function WelcomeModal({ userName, onContinue, onSkip }: WelcomeModalProps
         <div className="p-6">
           <div className="text-center mb-6">
             <p className="text-gray-600 leading-relaxed">
-              أنت الآن جزء من عائلة مكونة من <span className="font-bold text-green-600">99 فرداً</span> عبر{' '}
-              <span className="font-bold text-green-600">8 أجيال</span>.
+              أنت الآن جزء من عائلة آل شايع الممتدة عبر{' '}
+              <span className="font-bold text-green-600">أجيال متعددة</span>.
             </p>
             <p className="text-gray-500 text-sm mt-2">
               دعنا نأخذك في جولة سريعة!

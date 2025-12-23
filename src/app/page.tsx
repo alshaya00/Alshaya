@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getStatistics } from '@/lib/data';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   TreePine, Users, BookOpen, Camera, Heart, ChevronLeft,
@@ -15,8 +14,32 @@ import {
 // ============================================
 
 export default function HomePage() {
-  const stats = getStatistics();
+  const [stats, setStats] = useState({
+    totalMembers: 0,
+    males: 0,
+    females: 0,
+    generations: 0,
+    yearsOfHistory: 425,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/statistics');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error('Error fetching statistics:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    }
+    fetchStats();
+  }, []);
   const [showPhases, setShowPhases] = useState(false);
 
   if (authLoading) {

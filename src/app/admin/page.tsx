@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
       const backupNeeded = !lastBackup || (new Date().getTime() - new Date(lastBackup).getTime()) > 7 * 24 * 60 * 60 * 1000;
 
       setStats({
-        totalMembers: statsData.totalMembers || 99,
+        totalMembers: statsData.totalMembers || 0,
         pendingApprovals,
         recentChanges: historyData.changes?.length || 0,
         activeAdmins: activeAdmins || 1,
@@ -244,12 +244,12 @@ export default function AdminDashboardPage() {
       console.error('Error loading dashboard data:', error);
       // Set default values on error
       setStats({
-        totalMembers: 99,
+        totalMembers: 0,
         pendingApprovals: 0,
         recentChanges: 0,
         activeAdmins: 1,
         lastBackup: null,
-        databaseSize: '2.5 MB',
+        databaseSize: '-- MB',
         duplicatesCount: 0,
         branchLinks: 0,
         pendingImages: 0,
@@ -381,7 +381,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-3 flex items-center text-sm text-green-600">
             <TrendingUp className="w-4 h-4 ml-1" />
-            <span>99 عضو مسجل</span>
+            <span>{stats.totalMembers} عضو مسجل</span>
           </div>
         </div>
 

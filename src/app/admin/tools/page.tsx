@@ -56,7 +56,7 @@ export default function ToolsPage() {
       const membersData = await membersRes.json();
 
       setStats({
-        totalMembers: membersData.members?.length || 99,
+        totalMembers: membersData.members?.length || 0,
         orphanedRecords: 0,
         duplicates: 0,
         oldSessions: Math.floor(Math.random() * 5),

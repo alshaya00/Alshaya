@@ -54,7 +54,7 @@ export default function DatabasePage() {
           icon: Users,
           href: '/admin/database/members',
           description: 'جدول بيانات أعضاء العائلة الرئيسي',
-          recordCount: membersRes.members?.length || 99,
+          recordCount: membersRes.members?.length || 0,
           color: 'blue',
         },
         {

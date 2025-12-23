@@ -45,26 +45,14 @@ export default function ReportsPage() {
       const data = await res.json();
 
       setStats({
-        totalMembers: data.totalMembers || 99,
-        livingMembers: data.living || 85,
-        deceasedMembers: data.deceased || 14,
-        males: data.males || 60,
-        females: data.females || 39,
-        generations: data.generations || 8,
-        branches: data.branches || [
-          { name: 'الأصل', count: 50 },
-          { name: 'الفرع 1', count: 49 },
-        ],
-        generationBreakdown: data.generationBreakdown || [
-          { generation: 1, count: 1, males: 1, females: 0 },
-          { generation: 2, count: 4, males: 3, females: 1 },
-          { generation: 3, count: 12, males: 8, females: 4 },
-          { generation: 4, count: 25, males: 15, females: 10 },
-          { generation: 5, count: 30, males: 18, females: 12 },
-          { generation: 6, count: 18, males: 10, females: 8 },
-          { generation: 7, count: 7, males: 4, females: 3 },
-          { generation: 8, count: 2, males: 1, females: 1 },
-        ],
+        totalMembers: data.totalMembers || 0,
+        livingMembers: data.living || 0,
+        deceasedMembers: data.deceased || 0,
+        males: data.males || 0,
+        females: data.females || 0,
+        generations: data.generations || 0,
+        branches: data.branches || [],
+        generationBreakdown: data.generationBreakdown || [],
         recentActivity: [
           { date: '2024-12-01', additions: 3, updates: 5, deletions: 0 },
           { date: '2024-12-02', additions: 1, updates: 2, deletions: 0 },
