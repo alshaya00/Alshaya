@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import {
   Search, ChevronDown, ChevronRight, Users, User,
   Eye, X, TreePine, LayoutGrid, List, GitBranch
@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import FamilyTreeGraph from '@/components/FamilyTreeGraph';
 import { FeatureGate } from '@/components/FeatureGate';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
@@ -23,8 +24,36 @@ function TreePageContent() {
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const { session } = useAuth();
 
-  const allMembers = getAllMembers();
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
+
+  // Helper to get member by ID from the loaded members
+  const getMemberById = (id: string): FamilyMember | undefined => {
+    return allMembers.find(m => m.id === id);
+  };
 
   // Build tree structure
   const treeData = useMemo(() => {
@@ -358,6 +387,19 @@ function TreePageContent() {
     </div>
   );
 
+  // Show loading state
+  if (membersLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري تحميل شجرة العائلة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Main return
   return (
     <div className="min-h-screen bg-gray-100 py-4 pb-24 lg:pb-4">
       <div className="container mx-auto px-4 max-w-6xl">

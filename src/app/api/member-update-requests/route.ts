@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { getMemberById } from '@/lib/data';
+import { getMemberByIdFromDb } from '@/lib/db';
 
 // Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify member exists
-    const member = getMemberById(memberId);
+    const member = await getMemberByIdFromDb(memberId);
     if (!member) {
       return NextResponse.json(
         { success: false, message: 'Member not found', messageAr: 'العضو غير موجود' },
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
         category: 'MEMBER',
         targetType: 'FAMILY_MEMBER',
         targetId: memberId,
-        targetName: member.fullNameAr,
+        targetName: member.fullNameAr || member.firstName,
         details: {
           requestId: updateRequest.id,
           proposedFields: Object.keys(filteredChanges),

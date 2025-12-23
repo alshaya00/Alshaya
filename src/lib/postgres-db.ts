@@ -10,6 +10,7 @@
  */
 
 import { prisma } from './prisma';
+import { Prisma } from '@prisma/client';
 import { FamilyMember } from './data';
 
 // Constants for retry mechanism
@@ -132,7 +133,7 @@ export async function getAllMembers(): Promise<FamilyMember[]> {
     const rows = await prisma.familyMember.findMany({
       orderBy: { id: 'asc' },
     });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+    return rows.map((row: Record<string, unknown>) => rowToMember(row as unknown as Record<string, unknown>));
   } catch (error) {
     console.error('Error fetching all members:', error);
     return [];
@@ -157,7 +158,7 @@ export async function getMaleMembers(): Promise<FamilyMember[]> {
       where: { gender: 'Male' },
       orderBy: { id: 'asc' },
     });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+    return rows.map((row: Record<string, unknown>) => rowToMember(row as unknown as Record<string, unknown>));
   } catch (error) {
     console.error('Error fetching male members:', error);
     return [];
@@ -170,7 +171,7 @@ export async function getChildren(parentId: string): Promise<FamilyMember[]> {
       where: { fatherId: parentId },
       orderBy: { id: 'asc' },
     });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+    return rows.map((row: Record<string, unknown>) => rowToMember(row as unknown as Record<string, unknown>));
   } catch (error) {
     console.error('Error fetching children:', error);
     return [];
@@ -183,7 +184,7 @@ export async function getGen2Branches(): Promise<FamilyMember[]> {
       where: { generation: 2 },
       orderBy: { id: 'asc' },
     });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+    return rows.map((row: Record<string, unknown>) => rowToMember(row as unknown as Record<string, unknown>));
   } catch (error) {
     console.error('Error fetching Gen 2 branches:', error);
     return [];
@@ -264,7 +265,7 @@ export async function createMemberWithAutoId(
 ): Promise<FamilyMember | null> {
   return withRetry(async () => {
     // Use PostgreSQL transaction for atomicity
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Generate ID within the transaction (atomic operation)
       const newId = await generateNextIdInTransaction(tx);
 
@@ -340,7 +341,7 @@ export async function createMember(
   member: Omit<FamilyMember, 'createdAt' | 'updatedAt'>
 ): Promise<FamilyMember | null> {
   return withRetry(async () => {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Check for duplicate ID
       const existing = await tx.familyMember.findUnique({
         where: { id: member.id },
@@ -415,7 +416,7 @@ export async function updateMember(
   expectedVersion?: number
 ): Promise<FamilyMember | null> {
   return withRetry(async () => {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get current member to check version
       const current = await tx.familyMember.findUnique({
         where: { id },
@@ -472,7 +473,7 @@ export async function updateMember(
  */
 export async function deleteMember(id: string): Promise<boolean> {
   return withRetry(async () => {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get member info before deleting (to update parent's count)
       const member = await tx.familyMember.findUnique({
         where: { id },
@@ -529,7 +530,7 @@ export async function bulkCreateMembers(
   let failed = 0;
 
   return withRetry(async () => {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const member of members) {
         try {
           // Check if already exists

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getAllMembers, getChildren } from '@/lib/data';
+import { getAllMembersFromDb, getChildrenFromDb, getMemberByIdFromDb } from '@/lib/db';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
@@ -23,21 +23,23 @@ interface PageProps {
   params: { id: string };
 }
 
-export default function MemberPage({ params }: PageProps) {
-  const allMembers = getAllMembers();
-  const member = allMembers.find((m) => m.id === params.id);
+export default async function MemberPage({ params }: PageProps) {
+  const member = await getMemberByIdFromDb(params.id);
 
   if (!member) {
     notFound();
   }
 
-  const children = getChildren(member.id);
-  const father = member.fatherId ? allMembers.find((m) => m.id === member.fatherId) ?? null : null;
-  const siblings = father ? getChildren(father.id).filter((s) => s.id !== member.id) : [];
+  const allMembers = await getAllMembersFromDb();
+  const children = await getChildrenFromDb(member.id);
+  const father = member.fatherId ? await getMemberByIdFromDb(member.fatherId) : null;
+  const siblings = father ? (await getChildrenFromDb(father.id)).filter((s) => s.id !== member.id) : [];
   const statusBadge = getStatusBadge(member.status);
 
   // Get grandchildren (children of children)
-  const grandchildren = children.flatMap((child) => getChildren(child.id));
+  const grandchildrenPromises = children.map((child) => getChildrenFromDb(child.id));
+  const grandchildrenArrays = await Promise.all(grandchildrenPromises);
+  const grandchildren = grandchildrenArrays.flat();
 
   // Get lineage ancestors for display
   const lineageBranchAncestor = member.lineageBranchId

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAllMembers } from '@/lib/data';
+import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
 
 // Helper to get auth user from request
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
       id?: string;
     }> = [];
 
-    // Get member name suggestions
-    const members = getAllMembers();
+    // Get member name suggestions from database
+    const members = await getAllMembersFromDb();
     const matchingMembers = members
       .filter(m =>
         m.firstName.toLowerCase().includes(query) ||

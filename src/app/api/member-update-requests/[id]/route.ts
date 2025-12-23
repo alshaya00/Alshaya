@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { getMemberById } from '@/lib/data';
+import { getMemberByIdFromDb } from '@/lib/db';
 
 // Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {
@@ -56,7 +56,7 @@ export async function GET(
       }
 
       // Get current member data for comparison
-      const member = getMemberById(updateRequest.memberId);
+      const member = await getMemberByIdFromDb(updateRequest.memberId);
 
       return NextResponse.json({
         success: true,
@@ -276,7 +276,7 @@ export async function DELETE(
 
       // Only submitter or admin can cancel
       const permissions = getPermissionsForRole(user.role);
-      if (updateRequest.submittedById !== user.id && !permissions.manage_users) {
+      if (updateRequest.submittedById !== user.id && !permissions.approve_pending_members) {
         return NextResponse.json(
           { success: false, message: 'Access denied', messageAr: 'الوصول مرفوض' },
           { status: 403 }

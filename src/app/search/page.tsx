@@ -1,15 +1,40 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getAllMembers, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import { calculateAge, getGenerationColor } from '@/lib/utils';
 import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SearchPage() {
-  const allMembers = getAllMembers();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const { session } = useAuth();
+
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
@@ -46,6 +71,18 @@ export default function SearchPage() {
       .filter((m) => m.firstName.toLowerCase().startsWith(query.toLowerCase()))
       .slice(0, 5);
   }, [allMembers, query]);
+
+  // Show loading state
+  if (membersLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8 pb-24 lg:pb-8">

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getStatistics } from '@/lib/data';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   TreePine, Users, BookOpen, Camera, Heart, ChevronLeft,
@@ -11,13 +10,47 @@ import {
 } from 'lucide-react';
 
 // ============================================
+// TYPES
+// ============================================
+interface Statistics {
+  totalMembers: number;
+  males: number;
+  females: number;
+  generations: number;
+}
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
 export default function HomePage() {
-  const stats = getStatistics();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [showPhases, setShowPhases] = useState(false);
+  const [stats, setStats] = useState<Statistics>({ totalMembers: 0, males: 0, females: 0, generations: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // Fetch statistics from API
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/statistics');
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            totalMembers: data.totalMembers || 0,
+            males: data.males || 0,
+            females: data.females || 0,
+            generations: data.generations || 0,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch statistics:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    }
+    fetchStats();
+  }, []);
 
   if (authLoading) {
     return (
