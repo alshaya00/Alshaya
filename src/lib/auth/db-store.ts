@@ -25,6 +25,8 @@ type PrismaAccessRequest = {
   nameArabic: string;
   nameEnglish: string | null;
   phone: string | null;
+  city: string | null;
+  birthDate: Date | null;
   claimedRelation: string;
   relatedMemberId: string | null;
   relationshipType: string | null;
