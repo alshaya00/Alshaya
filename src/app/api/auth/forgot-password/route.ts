@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import {
   findUserByEmail,
   createPasswordResetToken,
@@ -89,9 +88,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Forgot password error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/forgot-password' },
-    });
     return NextResponse.json(
       {
         success: false,

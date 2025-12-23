@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import { prisma } from '@/lib/prisma';
 import {
   findUserById,
@@ -98,9 +97,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('2FA setup error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/2fa/setup' },
-    });
     return NextResponse.json(
       { success: false, message: 'An error occurred', messageAr: 'حدث خطأ' },
       { status: 500 }
@@ -258,9 +254,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('2FA enable error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/2fa/enable' },
-    });
     return NextResponse.json(
       { success: false, message: 'An error occurred', messageAr: 'حدث خطأ' },
       { status: 500 }
@@ -367,9 +360,6 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     console.error('2FA disable error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/2fa/disable' },
-    });
     return NextResponse.json(
       { success: false, message: 'An error occurred', messageAr: 'حدث خطأ' },
       { status: 500 }

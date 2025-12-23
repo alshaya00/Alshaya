@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import { prisma } from '@/lib/prisma';
 import {
   findUserByEmail,
@@ -175,9 +174,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('2FA verify error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/2fa/verify' },
-    });
     return NextResponse.json(
       {
         success: false,

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import {
   validateOAuthState,
   exchangeCodeForTokens,
@@ -145,9 +144,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/oauth-success?data=${sessionData}&redirect=${encodeURIComponent(redirectTo || '/')}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/oauth/callback' },
-    });
     return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed`);
   }
 }
