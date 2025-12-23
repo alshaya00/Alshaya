@@ -15,7 +15,7 @@ async function main() {
   console.log('✅ Old data deleted');
   
   console.log('📖 Reading Excel file...');
-  const workbook = XLSX.readFile('attached_assets/Family_Tree_Ultimate_System_(1)_1766485678560.xlsx');
+  const workbook = XLSX.readFile('attached_assets/Family_Tree_Ultimate_System_(1)_1766495709064.xlsx');
   const registry = workbook.Sheets['REGISTRY'];
   const rows = XLSX.utils.sheet_to_json(registry, { header: 1 }) as any[][];
   
