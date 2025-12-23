@@ -427,14 +427,40 @@ async function sendViaMailgun(config: EmailConfig, options: SendEmailOptions): P
   }
 }
 
-// Note: SMTP requires additional setup with nodemailer
+// SMTP implementation using nodemailer
 async function sendViaSMTP(config: EmailConfig, options: SendEmailOptions): Promise<EmailResult> {
-  // For SMTP, you would typically use nodemailer
-  // This is a placeholder - in a real implementation, you'd import nodemailer
-  return {
-    success: false,
-    error: 'SMTP provider requires nodemailer setup. Please use Resend, SendGrid, or Mailgun instead.'
-  };
+  if (!config.smtpHost || !config.smtpPort) {
+    return { success: false, error: 'SMTP host and port are required' };
+  }
+
+  try {
+    // Dynamic import to avoid issues during build
+    const nodemailer = await import('nodemailer');
+
+    const transporter = nodemailer.default.createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      secure: config.smtpSecure ?? config.smtpPort === 465,
+      auth: config.smtpUser ? {
+        user: config.smtpUser,
+        pass: config.smtpPassword,
+      } : undefined,
+    });
+
+    const mailOptions = {
+      from: `${config.fromName} <${config.fromAddress}>`,
+      to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+      replyTo: options.replyTo,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    return { success: false, error: `SMTP error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+  }
 }
 
 // ============================================

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FamilyMember } from '@/lib/types';
 import { paginationSettings } from '@/config/constants';
+import { generateQRCodeDataURL } from '@/lib/utils/qrcode';
 import {
   Link as LinkIcon,
   Copy,
@@ -22,6 +23,7 @@ export default function QuickAddLinkGenerator() {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   // Load members (public endpoint, no auth needed)
   useEffect(() => {
@@ -75,6 +77,15 @@ export default function QuickAddLinkGenerator() {
   // Selected father info
   const selectedFather = members.find(m => m.id === selectedFatherId);
 
+  // Generate QR code when link changes
+  useEffect(() => {
+    if (generatedLink && showQR) {
+      generateQRCodeDataURL(generatedLink, 200)
+        .then(setQrCodeDataUrl)
+        .catch(err => console.error('Failed to generate QR code:', err));
+    }
+  }, [generatedLink, showQR]);
+
   // Copy to clipboard
   const copyLink = async () => {
     try {
@@ -105,8 +116,6 @@ export default function QuickAddLinkGenerator() {
     }
   };
 
-  // Generate QR Code URL (using QR code API)
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(generatedLink)}`;
 
   return (
     <div className="min-h-screen py-8 bg-gradient-to-b from-emerald-50 to-white">
@@ -288,11 +297,17 @@ export default function QuickAddLinkGenerator() {
             {/* QR Code */}
             {showQR && (
               <div className="mt-4 flex flex-col items-center p-4 bg-white border-2 border-dashed border-gray-200 rounded-xl">
-                <img
-                  src={qrCodeUrl}
-                  alt="QR Code"
-                  className="w-48 h-48 mb-3"
-                />
+                {qrCodeDataUrl ? (
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="QR Code"
+                    className="w-48 h-48 mb-3"
+                  />
+                ) : (
+                  <div className="w-48 h-48 flex items-center justify-center text-gray-400 mb-3">
+                    جاري التحميل...
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 text-center">
                   امسح هذا الرمز بالكاميرا للوصول للرابط
                 </p>

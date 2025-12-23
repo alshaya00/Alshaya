@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
   MapPin,
@@ -11,15 +10,13 @@ import {
   Check,
   HelpCircle,
   X,
-  ChevronLeft,
-  Filter,
   Search,
-  Heart,
   Camera,
   MessageCircle,
   Share2,
-  Bell,
   Sparkles,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyGatherings } from '@/components/ui/EmptyState';
@@ -33,18 +30,19 @@ interface Gathering {
   id: string;
   title: string;
   titleAr: string;
-  description: string;
-  descriptionAr: string;
+  description: string | null;
+  descriptionAr: string | null;
   date: string;
-  time: string;
-  location: string;
-  locationAr: string;
+  time: string | null;
+  location: string | null;
+  locationAr: string | null;
+  locationUrl?: string | null;
   type: 'gathering' | 'wedding' | 'eid' | 'memorial' | 'celebration';
-  coverImage?: string;
+  coverImage?: string | null;
   organizer: {
+    id?: string | null;
     name: string;
     nameAr: string;
-    avatar?: string;
   };
   attendees: {
     confirmed: number;
@@ -53,138 +51,14 @@ interface Gathering {
   };
   userRsvp?: 'yes' | 'maybe' | 'no' | null;
   isPast: boolean;
+  status: string;
+  isPublic: boolean;
   photos?: number;
   comments?: number;
 }
 
 type FilterTab = 'all' | 'upcoming' | 'past' | 'mine';
 type RsvpStatus = 'yes' | 'maybe' | 'no';
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const mockGatherings: Gathering[] = [
-  {
-    id: '1',
-    title: 'Eid Al-Fitr Family Gathering',
-    titleAr: 'لقاء عيد الفطر العائلي',
-    description: 'Annual Eid gathering at the family estate. All family members are welcome!',
-    descriptionAr: 'اللقاء السنوي للعيد في ديوانية العائلة. جميع أفراد العائلة مدعوون!',
-    date: '2025-03-30',
-    time: '10:00',
-    location: 'Family Estate, Riyadh',
-    locationAr: 'ديوانية العائلة، الرياض',
-    type: 'eid',
-    organizer: {
-      name: 'Mohammed Al-Shaye',
-      nameAr: 'محمد آل شايع',
-    },
-    attendees: {
-      confirmed: 45,
-      maybe: 12,
-      total: 99,
-    },
-    userRsvp: null,
-    isPast: false,
-  },
-  {
-    id: '2',
-    title: 'Ahmed & Sara Wedding',
-    titleAr: 'زفاف أحمد وسارة',
-    description: 'Join us in celebrating the wedding of Ahmed bin Khalid and Sara.',
-    descriptionAr: 'شاركونا فرحة زفاف أحمد بن خالد وسارة.',
-    date: '2025-02-15',
-    time: '19:00',
-    location: 'Ritz Carlton, Riyadh',
-    locationAr: 'ريتز كارلتون، الرياض',
-    type: 'wedding',
-    organizer: {
-      name: 'Khalid Al-Shaye',
-      nameAr: 'خالد آل شايع',
-    },
-    attendees: {
-      confirmed: 78,
-      maybe: 5,
-      total: 99,
-    },
-    userRsvp: 'yes',
-    isPast: false,
-  },
-  {
-    id: '3',
-    title: 'Monthly Family Dinner',
-    titleAr: 'العشاء العائلي الشهري',
-    description: 'Our monthly family dinner - great food, great company!',
-    descriptionAr: 'عشاؤنا العائلي الشهري - طعام رائع وصحبة أروع!',
-    date: '2025-01-25',
-    time: '20:00',
-    location: 'Al-Shaye House',
-    locationAr: 'بيت آل شايع',
-    type: 'gathering',
-    organizer: {
-      name: 'Fatima Al-Shaye',
-      nameAr: 'فاطمة آل شايع',
-    },
-    attendees: {
-      confirmed: 23,
-      maybe: 8,
-      total: 99,
-    },
-    userRsvp: 'maybe',
-    isPast: false,
-  },
-  {
-    id: '4',
-    title: 'Grandfather Memorial',
-    titleAr: 'ذكرى الجد',
-    description: 'Commemorating the 10th anniversary of our beloved grandfather.',
-    descriptionAr: 'إحياء الذكرى العاشرة لجدنا الحبيب.',
-    date: '2024-12-01',
-    time: '16:00',
-    location: 'Family Cemetery & Estate',
-    locationAr: 'مقبرة العائلة والديوانية',
-    type: 'memorial',
-    organizer: {
-      name: 'Abdullah Al-Shaye',
-      nameAr: 'عبدالله آل شايع',
-    },
-    attendees: {
-      confirmed: 56,
-      maybe: 0,
-      total: 99,
-    },
-    userRsvp: 'yes',
-    isPast: true,
-    photos: 45,
-    comments: 12,
-  },
-  {
-    id: '5',
-    title: 'Summer Beach Trip',
-    titleAr: 'رحلة الشاطئ الصيفية',
-    description: 'Family beach day at the private beach house.',
-    descriptionAr: 'يوم عائلي على الشاطئ في الشاليه الخاص.',
-    date: '2024-08-15',
-    time: '08:00',
-    location: 'Half Moon Bay',
-    locationAr: 'نصف القمر',
-    type: 'celebration',
-    organizer: {
-      name: 'Omar Al-Shaye',
-      nameAr: 'عمر آل شايع',
-    },
-    attendees: {
-      confirmed: 34,
-      maybe: 0,
-      total: 99,
-    },
-    userRsvp: 'yes',
-    isPast: true,
-    photos: 128,
-    comments: 23,
-  },
-];
 
 // ============================================
 // EVENT TYPE CONFIG
@@ -204,12 +78,51 @@ const eventTypeConfig: Record<Gathering['type'], { label: string; labelAr: strin
 
 export default function GatheringsPage() {
   const { user } = useAuth();
-  const { success } = useToast();
+  const { success, error: showError } = useToast();
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [gatherings, setGatherings] = useState<Gathering[]>(mockGatherings);
+  const [gatherings, setGatherings] = useState<Gathering[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Filter gatherings based on active tab
+  // Fetch gatherings from API
+  const fetchGatherings = useCallback(async (refresh = false) => {
+    try {
+      if (refresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      const params = new URLSearchParams();
+      if (user?.id) {
+        params.set('userId', user.id);
+      }
+
+      const response = await fetch(`/api/gatherings?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setGatherings(data.data || []);
+      } else {
+        console.error('Failed to fetch gatherings:', data.error);
+        showError('فشل في تحميل اللقاءات', 'Failed to load gatherings');
+      }
+    } catch (err) {
+      console.error('Error fetching gatherings:', err);
+      showError('فشل في تحميل اللقاءات', 'Failed to load gatherings');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [user?.id, showError]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchGatherings();
+  }, [fetchGatherings]);
+
+  // Filter gatherings based on active tab and search
   const filteredGatherings = gatherings.filter((g) => {
     // Search filter
     if (searchQuery) {
@@ -217,8 +130,8 @@ export default function GatheringsPage() {
       const matchesSearch =
         g.title.toLowerCase().includes(query) ||
         g.titleAr.includes(query) ||
-        g.location.toLowerCase().includes(query) ||
-        g.locationAr.includes(query);
+        (g.location?.toLowerCase().includes(query) || false) ||
+        (g.locationAr?.includes(query) || false);
       if (!matchesSearch) return false;
     }
 
@@ -236,12 +149,18 @@ export default function GatheringsPage() {
   });
 
   // Handle RSVP
-  const handleRsvp = (gatheringId: string, status: RsvpStatus) => {
+  const handleRsvp = async (gatheringId: string, status: RsvpStatus) => {
+    if (!user) {
+      showError('يجب تسجيل الدخول أولاً', 'Please login first');
+      return;
+    }
+
+    // Optimistic update
+    const oldGatherings = [...gatherings];
     setGatherings((prev) =>
       prev.map((g) => {
         if (g.id !== gatheringId) return g;
 
-        // Update attendee counts
         const oldStatus = g.userRsvp;
         const newAttendees = { ...g.attendees };
 
@@ -249,9 +168,8 @@ export default function GatheringsPage() {
         if (oldStatus === 'yes') newAttendees.confirmed--;
         if (oldStatus === 'maybe') newAttendees.maybe--;
 
-        // Add to new status (or remove if clicking same)
+        // Toggle off if clicking same status
         if (status === oldStatus) {
-          // Toggle off
           return { ...g, userRsvp: null };
         } else {
           if (status === 'yes') newAttendees.confirmed++;
@@ -261,13 +179,39 @@ export default function GatheringsPage() {
       })
     );
 
-    // Show toast
-    const messages: Record<RsvpStatus, { en: string; ar: string }> = {
-      yes: { en: 'You\'re attending!', ar: 'تم تأكيد حضورك!' },
-      maybe: { en: 'Marked as maybe', ar: 'تم التسجيل كمحتمل' },
-      no: { en: 'Can\'t attend', ar: 'لن تتمكن من الحضور' },
-    };
-    success(messages[status].en, messages[status].ar);
+    try {
+      const response = await fetch(`/api/gatherings/${gatheringId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          name: user.nameArabic || user.nameEnglish || user.email,
+          email: user.email,
+          rsvpStatus: status.toUpperCase(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Rollback on failure
+        setGatherings(oldGatherings);
+        showError(data.error || 'فشل في تسجيل الحضور', 'Failed to RSVP');
+        return;
+      }
+
+      // Show success toast
+      const messages: Record<RsvpStatus, { en: string; ar: string }> = {
+        yes: { en: "You're attending!", ar: 'تم تأكيد حضورك!' },
+        maybe: { en: 'Marked as maybe', ar: 'تم التسجيل كمحتمل' },
+        no: { en: "Can't attend", ar: 'لن تتمكن من الحضور' },
+      };
+      success(messages[status].ar, messages[status].en);
+    } catch (err) {
+      console.error('Error RSVPing:', err);
+      setGatherings(oldGatherings);
+      showError('فشل في تسجيل الحضور', 'Failed to RSVP');
+    }
   };
 
   // Format date
@@ -301,12 +245,22 @@ export default function GatheringsPage() {
               <h1 className="text-2xl lg:text-3xl font-bold mb-2">اللقاءات العائلية</h1>
               <p className="text-green-100">اجتمعوا، احتفلوا، واصنعوا ذكريات</p>
             </div>
-            {user && (
-              <button className="flex items-center gap-2 bg-white text-green-600 px-4 py-2.5 rounded-xl font-medium hover:bg-green-50 transition-colors shadow-lg">
-                <Plus size={20} />
-                <span className="hidden sm:inline">إنشاء لقاء</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fetchGatherings(true)}
+                disabled={isRefreshing}
+                className="p-2.5 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-colors disabled:opacity-50"
+                title="تحديث"
+              >
+                <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
               </button>
-            )}
+              {user && (
+                <button className="flex items-center gap-2 bg-white text-green-600 px-4 py-2.5 rounded-xl font-medium hover:bg-green-50 transition-colors shadow-lg">
+                  <Plus size={20} />
+                  <span className="hidden sm:inline">إنشاء لقاء</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Search */}
@@ -351,7 +305,11 @@ export default function GatheringsPage() {
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {filteredGatherings.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+          </div>
+        ) : filteredGatherings.length === 0 ? (
           <EmptyGatherings actionHref="#" />
         ) : (
           <div className="space-y-4">
@@ -373,6 +331,7 @@ export default function GatheringsPage() {
                 onRsvp={handleRsvp}
                 formatDate={formatDate}
                 getDaysUntil={getDaysUntil}
+                isLoggedIn={!!user}
               />
             ))}
           </div>
@@ -398,10 +357,11 @@ interface GatheringCardProps {
   onRsvp: (id: string, status: RsvpStatus) => void;
   formatDate: (date: string) => string;
   getDaysUntil: (date: string) => number;
+  isLoggedIn: boolean;
 }
 
-function GatheringCard({ gathering, onRsvp, formatDate, getDaysUntil }: GatheringCardProps) {
-  const typeConfig = eventTypeConfig[gathering.type];
+function GatheringCard({ gathering, onRsvp, formatDate, getDaysUntil, isLoggedIn }: GatheringCardProps) {
+  const typeConfig = eventTypeConfig[gathering.type] || eventTypeConfig.gathering;
   const daysUntil = getDaysUntil(gathering.date);
 
   return (
@@ -421,13 +381,15 @@ function GatheringCard({ gathering, onRsvp, formatDate, getDaysUntil }: Gatherin
             </h3>
 
             {/* Description */}
-            <p className="text-gray-500 text-sm line-clamp-2">
-              {gathering.descriptionAr}
-            </p>
+            {gathering.descriptionAr && (
+              <p className="text-gray-500 text-sm line-clamp-2">
+                {gathering.descriptionAr}
+              </p>
+            )}
           </div>
 
           {/* Days Until Badge */}
-          {!gathering.isPast && (
+          {!gathering.isPast && daysUntil > 0 && (
             <div className="text-center bg-green-50 rounded-xl px-3 py-2 min-w-[60px]">
               <div className="text-2xl font-bold text-green-600">{daysUntil}</div>
               <div className="text-xs text-green-600">يوم</div>
@@ -441,14 +403,18 @@ function GatheringCard({ gathering, onRsvp, formatDate, getDaysUntil }: Gatherin
             <Calendar size={16} className="text-gray-400" />
             <span>{formatDate(gathering.date)}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Clock size={16} className="text-gray-400" />
-            <span>{gathering.time}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <MapPin size={16} className="text-gray-400" />
-            <span>{gathering.locationAr}</span>
-          </div>
+          {gathering.time && (
+            <div className="flex items-center gap-1.5">
+              <Clock size={16} className="text-gray-400" />
+              <span>{gathering.time}</span>
+            </div>
+          )}
+          {gathering.locationAr && (
+            <div className="flex items-center gap-1.5">
+              <MapPin size={16} className="text-gray-400" />
+              <span>{gathering.locationAr}</span>
+            </div>
+          )}
         </div>
 
         {/* Organizer */}
@@ -486,7 +452,7 @@ function GatheringCard({ gathering, onRsvp, formatDate, getDaysUntil }: Gatherin
               <Share2 size={18} />
             </button>
           </div>
-        ) : (
+        ) : isLoggedIn ? (
           <div className="flex gap-2">
             <button
               onClick={() => onRsvp(gathering.id, 'yes')}
@@ -509,6 +475,10 @@ function GatheringCard({ gathering, onRsvp, formatDate, getDaysUntil }: Gatherin
               <X size={18} />
               <span>لا</span>
             </button>
+          </div>
+        ) : (
+          <div className="text-center py-2 text-sm text-gray-500">
+            سجل الدخول للمشاركة في هذا اللقاء
           </div>
         )}
       </div>
