@@ -23,7 +23,7 @@ import {
   Mail,
   History,
 } from 'lucide-react';
-import { familyMembers, buildFamilyTree } from '@/lib/data';
+import { useAuth } from '@/contexts/AuthContext';
 import { validateParentChange } from '@/lib/edit-utils';
 import { FamilyMember, TreeNode } from '@/lib/types';
 
@@ -51,6 +51,7 @@ interface PendingChange {
 }
 
 export default function TreeEditorPage() {
+  const { session } = useAuth();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,11 +69,37 @@ export default function TreeEditorPage() {
   });
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingDrop, setPendingDrop] = useState<{ nodeId: string; newParentId: string } | null>(null);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [treeData, setTreeData] = useState<TreeNode | null>(null);
 
-  // Tree data
-  const treeData = useMemo(() => {
-    return buildFamilyTree() as unknown as TreeNode | null;
-  }, []);
+  // Fetch tree data from API
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+
+        // Fetch tree structure
+        const treeResponse = await fetch('/api/tree', { headers });
+        if (treeResponse.ok) {
+          const tree = await treeResponse.json();
+          setTreeData(tree as TreeNode);
+        }
+
+        // Fetch all members for lookup
+        const membersResponse = await fetch('/api/members?limit=500', { headers });
+        if (membersResponse.ok) {
+          const result = await membersResponse.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    }
+    fetchData();
+  }, [session?.token]);
 
   // D3 references
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -338,9 +365,9 @@ export default function TreeEditorPage() {
   const confirmParentChange = useCallback(() => {
     if (!pendingDrop) return;
 
-    const member = familyMembers.find(m => m.id === pendingDrop.nodeId);
-    const oldParent = familyMembers.find(m => m.id === member?.fatherId);
-    const newParent = familyMembers.find(m => m.id === pendingDrop.newParentId);
+    const member = allMembers.find(m => m.id === pendingDrop.nodeId);
+    const oldParent = allMembers.find(m => m.id === member?.fatherId);
+    const newParent = allMembers.find(m => m.id === pendingDrop.newParentId);
 
     if (member) {
       const change: PendingChange = {
@@ -689,9 +716,9 @@ export default function TreeEditorPage() {
             </div>
             <p className="text-gray-600 mb-6">
               هل تريد تغيير أب العضو <strong>{
-                familyMembers.find(m => m.id === pendingDrop.nodeId)?.firstName
+                allMembers.find(m => m.id === pendingDrop.nodeId)?.firstName
               }</strong> إلى <strong>{
-                familyMembers.find(m => m.id === pendingDrop.newParentId)?.firstName
+                allMembers.find(m => m.id === pendingDrop.newParentId)?.firstName
               }</strong>؟
             </p>
             <div className="flex gap-3 justify-end">

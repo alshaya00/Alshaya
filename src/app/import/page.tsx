@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -18,7 +18,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import { familyMembers } from '@/lib/data';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   parseJSON,
   parseCSV,
@@ -37,6 +37,8 @@ interface ConflictResolution {
 }
 
 export default function ImportPage() {
+  const { session } = useAuth();
+
   // State
   const [currentStep, setCurrentStep] = useState<ImportStep>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -53,6 +55,27 @@ export default function ImportPage() {
   // UI state
   const [expandedConflicts, setExpandedConflicts] = useState<number[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
 
   // Handle file drop/select
   const handleFileSelect = useCallback(async (selectedFile: File) => {
@@ -81,7 +104,7 @@ export default function ImportPage() {
       setImportedMembers(result.members);
 
       // Prepare import (detect conflicts)
-      const prepared = prepareImport(result.members, familyMembers);
+      const prepared = prepareImport(result.members, allMembers);
       setNewMembers(prepared.newMembers);
       setConflicts(prepared.conflicts);
       setValidationErrors(prepared.errors);
@@ -96,7 +119,7 @@ export default function ImportPage() {
     } catch (error) {
       setParseError('خطأ في قراءة الملف: ' + (error as Error).message);
     }
-  }, []);
+  }, [allMembers]);
 
   // Handle drag and drop
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -153,7 +176,7 @@ export default function ImportPage() {
       // Here you would send to API to persist changes
       // For now, we'll save to localStorage as a demonstration
 
-      const existingMembers = [...familyMembers];
+      const existingMembers = [...allMembers];
       const importResults = {
         added: [] as FamilyMember[],
         updated: [] as FamilyMember[],

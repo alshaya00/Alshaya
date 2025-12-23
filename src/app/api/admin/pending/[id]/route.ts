@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { getNextId, addMemberToMemory } from '@/lib/data';
+import { randomUUID } from 'crypto';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -117,39 +117,11 @@ export async function POST(
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     if (action === 'approve') {
-      // Create the family member
-      const newId = getNextId();
+      // Generate a unique ID for the new member
+      const newId = `P${randomUUID().slice(0, 8).toUpperCase()}`;
 
-      let newMember;
-      try {
-        newMember = await prisma.familyMember.create({
-          data: {
-            id: newId,
-            firstName: pending.firstName,
-            fatherName: pending.fatherName,
-            grandfatherName: pending.grandfatherName,
-            greatGrandfatherName: pending.greatGrandfatherName,
-            familyName: pending.familyName,
-            fatherId: pending.proposedFatherId,
-            gender: pending.gender as 'Male' | 'Female',
-            birthYear: pending.birthYear,
-            generation: pending.generation,
-            branch: pending.branch,
-            fullNameAr: pending.fullNameAr,
-            fullNameEn: pending.fullNameEn,
-            phone: pending.phone,
-            city: pending.city,
-            status: pending.status,
-            occupation: pending.occupation,
-            email: pending.email,
-            sonsCount: 0,
-            daughtersCount: 0,
-          },
-        });
-      } catch (dbError) {
-        // Fallback to in-memory if database fails
-        console.log('Database create failed, using in-memory fallback:', dbError);
-        newMember = addMemberToMemory({
+      const newMember = await prisma.familyMember.create({
+        data: {
           id: newId,
           firstName: pending.firstName,
           fatherName: pending.fatherName,
@@ -165,15 +137,13 @@ export async function POST(
           fullNameEn: pending.fullNameEn,
           phone: pending.phone,
           city: pending.city,
-          status: pending.status || 'Living',
+          status: pending.status,
           occupation: pending.occupation,
           email: pending.email,
           sonsCount: 0,
           daughtersCount: 0,
-          photoUrl: null,
-          biography: null,
-        });
-      }
+        },
+      });
 
       // Update pending status
       await prisma.pendingMember.update({

@@ -2,19 +2,24 @@
 
 import { useState } from 'react';
 import { Download, FileText, Loader2, CheckCircle, Share2 } from 'lucide-react';
-import { getAllMembers, getStatistics, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
 
 interface ExportPDFProps {
   className?: string;
+  members: FamilyMember[];
+  stats: {
+    totalMembers: number;
+    generations: number;
+    males: number;
+    females: number;
+  };
 }
 
-export default function ExportPDF({ className = '' }: ExportPDFProps) {
+export default function ExportPDF({ className = '', members, stats }: ExportPDFProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportComplete, setExportComplete] = useState(false);
 
   const generatePDFContent = (): string => {
-    const members = getAllMembers();
-    const stats = getStatistics();
 
     // Group members by generation
     const generations: Record<number, FamilyMember[]> = {};
@@ -318,14 +323,12 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
 }
 
 // Simple export button for embedding in other components
-export function ExportButton({ onExport }: { onExport?: () => void }) {
+export function ExportButton({ onExport, members }: { onExport?: () => void; members: FamilyMember[] }) {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const members = getAllMembers();
-
       // Generate CSV content
       const csvHeader = 'ID,الاسم الكامل,الجنس,الجيل,الفرع,سنة الميلاد,المدينة,المهنة\n';
       const csvRows = members
