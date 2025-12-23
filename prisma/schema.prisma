@@ -188,6 +188,8 @@ model User {
   nameEnglish     String?
   phone           String?
   avatarUrl       String?
+  city            String?  // مدينة الإقامة
+  birthDate       DateTime? // تاريخ الميلاد
 
   // Role & Status
   role            String   @default("MEMBER") // SUPER_ADMIN, ADMIN, BRANCH_LEADER, MEMBER, GUEST
@@ -280,6 +282,8 @@ model AccessRequest {
   nameArabic      String
   nameEnglish     String?
   phone           String?
+  city            String?  // مدينة الإقامة
+  birthDate       DateTime? // تاريخ الميلاد
 
   // How they claim to be related
   claimedRelation String   // "Son of محمد", "Daughter of أحمد", etc.
@@ -650,6 +654,56 @@ model ExportJob {
 
   @@index([exportedBy])
   @@index([exportedAt])
+}
+
+// ============================================
+// MEMBER UPDATE REQUESTS (for member data edit approvals)
+// When members suggest updates to family member data
+// ============================================
+
+model MemberUpdateRequest {
+  id              String   @id @default(cuid())
+
+  // Which member this update is for
+  memberId        String
+  memberName      String   // Store name for display even if member deleted
+
+  // Who submitted the request
+  submittedById   String?  // User ID (null for anonymous)
+  submittedByName String   // Name of submitter
+  submittedByEmail String? // Email for contact
+
+  // What changes are proposed (JSON object with field: newValue pairs)
+  proposedChanges String   // { "phone": "0551234567", "city": "الرياض", "birthYear": 1990 }
+
+  // Fields that can be updated:
+  // - birthYear, deathYear
+  // - phone, email, city
+  // - photoUrl, biography, occupation
+  // - status (Living/Deceased)
+
+  // For photo uploads
+  proposedPhotoData String? // Base64 encoded photo if updating photo
+
+  // Review workflow
+  status          String   @default("PENDING") // PENDING, APPROVED, PARTIALLY_APPROVED, REJECTED
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  reviewNotes     String?  // Admin notes on the decision
+
+  // Which fields were approved (if partially approved)
+  approvedFields  String?  // JSON array of approved field names
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  ipAddress       String?
+
+  @@index([memberId])
+  @@index([status])
+  @@index([submittedById])
+  @@index([createdAt])
 }
 
 // ============================================
