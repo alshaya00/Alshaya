@@ -87,7 +87,7 @@ export default function RegisterPage() {
   };
 
   const handleMemberSelect = (memberId: string) => {
-    const member = familyMembers.find((m) => m.id === memberId);
+    const member = allMembers.find((m) => m.id === memberId);
     setFormData({
       ...formData,
       relatedMemberId: memberId,
