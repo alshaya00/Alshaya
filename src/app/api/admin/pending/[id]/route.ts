@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { getNextIdFromDb, createMemberInDb } from '@/lib/db';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

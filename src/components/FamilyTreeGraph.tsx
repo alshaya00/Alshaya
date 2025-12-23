@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
-import { FamilyMember, getGen2Branches } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Users, Home, GitBranch, Layers, Star } from 'lucide-react';
 import { generationColors, lineageColors, rootColor } from '@/config/theme';
 
@@ -43,13 +43,13 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [colorMode, setColorMode] = useState<ColorMode>('generation');
 
-  // Get Gen 2 branches for lineage coloring
-  const gen2Branches = useMemo(() => getGen2Branches(), []);
+  // Get Gen 2 branches for lineage coloring (computed from members)
+  const gen2Branches = useMemo(() => members.filter(m => m.generation === 2), [members]);
 
   // Create a mapping of branch ID to color index
   const branchColorMap = useMemo(() => {
     const map = new Map<string, number>();
-    gen2Branches.forEach((branch, index) => {
+    gen2Branches.forEach((branch: FamilyMember, index: number) => {
       map.set(branch.id, index % LINEAGE_COLORS.length);
     });
     return map;
@@ -724,7 +724,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                 >
                   الجذر
                 </div>
-                {gen2Branches.map((branch, index) => {
+                {gen2Branches.map((branch: FamilyMember, index: number) => {
                   const colors = LINEAGE_COLORS[index % LINEAGE_COLORS.length];
                   return (
                     <div

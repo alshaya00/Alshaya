@@ -10,7 +10,7 @@
  */
 
 import * as postgresDb from './postgres-db';
-import { FamilyMember } from './data';
+import type { FamilyMember } from './types';
 
 // Re-export error types for use by consumers
 export { DatabaseError, ConcurrencyError, DuplicateIdError } from './postgres-db';
@@ -109,7 +109,11 @@ export async function getGen2BranchesFromDb(): Promise<FamilyMember[]> {
  */
 export async function addMemberToDb(member: Omit<FamilyMember, 'id' | 'createdAt' | 'updatedAt' | 'version'>): Promise<FamilyMember> {
   try {
-    return await postgresDb.createMemberWithAutoId(member);
+    const result = await postgresDb.createMemberWithAutoId(member);
+    if (!result) {
+      throw new Error('Failed to create member');
+    }
+    return result;
   } catch (error) {
     console.error('Error adding member:', error);
     throw error;
@@ -125,7 +129,11 @@ export async function updateMemberInDb(
   expectedVersion?: number
 ): Promise<FamilyMember> {
   try {
-    return await postgresDb.updateMember(id, updates, expectedVersion);
+    const result = await postgresDb.updateMember(id, updates, expectedVersion);
+    if (!result) {
+      throw new Error(`Member with ID ${id} not found`);
+    }
+    return result;
   } catch (error) {
     console.error('Error updating member:', error);
     throw error;

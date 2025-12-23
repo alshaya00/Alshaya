@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, ChevronDown, X, User } from 'lucide-react';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 
 interface SearchableDropdownProps {
   options: FamilyMember[];

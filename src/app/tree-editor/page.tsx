@@ -23,9 +23,8 @@ import {
   Mail,
   History,
 } from 'lucide-react';
-import { FamilyMember as DataMember } from '@/lib/data';
 import { validateParentChange } from '@/lib/edit-utils';
-import { FamilyMember, TreeNode } from '@/lib/types';
+import type { FamilyMember, TreeNode } from '@/lib/types';
 
 interface D3Node extends d3.HierarchyPointNode<TreeNode> {
   x0?: number;

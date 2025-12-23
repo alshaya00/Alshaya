@@ -21,7 +21,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 
 interface ChangeRecord {
   id: string;

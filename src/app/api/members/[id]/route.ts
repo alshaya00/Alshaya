@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb, updateMemberInDb, deleteMemberFromDb } from '@/lib/db';
 import { randomUUID } from 'crypto';

@@ -24,7 +24,6 @@ import {
   Eye,
   AlertCircle,
 } from 'lucide-react';
-import { FamilyMember as DataFamilyMember } from '@/lib/data';
 import {
   validateEdit,
   validateParentChange,
@@ -32,7 +31,7 @@ import {
   calculateCascadeUpdates,
   CascadeUpdate,
 } from '@/lib/edit-utils';
-import { FamilyMember, ValidationError } from '@/lib/types';
+import type { FamilyMember, ValidationError } from '@/lib/types';
 
 type EditSection = 'identity' | 'family' | 'personal' | 'contact';
 

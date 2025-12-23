@@ -20,9 +20,8 @@ import {
   Filter,
   Loader2,
 } from 'lucide-react';
-import { FamilyMember as DataMember } from '@/lib/data';
 import { findDuplicates, DuplicateMatch } from '@/lib/import-utils';
-import { FamilyMember } from '@/lib/types';
+import type { FamilyMember } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface DuplicatePair {

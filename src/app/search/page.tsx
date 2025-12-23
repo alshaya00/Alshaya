@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 import { calculateAge, getGenerationColor } from '@/lib/utils';
 import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';

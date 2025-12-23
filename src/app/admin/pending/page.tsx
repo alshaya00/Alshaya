@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 import {
   getPendingMembers,
   updatePendingStatus,

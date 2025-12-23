@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
   Users, Lock, ArrowRight, Loader2, X, Search

@@ -19,7 +19,7 @@ import {
   Filter,
   Loader2,
 } from 'lucide-react';
-import { FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
 import {
   ALL_EXPORT_FIELDS,
   FIELD_CATEGORIES,

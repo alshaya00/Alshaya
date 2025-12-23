@@ -10,7 +10,7 @@
  */
 
 import { prisma } from './prisma';
-import { FamilyMember } from './data';
+import type { FamilyMember } from './types';
 
 // Constants for retry mechanism
 const MAX_RETRIES = 5;

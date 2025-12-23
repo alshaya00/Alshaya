@@ -1,8 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, FileText, Loader2, CheckCircle, Share2 } from 'lucide-react';
-import { getAllMembers, getStatistics, FamilyMember } from '@/lib/data';
+import type { FamilyMember } from '@/lib/types';
+
+interface Statistics {
+  totalMembers: number;
+  males: number;
+  females: number;
+  generations: number;
+}
 
 interface ExportPDFProps {
   className?: string;
@@ -11,12 +18,35 @@ interface ExportPDFProps {
 export default function ExportPDF({ className = '' }: ExportPDFProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportComplete, setExportComplete] = useState(false);
+  const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [stats, setStats] = useState<Statistics>({ totalMembers: 0, males: 0, females: 0, generations: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [membersRes, statsRes] = await Promise.all([
+          fetch('/api/members?limit=500'),
+          fetch('/api/statistics')
+        ]);
+        if (membersRes.ok) {
+          const data = await membersRes.json();
+          setMembers(data.data || []);
+        }
+        if (statsRes.ok) {
+          const data = await statsRes.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const generatePDFContent = (): string => {
-    const members = getAllMembers();
-    const stats = getStatistics();
-
-    // Group members by generation
     const generations: Record<number, FamilyMember[]> = {};
     members.forEach((member) => {
       if (!generations[member.generation]) {
@@ -25,7 +55,6 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
       generations[member.generation].push(member);
     });
 
-    // Generate HTML content for PDF
     const html = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -104,13 +133,13 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
             page-break-inside: avoid;
           }
 
-          .gen-header {
-            background: linear-gradient(to left, #16a34a, #15803d);
+          .generation-title {
+            background: linear-gradient(135deg, #16a34a, #22c55e);
             color: white;
             padding: 10px 20px;
             border-radius: 8px;
             margin-bottom: 15px;
-            font-weight: bold;
+            font-size: 18px;
           }
 
           .members-grid {
@@ -127,30 +156,21 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
           }
 
           .member-name {
-            font-weight: bold;
+            font-weight: 600;
             color: #1f2937;
             margin-bottom: 4px;
           }
 
-          .member-id {
-            font-size: 11px;
-            color: #9ca3af;
-          }
-
           .member-details {
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
-            margin-top: 4px;
           }
-
-          .male { border-right: 4px solid #3b82f6; }
-          .female { border-right: 4px solid #ec4899; }
 
           .footer {
             margin-top: 40px;
+            text-align: center;
             padding-top: 20px;
             border-top: 1px solid #e5e7eb;
-            text-align: center;
             color: #9ca3af;
             font-size: 12px;
           }
@@ -165,13 +185,13 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
         <div class="header">
           <div class="logo">🌳</div>
           <h1>شجرة عائلة آل شايع</h1>
-          <p class="subtitle">Al-Shaye Family Tree Registry</p>
+          <p class="subtitle">Al-Shaye Family Tree - التوثيق الرقمي للتراث العائلي</p>
         </div>
 
         <div class="stats">
           <div class="stat-card">
             <div class="stat-value">${stats.totalMembers}</div>
-            <div class="stat-label">إجمالي الأعضاء</div>
+            <div class="stat-label">إجمالي الأفراد</div>
           </div>
           <div class="stat-card">
             <div class="stat-value">${stats.generations}</div>
@@ -189,35 +209,28 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
 
         ${Object.entries(generations)
           .sort(([a], [b]) => Number(a) - Number(b))
-          .map(
-            ([gen, members]) => `
-          <div class="generation">
-            <div class="gen-header">
-              الجيل ${gen} (${members.length} عضو)
-            </div>
-            <div class="members-grid">
-              ${members
-                .map(
-                  (m) => `
-                <div class="member-card ${m.gender === 'Male' ? 'male' : 'female'}">
-                  <div class="member-name">${m.fullNameAr || m.firstName}</div>
-                  <div class="member-id">${m.id}</div>
-                  <div class="member-details">
-                    ${m.branch || ''} ${m.birthYear ? `• ${m.birthYear}` : ''}
+          .map(([gen, genMembers]) => `
+            <div class="generation">
+              <div class="generation-title">
+                الجيل ${gen} - ${genMembers.length} فرد
+              </div>
+              <div class="members-grid">
+                ${genMembers.map(member => `
+                  <div class="member-card">
+                    <div class="member-name">${member.fullNameAr || member.firstName}</div>
+                    <div class="member-details">
+                      ${member.birthYear ? `مواليد ${member.birthYear}` : ''}
+                      ${member.status === 'Deceased' ? ' - متوفى' : ''}
+                    </div>
                   </div>
-                </div>
-              `
-                )
-                .join('')}
+                `).join('')}
+              </div>
             </div>
-          </div>
-        `
-          )
-          .join('')}
+          `).join('')}
 
         <div class="footer">
-          <p>تم التصدير بتاريخ: ${new Date().toLocaleDateString('ar-SA')}</p>
-          <p>شجرة آل شايع - Al-Shaye Family Tree</p>
+          <p>تم إنشاء هذا المستند بواسطة نظام شجرة آل شايع</p>
+          <p>Generated on ${new Date().toLocaleDateString('ar-SA')}</p>
         </div>
       </body>
       </html>
@@ -227,143 +240,66 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
   };
 
   const handleExport = async () => {
+    if (isLoading) return;
+    
     setIsExporting(true);
     setExportComplete(false);
 
     try {
+      await new Promise(resolve => setTimeout(resolve, 500));
       const htmlContent = generatePDFContent();
-
-      // Open in new window for printing
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-
-        // Wait for content to load then print
         printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
+          printWindow.print();
         };
       }
-
       setExportComplete(true);
-      setTimeout(() => setExportComplete(false), 3000);
     } catch (error) {
-      console.error('Export error:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleShareImage = async () => {
-    setIsExporting(true);
-
-    try {
-      const htmlContent = generatePDFContent();
-
-      // Create a blob with the HTML content
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-
-      // Download as HTML file
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `شجرة_آل_شايع_${new Date().toISOString().split('T')[0]}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      setExportComplete(true);
-      setTimeout(() => setExportComplete(false), 3000);
-    } catch (error) {
-      console.error('Export error:', error);
+      console.error('Error exporting PDF:', error);
     } finally {
       setIsExporting(false);
     }
   };
 
   return (
-    <div className={`flex flex-wrap gap-3 ${className}`}>
+    <div className={`${className}`}>
       <button
         onClick={handleExport}
-        disabled={isExporting}
-        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all disabled:opacity-50"
+        disabled={isExporting || isLoading}
+        className={`
+          flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
+          ${exportComplete
+            ? 'bg-green-100 text-green-700 border border-green-200'
+            : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-md hover:shadow-lg'
+          }
+          disabled:opacity-50 disabled:cursor-not-allowed
+        `}
       >
         {isExporting ? (
-          <Loader2 size={18} className="animate-spin" />
+          <>
+            <Loader2 size={18} className="animate-spin" />
+            <span>جاري التصدير...</span>
+          </>
         ) : exportComplete ? (
-          <CheckCircle size={18} />
+          <>
+            <CheckCircle size={18} />
+            <span>تم التصدير</span>
+          </>
+        ) : isLoading ? (
+          <>
+            <Loader2 size={18} className="animate-spin" />
+            <span>جاري التحميل...</span>
+          </>
         ) : (
-          <FileText size={18} />
+          <>
+            <Download size={18} />
+            <span>تصدير PDF</span>
+          </>
         )}
-        طباعة / PDF
-      </button>
-
-      <button
-        onClick={handleShareImage}
-        disabled={isExporting}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all disabled:opacity-50"
-      >
-        {isExporting ? (
-          <Loader2 size={18} className="animate-spin" />
-        ) : (
-          <Download size={18} />
-        )}
-        تحميل HTML
       </button>
     </div>
-  );
-}
-
-// Simple export button for embedding in other components
-export function ExportButton({ onExport }: { onExport?: () => void }) {
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      const members = getAllMembers();
-
-      // Generate CSV content
-      const csvHeader = 'ID,الاسم الكامل,الجنس,الجيل,الفرع,سنة الميلاد,المدينة,المهنة\n';
-      const csvRows = members
-        .map(
-          (m) =>
-            `${m.id},"${m.fullNameAr || m.firstName}",${m.gender === 'Male' ? 'ذكر' : 'أنثى'},${m.generation},"${m.branch || ''}",${m.birthYear || ''},"${m.city || ''}","${m.occupation || ''}"`
-        )
-        .join('\n');
-
-      const csvContent = csvHeader + csvRows;
-
-      // Download CSV
-      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `آل_شايع_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      onExport?.();
-    } catch (error) {
-      console.error('Export error:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleExport}
-      disabled={isExporting}
-      className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 hover:border-green-500 text-gray-700 hover:text-green-600 rounded-lg transition-all disabled:opacity-50"
-    >
-      {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-      تصدير CSV
-    </button>
   );
 }

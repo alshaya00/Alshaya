@@ -19,7 +19,6 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
-import { FamilyMember as DataMember } from '@/lib/data';
 import {
   parseJSON,
   parseCSV,
@@ -27,7 +26,7 @@ import {
   mergeMembers,
   MergeStrategy,
 } from '@/lib/import-utils';
-import { FamilyMember, ImportConflict, FieldConflict, ValidationError } from '@/lib/types';
+import type { FamilyMember, ImportConflict, FieldConflict, ValidationError } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ImportStep = 'upload' | 'preview' | 'conflicts' | 'complete';
