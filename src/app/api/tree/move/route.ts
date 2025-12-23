@@ -55,7 +55,8 @@ function calculateGeneration(parentId: string | null): number {
 
 // Helper to update generations for all descendants
 async function updateDescendantGenerations(
-  tx: typeof prisma,
+  // eslint-disable-next-line
+  tx: any,
   memberId: string,
   newGeneration: number
 ): Promise<number> {

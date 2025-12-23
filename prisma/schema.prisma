@@ -205,6 +205,11 @@ model User {
   lastLoginAt     DateTime?
   emailVerifiedAt DateTime?
 
+  // 2FA fields
+  twoFactorEnabled    Boolean  @default(false)
+  twoFactorSecret     String?
+  twoFactorBackupCodes String?
+
   // Relations
   sessions        Session[]
   invitesSent     Invite[] @relation("InviteSender")

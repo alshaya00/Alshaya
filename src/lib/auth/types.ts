@@ -406,6 +406,7 @@ export interface SiteSettings {
   familyNameEnglish: string;
   taglineArabic: string;
   taglineEnglish: string;
+  logoUrl?: string;
   defaultLanguage: string;
   sessionDurationDays: number;
   rememberMeDurationDays: number;

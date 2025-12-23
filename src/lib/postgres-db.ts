@@ -240,7 +240,8 @@ export async function memberExists(id: string): Promise<boolean> {
  * Generate the next available ID atomically within a transaction
  * This prevents race conditions where two concurrent requests get the same ID
  */
-async function generateNextIdInTransaction(tx: typeof prisma): Promise<string> {
+// eslint-disable-next-line
+async function generateNextIdInTransaction(tx: any): Promise<string> {
   const result = await tx.familyMember.findFirst({
     orderBy: { id: 'desc' },
     select: { id: true },
