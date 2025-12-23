@@ -120,19 +120,25 @@ npm run start  # Start production server
 
 ## Recent Changes (Dec 2024)
 
-### Database Migration Complete
-All pages and API routes now fetch from PostgreSQL instead of static data:
-- **389 family members** imported from production database
+### Database Migration Complete - No Static Fallbacks
+All pages and API routes now fetch exclusively from PostgreSQL:
+- **389 family members** in production database
 - **10 generations** of family history preserved
 - All API routes (`/api/members`, `/api/statistics`, `/api/tree`, etc.) use Prisma queries
-- Frontend pages (tree, search, registry, etc.) fetch from APIs using `useEffect` hooks
+- **No static data fallbacks** - database errors throw immediately (no silent failures)
+- Frontend pages fetch from APIs using `useEffect` hooks
 - Server components use direct database functions from `src/lib/db.ts`
+
+### Data Layer Architecture
+- `src/lib/db.ts` - Thin wrapper over postgres-db.ts, throws errors on failure
+- `src/lib/postgres-db.ts` - Direct Prisma queries, no try/catch fallbacks
+- `src/lib/data.ts` - Type definitions only (no longer used for data)
 
 ### Updated Files
 - `src/app/tree/page.tsx` - Fetches members from API
 - `src/app/search/page.tsx` - Fetches from API with loading states
 - `src/app/member/[id]/page.tsx` - Server component using database functions
-- `src/app/registry/page.tsx` - Already using API
+- `src/app/registry/page.tsx` - Fetches from API
 - `src/app/branches/page.tsx` - Fetches from API
 - `src/app/edit/[id]/page.tsx` - Fetches from API
 - `src/app/register/page.tsx` - Fetches from API
