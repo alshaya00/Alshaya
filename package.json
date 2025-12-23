@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 5000",
+    "prebuild": "rm -rf .next",
     "build": "prisma generate && next build",
     "start": "tsx scripts/ensure-admin.ts && next start -H 0.0.0.0 -p 5000",
     "lint": "next lint",
