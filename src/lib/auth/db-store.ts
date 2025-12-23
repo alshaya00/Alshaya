@@ -1,5 +1,5 @@
 // Database-backed authentication store using Prisma (PostgreSQL)
-// Migrated from better-sqlite3 to use the main Prisma database
+// This module handles all auth operations via the main PostgreSQL database
 
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword as verifyPasswordHash, generateSessionToken, generateInviteCode } from './password';
