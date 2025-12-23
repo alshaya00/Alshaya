@@ -331,7 +331,7 @@ export default async function MemberPage({ params }: PageProps) {
               </div>
             )}
 
-            <MemberBreastfeedingSection memberId={member.id} />
+            <MemberBreastfeedingSection member={member} />
             <MemberStoriesSection memberId={member.id} memberName={member.firstName} />
 
             <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t">
