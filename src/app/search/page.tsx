@@ -35,23 +35,68 @@ export default function SearchPage() {
     }
   }, [session?.token]);
 
+  const buildAncestorChain = (member: FamilyMember, membersMap: Map<string, FamilyMember>, maxDepth = 10): string => {
+    const ancestors: string[] = [member.firstName];
+    let currentId = member.fatherId;
+    let depth = 0;
+    
+    while (currentId && depth < maxDepth) {
+      const father = membersMap.get(currentId);
+      if (father) {
+        ancestors.push(father.firstName);
+        currentId = father.fatherId;
+      } else {
+        break;
+      }
+      depth++;
+    }
+    
+    return ancestors.join(' بن ');
+  };
+
+  const membersMap = useMemo(() => {
+    const map = new Map<string, FamilyMember>();
+    allMembers.forEach(m => map.set(m.id, m));
+    return map;
+  }, [allMembers]);
+
+  const membersWithAncestry = useMemo(() => {
+    return allMembers.map(m => ({
+      ...m,
+      ancestorChain: buildAncestorChain(m, membersMap)
+    }));
+  }, [allMembers, membersMap]);
+
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
 
     const term = query.toLowerCase().trim();
-    return allMembers.filter(
-      (m) =>
-        m.firstName.toLowerCase().includes(term) ||
-        m.fullNameAr?.toLowerCase().includes(term) ||
-        m.fullNameEn?.toLowerCase().includes(term) ||
-        m.id.toLowerCase().includes(term) ||
-        m.city?.toLowerCase().includes(term) ||
-        m.occupation?.toLowerCase().includes(term) ||
-        m.fatherName?.toLowerCase().includes(term) ||
-        m.lineageBranchName?.toLowerCase().includes(term) ||
-        m.subBranchName?.toLowerCase().includes(term)
-    );
-  }, [allMembers, query]);
+    const terms = term.split(/\s+/).filter(t => t.length > 0);
+    
+    return membersWithAncestry
+      .filter((m) => {
+        const ancestorChainLower = m.ancestorChain.toLowerCase();
+        const allTermsMatch = terms.every(t => ancestorChainLower.includes(t));
+        
+        return allTermsMatch ||
+          m.firstName.toLowerCase().includes(term) ||
+          m.fullNameAr?.toLowerCase().includes(term) ||
+          m.fullNameEn?.toLowerCase().includes(term) ||
+          m.id.toLowerCase().includes(term) ||
+          m.city?.toLowerCase().includes(term) ||
+          m.occupation?.toLowerCase().includes(term) ||
+          m.fatherName?.toLowerCase().includes(term) ||
+          m.lineageBranchName?.toLowerCase().includes(term) ||
+          m.subBranchName?.toLowerCase().includes(term);
+      })
+      .sort((a, b) => {
+        const aChainLower = a.ancestorChain.toLowerCase();
+        const bChainLower = b.ancestorChain.toLowerCase();
+        const aMatchCount = terms.filter(t => aChainLower.includes(t)).length;
+        const bMatchCount = terms.filter(t => bChainLower.includes(t)).length;
+        return bMatchCount - aMatchCount;
+      });
+  }, [membersWithAncestry, query]);
 
   const handleSearch = (searchTerm: string) => {
     setQuery(searchTerm);
@@ -66,10 +111,10 @@ export default function SearchPage() {
 
   const suggestions = useMemo(() => {
     if (query.length < 2) return [];
-    return allMembers
-      .filter((m) => m.firstName.toLowerCase().startsWith(query.toLowerCase()))
+    return membersWithAncestry
+      .filter((m) => m.ancestorChain.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 5);
-  }, [allMembers, query]);
+  }, [membersWithAncestry, query]);
 
   if (isLoading) {
     return (
@@ -124,10 +169,10 @@ export default function SearchPage() {
                 {suggestions.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => setQuery(s.firstName)}
+                    onClick={() => setQuery(s.ancestorChain)}
                     className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition-colors"
                   >
-                    {s.firstName}
+                    {s.ancestorChain}
                   </button>
                 ))}
               </div>
@@ -175,11 +220,13 @@ export default function SearchPage() {
                     {member.gender === 'Male' ? '👨' : '👩'}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-800">{member.firstName}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-gray-800">{member.ancestorChain}</span>
                       <span className="text-xs text-gray-400">({member.id})</span>
                     </div>
-                    <p className="text-sm text-gray-500">{member.fullNameAr}</p>
+                    {member.fullNameAr && member.fullNameAr !== member.ancestorChain && (
+                      <p className="text-sm text-gray-500">{member.fullNameAr}</p>
+                    )}
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                       {member.branch && (
                         <span className="flex items-center gap-1">
