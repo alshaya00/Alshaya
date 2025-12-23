@@ -128,66 +128,41 @@ export async function isDatabaseAvailable(): Promise<boolean> {
 }
 
 export async function getAllMembers(): Promise<FamilyMember[]> {
-  try {
-    const rows = await prisma.familyMember.findMany({
-      orderBy: { id: 'asc' },
-    });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
-  } catch (error) {
-    console.error('Error fetching all members:', error);
-    return [];
-  }
+  const rows = await prisma.familyMember.findMany({
+    orderBy: { id: 'asc' },
+  });
+  return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
 }
 
 export async function getMemberById(id: string): Promise<FamilyMember | null> {
-  try {
-    const row = await prisma.familyMember.findUnique({
-      where: { id },
-    });
-    return row ? rowToMember(row as unknown as Record<string, unknown>) : null;
-  } catch (error) {
-    console.error('Error fetching member by id:', error);
-    return null;
-  }
+  const row = await prisma.familyMember.findUnique({
+    where: { id },
+  });
+  return row ? rowToMember(row as unknown as Record<string, unknown>) : null;
 }
 
 export async function getMaleMembers(): Promise<FamilyMember[]> {
-  try {
-    const rows = await prisma.familyMember.findMany({
-      where: { gender: 'Male' },
-      orderBy: { id: 'asc' },
-    });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
-  } catch (error) {
-    console.error('Error fetching male members:', error);
-    return [];
-  }
+  const rows = await prisma.familyMember.findMany({
+    where: { gender: 'Male' },
+    orderBy: { id: 'asc' },
+  });
+  return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
 }
 
 export async function getChildren(parentId: string): Promise<FamilyMember[]> {
-  try {
-    const rows = await prisma.familyMember.findMany({
-      where: { fatherId: parentId },
-      orderBy: { id: 'asc' },
-    });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
-  } catch (error) {
-    console.error('Error fetching children:', error);
-    return [];
-  }
+  const rows = await prisma.familyMember.findMany({
+    where: { fatherId: parentId },
+    orderBy: { id: 'asc' },
+  });
+  return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
 }
 
 export async function getGen2Branches(): Promise<FamilyMember[]> {
-  try {
-    const rows = await prisma.familyMember.findMany({
-      where: { generation: 2 },
-      orderBy: { id: 'asc' },
-    });
-    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
-  } catch (error) {
-    console.error('Error fetching Gen 2 branches:', error);
-    return [];
-  }
+  const rows = await prisma.familyMember.findMany({
+    where: { generation: 2 },
+    orderBy: { id: 'asc' },
+  });
+  return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
 }
 
 /**
@@ -196,44 +171,29 @@ export async function getGen2Branches(): Promise<FamilyMember[]> {
  * which generates the ID atomically within a transaction.
  */
 export async function getNextId(): Promise<string> {
-  try {
-    const result = await prisma.familyMember.findFirst({
-      orderBy: { id: 'desc' },
-      select: { id: true },
-    });
-    if (!result) return 'P001';
+  const result = await prisma.familyMember.findFirst({
+    orderBy: { id: 'desc' },
+    select: { id: true },
+  });
+  if (!result) return 'P001';
 
-    const numPart = parseInt(result.id.replace('P', ''));
-    return `P${String(numPart + 1).padStart(3, '0')}`;
-  } catch (error) {
-    console.error('Error getting next ID:', error);
-    return 'P001';
-  }
+  const numPart = parseInt(result.id.replace('P', ''));
+  return `P${String(numPart + 1).padStart(3, '0')}`;
 }
 
 export async function getMemberCount(): Promise<number> {
-  try {
-    return await prisma.familyMember.count();
-  } catch (error) {
-    console.error('Error getting member count:', error);
-    return 0;
-  }
+  return await prisma.familyMember.count();
 }
 
 /**
  * Check if a member ID already exists
  */
 export async function memberExists(id: string): Promise<boolean> {
-  try {
-    const result = await prisma.familyMember.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-    return result !== null;
-  } catch (error) {
-    console.error('Error checking member existence:', error);
-    return false;
-  }
+  const result = await prisma.familyMember.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  return result !== null;
 }
 
 /**
@@ -587,53 +547,10 @@ export async function bulkCreateMembers(
 }
 
 export async function getStatistics() {
-  try {
-    const members = await getAllMembers();
-    const totalMembers = members.length;
+  const members = await getAllMembers();
+  const totalMembers = members.length;
 
-    if (totalMembers === 0) {
-      return {
-        totalMembers: 0,
-        males: 0,
-        females: 0,
-        generations: 0,
-        branches: [],
-        generationBreakdown: [],
-      };
-    }
-
-    const males = members.filter(m => m.gender === 'Male').length;
-    const females = members.filter(m => m.gender === 'Female').length;
-    const generations = Math.max(...members.map(m => m.generation));
-
-    const branches = [...new Set(members.map(m => m.branch).filter(Boolean))] as string[];
-    const branchCounts = branches.map(branch => ({
-      name: branch,
-      count: members.filter(m => m.branch === branch).length,
-    }));
-
-    const generationBreakdown = Array.from({ length: generations }, (_, i) => {
-      const gen = i + 1;
-      const genMembers = members.filter(m => m.generation === gen);
-      return {
-        generation: gen,
-        count: genMembers.length,
-        males: genMembers.filter(m => m.gender === 'Male').length,
-        females: genMembers.filter(m => m.gender === 'Female').length,
-        percentage: totalMembers > 0 ? Math.round((genMembers.length / totalMembers) * 100) : 0,
-      };
-    });
-
-    return {
-      totalMembers,
-      males,
-      females,
-      generations,
-      branches: branchCounts,
-      generationBreakdown,
-    };
-  } catch (error) {
-    console.error('Error getting statistics:', error);
+  if (totalMembers === 0) {
     return {
       totalMembers: 0,
       males: 0,
@@ -643,6 +560,37 @@ export async function getStatistics() {
       generationBreakdown: [],
     };
   }
+
+  const males = members.filter(m => m.gender === 'Male').length;
+  const females = members.filter(m => m.gender === 'Female').length;
+  const generations = Math.max(...members.map(m => m.generation));
+
+  const branches = [...new Set(members.map(m => m.branch).filter(Boolean))] as string[];
+  const branchCounts = branches.map(branch => ({
+    name: branch,
+    count: members.filter(m => m.branch === branch).length,
+  }));
+
+  const generationBreakdown = Array.from({ length: generations }, (_, i) => {
+    const gen = i + 1;
+    const genMembers = members.filter(m => m.generation === gen);
+    return {
+      generation: gen,
+      count: genMembers.length,
+      males: genMembers.filter(m => m.gender === 'Male').length,
+      females: genMembers.filter(m => m.gender === 'Female').length,
+      percentage: totalMembers > 0 ? Math.round((genMembers.length / totalMembers) * 100) : 0,
+    };
+  });
+
+  return {
+    totalMembers,
+    males,
+    females,
+    generations,
+    branches: branchCounts,
+    generationBreakdown,
+  };
 }
 
 /**
