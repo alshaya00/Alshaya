@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import {
   validateOAuthState,
   exchangeCodeForTokens,
@@ -12,6 +13,13 @@ import {
   logActivity,
 } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+// Generate a cryptographically secure random password for OAuth users
+// This password is never used since OAuth users authenticate via provider
+function generateSecureOAuthPassword(): string {
+  // Generate 32 random bytes and encode as base64
+  return `oauth_${randomBytes(32).toString('base64url')}`;
+}
 
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -58,10 +66,11 @@ export async function GET(request: NextRequest) {
     let user = await findUserByEmail(userInfo.email);
 
     if (!user) {
-      // Create new user
+      // Create new user with secure random password
+      // OAuth users don't use password auth - this is just to satisfy the schema
       user = await createUser({
         email: userInfo.email,
-        password: `oauth_${provider}_${userInfo.id}`, // Placeholder password
+        password: generateSecureOAuthPassword(),
         nameArabic: userInfo.name,
         nameEnglish: userInfo.name,
         role: 'MEMBER',
