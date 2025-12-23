@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import {
   getBranchLinks,
   createBranchLink,
@@ -14,9 +14,10 @@ import {
 import {
   GitBranch, Link2, Copy, Check, Users, ChevronDown,
   ChevronRight, ExternalLink, Bell, Share2, MessageCircle,
-  TreePine, Eye, QrCode, UserPlus, Zap
+  TreePine, Eye, QrCode, UserPlus, Zap, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BranchData {
   head: FamilyMember;
@@ -28,7 +29,6 @@ interface BranchData {
   fullName: string;
 }
 
-// Build full lineage name
 function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], maxDepth: number = 4): string {
   const names: string[] = [member.firstName];
   let current = member;
@@ -57,8 +57,34 @@ export default function BranchesPage() {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [totalPending, setTotalPending] = useState(0);
   const [showLinkModal, setShowLinkModal] = useState<BranchData | null>(null);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { session } = useAuth();
 
-  const allMembers = getAllMembers();
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500', {
+          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (session?.token) {
+      fetchMembers();
+    }
+  }, [session?.token]);
+
+  const getMemberById = (id: string): FamilyMember | undefined => {
+    return allMembers.find(m => m.id === id);
+  };
 
   // Find main branches (children of root P001)
   useEffect(() => {

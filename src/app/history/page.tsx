@@ -21,7 +21,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
-import { familyMembers } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 
 interface ChangeRecord {
   id: string;
@@ -44,7 +44,6 @@ interface Snapshot {
 }
 
 export default function HistoryPage() {
-  // State
   const [activeTab, setActiveTab] = useState<'changes' | 'snapshots'>('changes');
   const [changes, setChanges] = useState<ChangeRecord[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
@@ -58,8 +57,23 @@ export default function HistoryPage() {
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [snapshotName, setSnapshotName] = useState('');
   const [snapshotDescription, setSnapshotDescription] = useState('');
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
-  // Load data from localStorage
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500');
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      }
+    }
+    fetchMembers();
+  }, []);
+
   useEffect(() => {
     const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');
     const treeChanges = JSON.parse(localStorage.getItem('alshaye_tree_changes') || '[]');
@@ -141,7 +155,7 @@ export default function HistoryPage() {
       id: `snapshot_${Date.now()}`,
       name: snapshotName,
       description: snapshotDescription,
-      memberCount: familyMembers.length,
+      memberCount: allMembers.length,
       createdAt: new Date().toISOString(),
       createdBy: 'Admin',
       type: 'MANUAL'
@@ -150,7 +164,7 @@ export default function HistoryPage() {
     // Save snapshot data
     const snapshotData = {
       ...newSnapshot,
-      members: familyMembers
+      members: allMembers
     };
 
     const storedSnapshots = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
@@ -329,7 +343,7 @@ export default function HistoryPage() {
                   className="px-4 py-2 border rounded-lg"
                 >
                   <option value="">جميع الأعضاء</option>
-                  {familyMembers.slice(0, 20).map(m => (
+                  {allMembers.slice(0, 20).map(m => (
                     <option key={m.id} value={m.id}>{m.firstName} ({m.id})</option>
                   ))}
                 </select>
@@ -571,7 +585,7 @@ export default function HistoryPage() {
               <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
                 <div className="flex items-center gap-2 mb-1">
                   <User className="w-4 h-4" />
-                  سيتم حفظ {familyMembers.length} عضو
+                  سيتم حفظ {allMembers.length} عضو
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMemberById, getChildren } from '@/lib/data';
+import { getMemberByIdFromDb } from '@/lib/db';
 
-// GET /api/breastfeeding - Get all breastfeeding relationships
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const relationships = await prisma.breastfeedingRelationship.findMany({
       include: {
@@ -29,7 +28,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/breastfeeding - Create a new breastfeeding relationship
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -43,7 +41,6 @@ export async function POST(request: NextRequest) {
       breastfeedingYear,
     } = body;
 
-    // Validate required fields
     if (!childId) {
       return NextResponse.json(
         { success: false, error: 'childId is required' },
@@ -51,7 +48,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Must have either nurseId or externalNurseName
     if (!nurseId && !externalNurseName) {
       return NextResponse.json(
         { success: false, error: 'Either nurseId or externalNurseName is required' },
@@ -59,8 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate child exists
-    const child = getMemberById(childId);
+    const child = await getMemberByIdFromDb(childId);
     if (!child) {
       return NextResponse.json(
         { success: false, error: 'Child member not found' },
@@ -68,16 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate nurse exists if nurseId provided
     if (nurseId) {
-      const nurse = getMemberById(nurseId);
+      const nurse = await getMemberByIdFromDb(nurseId);
       if (!nurse) {
         return NextResponse.json(
           { success: false, error: 'Nurse member not found' },
           { status: 404 }
         );
       }
-      // Nurse should typically be female
       if (nurse.gender !== 'Female') {
         return NextResponse.json(
           { success: false, error: 'Nurse (milk mother) should be female' },
@@ -86,9 +79,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate milk father exists if milkFatherId provided
     if (milkFatherId) {
-      const milkFather = getMemberById(milkFatherId);
+      const milkFather = await getMemberByIdFromDb(milkFatherId);
       if (!milkFather) {
         return NextResponse.json(
           { success: false, error: 'Milk father member not found' },
@@ -103,7 +95,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for duplicate relationship
     const existingRelationship = await prisma.breastfeedingRelationship.findFirst({
       where: {
         childId,
@@ -121,7 +112,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the relationship
     const relationship = await prisma.breastfeedingRelationship.create({
       data: {
         childId,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import {
   getLinkByToken,
   addPendingMember,
@@ -16,7 +16,7 @@ import BranchTreeViewer from '@/components/BranchTreeViewer';
 import {
   User, Plus, Check, ChevronDown, Search, ArrowRight, ArrowLeft,
   TreePine, Clock, AlertCircle, X, Eye, Send, Edit2, Trash2,
-  CheckCircle, Users, GitBranch, Info, List, Maximize2
+  CheckCircle, Users, GitBranch, Info, List, Maximize2, Loader2
 } from 'lucide-react';
 
 // Step definitions
@@ -217,10 +217,26 @@ export default function BranchEntryPage() {
   const [showTreeViewer, setShowTreeViewer] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const allMembers = getAllMembers();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
-  // Load link and branch head
   useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch('/api/members?limit=500');
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching members:', err);
+      }
+    }
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (allMembers.length === 0) return;
+
     const foundLink = getLinkByToken(token);
     if (!foundLink) {
       setError('الرابط غير صالح أو منتهي الصلاحية');
@@ -228,7 +244,7 @@ export default function BranchEntryPage() {
       return;
     }
 
-    const head = getMemberById(foundLink.branchHeadId);
+    const head = allMembers.find(m => m.id === foundLink.branchHeadId);
     if (!head) {
       setError('لم يتم العثور على رأس الفرع');
       setLoading(false);
@@ -240,11 +256,10 @@ export default function BranchEntryPage() {
     setFatherId(head.id);
     setLoading(false);
 
-    // Load session members
     const pending = getPendingMembers();
     const fromThisLink = pending.filter(p => p.submittedVia === token && p.status === 'pending');
     setSessionMembers(fromThisLink);
-  }, [token]);
+  }, [token, allMembers]);
 
   // Get branch members for father selection
   const branchMembers = useMemo(() => {

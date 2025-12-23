@@ -4,16 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
-import { familyMembers } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
   Users, Lock, ArrowRight, Loader2, X, Search
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
-
-// ============================================
-// TYPES
-// ============================================
 
 interface FormData {
   email: string;
@@ -30,16 +26,12 @@ interface FormData {
 
 type JoinPath = 'invite' | 'request' | 'browse' | null;
 
-// Use relationship types from centralized config
 const RELATIONSHIP_TYPES = relationshipTypes;
-
-// ============================================
-// MAIN COMPONENT
-// ============================================
 
 export default function RegisterPage() {
   const router = useRouter();
   const [joinPath, setJoinPath] = useState<JoinPath>(null);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -59,8 +51,22 @@ export default function RegisterPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
-  // Filter family members for search
-  const filteredMembers = familyMembers.filter((m) => {
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500');
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      }
+    }
+    fetchMembers();
+  }, []);
+
+  const filteredMembers = allMembers.filter((m) => {
     if (!searchQuery) return false;
     const query = searchQuery.toLowerCase();
     return (
@@ -71,7 +77,7 @@ export default function RegisterPage() {
   }).slice(0, 10);
 
   const selectedMember = formData.relatedMemberId
-    ? familyMembers.find((m) => m.id === formData.relatedMemberId)
+    ? allMembers.find((m) => m.id === formData.relatedMemberId)
     : null;
 
   const handleChange = (

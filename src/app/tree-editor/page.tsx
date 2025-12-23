@@ -23,7 +23,7 @@ import {
   Mail,
   History,
 } from 'lucide-react';
-import { familyMembers, buildFamilyTree } from '@/lib/data';
+import { FamilyMember as DataMember } from '@/lib/data';
 import { validateParentChange } from '@/lib/edit-utils';
 import { FamilyMember, TreeNode } from '@/lib/types';
 
@@ -50,11 +50,55 @@ interface PendingChange {
   newParentName: string | null;
 }
 
+function buildFamilyTreeFromMembers(members: FamilyMember[]): TreeNode | null {
+  if (members.length === 0) return null;
+
+  const memberMap = new Map<string, TreeNode>();
+  members.forEach(m => {
+    memberMap.set(m.id, { ...m, children: [] } as unknown as TreeNode);
+  });
+
+  let root: TreeNode | null = null;
+  memberMap.forEach((node, id) => {
+    const member = members.find(m => m.id === id);
+    if (member?.fatherId && memberMap.has(member.fatherId)) {
+      const parent = memberMap.get(member.fatherId);
+      if (parent) {
+        parent.children = parent.children || [];
+        parent.children.push(node);
+      }
+    } else if (!member?.fatherId) {
+      root = node;
+    }
+  });
+
+  return root;
+}
+
 export default function TreeEditorPage() {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // State
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500');
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchMembers();
+  }, []);
+
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
@@ -69,10 +113,9 @@ export default function TreeEditorPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingDrop, setPendingDrop] = useState<{ nodeId: string; newParentId: string } | null>(null);
 
-  // Tree data
   const treeData = useMemo(() => {
-    return buildFamilyTree() as unknown as TreeNode | null;
-  }, []);
+    return buildFamilyTreeFromMembers(allMembers);
+  }, [allMembers]);
 
   // D3 references
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -338,9 +381,9 @@ export default function TreeEditorPage() {
   const confirmParentChange = useCallback(() => {
     if (!pendingDrop) return;
 
-    const member = familyMembers.find(m => m.id === pendingDrop.nodeId);
-    const oldParent = familyMembers.find(m => m.id === member?.fatherId);
-    const newParent = familyMembers.find(m => m.id === pendingDrop.newParentId);
+    const member = allMembers.find(m => m.id === pendingDrop.nodeId);
+    const oldParent = allMembers.find(m => m.id === member?.fatherId);
+    const newParent = allMembers.find(m => m.id === pendingDrop.newParentId);
 
     if (member) {
       const change: PendingChange = {
@@ -689,9 +732,9 @@ export default function TreeEditorPage() {
             </div>
             <p className="text-gray-600 mb-6">
               هل تريد تغيير أب العضو <strong>{
-                familyMembers.find(m => m.id === pendingDrop.nodeId)?.firstName
+                allMembers.find(m => m.id === pendingDrop.nodeId)?.firstName
               }</strong> إلى <strong>{
-                familyMembers.find(m => m.id === pendingDrop.newParentId)?.firstName
+                allMembers.find(m => m.id === pendingDrop.newParentId)?.firstName
               }</strong>؟
             </p>
             <div className="flex gap-3 justify-end">

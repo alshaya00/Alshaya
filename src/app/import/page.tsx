@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -17,8 +17,9 @@ import {
   ArrowLeftRight,
   Check,
   X,
+  Loader2,
 } from 'lucide-react';
-import { familyMembers } from '@/lib/data';
+import { FamilyMember as DataMember } from '@/lib/data';
 import {
   parseJSON,
   parseCSV,
@@ -27,6 +28,7 @@ import {
   MergeStrategy,
 } from '@/lib/import-utils';
 import { FamilyMember, ImportConflict, FieldConflict, ValidationError } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ImportStep = 'upload' | 'preview' | 'conflicts' | 'complete';
 
@@ -37,11 +39,34 @@ interface ConflictResolution {
 }
 
 export default function ImportPage() {
-  // State
   const [currentStep, setCurrentStep] = useState<ImportStep>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [parseError, setParseError] = useState<string>('');
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const { session } = useAuth();
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500', {
+          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+    if (session?.token) {
+      fetchMembers();
+    }
+  }, [session?.token]);
 
   // Import data
   const [importedMembers, setImportedMembers] = useState<Partial<FamilyMember>[]>([]);
@@ -81,7 +106,7 @@ export default function ImportPage() {
       setImportedMembers(result.members);
 
       // Prepare import (detect conflicts)
-      const prepared = prepareImport(result.members, familyMembers);
+      const prepared = prepareImport(result.members, allMembers);
       setNewMembers(prepared.newMembers);
       setConflicts(prepared.conflicts);
       setValidationErrors(prepared.errors);
@@ -153,7 +178,7 @@ export default function ImportPage() {
       // Here you would send to API to persist changes
       // For now, we'll save to localStorage as a demonstration
 
-      const existingMembers = [...familyMembers];
+      const existingMembers = [...allMembers];
       const importResults = {
         added: [] as FamilyMember[],
         updated: [] as FamilyMember[],

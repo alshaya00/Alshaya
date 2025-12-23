@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAllMembers } from '@/lib/data';
+import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
 
-// Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -19,7 +18,6 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// GET /api/search/suggestions - Get search suggestions based on query
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -43,8 +41,7 @@ export async function GET(request: NextRequest) {
       id?: string;
     }> = [];
 
-    // Get member name suggestions
-    const members = getAllMembers();
+    const members = await getAllMembersFromDb();
     const matchingMembers = members
       .filter(m =>
         m.firstName.toLowerCase().includes(query) ||
@@ -63,7 +60,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get unique branches
     const branches = [...new Set(members.map(m => m.branch).filter(Boolean))];
     const matchingBranches = branches
       .filter(b => b?.toLowerCase().includes(query))
@@ -78,7 +74,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get unique cities
     const cities = [...new Set(members.map(m => m.city).filter(Boolean))];
     const matchingCities = cities
       .filter(c => c?.toLowerCase().includes(query))
@@ -93,7 +88,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get recent search history if authenticated
     let recentSearches: string[] = [];
     if (includeHistory) {
       try {
@@ -111,10 +105,8 @@ export async function GET(request: NextRequest) {
             select: { query: true },
           });
 
-          // Deduplicate
           recentSearches = Array.from(new Set(history.map((h: { query: string }) => h.query)));
 
-          // Add history suggestions
           for (const historyQuery of recentSearches) {
             if (!suggestions.some(s => s.value.toLowerCase() === historyQuery.toLowerCase())) {
               suggestions.push({
@@ -130,7 +122,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Limit total suggestions
     const limitedSuggestions = suggestions.slice(0, limit);
 
     return NextResponse.json({

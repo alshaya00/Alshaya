@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -18,10 +18,12 @@ import {
   Check,
   X,
   Filter,
+  Loader2,
 } from 'lucide-react';
-import { familyMembers } from '@/lib/data';
+import { FamilyMember as DataMember } from '@/lib/data';
 import { findDuplicates, DuplicateMatch } from '@/lib/import-utils';
 import { FamilyMember } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DuplicatePair {
   member1: FamilyMember;
@@ -32,14 +34,37 @@ interface DuplicatePair {
 }
 
 export default function DuplicatesPage() {
-  // State
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { session } = useAuth();
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500', {
+          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (session?.token) {
+      fetchMembers();
+    }
+  }, [session?.token]);
+
   const [threshold, setThreshold] = useState(60);
   const [isScanning, setIsScanning] = useState(false);
   const [duplicatePairs, setDuplicatePairs] = useState<DuplicatePair[]>([]);
   const [expandedPairs, setExpandedPairs] = useState<number[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // Scan for duplicates
   const scanForDuplicates = () => {
     setIsScanning(true);
 
@@ -47,13 +72,12 @@ export default function DuplicatesPage() {
       const pairs: DuplicatePair[] = [];
       const processedPairs = new Set<string>();
 
-      for (let i = 0; i < familyMembers.length; i++) {
-        const member = familyMembers[i];
-        const otherMembers = familyMembers.filter(m => m.id !== member.id);
+      for (let i = 0; i < allMembers.length; i++) {
+        const member = allMembers[i];
+        const otherMembers = allMembers.filter(m => m.id !== member.id);
         const matches = findDuplicates(member, otherMembers, threshold);
 
         for (const match of matches) {
-          // Create unique pair key (sorted IDs)
           const pairKey = [member.id, match.existingMember.id].sort().join('-');
 
           if (!processedPairs.has(pairKey)) {
@@ -69,7 +93,6 @@ export default function DuplicatesPage() {
         }
       }
 
-      // Sort by score descending
       pairs.sort((a, b) => b.score - a.score);
       setDuplicatePairs(pairs);
       setIsScanning(false);

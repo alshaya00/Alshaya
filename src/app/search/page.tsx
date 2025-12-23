@@ -1,15 +1,39 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getAllMembers, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import { calculateAge, getGenerationColor } from '@/lib/utils';
-import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch } from 'lucide-react';
+import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SearchPage() {
-  const allMembers = getAllMembers();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const { session } = useAuth();
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/members?limit=500', {
+          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching members:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (session?.token) {
+      fetchMembers();
+    }
+  }, [session?.token]);
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
@@ -47,10 +71,20 @@ export default function SearchPage() {
       .slice(0, 5);
   }, [allMembers, query]);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen py-8 pb-24 lg:pb-8">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-3">
             <SearchIcon className="text-blue-600" size={36} />
@@ -59,7 +93,6 @@ export default function SearchPage() {
           <p className="text-gray-600 mt-2">ابحث عن أي فرد من أفراد العائلة</p>
         </div>
 
-        {/* Search Box */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <div className="relative">
             <SearchIcon
@@ -84,7 +117,6 @@ export default function SearchPage() {
             )}
           </div>
 
-          {/* Quick Suggestions */}
           {suggestions.length > 0 && query && (
             <div className="mt-2 border-t pt-2">
               <p className="text-xs text-gray-500 mb-2">اقتراحات:</p>
@@ -102,7 +134,6 @@ export default function SearchPage() {
             </div>
           )}
 
-          {/* Recent Searches */}
           {recentSearches.length > 0 && !query && (
             <div className="mt-4">
               <p className="text-sm text-gray-500 mb-2">عمليات البحث الأخيرة:</p>
@@ -121,141 +152,78 @@ export default function SearchPage() {
           )}
         </div>
 
-        {/* Search Results */}
         {query && (
-          <div className="mb-4 text-gray-600">
-            تم العثور على <span className="font-bold">{searchResults.length}</span> نتيجة للبحث عن &ldquo;
-            <span className="font-bold">{query}</span>&rdquo;
-          </div>
-        )}
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+            <p className="text-gray-600 mb-4">
+              {searchResults.length === 0
+                ? 'لم يتم العثور على نتائج'
+                : `تم العثور على ${searchResults.length} نتيجة`}
+            </p>
 
-        {searchResults.length > 0 && (
-          <div className="space-y-4">
-            {searchResults.map((member) => (
-              <div
-                key={member.id}
-                className={`bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow ${
-                  member.gender === 'Male' ? 'member-card-male' : 'member-card-female'
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
+            <div className="space-y-3">
+              {searchResults.slice(0, 50).map((member) => (
+                <Link
+                  key={member.id}
+                  href={`/member/${member.id}`}
+                  className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                >
                   <div
-                    className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl shrink-0 ${
-                      member.gender === 'Male'
-                        ? 'bg-blue-100 border-2 border-blue-400'
-                        : 'bg-pink-100 border-2 border-pink-400'
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl ${
+                      member.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
                     }`}
                   >
                     {member.gender === 'Male' ? '👨' : '👩'}
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-bold text-gray-800">{member.firstName}</h3>
-                      <span className="text-sm text-gray-500">({member.id})</span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${getGenerationColor(
-                          member.generation
-                        )}`}
-                      >
-                        ج{member.generation}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-800">{member.firstName}</span>
+                      <span className="text-xs text-gray-400">({member.id})</span>
                     </div>
-
-                    <p className="text-gray-600 text-sm mb-2">{member.fullNameAr}</p>
-
-                    {/* Lineage Badge */}
-                    {member.lineageBranchName && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                          <GitBranch size={12} />
-                          فرع {member.lineageBranchName}
-                        </span>
-                        {member.subBranchName && member.generation > 3 && (
-                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
-                            ذرية {member.subBranchName}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                      {member.birthYear && (
+                    <p className="text-sm text-gray-500">{member.fullNameAr}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                      {member.branch && (
                         <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          {member.birthYear} ({calculateAge(member.birthYear)} سنة)
+                          <GitBranch size={12} />
+                          {member.branch}
                         </span>
                       )}
                       {member.city && (
                         <span className="flex items-center gap-1">
-                          <MapPin size={14} />
+                          <MapPin size={12} />
                           {member.city}
                         </span>
                       )}
-                      {member.occupation && (
+                      {member.birthYear && (
                         <span className="flex items-center gap-1">
-                          <User size={14} />
-                          {member.occupation}
+                          <Calendar size={12} />
+                          {member.birthYear}
                         </span>
                       )}
                     </div>
                   </div>
-
-                  {/* Action */}
-                  <Link
-                    href={`/member/${member.id}`}
-                    className="flex items-center gap-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors shrink-0"
-                  >
-                    <Eye size={16} />
-                    عرض
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* No Results */}
-        {query && searchResults.length === 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">لا توجد نتائج</h3>
-            <p className="text-gray-600">
-              لم نتمكن من العثور على أي فرد يطابق بحثك. جرب كلمات مختلفة.
-            </p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!query && (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <div className="text-6xl mb-4">🔎</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">ابدأ البحث</h3>
-            <p className="text-gray-600 mb-6">
-              أدخل اسم الشخص أو رقمه للبحث في قاعدة بيانات العائلة
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <button
-                onClick={() => setQuery('محمد')}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                محمد
-              </button>
-              <button
-                onClick={() => setQuery('الرياض')}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                الرياض
-              </button>
-              <button
-                onClick={() => setQuery('مهندس')}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                مهندس
-              </button>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full text-white ${getGenerationColor(
+                        member.generation
+                      )}`}
+                    >
+                      الجيل {member.generation}
+                    </span>
+                    <Eye size={16} className="text-gray-400" />
+                  </div>
+                </Link>
+              ))}
             </div>
+          </div>
+        )}
+
+        {!query && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <User size={64} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-xl font-bold text-gray-700 mb-2">ابدأ البحث</h3>
+            <p className="text-gray-500">
+              اكتب اسم الشخص أو رقمه أو المدينة أو المهنة للبحث
+            </p>
           </div>
         )}
       </div>

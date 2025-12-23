@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { getNextId, addMemberToMemory } from '@/lib/data';
+import { getNextIdFromDb, createMemberInDb } from '@/lib/db';
+import { FamilyMember } from '@/lib/data';
 
-// Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -20,7 +20,6 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// GET /api/admin/pending/[id] - Get a specific pending member
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -63,7 +62,6 @@ export async function GET(
   }
 }
 
-// POST /api/admin/pending/[id] - Approve or reject a pending member
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -117,65 +115,42 @@ export async function POST(
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     if (action === 'approve') {
-      // Create the family member
-      const newId = getNextId();
+      const newId = await getNextIdFromDb();
 
-      let newMember;
-      try {
-        newMember = await prisma.familyMember.create({
-          data: {
-            id: newId,
-            firstName: pending.firstName,
-            fatherName: pending.fatherName,
-            grandfatherName: pending.grandfatherName,
-            greatGrandfatherName: pending.greatGrandfatherName,
-            familyName: pending.familyName,
-            fatherId: pending.proposedFatherId,
-            gender: pending.gender as 'Male' | 'Female',
-            birthYear: pending.birthYear,
-            generation: pending.generation,
-            branch: pending.branch,
-            fullNameAr: pending.fullNameAr,
-            fullNameEn: pending.fullNameEn,
-            phone: pending.phone,
-            city: pending.city,
-            status: pending.status,
-            occupation: pending.occupation,
-            email: pending.email,
-            sonsCount: 0,
-            daughtersCount: 0,
-          },
-        });
-      } catch (dbError) {
-        // Fallback to in-memory if database fails
-        console.log('Database create failed, using in-memory fallback:', dbError);
-        newMember = addMemberToMemory({
-          id: newId,
-          firstName: pending.firstName,
-          fatherName: pending.fatherName,
-          grandfatherName: pending.grandfatherName,
-          greatGrandfatherName: pending.greatGrandfatherName,
-          familyName: pending.familyName,
-          fatherId: pending.proposedFatherId,
-          gender: pending.gender as 'Male' | 'Female',
-          birthYear: pending.birthYear,
-          generation: pending.generation,
-          branch: pending.branch,
-          fullNameAr: pending.fullNameAr,
-          fullNameEn: pending.fullNameEn,
-          phone: pending.phone,
-          city: pending.city,
-          status: pending.status || 'Living',
-          occupation: pending.occupation,
-          email: pending.email,
-          sonsCount: 0,
-          daughtersCount: 0,
-          photoUrl: null,
-          biography: null,
-        });
+      const memberData: Omit<FamilyMember, 'createdAt' | 'updatedAt'> = {
+        id: newId,
+        firstName: pending.firstName,
+        fatherName: pending.fatherName,
+        grandfatherName: pending.grandfatherName,
+        greatGrandfatherName: pending.greatGrandfatherName,
+        familyName: pending.familyName,
+        fatherId: pending.proposedFatherId,
+        gender: pending.gender as 'Male' | 'Female',
+        birthYear: pending.birthYear,
+        generation: pending.generation,
+        branch: pending.branch,
+        fullNameAr: pending.fullNameAr,
+        fullNameEn: pending.fullNameEn,
+        phone: pending.phone,
+        city: pending.city,
+        status: pending.status || 'Living',
+        occupation: pending.occupation,
+        email: pending.email,
+        sonsCount: 0,
+        daughtersCount: 0,
+        photoUrl: null,
+        biography: null,
+      };
+
+      const newMember = await createMemberInDb(memberData);
+
+      if (!newMember) {
+        return NextResponse.json(
+          { success: false, message: 'Failed to create member' },
+          { status: 500 }
+        );
       }
 
-      // Update pending status
       await prisma.pendingMember.update({
         where: { id: params.id },
         data: {
@@ -187,7 +162,6 @@ export async function POST(
         },
       });
 
-      // Log activity
       await logActivity({
         userId: user.id,
         userEmail: user.email,
@@ -257,7 +231,6 @@ export async function POST(
   }
 }
 
-// DELETE /api/admin/pending/[id] - Delete a pending member
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

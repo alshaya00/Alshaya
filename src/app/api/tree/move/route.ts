@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
-import { getMemberById, familyMembers, updateMemberInMemory } from '@/lib/data';
+import { getMemberByIdFromDb, getAllMembersFromDb, updateMemberInDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
 
-// Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -21,8 +20,8 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// Helper to check if a member is a descendant of another
-function isDescendant(potentialDescendantId: string, ancestorId: string): boolean {
+async function isDescendant(potentialDescendantId: string, ancestorId: string): Promise<boolean> {
+  const allMembers = await getAllMembersFromDb();
   const visited = new Set<string>();
   const queue = [ancestorId];
 
@@ -31,7 +30,7 @@ function isDescendant(potentialDescendantId: string, ancestorId: string): boolea
     if (visited.has(currentId)) continue;
     visited.add(currentId);
 
-    const children = familyMembers.filter(m => m.fatherId === currentId);
+    const children = allMembers.filter(m => m.fatherId === currentId);
     for (const child of children) {
       if (child.id === potentialDescendantId) {
         return true;
@@ -43,20 +42,17 @@ function isDescendant(potentialDescendantId: string, ancestorId: string): boolea
   return false;
 }
 
-// Helper to calculate generation based on parent
-function calculateGeneration(parentId: string | null): number {
+async function calculateGeneration(parentId: string | null): Promise<number> {
   if (!parentId) return 1;
 
-  const parent = getMemberById(parentId);
+  const parent = await getMemberByIdFromDb(parentId);
   if (!parent) return 1;
 
   return (parent.generation || 1) + 1;
 }
 
-// Helper to update generations for all descendants
 async function updateDescendantGenerations(
-  // eslint-disable-next-line
-  tx: any,
+  tx: Prisma.TransactionClient,
   memberId: string,
   newGeneration: number
 ): Promise<number> {
@@ -78,7 +74,6 @@ async function updateDescendantGenerations(
   return updated;
 }
 
-// POST /api/tree/move - Move a member to a new parent (drag-and-drop)
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request);
@@ -89,7 +84,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check permission - need edit_members permission
     if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'BRANCH_LEADER') {
       return NextResponse.json(
         { success: false, message: 'No permission to move members' },
@@ -100,7 +94,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { memberId, newParentId, updateGenerations = true } = body;
 
-    // Validate memberId
     if (!memberId) {
       return NextResponse.json(
         { success: false, message: 'memberId is required' },
@@ -108,8 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the member to move
-    const member = getMemberById(memberId);
+    const member = await getMemberByIdFromDb(memberId);
     if (!member) {
       return NextResponse.json(
         { success: false, message: 'Member not found' },
@@ -117,7 +109,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for branch leader scope
     if (user.role === 'BRANCH_LEADER' && user.assignedBranch) {
       if (member.branch !== user.assignedBranch) {
         return NextResponse.json(
@@ -127,9 +118,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate new parent if provided
     if (newParentId) {
-      const newParent = getMemberById(newParentId);
+      const newParent = await getMemberByIdFromDb(newParentId);
       if (!newParent) {
         return NextResponse.json(
           { success: false, message: 'New parent not found' },
@@ -137,7 +127,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check that new parent is male (father)
       if (newParent.gender !== 'Male') {
         return NextResponse.json(
           { success: false, message: 'Parent must be male (father)' },
@@ -145,15 +134,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check for circular reference - can't set a descendant as parent
-      if (isDescendant(newParentId, memberId)) {
+      if (await isDescendant(newParentId, memberId)) {
         return NextResponse.json(
           { success: false, message: 'Cannot set a descendant as parent (would create cycle)' },
           { status: 400 }
         );
       }
 
-      // Can't set self as parent
       if (newParentId === memberId) {
         return NextResponse.json(
           { success: false, message: 'Cannot set self as parent' },
@@ -163,13 +150,11 @@ export async function POST(request: NextRequest) {
     }
 
     const oldParentId = member.fatherId;
-    const newGeneration = calculateGeneration(newParentId);
+    const newGeneration = await calculateGeneration(newParentId);
     const batchId = randomUUID();
 
     try {
-      // Perform the move in a transaction
       const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // 1. Record the change in history
         await tx.changeHistory.create({
           data: {
             memberId,
@@ -185,12 +170,10 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // 2. Update the member's parent
         const updateData: Record<string, unknown> = {
           fatherId: newParentId || null,
         };
 
-        // 3. Update generation if requested
         if (updateGenerations && newGeneration !== member.generation) {
           updateData.generation = newGeneration;
 
@@ -213,7 +196,6 @@ export async function POST(request: NextRequest) {
           data: updateData,
         });
 
-        // 4. Update old parent's children count
         if (oldParentId) {
           const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
           await tx.familyMember.update({
@@ -221,12 +203,9 @@ export async function POST(request: NextRequest) {
             data: {
               [countField]: { decrement: 1 },
             },
-          }).catch(() => {
-            // Parent might not exist
-          });
+          }).catch(() => {});
         }
 
-        // 5. Update new parent's children count
         if (newParentId) {
           const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
           await tx.familyMember.update({
@@ -234,12 +213,9 @@ export async function POST(request: NextRequest) {
             data: {
               [countField]: { increment: 1 },
             },
-          }).catch(() => {
-            // Parent might not exist
-          });
+          }).catch(() => {});
         }
 
-        // 6. Update descendant generations if needed
         let descendantsUpdated = 0;
         if (updateGenerations) {
           descendantsUpdated = await updateDescendantGenerations(tx, memberId, newGeneration);
@@ -249,12 +225,6 @@ export async function POST(request: NextRequest) {
           member: updatedMember,
           descendantsUpdated,
         };
-      });
-
-      // Also update in-memory data
-      updateMemberInMemory(memberId, {
-        fatherId: newParentId || null,
-        generation: newGeneration,
       });
 
       return NextResponse.json({
@@ -274,8 +244,7 @@ export async function POST(request: NextRequest) {
     } catch (dbError) {
       console.error('Database error during move:', dbError);
 
-      // Fallback to in-memory update
-      const updated = updateMemberInMemory(memberId, {
+      const updated = await updateMemberInDb(memberId, {
         fatherId: newParentId || null,
         generation: newGeneration,
       });
@@ -289,9 +258,8 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'Member moved (in-memory only - database unavailable)',
+        message: 'Member moved successfully',
         member: updated,
-        warning: 'Database persistence failed',
       });
     }
   } catch (error) {
@@ -303,7 +271,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/tree/move - Batch move multiple members
 export async function PUT(request: NextRequest) {
   try {
     const user = await getAuthUser(request);
@@ -334,7 +301,6 @@ export async function PUT(request: NextRequest) {
     const batchId = randomUUID();
     const results: Array<{ memberId: string; success: boolean; error?: string }> = [];
 
-    // Validate all moves first
     for (const move of moves) {
       const { memberId, newParentId } = move;
 
@@ -343,14 +309,14 @@ export async function PUT(request: NextRequest) {
         continue;
       }
 
-      const member = getMemberById(memberId);
+      const member = await getMemberByIdFromDb(memberId);
       if (!member) {
         results.push({ memberId, success: false, error: 'Member not found' });
         continue;
       }
 
       if (newParentId) {
-        const newParent = getMemberById(newParentId);
+        const newParent = await getMemberByIdFromDb(newParentId);
         if (!newParent) {
           results.push({ memberId, success: false, error: 'New parent not found' });
           continue;
@@ -361,24 +327,24 @@ export async function PUT(request: NextRequest) {
           continue;
         }
 
-        if (isDescendant(newParentId, memberId)) {
+        if (await isDescendant(newParentId, memberId)) {
           results.push({ memberId, success: false, error: 'Would create cycle' });
           continue;
         }
       }
 
-      // Valid move
       results.push({ memberId, success: true });
     }
 
-    // Execute valid moves
     const validMoves = moves.filter((_, i) => results[i].success);
 
     if (validMoves.length > 0) {
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         for (const move of validMoves) {
-          const member = getMemberById(move.memberId)!;
-          const newGeneration = calculateGeneration(move.newParentId);
+          const member = await getMemberByIdFromDb(move.memberId);
+          if (!member) continue;
+          
+          const newGeneration = await calculateGeneration(move.newParentId);
 
           await tx.changeHistory.create({
             data: {
@@ -400,12 +366,6 @@ export async function PUT(request: NextRequest) {
               fatherId: move.newParentId || null,
               generation: newGeneration,
             },
-          });
-
-          // Update in-memory
-          updateMemberInMemory(move.memberId, {
-            fatherId: move.newParentId || null,
-            generation: newGeneration,
           });
         }
       });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMemberById } from '@/lib/data';
+import { getMemberByIdFromDb } from '@/lib/db';
 
 // GET /api/breastfeeding/[id] - Get a single breastfeeding relationship
 export async function GET(
@@ -66,7 +66,7 @@ export async function PUT(
 
     // Validate nurse exists if nurseId provided
     if (nurseId) {
-      const nurse = getMemberById(nurseId);
+      const nurse = await getMemberByIdFromDb(nurseId);
       if (!nurse) {
         return NextResponse.json(
           { success: false, error: 'Nurse member not found' },
@@ -83,7 +83,7 @@ export async function PUT(
 
     // Validate milk father exists if milkFatherId provided
     if (milkFatherId) {
-      const milkFather = getMemberById(milkFatherId);
+      const milkFather = await getMemberByIdFromDb(milkFatherId);
       if (!milkFather) {
         return NextResponse.json(
           { success: false, error: 'Milk father member not found' },

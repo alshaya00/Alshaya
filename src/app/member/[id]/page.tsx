@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getAllMembers, getChildren } from '@/lib/data';
+import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
@@ -23,23 +23,25 @@ interface PageProps {
   params: { id: string };
 }
 
-export default function MemberPage({ params }: PageProps) {
-  const allMembers = getAllMembers();
+export default async function MemberPage({ params }: PageProps) {
+  const allMembers = await getAllMembersFromDb();
   const member = allMembers.find((m) => m.id === params.id);
 
   if (!member) {
     notFound();
   }
 
-  const children = getChildren(member.id);
+  const children = await getChildrenFromDb(member.id);
   const father = member.fatherId ? allMembers.find((m) => m.id === member.fatherId) ?? null : null;
-  const siblings = father ? getChildren(father.id).filter((s) => s.id !== member.id) : [];
+  const siblings = father ? (await getChildrenFromDb(father.id)).filter((s) => s.id !== member.id) : [];
   const statusBadge = getStatusBadge(member.status);
 
-  // Get grandchildren (children of children)
-  const grandchildren = children.flatMap((child) => getChildren(child.id));
+  const grandchildren = [];
+  for (const child of children) {
+    const gc = await getChildrenFromDb(child.id);
+    grandchildren.push(...gc);
+  }
 
-  // Get lineage ancestors for display
   const lineageBranchAncestor = member.lineageBranchId
     ? allMembers.find((m) => m.id === member.lineageBranchId)
     : null;
@@ -50,7 +52,6 @@ export default function MemberPage({ params }: PageProps) {
   return (
     <div className="min-h-screen py-8 bg-gray-100">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Back Button */}
         <Link
           href="/registry"
           className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
@@ -59,9 +60,7 @@ export default function MemberPage({ params }: PageProps) {
           العودة إلى السجل
         </Link>
 
-        {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
           <div
             className={`p-8 ${
               member.gender === 'Male'
@@ -86,9 +85,7 @@ export default function MemberPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-6">
-            {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <span
@@ -126,313 +123,231 @@ export default function MemberPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Lineage Information */}
-            {lineageBranchAncestor && (
-              <div className="bg-indigo-50 rounded-xl p-5 mb-8">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <GitBranch className="text-indigo-600" size={20} />
-                  السلالة والفرع
-                </h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Main Branch (Gen 2) */}
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm text-gray-500 mb-2">الفرع الرئيسي (الجيل الثاني)</p>
+            {(member.lineageBranchName || member.subBranchName) && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 mb-8">
+                <div className="flex items-center gap-2 text-amber-700 mb-3">
+                  <GitBranch size={20} />
+                  <h3 className="font-bold">نسب الفرع</h3>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  {lineageBranchAncestor && (
                     <Link
                       href={`/member/${lineageBranchAncestor.id}`}
-                      className="flex items-center gap-3 hover:bg-indigo-50 rounded-lg p-2 -m-2 transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm hover:shadow transition-shadow"
                     >
-                      <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-xl">
-                        👨
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-bold text-indigo-700">فرع {lineageBranchAncestor.firstName}</p>
-                        <p className="text-xs text-gray-500">{lineageBranchAncestor.fullNameAr}</p>
-                      </div>
-                      <ChevronLeft size={16} className="text-gray-400" />
+                      <span className="text-amber-600 font-bold">الفرع الرئيسي:</span>
+                      <span className="text-gray-700">{member.lineageBranchName}</span>
                     </Link>
-                  </div>
+                  )}
+                  {subBranchAncestor && member.subBranchId !== member.lineageBranchId && (
+                    <Link
+                      href={`/member/${subBranchAncestor.id}`}
+                      className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm hover:shadow transition-shadow"
+                    >
+                      <span className="text-orange-600 font-bold">الفرع الفرعي:</span>
+                      <span className="text-gray-700">{member.subBranchName}</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
 
-                  {/* Sub Branch (Gen 3) */}
-                  {subBranchAncestor && member.generation > 3 ? (
-                    <div className="bg-white rounded-lg p-4">
-                      <p className="text-sm text-gray-500 mb-2">الفرع الفرعي (الجيل الثالث)</p>
-                      <Link
-                        href={`/member/${subBranchAncestor.id}`}
-                        className="flex items-center gap-3 hover:bg-purple-50 rounded-lg p-2 -m-2 transition-colors"
-                      >
-                        <span className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
-                          👨
-                        </span>
-                        <div className="flex-1">
-                          <p className="font-bold text-purple-700">ذرية {subBranchAncestor.firstName}</p>
-                          <p className="text-xs text-gray-500">{subBranchAncestor.fullNameAr}</p>
-                        </div>
-                        <ChevronLeft size={16} className="text-gray-400" />
-                      </Link>
+            <MemberPhotoSection memberId={member.id} memberName={member.firstName} />
+
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <User className="text-blue-500" size={20} />
+                  المعلومات الشخصية
+                </h3>
+                <div className="space-y-3">
+                  {member.city && (
+                    <div className="flex items-center gap-3">
+                      <MapPin className="text-gray-400" size={18} />
+                      <span className="text-gray-600">{member.city}</span>
                     </div>
-                  ) : (
-                    <div className="bg-white rounded-lg p-4">
-                      <p className="text-sm text-gray-500 mb-2">الفرع الفرعي (الجيل الثالث)</p>
-                      <p className="text-gray-400 text-sm">
-                        {member.generation <= 3 ? 'هذا العضو من الأجيال المؤسسة' : 'غير متوفر'}
-                      </p>
+                  )}
+                  {member.occupation && (
+                    <div className="flex items-center gap-3">
+                      <Briefcase className="text-gray-400" size={18} />
+                      <span className="text-gray-600">{member.occupation}</span>
+                    </div>
+                  )}
+                  {member.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="text-gray-400" size={18} />
+                      <span className="text-gray-600" dir="ltr">
+                        {member.phone}
+                      </span>
+                    </div>
+                  )}
+                  {member.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className="text-gray-400" size={18} />
+                      <span className="text-gray-600">{member.email}</span>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Lineage Path */}
-                {member.lineagePath && member.lineagePath.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-indigo-200">
-                    <p className="text-sm text-gray-500 mb-2">مسار النسب:</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {member.lineagePath.map((ancestorId, index) => {
-                        const ancestor = allMembers.find((m) => m.id === ancestorId);
-                        if (!ancestor) return null;
-                        return (
-                          <span key={ancestorId} className="flex items-center gap-1">
-                            <Link
-                              href={`/member/${ancestorId}`}
-                              className="px-2 py-1 bg-white hover:bg-indigo-100 rounded text-sm text-indigo-700 transition-colors"
-                            >
-                              {ancestor.firstName}
-                            </Link>
-                            {index < member.lineagePath!.length - 1 && (
-                              <span className="text-gray-400">←</span>
-                            )}
-                          </span>
-                        );
-                      })}
-                      <span className="text-gray-400">←</span>
-                      <span className="px-2 py-1 bg-indigo-600 text-white rounded text-sm font-bold">
-                        {member.firstName}
-                      </span>
-                    </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <TreePine className="text-green-500" size={20} />
+                  الأنساب
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">اسم الأب:</span>
+                    <span className="text-gray-800">{member.fatherName || '-'}</span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">اسم الجد:</span>
+                    <span className="text-gray-800">{member.grandfatherName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">اسم جد الأب:</span>
+                    <span className="text-gray-800">{member.greatGrandfatherName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">اسم العائلة:</span>
+                    <span className="text-gray-800">{member.familyName}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {member.biography && (
+              <div className="bg-gray-50 rounded-xl p-4 mb-8">
+                <h3 className="font-bold text-gray-700 mb-3">السيرة الذاتية</h3>
+                <p className="text-gray-600 leading-relaxed">{member.biography}</p>
               </div>
             )}
 
-            {/* Root member indicator */}
-            {member.generation === 1 && (
-              <div className="bg-amber-50 rounded-xl p-5 mb-8">
-                <div className="flex items-center gap-3">
-                  <span className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
-                    👑
-                  </span>
-                  <div>
-                    <h2 className="font-bold text-lg text-amber-800">جذر العائلة</h2>
-                    <p className="text-sm text-amber-600">هذا هو المؤسس الأصلي لعائلة آل شايع</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Mini Family Graph & Breastfeeding Section */}
-            <div className="mb-8">
-              <MemberBreastfeedingSection
-                member={member}
-                father={father}
-                siblings={siblings}
-                children={children}
-                grandchildren={grandchildren}
-              />
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Personal Info */}
-              <div className="bg-gray-50 rounded-xl p-5">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <User className="text-blue-600" size={20} />
-                  المعلومات الشخصية
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">الاسم</span>
-                    <span className="font-medium">{member.firstName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">اسم الأب</span>
-                    <span className="font-medium">{member.fatherName || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">اسم الجد</span>
-                    <span className="font-medium">{member.grandfatherName || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">الجنس</span>
-                    <span className="font-medium">
-                      {member.gender === 'Male' ? '👨 ذكر' : '👩 أنثى'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="bg-gray-50 rounded-xl p-5">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <MapPin className="text-red-600" size={20} />
-                  معلومات التواصل
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">المدينة</span>
-                    <span className="font-medium">{member.city || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">المهنة</span>
-                    <span className="font-medium">{member.occupation || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">الهاتف</span>
-                    <span className="font-medium">{member.phone || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">البريد</span>
-                    <span className="font-medium">{member.email || '-'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Family Info */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Children */}
-              <div className="bg-gray-50 rounded-xl p-5">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <Users className="text-green-600" size={20} />
-                  الأبناء ({children.length})
-                </h2>
-                <div className="flex gap-4 mb-4">
-                  <div className="flex-1 bg-blue-100 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-600">{member.sonsCount}</p>
-                    <p className="text-xs text-gray-500">أبناء</p>
-                  </div>
-                  <div className="flex-1 bg-pink-100 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-pink-600">{member.daughtersCount}</p>
-                    <p className="text-xs text-gray-500">بنات</p>
-                  </div>
-                </div>
-                {children.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {children.map((child) => (
-                      <Link
-                        key={child.id}
-                        href={`/member/${child.id}`}
-                        className="flex items-center gap-2 p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <span
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                            child.gender === 'Male'
-                              ? 'bg-blue-100 text-blue-600'
-                              : 'bg-pink-100 text-pink-600'
-                          }`}
-                        >
-                          {child.gender === 'Male' ? '👨' : '👩'}
-                        </span>
-                        <span className="font-medium">{child.firstName}</span>
-                        <span className="text-xs text-gray-400">({child.id})</span>
-                        <ChevronLeft size={16} className="mr-auto text-gray-400" />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center">لا يوجد أبناء مسجلين</p>
-                )}
-              </div>
-
-              {/* Siblings */}
-              <div className="bg-gray-50 rounded-xl p-5">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <Users className="text-purple-600" size={20} />
-                  الإخوة والأخوات ({siblings.length})
-                </h2>
-                {siblings.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {siblings.map((sibling) => (
-                      <Link
-                        key={sibling.id}
-                        href={`/member/${sibling.id}`}
-                        className="flex items-center gap-2 p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <span
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                            sibling.gender === 'Male'
-                              ? 'bg-blue-100 text-blue-600'
-                              : 'bg-pink-100 text-pink-600'
-                          }`}
-                        >
-                          {sibling.gender === 'Male' ? '👨' : '👩'}
-                        </span>
-                        <span className="font-medium">{sibling.firstName}</span>
-                        <span className="text-xs text-gray-400">({sibling.id})</span>
-                        <ChevronLeft size={16} className="mr-auto text-gray-400" />
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center">لا يوجد إخوة مسجلين</p>
-                )}
-              </div>
-            </div>
-
-            {/* Father Link */}
             {father && (
-              <div className="bg-green-50 rounded-xl p-5 mb-8">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <TreePine className="text-green-600" size={20} />
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <User className="text-purple-500" size={20} />
                   الأب
-                </h2>
+                </h3>
                 <Link
                   href={`/member/${father.id}`}
-                  className="flex items-center gap-4 p-4 bg-white rounded-lg hover:bg-green-100 transition-colors"
+                  className="inline-flex items-center gap-3 bg-purple-50 hover:bg-purple-100 rounded-xl p-4 transition-colors"
                 >
-                  <span
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-blue-100 border-2 border-blue-400`}
-                  >
+                  <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white text-xl">
                     👨
-                  </span>
-                  <div className="flex-1">
-                    <p className="font-bold">{father.firstName}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-800">{father.firstName}</p>
                     <p className="text-sm text-gray-500">{father.fullNameAr}</p>
                   </div>
-                  <span className="text-xs text-gray-400">({father.id})</span>
-                  <ChevronLeft size={20} className="text-gray-400" />
+                  <ChevronLeft className="text-purple-400" size={20} />
                 </Link>
               </div>
             )}
 
-            {/* Photo Gallery */}
-            <div className="mb-8">
-              <MemberPhotoSection
-                memberId={member.id}
-                memberName={member.fullNameAr || member.firstName}
-              />
-            </div>
+            {siblings.length > 0 && (
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <Users className="text-orange-500" size={20} />
+                  الإخوة ({siblings.length})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {siblings.map((sibling) => (
+                    <Link
+                      key={sibling.id}
+                      href={`/member/${sibling.id}`}
+                      className="flex items-center gap-3 bg-orange-50 hover:bg-orange-100 rounded-xl p-3 transition-colors"
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
+                          sibling.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
+                        }`}
+                      >
+                        {sibling.gender === 'Male' ? '👨' : '👩'}
+                      </div>
+                      <span className="font-medium text-gray-800">{sibling.firstName}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* Member Stories & History */}
-            <div className="mb-8">
-              <MemberStoriesSection
-                memberId={member.id}
-                memberName={member.fullNameAr || member.firstName}
-              />
-            </div>
+            {children.length > 0 && (
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <Users className="text-green-500" size={20} />
+                  الأبناء ({children.length})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {children.map((child) => (
+                    <Link
+                      key={child.id}
+                      href={`/member/${child.id}`}
+                      className="flex items-center gap-3 bg-green-50 hover:bg-green-100 rounded-xl p-3 transition-colors"
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
+                          child.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
+                        }`}
+                      >
+                        {child.gender === 'Male' ? '👨' : '👩'}
+                      </div>
+                      <span className="font-medium text-gray-800">{child.firstName}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* Actions */}
-            <div className="flex flex-wrap gap-4">
+            {grandchildren.length > 0 && (
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <Users className="text-teal-500" size={20} />
+                  الأحفاد ({grandchildren.length})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {grandchildren.slice(0, 12).map((gc) => (
+                    <Link
+                      key={gc.id}
+                      href={`/member/${gc.id}`}
+                      className="flex items-center gap-2 bg-teal-50 hover:bg-teal-100 rounded-lg p-2 transition-colors"
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
+                          gc.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'
+                        }`}
+                      >
+                        {gc.gender === 'Male' ? '👦' : '👧'}
+                      </div>
+                      <span className="text-sm text-gray-700">{gc.firstName}</span>
+                    </Link>
+                  ))}
+                  {grandchildren.length > 12 && (
+                    <div className="flex items-center justify-center text-sm text-gray-500">
+                      +{grandchildren.length - 12} آخرين
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <MemberBreastfeedingSection memberId={member.id} />
+            <MemberStoriesSection memberId={member.id} memberName={member.firstName} />
+
+            <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t">
               <Link
-                href="/tree"
-                className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
+                href={`/tree?highlight=${member.id}`}
+                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
               >
-                <TreePine size={20} />
+                <TreePine size={18} />
                 عرض في الشجرة
               </Link>
               <Link
-                href="/registry"
-                className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
+                href={`/edit/${member.id}`}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
               >
-                <Users size={20} />
-                العودة للسجل
+                <User size={18} />
+                تعديل البيانات
               </Link>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -17,8 +17,9 @@ import {
   Layers,
   Eye,
   Filter,
+  Loader2,
 } from 'lucide-react';
-import { familyMembers, getStatistics } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import {
   ALL_EXPORT_FIELDS,
   FIELD_CATEGORIES,
@@ -31,11 +32,38 @@ import {
   getMimeType,
 } from '@/lib/export-utils';
 import { ExportField, ExportFormat, ExportFilters } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'format' | 'fields' | 'filters' | 'preview';
 
 export default function ExportPage() {
-  const stats = getStatistics();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { session } = useAuth();
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [membersRes, statsRes] = await Promise.all([
+          fetch('/api/members?limit=500', {
+            headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+          }),
+          fetch('/api/statistics'),
+        ]);
+        if (membersRes.ok) {
+          const data = await membersRes.json();
+          setAllMembers(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (session?.token) {
+      fetchData();
+    }
+  }, [session?.token]);
 
   // Export configuration state
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('JSON');
@@ -57,20 +85,18 @@ export default function ExportPage() {
   const [previewMode, setPreviewMode] = useState<'list' | 'tree' | 'raw'>('list');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Get unique values for filters
   const uniqueBranches = useMemo(() =>
-    [...new Set(familyMembers.map(m => m.branch).filter(Boolean))] as string[],
-    []
+    [...new Set(allMembers.map(m => m.branch).filter(Boolean))] as string[],
+    [allMembers]
   );
 
   const generations = useMemo(() =>
-    [...new Set(familyMembers.map(m => m.generation))].sort((a, b) => a - b),
-    []
+    [...new Set(allMembers.map(m => m.generation))].sort((a, b) => a - b),
+    [allMembers]
   );
 
-  // Filter members based on current filters
   const filteredMembers = useMemo(() => {
-    return familyMembers.filter(member => {
+    return allMembers.filter(member => {
       if (filters.generations?.length && !filters.generations.includes(member.generation)) {
         return false;
       }
@@ -85,7 +111,7 @@ export default function ExportPage() {
       }
       return true;
     });
-  }, [filters]);
+  }, [allMembers, filters]);
 
   // Toggle field selection
   const toggleField = (key: string) => {
@@ -285,7 +311,7 @@ export default function ExportPage() {
             <div className="w-px h-4 bg-gray-200" />
             <div className="flex items-center gap-2">
               <span className="text-gray-500">الأعضاء:</span>
-              <span className="font-bold">{filteredMembers.length} من {familyMembers.length}</span>
+              <span className="font-bold">{filteredMembers.length} من {allMembers.length}</span>
             </div>
             {includeTree && (
               <>
@@ -601,7 +627,7 @@ export default function ExportPage() {
                 <Filter className="w-5 h-5" />
                 <span>
                   سيتم تصدير <strong className="text-[#1E3A5F]">{filteredMembers.length}</strong> عضو
-                  من أصل {familyMembers.length}
+                  من أصل {allMembers.length}
                 </span>
               </div>
             </div>

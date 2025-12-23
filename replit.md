@@ -117,4 +117,31 @@ npm run start  # Start production server
 ```
 
 ---
+
+## Recent Changes (Dec 2024)
+
+### Database Migration Complete
+All pages and API routes now fetch from PostgreSQL instead of static data:
+- **389 family members** imported from production database
+- **10 generations** of family history preserved
+- All API routes (`/api/members`, `/api/statistics`, `/api/tree`, etc.) use Prisma queries
+- Frontend pages (tree, search, registry, etc.) fetch from APIs using `useEffect` hooks
+- Server components use direct database functions from `src/lib/db.ts`
+
+### Updated Files
+- `src/app/tree/page.tsx` - Fetches members from API
+- `src/app/search/page.tsx` - Fetches from API with loading states
+- `src/app/member/[id]/page.tsx` - Server component using database functions
+- `src/app/registry/page.tsx` - Already using API
+- `src/app/branches/page.tsx` - Fetches from API
+- `src/app/edit/[id]/page.tsx` - Fetches from API
+- `src/app/register/page.tsx` - Fetches from API
+- `src/app/import/page.tsx` - Fetches from API
+- `src/app/export/page.tsx` - Fetches from API
+- `src/app/duplicates/page.tsx` - Fetches from API
+- `src/app/history/page.tsx` - Fetches from API
+- `src/app/tree-editor/page.tsx` - Fetches from API
+- All breastfeeding API routes - Use database functions
+
+---
 🌳 **شجرة آل شايع** 🌳

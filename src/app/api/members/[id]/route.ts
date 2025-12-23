@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMemberById, getChildren, familyMembers, updateMemberInMemory, deleteMemberFromMemory, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import { prisma } from '@/lib/prisma';
+import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb, updateMemberInDb, deleteMemberFromDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
-// Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -21,7 +21,6 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// Helper to record change history
 async function recordChangeHistory(
   memberId: string,
   oldMember: FamilyMember,
@@ -32,7 +31,6 @@ async function recordChangeHistory(
   const batchId = randomUUID();
   const changedFields: { field: string; oldValue: string | null; newValue: string | null }[] = [];
 
-  // Detect changed fields
   const fieldsToTrack: (keyof FamilyMember)[] = [
     'firstName', 'fatherName', 'grandfatherName', 'greatGrandfatherName',
     'familyName', 'fatherId', 'gender', 'birthYear', 'deathYear',
@@ -44,7 +42,6 @@ async function recordChangeHistory(
     const oldValue = oldMember[field];
     const newValue = newData[field];
 
-    // Only record if the field is in newData and the value changed
     if (newValue !== undefined && String(oldValue || '') !== String(newValue || '')) {
       changedFields.push({
         field,
@@ -54,7 +51,6 @@ async function recordChangeHistory(
     }
   }
 
-  // Record each field change
   for (const change of changedFields) {
     try {
       await prisma.changeHistory.create({
@@ -76,13 +72,11 @@ async function recordChangeHistory(
   }
 }
 
-// GET /api/members/[id] - Get single member with children
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // SECURITY: Require authentication
     const user = await getAuthUser(request);
     if (!user) {
       return NextResponse.json(
@@ -99,7 +93,7 @@ export async function GET(
       );
     }
 
-    const member = getMemberById(params.id);
+    const member = await getMemberByIdFromDb(params.id);
 
     if (!member) {
       return NextResponse.json(
@@ -108,7 +102,7 @@ export async function GET(
       );
     }
 
-    const children = getChildren(member.id);
+    const children = await getChildrenFromDb(member.id);
 
     return NextResponse.json({
       success: true,
@@ -126,13 +120,11 @@ export async function GET(
   }
 }
 
-// PUT /api/members/[id] - Update a member
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // SECURITY: Require authentication and edit permission
     const user = await getAuthUser(request);
     if (!user) {
       return NextResponse.json(
@@ -149,7 +141,7 @@ export async function PUT(
       );
     }
 
-    const member = getMemberById(params.id);
+    const member = await getMemberByIdFromDb(params.id);
 
     if (!member) {
       return NextResponse.json(
@@ -160,7 +152,6 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Validate gender if provided
     if (body.gender && !['Male', 'Female'].includes(body.gender)) {
       return NextResponse.json(
         { success: false, error: 'Invalid gender value' },
@@ -168,7 +159,6 @@ export async function PUT(
       );
     }
 
-    // Validate status if provided
     if (body.status && !['Living', 'Deceased'].includes(body.status)) {
       return NextResponse.json(
         { success: false, error: 'Invalid status value' },
@@ -176,9 +166,8 @@ export async function PUT(
       );
     }
 
-    // Validate fatherId doesn't create cycle
     if (body.fatherId) {
-      const isDescendant = checkIsDescendant(body.fatherId, params.id);
+      const isDescendant = await checkIsDescendant(body.fatherId, params.id);
       if (isDescendant) {
         return NextResponse.json(
           { success: false, error: 'Cannot set a descendant as parent (would create cycle)' },
@@ -186,8 +175,7 @@ export async function PUT(
         );
       }
 
-      // Validate father exists
-      const father = getMemberById(body.fatherId);
+      const father = await getMemberByIdFromDb(body.fatherId);
       if (!father) {
         return NextResponse.json(
           { success: false, error: 'Father not found' },
@@ -195,7 +183,6 @@ export async function PUT(
         );
       }
 
-      // Validate father is male
       if (father.gender !== 'Male') {
         return NextResponse.json(
           { success: false, error: 'Father must be male' },
@@ -204,7 +191,6 @@ export async function PUT(
       }
     }
 
-    // Create updated member data
     const updateData = {
       firstName: body.firstName,
       fatherName: body.fatherName,
@@ -217,7 +203,6 @@ export async function PUT(
       deathYear: body.deathYear,
       generation: body.generation,
       branch: body.branch,
-      lineage: body.lineage,
       fullNameAr: body.fullNameAr,
       fullNameEn: body.fullNameEn,
       phone: body.phone,
@@ -229,36 +214,23 @@ export async function PUT(
       email: body.email,
     };
 
-    // Remove undefined values
     Object.keys(updateData).forEach(key => {
       if (updateData[key as keyof typeof updateData] === undefined) {
         delete updateData[key as keyof typeof updateData];
       }
     });
 
-    // Store original member data for change tracking
     const originalMember = { ...member };
 
-    // Try to persist to database
-    let updatedMember;
-    try {
-      updatedMember = await prisma.familyMember.update({
-        where: { id: params.id },
-        data: updateData
-      });
-    } catch (dbError) {
-      // Fallback to in-memory update if database fails
-      console.log('Database update failed, using in-memory fallback:', dbError);
-      updatedMember = updateMemberInMemory(params.id, updateData);
-      if (!updatedMember) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to update member' },
-          { status: 500 }
-        );
-      }
+    const updatedMember = await updateMemberInDb(params.id, updateData);
+    
+    if (!updatedMember) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to update member' },
+        { status: 500 }
+      );
     }
 
-    // Record change history (non-blocking)
     recordChangeHistory(
       params.id,
       originalMember,
@@ -281,13 +253,11 @@ export async function PUT(
   }
 }
 
-// DELETE /api/members/[id] - Delete a member
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // SECURITY: Require authentication and delete permission
     const user = await getAuthUser(request);
     if (!user) {
       return NextResponse.json(
@@ -304,7 +274,7 @@ export async function DELETE(
       );
     }
 
-    const member = getMemberById(params.id);
+    const member = await getMemberByIdFromDb(params.id);
 
     if (!member) {
       return NextResponse.json(
@@ -313,8 +283,7 @@ export async function DELETE(
       );
     }
 
-    // Check if member has children
-    const children = getChildren(params.id);
+    const children = await getChildrenFromDb(params.id);
     if (children.length > 0) {
       return NextResponse.json(
         {
@@ -326,19 +295,12 @@ export async function DELETE(
       );
     }
 
-    // Try to delete from database
-    try {
-      await prisma.familyMember.delete({ where: { id: params.id } });
-    } catch (dbError) {
-      // Fallback to in-memory delete if database fails
-      console.log('Database delete failed, using in-memory fallback:', dbError);
-      const deleted = deleteMemberFromMemory(params.id);
-      if (!deleted) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to delete member' },
-          { status: 500 }
-        );
-      }
+    const deleted = await deleteMemberFromDb(params.id);
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete member' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -354,14 +316,14 @@ export async function DELETE(
   }
 }
 
-// Helper function to check if a member is a descendant
-function checkIsDescendant(potentialDescendantId: string, ancestorId: string): boolean {
+async function checkIsDescendant(potentialDescendantId: string, ancestorId: string): Promise<boolean> {
+  const allMembers = await getAllMembersFromDb();
   const descendants = new Set<string>();
   const queue = [ancestorId];
 
   while (queue.length > 0) {
     const currentId = queue.shift()!;
-    const children = familyMembers.filter(m => m.fatherId === currentId);
+    const children = allMembers.filter(m => m.fatherId === currentId);
 
     for (const child of children) {
       if (child.id === potentialDescendantId) {
