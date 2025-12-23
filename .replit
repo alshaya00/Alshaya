@@ -1,46 +1,43 @@
-# Al-Shaye Family Tree Application - Replit Configuration
-# Following Replit deployment best practices
+# Al-Shaye Family Tree - Replit Configuration
+# Following Replit deployment best practices (2025)
 
-run = "npm run dev"
-entrypoint = "src/app/page.tsx"
-
-hidden = [".config", "package-lock.json", ".next", "node_modules"]
+modules = ["nodejs-20", "postgresql-16"]
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
 
 [env]
-PATH = "/home/runner/$REPL_SLUG/.config/npm/node_global/bin:/home/runner/$REPL_SLUG/node_modules/.bin:./node_modules/.bin"
-npm_config_prefix = "/home/runner/$REPL_SLUG/.config/npm/node_global"
-# Memory optimization for Node.js builds
 NODE_OPTIONS = "--max-old-space-size=2048"
 
-[packager]
-language = "nodejs"
+[workflows]
+runButton = "Project"
 
-[packager.features]
-packageSearch = true
-guessImports = true
-enabledForHosting = false
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
 
-[languages]
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Dev Server"
 
-[languages.typescript]
-pattern = "**/{*.ts,*.tsx}"
+[[workflows.workflow]]
+name = "Dev Server"
+author = "agent"
 
-[languages.typescript.languageServer]
-start = "typescript-language-server --stdio"
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
 
-# Deployment Configuration
-# IMPORTANT: Build command uses prisma generate only (NOT prisma db push)
-# Run migrations manually via Shell when schema changes: npx prisma migrate deploy
-[deployment]
-build = ["sh", "-c", "npm run build"]
-run = ["sh", "-c", "npm run start"]
-deploymentTarget = "cloudrun"
-ignorePorts = false
+[workflows.workflow.metadata]
+outputType = "webview"
 
-# Port configuration - Frontend on port 5000
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
