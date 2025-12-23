@@ -25,6 +25,8 @@ type PrismaAccessRequest = {
   nameArabic: string;
   nameEnglish: string | null;
   phone: string | null;
+  city: string | null;
+  birthDate: Date | null;
   claimedRelation: string;
   relatedMemberId: string | null;
   relationshipType: string | null;
@@ -118,6 +120,8 @@ export interface StoredAccessRequest {
   nameArabic: string;
   nameEnglish?: string | null;
   phone?: string | null;
+  city?: string | null;
+  birthDate?: Date | null;
   claimedRelation: string;
   relatedMemberId?: string | null;
   relationshipType?: string | null;
@@ -772,6 +776,8 @@ export async function createAccessRequest(data: {
   nameArabic: string;
   nameEnglish?: string;
   phone?: string;
+  city?: string;
+  birthDate?: Date | null;
   claimedRelation: string;
   relatedMemberId?: string;
   relationshipType?: string;
@@ -797,6 +803,8 @@ export async function createAccessRequest(data: {
       nameArabic: data.nameArabic,
       nameEnglish: data.nameEnglish || null,
       phone: data.phone || null,
+      city: data.city || null,
+      birthDate: data.birthDate || null,
       claimedRelation: data.claimedRelation,
       relatedMemberId: data.relatedMemberId || null,
       relationshipType: data.relationshipType || null,
@@ -811,6 +819,8 @@ export async function createAccessRequest(data: {
     nameArabic: request.nameArabic,
     nameEnglish: request.nameEnglish,
     phone: request.phone,
+    city: request.city,
+    birthDate: request.birthDate,
     claimedRelation: request.claimedRelation,
     relatedMemberId: request.relatedMemberId,
     relationshipType: request.relationshipType,

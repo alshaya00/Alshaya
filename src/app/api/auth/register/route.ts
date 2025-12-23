@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
       nameArabic,
       nameEnglish,
       phone,
+      city,
+      birthDate,
       claimedRelation,
       relatedMemberId,
       relationshipType,
@@ -125,12 +127,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse birthDate if provided
+    let parsedBirthDate: Date | null = null;
+    if (birthDate) {
+      parsedBirthDate = new Date(birthDate);
+      if (isNaN(parsedBirthDate.getTime())) {
+        parsedBirthDate = null;
+      }
+    }
+
     // Create access request
     const accessRequest = await createAccessRequest({
       email: sanitizeString(email).toLowerCase(),
       nameArabic: sanitizeString(nameArabic),
       nameEnglish: sanitizeString(nameEnglish),
       phone: sanitizeString(phone),
+      city: sanitizeString(city),
+      birthDate: parsedBirthDate,
       claimedRelation: sanitizeString(claimedRelation),
       relatedMemberId: sanitizeString(relatedMemberId),
       relationshipType: sanitizeString(relationshipType),
