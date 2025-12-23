@@ -1,7 +1,300 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
-import { encrypt, decrypt, encryptApiKey, isEncrypted } from '@/lib/encryption';
+import { encrypt, decrypt, isEncrypted } from '@/lib/encryption';
+
+// ============================================
+// TEST EMAIL/SMS HELPER FUNCTIONS
+// ============================================
+
+interface EmailTestConfig {
+  provider: 'resend' | 'sendgrid' | 'mailgun' | 'smtp';
+  apiKey?: string;
+  fromAddress: string;
+  fromName: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPassword?: string;
+  smtpSecure?: boolean;
+  testMode: boolean;
+}
+
+interface SmsTestConfig {
+  provider: 'twilio' | 'vonage' | 'messagebird';
+  apiKey?: string;
+  apiSecret?: string;
+  fromNumber?: string;
+}
+
+interface TestResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
+async function sendTestEmail(config: EmailTestConfig, toEmail: string): Promise<TestResult> {
+  const testSubject = 'Test Email - Al-Shaye Family Tree';
+  const testHtml = `
+    <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2D5A87 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px;">شجرة عائلة آل شايع</h1>
+        <p style="margin: 10px 0 0; opacity: 0.9;">Test Email</p>
+      </div>
+      <div style="background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #27ae60; margin-top: 0;">✓ Email Configuration Working!</h2>
+        <p style="color: #666; line-height: 1.8;">
+          This is a test email to confirm your email configuration is working correctly.
+        </p>
+        <p style="color: #666; line-height: 1.8;">
+          Provider: <strong>${config.provider}</strong>
+        </p>
+        <p style="color: #999; font-size: 14px;">
+          Sent at: ${new Date().toLocaleString('ar-SA')}
+        </p>
+      </div>
+    </div>
+  `;
+  const testText = `Test Email - Your ${config.provider} email configuration is working! Sent at: ${new Date().toLocaleString()}`;
+
+  try {
+    switch (config.provider) {
+      case 'resend':
+        return await sendViaResendTest(config, toEmail, testSubject, testHtml, testText);
+      case 'sendgrid':
+        return await sendViaSendGridTest(config, toEmail, testSubject, testHtml, testText);
+      case 'mailgun':
+        return await sendViaMailgunTest(config, toEmail, testSubject, testHtml, testText);
+      case 'smtp':
+        return await sendViaSMTPTest(config, toEmail, testSubject, testHtml, testText);
+      default:
+        return { success: false, error: 'Unknown email provider' };
+    }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+async function sendViaResendTest(config: EmailTestConfig, to: string, subject: string, html: string, text: string): Promise<TestResult> {
+  if (!config.apiKey) return { success: false, error: 'Resend API key not configured' };
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${config.fromName} <${config.fromAddress}>`,
+      to: [to],
+      subject,
+      html,
+      text,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    return { success: false, error: `Resend error: ${error}` };
+  }
+
+  const data = await response.json();
+  return { success: true, messageId: data.id };
+}
+
+async function sendViaSendGridTest(config: EmailTestConfig, to: string, subject: string, html: string, text: string): Promise<TestResult> {
+  if (!config.apiKey) return { success: false, error: 'SendGrid API key not configured' };
+
+  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: config.fromAddress, name: config.fromName },
+      subject,
+      content: [
+        { type: 'text/plain', value: text },
+        { type: 'text/html', value: html },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    return { success: false, error: `SendGrid error: ${error}` };
+  }
+
+  return { success: true, messageId: response.headers.get('x-message-id') || undefined };
+}
+
+async function sendViaMailgunTest(config: EmailTestConfig, to: string, subject: string, html: string, text: string): Promise<TestResult> {
+  if (!config.apiKey) return { success: false, error: 'Mailgun API key not configured' };
+
+  const domain = config.fromAddress.split('@')[1] || 'mg.example.com';
+  const formData = new URLSearchParams();
+  formData.append('from', `${config.fromName} <${config.fromAddress}>`);
+  formData.append('to', to);
+  formData.append('subject', subject);
+  formData.append('html', html);
+  formData.append('text', text);
+
+  const response = await fetch(`https://api.mailgun.net/v3/${domain}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(`api:${config.apiKey}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    return { success: false, error: `Mailgun error: ${error}` };
+  }
+
+  const data = await response.json();
+  return { success: true, messageId: data.id };
+}
+
+async function sendViaSMTPTest(config: EmailTestConfig, to: string, subject: string, html: string, text: string): Promise<TestResult> {
+  if (!config.smtpHost || !config.smtpPort) {
+    return { success: false, error: 'SMTP host and port are required' };
+  }
+
+  try {
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.default.createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      secure: config.smtpSecure ?? config.smtpPort === 465,
+      auth: config.smtpUser ? {
+        user: config.smtpUser,
+        pass: config.smtpPassword,
+      } : undefined,
+    });
+
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromAddress}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
+
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    return { success: false, error: `SMTP error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+  }
+}
+
+async function sendTestSms(config: SmsTestConfig, toPhone: string): Promise<TestResult> {
+  const testMessage = 'Test SMS from Al-Shaye Family Tree. If you received this, your SMS configuration is working!';
+
+  try {
+    switch (config.provider) {
+      case 'twilio':
+        return await sendViaTwilioTest(config, toPhone, testMessage);
+      case 'vonage':
+        return await sendViaVonageTest(config, toPhone, testMessage);
+      case 'messagebird':
+        return await sendViaMessageBirdTest(config, toPhone, testMessage);
+      default:
+        return { success: false, error: 'Unknown SMS provider' };
+    }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+async function sendViaTwilioTest(config: SmsTestConfig, to: string, message: string): Promise<TestResult> {
+  if (!config.apiKey || !config.apiSecret || !config.fromNumber) {
+    return { success: false, error: 'Twilio requires Account SID, Auth Token, and From Number' };
+  }
+
+  const formData = new URLSearchParams();
+  formData.append('To', to);
+  formData.append('From', config.fromNumber);
+  formData.append('Body', message);
+
+  const response = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${config.apiKey}/Messages.json`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    return { success: false, error: `Twilio error: ${error}` };
+  }
+
+  const data = await response.json();
+  return { success: true, messageId: data.sid };
+}
+
+async function sendViaVonageTest(config: SmsTestConfig, to: string, message: string): Promise<TestResult> {
+  if (!config.apiKey || !config.apiSecret || !config.fromNumber) {
+    return { success: false, error: 'Vonage requires API Key, API Secret, and From Number' };
+  }
+
+  const response = await fetch('https://rest.nexmo.com/sms/json', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: config.apiKey,
+      api_secret: config.apiSecret,
+      to,
+      from: config.fromNumber,
+      text: message,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    return { success: false, error: `Vonage error: ${error}` };
+  }
+
+  const data = await response.json();
+  if (data.messages?.[0]?.status !== '0') {
+    return { success: false, error: `Vonage error: ${data.messages?.[0]?.['error-text'] || 'Unknown error'}` };
+  }
+  return { success: true, messageId: data.messages[0]['message-id'] };
+}
+
+async function sendViaMessageBirdTest(config: SmsTestConfig, to: string, message: string): Promise<TestResult> {
+  if (!config.apiKey || !config.fromNumber) {
+    return { success: false, error: 'MessageBird requires API Key and Originator' };
+  }
+
+  const response = await fetch('https://rest.messagebird.com/messages', {
+    method: 'POST',
+    headers: {
+      'Authorization': `AccessKey ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      originator: config.fromNumber,
+      recipients: [to],
+      body: message,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    return { success: false, error: `MessageBird error: ${error}` };
+  }
+
+  const data = await response.json();
+  return { success: true, messageId: data.id };
+}
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -257,10 +550,34 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // TODO: Implement actual email test when not in test mode
+      // Actually send a test email
+      const testEmail = body.testEmail || user.email;
+      if (!testEmail) {
+        return NextResponse.json({
+          success: false,
+          message: 'Test email address required',
+        });
+      }
+
+      const result = await sendTestEmail({
+        provider: config.emailProvider as 'resend' | 'sendgrid' | 'mailgun' | 'smtp',
+        apiKey: apiKey || undefined,
+        fromAddress: config.emailFromAddress || 'noreply@alshaye.com',
+        fromName: config.emailFromName || 'Al-Shaye Family Tree',
+        smtpHost: config.smtpHost || undefined,
+        smtpPort: config.smtpPort || undefined,
+        smtpUser: config.smtpUser || undefined,
+        smtpPassword: config.smtpPassword ? (isEncrypted(config.smtpPassword) ? decrypt(config.smtpPassword) : config.smtpPassword) : undefined,
+        smtpSecure: config.smtpSecure ?? true,
+        testMode: false,
+      }, testEmail);
+
       return NextResponse.json({
-        success: true,
-        message: 'Email test would be sent here (not implemented)',
+        success: result.success,
+        message: result.success
+          ? `Test email sent successfully to ${testEmail}`
+          : result.error || 'Failed to send test email',
+        messageId: result.messageId,
       });
     }
 
@@ -299,10 +616,28 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // TODO: Implement actual SMS test when not in test mode
+      // Actually send a test SMS
+      const testPhone = body.testPhone || config.otpFromNumber;
+      if (!testPhone) {
+        return NextResponse.json({
+          success: false,
+          message: 'Test phone number required',
+        });
+      }
+
+      const smsResult = await sendTestSms({
+        provider: config.otpProvider as 'twilio' | 'vonage' | 'messagebird',
+        apiKey: apiKey || undefined,
+        apiSecret: apiSecret || undefined,
+        fromNumber: config.otpFromNumber || undefined,
+      }, testPhone);
+
       return NextResponse.json({
-        success: true,
-        message: 'SMS test would be sent here (not implemented)',
+        success: smsResult.success,
+        message: smsResult.success
+          ? `Test SMS sent successfully to ${testPhone}`
+          : smsResult.error || 'Failed to send test SMS',
+        messageId: smsResult.messageId,
       });
     }
 

@@ -12,6 +12,7 @@ import {
 } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/auth/types';
+import { emailService } from '@/lib/services/email';
 
 // SECURITY: Generate cryptographically secure temporary password
 function generateSecureTempPassword(): string {
@@ -200,8 +201,45 @@ export async function POST(request: NextRequest) {
         success: true,
       });
 
-      // TODO: In production, send tempPassword via email instead of logging
-      console.log(`[SECURITY] Temp password for ${newUser.email} created. Email should be sent.`);
+      // Send temp password via email
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'https://alshaye.com';
+      try {
+        await emailService.sendEmail({
+          to: newUser.email,
+          subject: 'تمت الموافقة على طلبك - Account Approved',
+          html: `
+            <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px;">مرحباً ${newUser.nameArabic}!</h1>
+              </div>
+              <div style="background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #27ae60; margin-top: 0;">تمت الموافقة على طلبك</h2>
+                <p style="color: #666; line-height: 1.8;">
+                  يسعدنا إبلاغك بأنه تمت الموافقة على طلب الوصول الخاص بك. مرحباً بك في عائلة آل شايع!
+                </p>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0 0 10px 0; color: #666;"><strong>بيانات الدخول:</strong></p>
+                  <p style="margin: 5px 0; color: #333;">البريد الإلكتروني: <code dir="ltr" style="background: #e9ecef; padding: 2px 8px; border-radius: 4px;">${newUser.email}</code></p>
+                  <p style="margin: 5px 0; color: #333;">كلمة المرور المؤقتة: <code dir="ltr" style="background: #fff3cd; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${tempPassword}</code></p>
+                </div>
+                <p style="color: #e74c3c; font-size: 14px;">
+                  ⚠️ يرجى تغيير كلمة المرور فور تسجيل الدخول لأول مرة.
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${baseUrl}/login" style="background: #27ae60; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                    تسجيل الدخول الآن
+                  </a>
+                </div>
+              </div>
+            </div>
+          `,
+          text: `مرحباً ${newUser.nameArabic}!\n\nتمت الموافقة على طلبك.\n\nبيانات الدخول:\nالبريد: ${newUser.email}\nكلمة المرور المؤقتة: ${tempPassword}\n\nيرجى تغيير كلمة المرور فور تسجيل الدخول.\n\nتسجيل الدخول: ${baseUrl}/login`,
+        });
+        console.log(`[EMAIL] Temp password email sent to ${newUser.email}`);
+      } catch (emailError) {
+        console.error(`[EMAIL ERROR] Failed to send temp password email to ${newUser.email}:`, emailError);
+        // Don't fail the request if email fails - the account is still created
+      }
 
       return NextResponse.json({
         success: true,

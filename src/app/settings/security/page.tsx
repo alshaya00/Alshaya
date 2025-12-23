@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Shield, Smartphone, Key, CheckCircle, AlertTriangle, Copy, Eye, EyeOff } from 'lucide-react';
+import { generateQRCodeDataURL } from '@/lib/utils/qrcode';
 
 export default function SecuritySettingsPage() {
   const { user, session } = useAuth();
@@ -18,10 +19,22 @@ export default function SecuritySettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [disableCode, setDisableCode] = useState('');
   const [showDisable, setShowDisable] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     checkTwoFactorStatus();
   }, []);
+
+  // Generate QR code when setupData is available
+  useEffect(() => {
+    if (setupData?.uri) {
+      generateQRCodeDataURL(setupData.uri, 192)
+        .then(setQrCodeDataUrl)
+        .catch(err => console.error('Failed to generate QR code:', err));
+    } else {
+      setQrCodeDataUrl(null);
+    }
+  }, [setupData?.uri]);
 
   const checkTwoFactorStatus = async () => {
     if (!session?.token) return;
@@ -208,13 +221,16 @@ export default function SecuritySettingsPage() {
                   افتح تطبيق المصادقة (Google Authenticator أو Authy) وامسح الرمز
                 </p>
                 <div className="bg-white p-4 rounded-lg inline-block">
-                  {/* QR Code placeholder - in production, use a QR code library */}
                   <div className="w-48 h-48 bg-gray-200 flex items-center justify-center rounded">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=${encodeURIComponent(setupData.uri)}`}
-                      alt="QR Code"
-                      className="w-48 h-48"
-                    />
+                    {qrCodeDataUrl ? (
+                      <img
+                        src={qrCodeDataUrl}
+                        alt="QR Code for 2FA Setup"
+                        className="w-48 h-48"
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-sm">جاري التحميل...</div>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4">
