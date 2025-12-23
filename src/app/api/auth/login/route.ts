@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import {
   findUserByEmail,
   verifyPassword,
@@ -222,9 +221,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Login error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/login' },
-    });
     return NextResponse.json(
       {
         success: false,

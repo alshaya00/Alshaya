@@ -177,12 +177,6 @@ NODE_ENV=production
 
 ### Recommended
 ```bash
-# Error Monitoring
-NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
-SENTRY_ORG=your-org
-SENTRY_PROJECT=your-project
-SENTRY_AUTH_TOKEN=your-token
-
 # Email (if sending emails)
 EMAIL_PROVIDER=resend|sendgrid|mailgun|smtp
 RESEND_API_KEY=your-key

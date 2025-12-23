@@ -1962,17 +1962,18 @@ const JOURNAL_CATEGORIES = [
 
 async function main() {
   console.log('🌳 Seeding آل شايع family database...');
-  console.log(`📊 Total members to insert: ${familyMembers.length}`);
+  console.log(`📊 Total members to upsert: ${familyMembers.length}`);
 
   // ============================================
-  // SEED FAMILY MEMBERS
+  // SEED FAMILY MEMBERS (Idempotent with upsert)
   // ============================================
-  console.log('\n📦 Seeding family members...');
-  await prisma.familyMember.deleteMany();
+  console.log('\n📦 Seeding family members (using upsert for idempotency)...');
 
   for (const member of familyMembers) {
-    await prisma.familyMember.create({
-      data: member,
+    await prisma.familyMember.upsert({
+      where: { id: member.id },
+      update: member,
+      create: member,
     });
   }
 
@@ -2064,14 +2065,15 @@ async function main() {
   });
 
   // ============================================
-  // SEED JOURNAL CATEGORIES
+  // SEED JOURNAL CATEGORIES (Idempotent with upsert)
   // ============================================
-  console.log('📚 Seeding journal categories...');
-  await prisma.journalCategory.deleteMany();
+  console.log('📚 Seeding journal categories (using upsert for idempotency)...');
 
   for (const category of JOURNAL_CATEGORIES) {
-    await prisma.journalCategory.create({
-      data: category,
+    await prisma.journalCategory.upsert({
+      where: { key: category.key },
+      update: category,
+      create: category,
     });
   }
 

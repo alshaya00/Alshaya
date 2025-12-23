@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import { getAllMembersFromDb } from '@/lib/db';
 import {
   findMatches,
@@ -102,9 +101,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error in name matching:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'members/match', operation: 'match' },
-    });
     return NextResponse.json(
       {
         success: false,

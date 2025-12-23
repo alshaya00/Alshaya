@@ -531,8 +531,8 @@
 | 379-382 | Responsive design (4 breakpoints) | ✅ | TailwindCSS |
 | 383 | Global keyboard navigation | ✅ | Context exists |
 | 384 | Accessibility support | ✅ | Utils exist |
-| 385 | Global error boundary | ✅ | Sentry integration |
-| 386 | Error tracking | ✅ | Sentry integration |
+| 385 | Global error boundary | ✅ | React ErrorBoundary |
+| 386 | Error tracking | ✅ | Console logging |
 | 387 | User-friendly error messages | ✅ | Bilingual |
 
 ---

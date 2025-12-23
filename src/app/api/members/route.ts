@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import { FamilyMember } from '@/lib/data';
 import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInDb } from '@/lib/db';
 import { sanitizeString } from '@/lib/sanitize';
@@ -228,9 +227,6 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating member:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'members', operation: 'create' },
-    });
     return NextResponse.json(
       { success: false, error: 'Failed to create member' },
       { status: 500 }

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import {
   findEmailVerificationToken,
   markEmailVerificationTokenUsed,
@@ -71,9 +70,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Verify email error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/verify-email' },
-    });
     return NextResponse.json(
       {
         success: false,
@@ -165,9 +161,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Resend verification email error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/verify-email/resend' },
-    });
     return NextResponse.json(
       {
         success: false,

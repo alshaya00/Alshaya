@@ -1,6 +1,9 @@
 /**
- * Environment Variable Validation
- * Call this at application startup to fail fast if required vars are missing
+ * Environment Variable Validation - Replit Compatible
+ *
+ * This module validates environment variables at startup.
+ * On Replit, some variables are auto-set (DATABASE_URL) while others
+ * need to be configured in Secrets.
  */
 
 interface EnvValidationResult {
@@ -13,27 +16,32 @@ export function validateEnvironment(): EnvValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const isProduction = process.env.NODE_ENV === 'production';
+  const isReplit = !!process.env.REPL_ID;
 
-  // Required in all environments
-  const required: string[] = [];
+  // Required in all environments (critical for app to function)
+  const required: string[] = ['DATABASE_URL'];
 
-  // Required only in production
+  // Required only in production (security-critical)
   const productionRequired = [
     'JWT_SECRET',
     'ENCRYPTION_SECRET',
-    'NEXT_PUBLIC_BASE_URL',
   ];
 
-  // Optional but recommended
+  // Recommended but not required
   const recommended = [
-    'NEXT_PUBLIC_SENTRY_DSN',
-    'DATABASE_URL',
+    'NEXT_PUBLIC_BASE_URL',
+    'ADMIN_EMAIL',
+    'ADMIN_PASSWORD',
   ];
 
   // Check required variables
   for (const key of required) {
     if (!process.env[key]) {
-      errors.push(`Missing required environment variable: ${key}`);
+      if (isReplit && key === 'DATABASE_URL') {
+        errors.push(`${key} not set. Make sure PostgreSQL is attached to your Replit.`);
+      } else {
+        errors.push(`Missing required environment variable: ${key}`);
+      }
     }
   }
 
@@ -41,14 +49,19 @@ export function validateEnvironment(): EnvValidationResult {
   if (isProduction) {
     for (const key of productionRequired) {
       if (!process.env[key]) {
-        errors.push(`Missing required production environment variable: ${key}`);
+        if (isReplit) {
+          // On Replit, warn but don't block
+          warnings.push(`${key} not set in Secrets. Using auto-generated fallback.`);
+        } else {
+          errors.push(`Missing required production environment variable: ${key}`);
+        }
       }
     }
   } else {
-    // In development, warn about missing production variables
+    // In development, just warn
     for (const key of productionRequired) {
       if (!process.env[key]) {
-        warnings.push(`Missing environment variable (required in production): ${key}`);
+        warnings.push(`${key} not set (required in production)`);
       }
     }
   }
@@ -56,7 +69,7 @@ export function validateEnvironment(): EnvValidationResult {
   // Check recommended variables
   for (const key of recommended) {
     if (!process.env[key]) {
-      warnings.push(`Missing recommended environment variable: ${key}`);
+      warnings.push(`Recommended: Set ${key} in Replit Secrets`);
     }
   }
 
@@ -85,28 +98,67 @@ export function validateEnvironment(): EnvValidationResult {
 }
 
 /**
- * Throws if environment validation fails
- * Call this in production startup
+ * Validates environment and logs results
+ * Replit-compatible: Does NOT throw - allows app to start with warnings
  */
 export function assertValidEnvironment(): void {
   const result = validateEnvironment();
+  const isReplit = !!process.env.REPL_ID;
 
-  // Log warnings
-  for (const warning of result.warnings) {
-    console.warn(`⚠️ ENV WARNING: ${warning}`);
+  // Log warnings (only in development or if there are issues)
+  if (result.warnings.length > 0 && process.env.NODE_ENV !== 'production') {
+    console.log('\n⚠️  Environment warnings:');
+    for (const warning of result.warnings) {
+      console.warn(`   - ${warning}`);
+    }
   }
 
-  // Throw on errors
+  // Handle errors
   if (!result.valid) {
-    const errorMessage = [
-      '❌ Environment validation failed:',
-      ...result.errors.map(e => `  - ${e}`),
-      '',
-      'Please set the required environment variables and restart.',
-    ].join('\n');
+    console.log('\n❌ Environment validation issues:');
+    for (const error of result.errors) {
+      console.error(`   - ${error}`);
+    }
 
-    throw new Error(errorMessage);
+    // On Replit, don't throw - allow graceful degradation
+    if (isReplit) {
+      console.log('\n⚠️  Running on Replit with missing config. Some features may not work.');
+    } else if (process.env.NODE_ENV === 'production') {
+      throw new Error('Environment validation failed. Set required variables and restart.');
+    }
+  } else {
+    console.log('✅ Environment validation passed');
+  }
+}
+
+/**
+ * Get environment variable with fallback
+ * Useful for generating defaults in Replit
+ */
+export function getEnvWithFallback(key: string, fallback: string): string {
+  return process.env[key] || fallback;
+}
+
+/**
+ * Generate a secure random string for secrets
+ */
+export function generateSecureSecret(length: number = 32): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const randomValues = new Uint8Array(length);
+
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(randomValues);
+  } else {
+    // Fallback for Node.js
+    for (let i = 0; i < length; i++) {
+      randomValues[i] = Math.floor(Math.random() * 256);
+    }
   }
 
-  console.log('✅ Environment validation passed');
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+
+  return result;
 }

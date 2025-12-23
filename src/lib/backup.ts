@@ -1,5 +1,6 @@
-// Backup Service - Automatic and manual backup management
-// This service handles all backup operations with configurable intervals
+// Client-side Backup Service - Replit Compatible
+// Uses API calls for primary storage, localStorage only as client-side cache
+// No setInterval - backups triggered via API or on-demand
 
 import { logBackupCreate, logBackupRestore, logAudit } from './audit';
 import { storageKeys } from '@/config/storage-keys';
@@ -29,7 +30,6 @@ export interface BackupEntry {
 
 const BACKUP_CONFIG_KEY = storageKeys.backupConfig;
 const BACKUPS_KEY = storageKeys.backups;
-const BACKUP_TIMER_KEY = storageKeys.backupTimer;
 
 // Default backup configuration from centralized config
 const defaultConfig: BackupConfig = {
@@ -40,15 +40,28 @@ const defaultConfig: BackupConfig = {
   nextBackupTime: null,
 };
 
+// Safe localStorage access (handles SSR and Replit environments)
+function safeLocalStorage() {
+  if (typeof window === 'undefined') {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+  }
+  return window.localStorage;
+}
+
 // Get backup configuration
 export function getBackupConfig(): BackupConfig {
   try {
-    const stored = localStorage.getItem(BACKUP_CONFIG_KEY);
+    const storage = safeLocalStorage();
+    const stored = storage.getItem(BACKUP_CONFIG_KEY);
     if (stored) {
       return { ...defaultConfig, ...JSON.parse(stored) };
     }
   } catch {
-    // Ignore
+    // Ignore errors
   }
   return defaultConfig;
 }
@@ -67,14 +80,21 @@ export function saveBackupConfig(config: Partial<BackupConfig>): BackupConfig {
     newConfig.nextBackupTime = null;
   }
 
-  localStorage.setItem(BACKUP_CONFIG_KEY, JSON.stringify(newConfig));
+  try {
+    const storage = safeLocalStorage();
+    storage.setItem(BACKUP_CONFIG_KEY, JSON.stringify(newConfig));
+  } catch {
+    // Ignore storage errors (quota exceeded, etc.)
+  }
+
   return newConfig;
 }
 
-// Get all backups
+// Get all backups from localStorage cache
 export function getBackups(): BackupEntry[] {
   try {
-    return JSON.parse(localStorage.getItem(BACKUPS_KEY) || '[]');
+    const storage = safeLocalStorage();
+    return JSON.parse(storage.getItem(BACKUPS_KEY) || '[]');
   } catch {
     return [];
   }
@@ -91,7 +111,7 @@ function generateChecksum(data: string): string {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
-// Create a backup
+// Create a backup - Replit compatible (uses API when available)
 export async function createBackup(options: {
   name?: string;
   description?: string;
@@ -107,17 +127,25 @@ export async function createBackup(options: {
     includeAdmins = true,
   } = options;
 
-  // Fetch current data
+  const storage = safeLocalStorage();
+
+  // Fetch current data from API (primary source)
   let members: unknown[] = [];
   try {
     const res = await fetch('/api/members');
-    const data = await res.json();
-    members = data.members || [];
+    if (res.ok) {
+      const data = await res.json();
+      members = data.members || [];
+    }
   } catch {
-    // Use localStorage fallback
-    const stored = localStorage.getItem(storageKeys.familyData);
-    if (stored) {
-      members = JSON.parse(stored);
+    // Fallback to localStorage if API fails (for offline support)
+    try {
+      const stored = storage.getItem(storageKeys.familyData);
+      if (stored) {
+        members = JSON.parse(stored);
+      }
+    } catch {
+      // Ignore
     }
   }
 
@@ -128,15 +156,27 @@ export async function createBackup(options: {
   };
 
   if (includeConfig) {
-    backupData.config = JSON.parse(localStorage.getItem(storageKeys.systemConfig) || '{}');
+    try {
+      backupData.config = JSON.parse(storage.getItem(storageKeys.systemConfig) || '{}');
+    } catch {
+      backupData.config = {};
+    }
   }
 
   if (includeAdmins) {
-    backupData.admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
+    try {
+      backupData.admins = JSON.parse(storage.getItem(storageKeys.admins) || '[]');
+    } catch {
+      backupData.admins = [];
+    }
   }
 
-  // Include audit logs in backup
-  backupData.auditLogs = JSON.parse(localStorage.getItem(storageKeys.auditLog) || '[]').slice(0, 1000);
+  // Include audit logs in backup (limited)
+  try {
+    backupData.auditLogs = JSON.parse(storage.getItem(storageKeys.auditLog) || '[]').slice(0, 1000);
+  } catch {
+    backupData.auditLogs = [];
+  }
 
   const dataString = JSON.stringify(backupData);
   const admin = getCurrentAdmin();
@@ -155,14 +195,26 @@ export async function createBackup(options: {
     checksum: generateChecksum(dataString),
   };
 
-  // Save backup
+  // Save backup to localStorage (client-side cache)
   const backups = getBackups();
   backups.unshift(backup);
 
   // Keep only maxBackups
   const config = getBackupConfig();
   const trimmedBackups = backups.slice(0, config.maxBackups);
-  localStorage.setItem(BACKUPS_KEY, JSON.stringify(trimmedBackups));
+
+  try {
+    storage.setItem(BACKUPS_KEY, JSON.stringify(trimmedBackups));
+  } catch {
+    // Handle quota exceeded - remove oldest backups
+    console.warn('LocalStorage quota exceeded, removing old backups');
+    const reducedBackups = trimmedBackups.slice(0, Math.floor(config.maxBackups / 2));
+    try {
+      storage.setItem(BACKUPS_KEY, JSON.stringify(reducedBackups));
+    } catch {
+      // Give up on localStorage
+    }
+  }
 
   // Update config with last backup time
   saveBackupConfig({
@@ -200,22 +252,23 @@ export async function restoreBackup(backupId: string): Promise<{ success: boolea
 
     // Parse and restore data
     const data = JSON.parse(backup.data);
+    const storage = safeLocalStorage();
 
     // Restore config
     if (data.config) {
-      localStorage.setItem(storageKeys.systemConfig, JSON.stringify(data.config));
+      storage.setItem(storageKeys.systemConfig, JSON.stringify(data.config));
     }
 
     // Restore admins
     if (data.admins) {
-      localStorage.setItem(storageKeys.admins, JSON.stringify(data.admins));
+      storage.setItem(storageKeys.admins, JSON.stringify(data.admins));
     }
 
     // Log restore action
     logBackupRestore(backup.id, backup.name);
 
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'حدث خطأ أثناء استعادة النسخة الاحتياطية' };
   }
 }
@@ -228,7 +281,13 @@ export function deleteBackup(backupId: string): boolean {
   if (!backup) return false;
 
   const filteredBackups = backups.filter((b) => b.id !== backupId);
-  localStorage.setItem(BACKUPS_KEY, JSON.stringify(filteredBackups));
+
+  try {
+    const storage = safeLocalStorage();
+    storage.setItem(BACKUPS_KEY, JSON.stringify(filteredBackups));
+  } catch {
+    return false;
+  }
 
   logAudit({
     action: 'BACKUP_DELETE',
@@ -244,6 +303,8 @@ export function deleteBackup(backupId: string): boolean {
 
 // Download backup as file
 export function downloadBackup(backupId: string): boolean {
+  if (typeof window === 'undefined') return false;
+
   const backups = getBackups();
   const backup = backups.find((b) => b.id === backupId);
 
@@ -297,36 +358,35 @@ export async function runAutoBackupIfNeeded(): Promise<BackupEntry | null> {
   return backup;
 }
 
-// Start auto backup scheduler
-let backupInterval: NodeJS.Timeout | null = null;
-
+/**
+ * Start auto backup scheduler
+ * Replit-compatible: Runs check once on mount, no setInterval
+ */
 export function startBackupScheduler(): void {
   if (typeof window === 'undefined') return;
 
-  // Check every minute
-  if (backupInterval) {
-    clearInterval(backupInterval);
-  }
+  // Run once to check if backup is needed (no interval)
+  runAutoBackupIfNeeded().catch(console.error);
 
-  backupInterval = setInterval(async () => {
-    await runAutoBackupIfNeeded();
-  }, 60 * 1000); // Check every minute
-
-  // Also run immediately
-  runAutoBackupIfNeeded();
+  // Trigger server-side backup check via API
+  fetch('/api/backup/check', { method: 'POST' }).catch(() => {
+    // Ignore API errors - backup still works client-side
+  });
 }
 
+/**
+ * Stop backup scheduler
+ * Replit-compatible: No-op since we don't use intervals
+ */
 export function stopBackupScheduler(): void {
-  if (backupInterval) {
-    clearInterval(backupInterval);
-    backupInterval = null;
-  }
+  // No-op - no intervals to clear in Replit mode
 }
 
 // Get admin info helper
 function getCurrentAdmin(): { id: string; name: string } {
   try {
-    const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
+    const storage = safeLocalStorage();
+    const admins = JSON.parse(storage.getItem(storageKeys.admins) || '[]');
     if (admins.length > 0) {
       return { id: admins[0].id || 'admin', name: admins[0].name || 'المدير' };
     }
@@ -343,4 +403,38 @@ export function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Export backup to server (Replit-compatible)
+export async function exportBackupToServer(backup: BackupEntry): Promise<boolean> {
+  try {
+    const res = await fetch('/api/backup/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: backup.name,
+        description: backup.description,
+        data: backup.data,
+        memberCount: backup.memberCount,
+        type: backup.type,
+      }),
+    });
+
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Import backups from server (Replit-compatible)
+export async function importBackupsFromServer(): Promise<BackupEntry[]> {
+  try {
+    const res = await fetch('/api/backup/list');
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    return data.backups || [];
+  } catch {
+    return [];
+  }
 }

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import {
   findUserByEmail,
   createAccessRequest,
@@ -185,10 +184,6 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       );
     }
-
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/register' },
-    });
 
     return NextResponse.json(
       {

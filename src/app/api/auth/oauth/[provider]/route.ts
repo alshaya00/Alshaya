@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import {
   getAuthorizationUrl,
   generateStateToken,
@@ -59,9 +58,6 @@ export async function GET(
     return NextResponse.redirect(authUrl);
   } catch (error) {
     console.error('OAuth initiation error:', error);
-    Sentry.captureException(error, {
-      tags: { endpoint: 'auth/oauth/initiate' },
-    });
 
     // Redirect to login with error
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
