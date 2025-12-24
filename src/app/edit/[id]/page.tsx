@@ -24,7 +24,7 @@ import {
   Eye,
   AlertCircle,
 } from 'lucide-react';
-import { familyMembers, getMemberById } from '@/lib/data';
+import { FamilyMember as FamilyMemberType } from '@/lib/data';
 import {
   validateEdit,
   validateParentChange,
@@ -33,6 +33,7 @@ import {
   CascadeUpdate,
 } from '@/lib/edit-utils';
 import { FamilyMember, ValidationError } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 type EditSection = 'identity' | 'family' | 'personal' | 'contact';
 
@@ -40,9 +41,14 @@ export default function EditMemberPage() {
   const params = useParams();
   const router = useRouter();
   const memberId = params.id as string;
+  const { session } = useAuth();
+
+  // All members from API
+  const [allMembers, setAllMembers] = useState<FamilyMemberType[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
 
   // Original member data
-  const originalMember = useMemo(() => getMemberById(memberId), [memberId]);
+  const [originalMember, setOriginalMember] = useState<FamilyMemberType | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<Partial<FamilyMember>>({});
@@ -55,19 +61,46 @@ export default function EditMemberPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [changeReason, setChangeReason] = useState('');
 
-  // Initialize form with member data
+  // Fetch members from API
   useEffect(() => {
-    if (originalMember) {
-      setFormData({ ...originalMember });
+    async function fetchData() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const [membersResponse, memberResponse] = await Promise.all([
+          fetch('/api/members?limit=500', { headers }),
+          fetch(`/api/members/${memberId}`, { headers }),
+        ]);
+
+        if (membersResponse.ok) {
+          const result = await membersResponse.json();
+          setAllMembers(result.data || []);
+        }
+
+        if (memberResponse.ok) {
+          const result = await memberResponse.json();
+          if (result.data) {
+            setOriginalMember(result.data);
+            setFormData({ ...result.data });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      } finally {
+        setMembersLoading(false);
+      }
     }
-  }, [originalMember]);
+    fetchData();
+  }, [memberId, session?.token]);
 
   // Get all potential fathers (males)
   const potentialFathers = useMemo(() => {
-    return familyMembers.filter(m =>
+    return allMembers.filter(m =>
       m.gender === 'Male' && m.id !== memberId
     ).sort((a, b) => a.generation - b.generation);
-  }, [memberId]);
+  }, [allMembers, memberId]);
 
   // Track which fields have changed
   const changedFields = useMemo(() => {
@@ -99,12 +132,12 @@ export default function EditMemberPage() {
     }
 
     // Validate
-    const validation = validateEdit(memberId, changes, familyMembers);
+    const validation = validateEdit(memberId, changes, allMembers);
     setErrors(validation.errors);
     setWarnings(validation.warnings);
 
     // Calculate cascade updates
-    const cascades = calculateCascadeUpdates(memberId, changes, familyMembers);
+    const cascades = calculateCascadeUpdates(memberId, changes, allMembers);
     setCascadeUpdates(cascades);
   }, [formData, originalMember, changedFields, memberId]);
 
@@ -125,7 +158,7 @@ export default function EditMemberPage() {
 
   // Handle parent change
   const handleParentChange = (newParentId: string | null) => {
-    const validation = validateParentChange(memberId, newParentId, familyMembers);
+    const validation = validateParentChange(memberId, newParentId, allMembers);
 
     if (!validation.valid) {
       alert(validation.errors.join('\n'));
@@ -141,17 +174,17 @@ export default function EditMemberPage() {
 
     // Update related fields
     if (newParentId) {
-      const newParent = familyMembers.find(m => m.id === newParentId);
+      const newParent = allMembers.find(m => m.id === newParentId);
       if (newParent) {
         updateField('fatherName', newParent.firstName);
         updateField('generation', newParent.generation + 1);
         updateField('branch', newParent.branch);
 
         // Update ancestor names
-        const grandparent = familyMembers.find(m => m.id === newParent.fatherId);
+        const grandparent = allMembers.find(m => m.id === newParent.fatherId);
         if (grandparent) {
           updateField('grandfatherName', grandparent.firstName);
-          const greatGrandparent = familyMembers.find(m => m.id === grandparent.fatherId);
+          const greatGrandparent = allMembers.find(m => m.id === grandparent.fatherId);
           if (greatGrandparent) {
             updateField('greatGrandfatherName', greatGrandparent.firstName);
           }
@@ -165,7 +198,7 @@ export default function EditMemberPage() {
 
   // Regenerate full name
   const regenerateFullName = () => {
-    const names = generateFullName(formData, familyMembers);
+    const names = generateFullName(formData, allMembers);
     updateField('fullNameAr', names.fullNameAr);
     updateField('fullNameEn', names.fullNameEn);
   };
@@ -777,7 +810,7 @@ export default function EditMemberPage() {
                 {showCascadePreview && (
                   <div className="mt-4 space-y-2 max-h-40 overflow-auto">
                     {cascadeUpdates.map((update, i) => {
-                      const member = familyMembers.find(m => m.id === update.memberId);
+                      const member = allMembers.find(m => m.id === update.memberId);
                       return (
                         <div key={i} className="text-sm bg-white p-2 rounded-lg">
                           <span className="font-medium">{member?.firstName || update.memberId}</span>

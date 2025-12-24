@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
-import { familyMembers } from '@/lib/data';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
   Users, Lock, ArrowRight, Loader2, X, Search
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
+import { FamilyMember } from '@/lib/types';
 
 // ============================================
 // TYPES
@@ -58,9 +58,26 @@ export default function RegisterPage() {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+
+  // Fetch members from API (public endpoint for search)
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const response = await fetch('/api/members?limit=500');
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      }
+    }
+    fetchMembers();
+  }, []);
 
   // Filter family members for search
-  const filteredMembers = familyMembers.filter((m) => {
+  const filteredMembers = allMembers.filter((m) => {
     if (!searchQuery) return false;
     const query = searchQuery.toLowerCase();
     return (
@@ -71,7 +88,7 @@ export default function RegisterPage() {
   }).slice(0, 10);
 
   const selectedMember = formData.relatedMemberId
-    ? familyMembers.find((m) => m.id === formData.relatedMemberId)
+    ? allMembers.find((m) => m.id === formData.relatedMemberId)
     : null;
 
   const handleChange = (
@@ -81,7 +98,7 @@ export default function RegisterPage() {
   };
 
   const handleMemberSelect = (memberId: string) => {
-    const member = familyMembers.find((m) => m.id === memberId);
+    const member = allMembers.find((m) => m.id === memberId);
     setFormData({
       ...formData,
       relatedMemberId: memberId,

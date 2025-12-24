@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   getPendingMembers,
   updatePendingStatus,
@@ -51,6 +52,7 @@ interface BranchGroup {
 }
 
 export default function AdminPendingPage() {
+  const { session } = useAuth();
   const [members, setMembers] = useState<PendingMember[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('pending');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,8 +64,27 @@ export default function AdminPendingPage() {
     type: 'approve' | 'reject' | 'delete';
     ids: string[];
   } | null>(null);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
-  const allMembers = getAllMembers();
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
 
   // Load pending members
   useEffect(() => {
@@ -99,7 +120,7 @@ export default function AdminPendingPage() {
 
     filteredMembers.forEach(member => {
       if (!groups[member.branchHeadId]) {
-        const branchHead = getMemberById(member.branchHeadId);
+        const branchHead = allMembers.find(m => m.id === member.branchHeadId);
         groups[member.branchHeadId] = {
           branchHeadId: member.branchHeadId,
           branchHeadName: branchHead?.firstName || 'غير معروف',

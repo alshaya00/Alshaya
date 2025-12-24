@@ -27,6 +27,9 @@ export interface StoredUser {
   updatedAt: Date;
   lastLoginAt?: Date | null;
   emailVerifiedAt?: Date | null;
+  twoFactorEnabled?: boolean;
+  twoFactorSecret?: string | null;
+  twoFactorBackupCodes?: string | null;
 }
 
 export interface StoredSession {
@@ -414,6 +417,8 @@ export async function createAccessRequest(data: {
   nameArabic: string;
   nameEnglish?: string;
   phone?: string;
+  city?: string;
+  birthDate?: Date | null;
   claimedRelation: string;
   relatedMemberId?: string;
   relationshipType?: string;

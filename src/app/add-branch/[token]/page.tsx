@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
 import {
   getLinkByToken,
   addPendingMember,
@@ -217,33 +217,53 @@ export default function BranchEntryPage() {
   const [showTreeViewer, setShowTreeViewer] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const allMembers = getAllMembers();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
-  // Load link and branch head
+  // Load link, branch head, and all members
   useEffect(() => {
-    const foundLink = getLinkByToken(token);
-    if (!foundLink) {
-      setError('الرابط غير صالح أو منتهي الصلاحية');
-      setLoading(false);
-      return;
+    async function loadData() {
+      const foundLink = getLinkByToken(token);
+      if (!foundLink) {
+        setError('الرابط غير صالح أو منتهي الصلاحية');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch all members from API (public endpoint for branch entry)
+        const response = await fetch('/api/members?limit=500');
+        if (!response.ok) {
+          throw new Error('Failed to fetch members');
+        }
+        const result = await response.json();
+        const members = result.data || [];
+        setAllMembers(members);
+
+        // Find the branch head from fetched members
+        const head = members.find((m: FamilyMember) => m.id === foundLink.branchHeadId);
+        if (!head) {
+          setError('لم يتم العثور على رأس الفرع');
+          setLoading(false);
+          return;
+        }
+
+        setLink(foundLink);
+        setBranchHead(head);
+        setFatherId(head.id);
+
+        // Load session members
+        const pending = getPendingMembers();
+        const fromThisLink = pending.filter(p => p.submittedVia === token && p.status === 'pending');
+        setSessionMembers(fromThisLink);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        setError('حدث خطأ في تحميل البيانات');
+      } finally {
+        setLoading(false);
+      }
     }
 
-    const head = getMemberById(foundLink.branchHeadId);
-    if (!head) {
-      setError('لم يتم العثور على رأس الفرع');
-      setLoading(false);
-      return;
-    }
-
-    setLink(foundLink);
-    setBranchHead(head);
-    setFatherId(head.id);
-    setLoading(false);
-
-    // Load session members
-    const pending = getPendingMembers();
-    const fromThisLink = pending.filter(p => p.submittedVia === token && p.status === 'pending');
-    setSessionMembers(fromThisLink);
+    loadData();
   }, [token]);
 
   // Get branch members for father selection

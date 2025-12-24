@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMemberById, getChildren, getAllMembers } from '@/lib/data';
+import { getMemberByIdFromDb, getChildrenFromDb } from '@/lib/db';
 import { MilkFamily, MilkSibling } from '@/lib/types';
 
 // GET /api/members/[id]/breastfeeding - Get breastfeeding relationships for a member
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const memberId = params.id;
-    const member = getMemberById(memberId);
+    const member = await getMemberByIdFromDb(memberId);
 
     if (!member) {
       return NextResponse.json(
@@ -39,7 +39,7 @@ export async function GET(
 
       if (relationship.nurseId) {
         // Get all children of the nurse from family tree
-        const nurseChildren = getChildren(relationship.nurseId);
+        const nurseChildren = await getChildrenFromDb(relationship.nurseId);
 
         milkSiblings = nurseChildren
           .filter(child => child.id !== memberId) // Exclude the current person

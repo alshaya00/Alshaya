@@ -134,8 +134,8 @@ export default function DashboardPage() {
 
           {/* Export Buttons */}
           <div className="flex items-center justify-center gap-3 mt-4">
-            <ExportPDF />
-            <ExportButton />
+            <ExportPDF members={allMembers as any} stats={stats} />
+            <ExportButton members={allMembers as any} />
           </div>
         </div>
 

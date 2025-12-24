@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -19,7 +19,7 @@ import {
   X,
   Filter,
 } from 'lucide-react';
-import { familyMembers } from '@/lib/data';
+import { useAuth } from '@/contexts/AuthContext';
 import { findDuplicates, DuplicateMatch } from '@/lib/import-utils';
 import { FamilyMember } from '@/lib/types';
 
@@ -32,12 +32,35 @@ interface DuplicatePair {
 }
 
 export default function DuplicatesPage() {
+  const { session } = useAuth();
+
   // State
   const [threshold, setThreshold] = useState(60);
   const [isScanning, setIsScanning] = useState(false);
   const [duplicatePairs, setDuplicatePairs] = useState<DuplicatePair[]>([]);
   const [expandedPairs, setExpandedPairs] = useState<number[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
 
   // Scan for duplicates
   const scanForDuplicates = () => {
@@ -47,9 +70,9 @@ export default function DuplicatesPage() {
       const pairs: DuplicatePair[] = [];
       const processedPairs = new Set<string>();
 
-      for (let i = 0; i < familyMembers.length; i++) {
-        const member = familyMembers[i];
-        const otherMembers = familyMembers.filter(m => m.id !== member.id);
+      for (let i = 0; i < allMembers.length; i++) {
+        const member = allMembers[i];
+        const otherMembers = allMembers.filter(m => m.id !== member.id);
         const matches = findDuplicates(member, otherMembers, threshold);
 
         for (const match of matches) {

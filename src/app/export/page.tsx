@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -18,7 +18,7 @@ import {
   Eye,
   Filter,
 } from 'lucide-react';
-import { familyMembers, getStatistics } from '@/lib/data';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   ALL_EXPORT_FIELDS,
   FIELD_CATEGORIES,
@@ -30,12 +30,55 @@ import {
   getExportFilename,
   getMimeType,
 } from '@/lib/export-utils';
-import { ExportField, ExportFormat, ExportFilters } from '@/lib/types';
+import { ExportField, ExportFormat, ExportFilters, FamilyMember } from '@/lib/types';
 
 type ViewMode = 'format' | 'fields' | 'filters' | 'preview';
 
 export default function ExportPage() {
-  const stats = getStatistics();
+  const { session } = useAuth();
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [stats, setStats] = useState({ totalMembers: 0, males: 0, females: 0, generations: 0 });
+
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
+
+  // Fetch statistics from API
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/statistics');
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            totalMembers: data.totalMembers || 0,
+            males: data.males || 0,
+            females: data.females || 0,
+            generations: data.generations || 0,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    }
+    fetchStats();
+  }, []);
 
   // Export configuration state
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('JSON');
@@ -59,18 +102,18 @@ export default function ExportPage() {
 
   // Get unique values for filters
   const uniqueBranches = useMemo(() =>
-    [...new Set(familyMembers.map(m => m.branch).filter(Boolean))] as string[],
+    [...new Set(allMembers.map(m => m.branch).filter(Boolean))] as string[],
     []
   );
 
   const generations = useMemo(() =>
-    [...new Set(familyMembers.map(m => m.generation))].sort((a, b) => a - b),
+    [...new Set(allMembers.map(m => m.generation))].sort((a, b) => a - b),
     []
   );
 
   // Filter members based on current filters
   const filteredMembers = useMemo(() => {
-    return familyMembers.filter(member => {
+    return allMembers.filter(member => {
       if (filters.generations?.length && !filters.generations.includes(member.generation)) {
         return false;
       }
@@ -285,7 +328,7 @@ export default function ExportPage() {
             <div className="w-px h-4 bg-gray-200" />
             <div className="flex items-center gap-2">
               <span className="text-gray-500">الأعضاء:</span>
-              <span className="font-bold">{filteredMembers.length} من {familyMembers.length}</span>
+              <span className="font-bold">{filteredMembers.length} من {allMembers.length}</span>
             </div>
             {includeTree && (
               <>
@@ -601,7 +644,7 @@ export default function ExportPage() {
                 <Filter className="w-5 h-5" />
                 <span>
                   سيتم تصدير <strong className="text-[#1E3A5F]">{filteredMembers.length}</strong> عضو
-                  من أصل {familyMembers.length}
+                  من أصل {allMembers.length}
                 </span>
               </div>
             </div>

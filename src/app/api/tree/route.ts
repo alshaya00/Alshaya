@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
-import { buildFamilyTree } from '@/lib/data';
+import { buildFamilyTreeFromDb } from '@/lib/db';
 
 export async function GET() {
-  const tree = buildFamilyTree();
-  return NextResponse.json(tree);
+  try {
+    const tree = await buildFamilyTreeFromDb();
+    return NextResponse.json(tree);
+  } catch (error) {
+    console.error('Error building family tree:', error);
+    return NextResponse.json(
+      { error: 'Failed to build family tree' },
+      { status: 500 }
+    );
+  }
 }

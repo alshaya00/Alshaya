@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getAllMembers, getMemberById, FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/data';
 import {
   getBranchLinks,
   createBranchLink,
@@ -17,6 +17,7 @@ import {
   TreePine, Eye, QrCode, UserPlus, Zap
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BranchData {
   head: FamilyMember;
@@ -57,11 +58,41 @@ export default function BranchesPage() {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [totalPending, setTotalPending] = useState(0);
   const [showLinkModal, setShowLinkModal] = useState<BranchData | null>(null);
+  const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const { session } = useAuth();
 
-  const allMembers = getAllMembers();
+  // Fetch members from API
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const headers: HeadersInit = {};
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        const response = await fetch('/api/members?limit=500', { headers });
+        if (response.ok) {
+          const result = await response.json();
+          setAllMembers(result.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+    fetchMembers();
+  }, [session?.token]);
+
+  // Helper to get member by ID from loaded members
+  const getMemberById = (id: string): FamilyMember | undefined => {
+    return allMembers.find(m => m.id === id);
+  };
 
   // Find main branches (children of root P001)
   useEffect(() => {
+    if (membersLoading || allMembers.length === 0) return;
+
     const root = getMemberById('P001');
     if (!root) return;
 
@@ -169,6 +200,18 @@ ${url}
     7: 'bg-indigo-500',
     8: 'bg-purple-500',
   };
+
+  // Show loading state
+  if (membersLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري تحميل الفروع...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 pb-24 lg:pb-6">
