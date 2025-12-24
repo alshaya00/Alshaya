@@ -283,7 +283,7 @@ export function generateFullName(
   let currentMember = member;
   let depth = 0;
 
-  // Get ancestor names (up to 4 levels)
+  // Get ancestor names (up to 4 levels) - builds in correct order: Name, Father, Grandfather...
   while (currentMember.fatherId && depth < 4) {
     const father = allMembers.find(m => m.id === currentMember.fatherId);
     if (father) {
@@ -298,16 +298,16 @@ export function generateFullName(
   // Add family name
   parts.push(member.familyName || 'آل شايع');
 
-  // Arabic full name with proper connectors
+  // Arabic full name with proper connectors (Name بن Father بن Grandfather آل شايع)
   const connector = member.gender === 'Female' ? 'بنت' : 'بن';
   const fullNameAr = parts.length > 2
     ? parts[0] + ' ' + connector + ' ' + parts.slice(1, -1).join(' ' + connector + ' ') + ' ' + parts[parts.length - 1]
     : parts.join(' ');
 
-  // English full name
-  const connectorEn = member.gender === 'Female' ? 'bint' : 'bin';
+  // English full name - use spaces only (standard English format)
+  // Name Father Grandfather Al-Shaye (no "bin" connectors)
   const fullNameEn = parts.length > 2
-    ? transliterate(parts[0]) + ' ' + connectorEn + ' ' + parts.slice(1, -1).map(transliterate).join(' ' + connectorEn + ' ') + ' ' + transliterate(parts[parts.length - 1])
+    ? transliterate(parts[0]) + ' ' + parts.slice(1, -1).map(transliterate).join(' ') + ' ' + transliterate(parts[parts.length - 1])
     : parts.map(transliterate).join(' ');
 
   return { fullNameAr, fullNameEn };

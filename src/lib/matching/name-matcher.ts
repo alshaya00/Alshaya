@@ -154,6 +154,8 @@ function getFullLineage(
 
 /**
  * Generate full Arabic name string from lineage (to Gen 1)
+ * Lineage is reversed to go from Father -> Great-grandfather (correct Arabic naming order)
+ * Example: محمد بن علي بن أحمد آل شايع (Name bin Father bin Grandfather Family)
  */
 function generateFullName(
   firstName: string,
@@ -164,7 +166,10 @@ function generateFullName(
   const connector = gender === 'Male' ? 'بن' : 'بنت';
   const parts = [firstName];
 
-  for (const ancestor of lineage) {
+  // Reverse lineage to go from Father (immediate) to Gen1 (oldest)
+  const reversedLineage = [...lineage].reverse();
+
+  for (const ancestor of reversedLineage) {
     parts.push(connector);
     parts.push(ancestor.firstName);
   }
@@ -175,6 +180,8 @@ function generateFullName(
 
 /**
  * Generate full English name string from lineage
+ * Uses spaces between names (standard English format) instead of "bin" connectors
+ * Lineage is reversed to go from Father -> Great-grandfather (correct Arabic naming order)
  */
 function generateFullNameEn(
   firstName: string,
@@ -182,12 +189,14 @@ function generateFullNameEn(
   lineage: FamilyMember[],
   familyName: string = 'Al-Shaye'
 ): string {
-  const connector = gender === 'Male' ? 'bin' : 'bint';
   const parts = [firstName];
 
-  for (const ancestor of lineage) {
-    parts.push(connector);
-    // Use English name if available, otherwise transliterate
+  // Reverse lineage to go from Father (immediate) to Gen1 (oldest)
+  const reversedLineage = [...lineage].reverse();
+
+  for (const ancestor of reversedLineage) {
+    // Use English name if available, otherwise use Arabic first name
+    // No "bin" connector for English - just space-separated names
     parts.push(ancestor.fullNameEn?.split(' ')[0] || ancestor.firstName);
   }
 

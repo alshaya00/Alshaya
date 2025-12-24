@@ -1,22 +1,43 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { FamilyMember } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  getPendingMembers,
-  updatePendingStatus,
-  removePendingMember,
-  savePendingMembers,
-  PendingMember,
-  getBranchLinks,
-} from '@/lib/branchEntry';
-import {
   Check, X, Edit2, Clock, User, Filter, Trash2,
   ChevronDown, ChevronRight, AlertCircle, CheckCircle, XCircle,
-  Save, RotateCcw, Search, GitBranch, Users, TreePine
+  Save, RotateCcw, Search, GitBranch, Users, TreePine, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+
+// Database PendingMember type (matches Prisma schema)
+interface PendingMember {
+  id: string;
+  firstName: string;
+  fatherName: string | null;
+  grandfatherName: string | null;
+  greatGrandfatherName: string | null;
+  familyName: string;
+  proposedFatherId: string | null;
+  gender: string;
+  birthYear: number | null;
+  generation: number;
+  branch: string | null;
+  fullNameAr: string | null;
+  fullNameEn: string | null;
+  phone: string | null;
+  city: string | null;
+  status: string;
+  occupation: string | null;
+  email: string | null;
+  submittedVia: string | null;
+  submittedAt: string;
+  reviewStatus: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+  approvedMemberId: string | null;
+}
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
 
@@ -65,8 +86,9 @@ export default function AdminPendingPage() {
     ids: string[];
   } | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch members from API
+  // Fetch family members from API
   useEffect(() => {
     async function fetchMembers() {
       try {
@@ -86,11 +108,44 @@ export default function AdminPendingPage() {
     fetchMembers();
   }, [session?.token]);
 
-  // Load pending members
+  // Fetch pending members from database API
+  const fetchPendingMembers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const headers: HeadersInit = {};
+      if (session?.token) {
+        headers['Authorization'] = `Bearer ${session.token}`;
+      }
+      const response = await fetch('/api/admin/pending', { headers });
+      if (response.ok) {
+        const result = await response.json();
+        setMembers(result.pending || []);
+      } else {
+        console.error('Failed to fetch pending members:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending members:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session?.token]);
+
+  // Load pending members on mount
   useEffect(() => {
-    const pending = getPendingMembers();
-    setMembers(pending);
-  }, []);
+    if (session?.token) {
+      fetchPendingMembers();
+    }
+  }, [session?.token, fetchPendingMembers]);
+
+  // Map reviewStatus to filter status
+  const getFilterStatus = (member: PendingMember): FilterStatus => {
+    switch (member.reviewStatus) {
+      case 'PENDING': return 'pending';
+      case 'APPROVED': return 'approved';
+      case 'REJECTED': return 'rejected';
+      default: return 'pending';
+    }
+  };
 
   // Filter members
   const filteredMembers = useMemo(() => {
@@ -98,7 +153,7 @@ export default function AdminPendingPage() {
 
     // Status filter
     if (filter !== 'all') {
-      result = result.filter(m => m.status === filter);
+      result = result.filter(m => getFilterStatus(m) === filter);
     }
 
     // Search filter
@@ -106,30 +161,31 @@ export default function AdminPendingPage() {
       const query = searchQuery.toLowerCase();
       result = result.filter(m =>
         m.firstName.toLowerCase().includes(query) ||
-        m.fullNameAr.toLowerCase().includes(query) ||
-        m.fatherName.toLowerCase().includes(query)
+        (m.fullNameAr?.toLowerCase() || '').includes(query) ||
+        (m.fatherName?.toLowerCase() || '').includes(query)
       );
     }
 
     return result;
   }, [members, filter, searchQuery]);
 
-  // Group by branch with full names
+  // Group by branch (using proposedFatherId) with full names
   const branchGroups = useMemo(() => {
     const groups: Record<string, BranchGroup> = {};
 
     filteredMembers.forEach(member => {
-      if (!groups[member.branchHeadId]) {
-        const branchHead = allMembers.find(m => m.id === member.branchHeadId);
-        groups[member.branchHeadId] = {
-          branchHeadId: member.branchHeadId,
-          branchHeadName: branchHead?.firstName || 'غير معروف',
-          branchFullName: branchHead ? getFullLineageName(branchHead, allMembers, 3) : 'غير معروف',
-          generation: branchHead?.generation || 0,
+      const branchHeadId = member.proposedFatherId || 'unknown';
+      if (!groups[branchHeadId]) {
+        const branchHead = allMembers.find(m => m.id === branchHeadId);
+        groups[branchHeadId] = {
+          branchHeadId: branchHeadId,
+          branchHeadName: branchHead?.firstName || member.fatherName || 'غير معروف',
+          branchFullName: branchHead ? getFullLineageName(branchHead, allMembers, 3) : (member.fatherName || 'غير معروف'),
+          generation: branchHead?.generation || member.generation - 1 || 0,
           members: [],
         };
       }
-      groups[member.branchHeadId].members.push(member);
+      groups[branchHeadId].members.push(member);
     });
 
     return Object.values(groups).sort((a, b) => a.generation - b.generation);
@@ -138,9 +194,9 @@ export default function AdminPendingPage() {
   // Stats
   const stats = useMemo(() => ({
     total: members.length,
-    pending: members.filter(m => m.status === 'pending').length,
-    approved: members.filter(m => m.status === 'approved').length,
-    rejected: members.filter(m => m.status === 'rejected').length,
+    pending: members.filter(m => m.reviewStatus === 'PENDING').length,
+    approved: members.filter(m => m.reviewStatus === 'APPROVED').length,
+    rejected: members.filter(m => m.reviewStatus === 'REJECTED').length,
   }), [members]);
 
   const handleSelectMember = (id: string) => {
@@ -159,7 +215,7 @@ export default function AdminPendingPage() {
     const group = branchGroups.find(g => g.branchHeadId === branchHeadId);
     if (!group) return;
 
-    const pendingInGroup = group.members.filter(m => m.status === 'pending');
+    const pendingInGroup = group.members.filter(m => m.reviewStatus === 'PENDING');
     const allSelected = pendingInGroup.every(m => selectedIds.has(m.id));
 
     setSelectedIds(prev => {
@@ -175,41 +231,89 @@ export default function AdminPendingPage() {
     });
   };
 
-  const handleApprove = (ids: string[]) => {
-    ids.forEach(id => {
-      updatePendingStatus(id, 'approved');
-    });
-    setMembers(getPendingMembers());
+  // API call to update pending member status
+  const updatePendingMemberStatus = async (id: string, action: 'approve' | 'reject', notes?: string) => {
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (session?.token) {
+        headers['Authorization'] = `Bearer ${session.token}`;
+      }
+      const response = await fetch(`/api/admin/pending/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ action, notes }),
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to update pending member:', error);
+      return false;
+    }
+  };
+
+  // API call to delete pending member
+  const deletePendingMember = async (id: string) => {
+    try {
+      const headers: HeadersInit = {};
+      if (session?.token) {
+        headers['Authorization'] = `Bearer ${session.token}`;
+      }
+      const response = await fetch(`/api/admin/pending/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to delete pending member:', error);
+      return false;
+    }
+  };
+
+  const handleApprove = async (ids: string[]) => {
+    for (const id of ids) {
+      await updatePendingMemberStatus(id, 'approve');
+    }
+    await fetchPendingMembers();
     setSelectedIds(new Set());
     setShowConfirmModal(null);
   };
 
-  const handleReject = (ids: string[]) => {
-    ids.forEach(id => {
-      updatePendingStatus(id, 'rejected');
-    });
-    setMembers(getPendingMembers());
+  const handleReject = async (ids: string[]) => {
+    for (const id of ids) {
+      await updatePendingMemberStatus(id, 'reject');
+    }
+    await fetchPendingMembers();
     setSelectedIds(new Set());
     setShowConfirmModal(null);
   };
 
-  const handleDelete = (ids: string[]) => {
-    ids.forEach(id => {
-      removePendingMember(id);
-    });
-    setMembers(getPendingMembers());
+  const handleDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await deletePendingMember(id);
+    }
+    await fetchPendingMembers();
     setSelectedIds(new Set());
     setShowConfirmModal(null);
   };
 
-  const handleResetStatus = (id: string) => {
-    const allPending = getPendingMembers();
-    const member = allPending.find(m => m.id === id);
-    if (member) {
-      member.status = 'pending';
-      member.reviewNote = undefined;
-      savePendingMembers(allPending);
-      setMembers(allPending);
+  const handleResetStatus = async (id: string) => {
+    // Reset to pending status
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (session?.token) {
+        headers['Authorization'] = `Bearer ${session.token}`;
+      }
+      await fetch(`/api/admin/pending/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ action: 'reset' }),
+      });
+      await fetchPendingMembers();
+    } catch (error) {
+      console.error('Failed to reset pending member status:', error);
     }
   };
 
@@ -224,20 +328,24 @@ export default function AdminPendingPage() {
     });
   };
 
-  const handleSaveEdit = (id: string) => {
-    const updatedMembers = members.map(m => {
-      if (m.id === id) {
-        const connector = m.gender === 'Male' ? 'بن' : 'بنت';
-        return {
-          ...m,
-          ...editData,
-          fullNameAr: `${editData.firstName || m.firstName} ${connector} ${m.fatherName} آل شايع`,
-        };
+  const handleSaveEdit = async (id: string) => {
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (session?.token) {
+        headers['Authorization'] = `Bearer ${session.token}`;
       }
-      return m;
-    });
-    setMembers(updatedMembers);
-    savePendingMembers(updatedMembers);
+      // Update pending member via API
+      await fetch(`/api/admin/pending/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(editData),
+      });
+      await fetchPendingMembers();
+    } catch (error) {
+      console.error('Failed to update pending member:', error);
+    }
     setEditingId(null);
     setEditData({});
   };
@@ -369,7 +477,7 @@ export default function AdminPendingPage() {
         </div>
 
         {/* Empty State */}
-        {branchGroups.length === 0 && (
+        {!isLoading && branchGroups.length === 0 && (
           <div className="bg-white rounded-xl p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="text-gray-400" size={32} />
@@ -381,10 +489,18 @@ export default function AdminPendingPage() {
           </div>
         )}
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="bg-white rounded-xl p-12 text-center">
+            <Loader2 className="animate-spin text-blue-500 mx-auto mb-4" size={48} />
+            <p className="text-gray-500">جاري تحميل الطلبات...</p>
+          </div>
+        )}
+
         {/* Branch Groups */}
-        <div className="space-y-4">
+        {!isLoading && <div className="space-y-4">
           {branchGroups.map(group => {
-            const pendingInGroup = group.members.filter(m => m.status === 'pending');
+            const pendingInGroup = group.members.filter(m => m.reviewStatus === 'PENDING');
             const allPendingSelected = pendingInGroup.length > 0 && pendingInGroup.every(m => selectedIds.has(m.id));
             const somePendingSelected = pendingInGroup.some(m => selectedIds.has(m.id));
             const isExpanded = expandedBranch === group.branchHeadId || branchGroups.length === 1;
@@ -439,14 +555,14 @@ export default function AdminPendingPage() {
 
                     {/* Quick Stats */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {group.members.filter(m => m.status === 'pending').length > 0 && (
+                      {group.members.filter(m => m.reviewStatus === 'PENDING').length > 0 && (
                         <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
-                          {group.members.filter(m => m.status === 'pending').length} بانتظار
+                          {group.members.filter(m => m.reviewStatus === 'PENDING').length} بانتظار
                         </span>
                       )}
-                      {group.members.filter(m => m.status === 'approved').length > 0 && (
+                      {group.members.filter(m => m.reviewStatus === 'APPROVED').length > 0 && (
                         <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          {group.members.filter(m => m.status === 'approved').length} موافق
+                          {group.members.filter(m => m.reviewStatus === 'APPROVED').length} موافق
                         </span>
                       )}
                     </div>
@@ -465,7 +581,7 @@ export default function AdminPendingPage() {
                       >
                         <div className="flex items-start gap-4">
                           {/* Checkbox */}
-                          {member.status === 'pending' && (
+                          {member.reviewStatus === 'PENDING' && (
                             <button
                               onClick={() => handleSelectMember(member.id)}
                               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors mt-1 ${
@@ -477,7 +593,7 @@ export default function AdminPendingPage() {
                               {selectedIds.has(member.id) && <Check size={12} />}
                             </button>
                           )}
-                          {member.status !== 'pending' && <div className="w-5" />}
+                          {member.reviewStatus !== 'PENDING' && <div className="w-5" />}
 
                           {/* Avatar */}
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${
@@ -498,11 +614,11 @@ export default function AdminPendingPage() {
                             ) : (
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-gray-800">
-                                  {member.fullNameAr}
+                                  {member.fullNameAr || `${member.firstName} ${member.fatherName ? `بن ${member.fatherName}` : ''} آل شايع`}
                                 </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusColors[member.status]}`}>
-                                  {statusIcons[member.status]}
-                                  {statusLabels[member.status]}
+                                <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusColors[getFilterStatus(member)]}`}>
+                                  {statusIcons[getFilterStatus(member)]}
+                                  {statusLabels[getFilterStatus(member)]}
                                 </span>
                               </div>
                             )}
@@ -564,7 +680,7 @@ export default function AdminPendingPage() {
                               </>
                             ) : (
                               <>
-                                {member.status === 'pending' ? (
+                                {member.reviewStatus === 'PENDING' ? (
                                   <>
                                     <button
                                       onClick={() => handleApprove([member.id])}
@@ -615,7 +731,7 @@ export default function AdminPendingPage() {
               </div>
             );
           })}
-        </div>
+        </div>}
 
         {/* Instructions */}
         <div className="mt-8 bg-blue-50 rounded-xl p-6 border border-blue-200">
