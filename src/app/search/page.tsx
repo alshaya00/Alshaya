@@ -5,24 +5,41 @@ import Link from 'next/link';
 import { FamilyMember } from '@/lib/data';
 import { calculateAge, getGenerationColor } from '@/lib/utils';
 import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+
+// Build ancestor chain for a member (e.g., "عبدالرحمن بن محمد بن عبدالله")
+function buildAncestorChain(member: FamilyMember, allMembers: FamilyMember[], maxDepth: number = 5): string {
+  const names: string[] = [member.firstName];
+  let current = member;
+  let depth = 0;
+
+  while (current.fatherId && depth < maxDepth) {
+    const father = allMembers.find(m => m.id === current.fatherId);
+    if (father) {
+      names.push(father.firstName);
+      current = father;
+      depth++;
+    } else {
+      break;
+    }
+  }
+
+  if (names.length > 1) {
+    return names.join(' بن ');
+  }
+  return member.firstName;
+}
 
 export default function SearchPage() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const { session } = useAuth();
 
-  // Fetch members from API
+  // Fetch members from API (public access)
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = {};
-        if (session?.token) {
-          headers['Authorization'] = `Bearer ${session.token}`;
-        }
-        const response = await fetch('/api/members?limit=500', { headers });
+        const response = await fetch('/api/members?limit=500');
         if (response.ok) {
           const result = await response.json();
           setAllMembers(result.data || []);
@@ -34,25 +51,48 @@ export default function SearchPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
+
+  // Build ancestor chain map for all members
+  const ancestorChainMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allMembers.forEach(member => {
+      map.set(member.id, buildAncestorChain(member, allMembers));
+    });
+    return map;
+  }, [allMembers]);
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
 
-    const term = query.toLowerCase().trim();
-    return allMembers.filter(
-      (m) =>
-        m.firstName.toLowerCase().includes(term) ||
-        m.fullNameAr?.toLowerCase().includes(term) ||
-        m.fullNameEn?.toLowerCase().includes(term) ||
-        m.id.toLowerCase().includes(term) ||
-        m.city?.toLowerCase().includes(term) ||
-        m.occupation?.toLowerCase().includes(term) ||
-        m.fatherName?.toLowerCase().includes(term) ||
-        m.lineageBranchName?.toLowerCase().includes(term) ||
-        m.subBranchName?.toLowerCase().includes(term)
-    );
-  }, [allMembers, query]);
+    const searchTerms = query.toLowerCase().trim().split(/\s+/);
+
+    // Score each member based on how many search terms match in their ancestor chain
+    const scoredMembers = allMembers.map(member => {
+      const ancestorChain = ancestorChainMap.get(member.id) || member.firstName;
+      const chainLower = ancestorChain.toLowerCase();
+
+      // Count how many search terms match
+      let matchScore = 0;
+      for (const term of searchTerms) {
+        if (chainLower.includes(term)) matchScore++;
+        // Also check other fields
+        if (member.id.toLowerCase().includes(term)) matchScore += 0.5;
+        if (member.city?.toLowerCase().includes(term)) matchScore += 0.5;
+        if (member.occupation?.toLowerCase().includes(term)) matchScore += 0.5;
+        if (member.fullNameAr?.toLowerCase().includes(term)) matchScore += 0.3;
+        if (member.lineageBranchName?.toLowerCase().includes(term)) matchScore += 0.3;
+      }
+
+      return { member, matchScore, ancestorChain };
+    });
+
+    // Filter members with at least one match and sort by score (highest first)
+    return scoredMembers
+      .filter(item => item.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .map(item => ({ ...item.member, ancestorChain: item.ancestorChain }));
+  }, [allMembers, query, ancestorChainMap]);
 
   const handleSearch = (searchTerm: string) => {
     setQuery(searchTerm);
@@ -68,9 +108,14 @@ export default function SearchPage() {
   const suggestions = useMemo(() => {
     if (query.length < 2) return [];
     return allMembers
-      .filter((m) => m.firstName.toLowerCase().startsWith(query.toLowerCase()))
-      .slice(0, 5);
-  }, [allMembers, query]);
+      .filter((m) => {
+        const chain = ancestorChainMap.get(m.id) || m.firstName;
+        return chain.toLowerCase().includes(query.toLowerCase()) ||
+               m.firstName.toLowerCase().startsWith(query.toLowerCase());
+      })
+      .slice(0, 5)
+      .map(m => ({ ...m, ancestorChain: ancestorChainMap.get(m.id) || m.firstName }));
+  }, [allMembers, query, ancestorChainMap]);
 
   // Show loading state
   if (membersLoading) {
@@ -121,18 +166,26 @@ export default function SearchPage() {
             )}
           </div>
 
-          {/* Quick Suggestions */}
+          {/* Quick Suggestions with Ancestor Chain */}
           {suggestions.length > 0 && query && (
             <div className="mt-2 border-t pt-2">
               <p className="text-xs text-gray-500 mb-2">اقتراحات:</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2">
                 {suggestions.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => setQuery(s.firstName)}
-                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors text-right"
                   >
-                    {s.firstName}
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                      s.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
+                    }`}>
+                      {s.gender === 'Male' ? '👨' : '👩'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium block">{s.ancestorChain}</span>
+                      <span className="text-xs text-gray-500">{s.id} • ج{s.generation}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -201,7 +254,8 @@ export default function SearchPage() {
                       </span>
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-2">{member.fullNameAr}</p>
+                    {/* Ancestor Chain - Full Lineage */}
+                    <p className="text-gray-700 font-medium mb-2">{member.ancestorChain}</p>
 
                     {/* Lineage Badge */}
                     {member.lineageBranchName && (

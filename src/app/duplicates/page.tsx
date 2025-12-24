@@ -19,7 +19,6 @@ import {
   X,
   Filter,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { findDuplicates, DuplicateMatch } from '@/lib/import-utils';
 import { FamilyMember } from '@/lib/types';
 
@@ -32,8 +31,6 @@ interface DuplicatePair {
 }
 
 export default function DuplicatesPage() {
-  const { session } = useAuth();
-
   // State
   const [threshold, setThreshold] = useState(60);
   const [isScanning, setIsScanning] = useState(false);
@@ -42,15 +39,11 @@ export default function DuplicatesPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
-  // Fetch members from API
+  // Fetch members from API (public access)
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = {};
-        if (session?.token) {
-          headers['Authorization'] = `Bearer ${session.token}`;
-        }
-        const response = await fetch('/api/members?limit=500', { headers });
+        const response = await fetch('/api/members?limit=500');
         if (response.ok) {
           const result = await response.json();
           setAllMembers(result.data || []);
@@ -60,7 +53,7 @@ export default function DuplicatesPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
 
   // Scan for duplicates
   const scanForDuplicates = () => {

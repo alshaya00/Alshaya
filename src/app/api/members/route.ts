@@ -30,25 +30,9 @@ function normalizeGender(gender: string): 'Male' | 'Female' | null {
 }
 
 // GET /api/members - Get all members with optional filters
+// PUBLIC: Allow read access for viewing the family tree
 export async function GET(request: NextRequest) {
   try {
-    // SECURITY: Require authentication to view members
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
-
-    const permissions = getPermissionsForRole(user.role);
-    if (!permissions.view_member_profiles) {
-      return NextResponse.json(
-        { success: false, message: 'No permission to view members', messageAr: 'لا تملك صلاحية عرض الأعضاء' },
-        { status: 403 }
-      );
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const gender = searchParams.get('gender');
     const generation = searchParams.get('generation');

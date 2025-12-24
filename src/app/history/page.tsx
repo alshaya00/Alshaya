@@ -21,7 +21,6 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { FamilyMember } from '@/lib/types';
 
 interface ChangeRecord {
@@ -45,8 +44,6 @@ interface Snapshot {
 }
 
 export default function HistoryPage() {
-  const { session } = useAuth();
-
   // State
   const [activeTab, setActiveTab] = useState<'changes' | 'snapshots'>('changes');
   const [changes, setChanges] = useState<ChangeRecord[]>([]);
@@ -63,15 +60,11 @@ export default function HistoryPage() {
   const [snapshotDescription, setSnapshotDescription] = useState('');
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
-  // Fetch members from API
+  // Fetch members from API (public access)
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = {};
-        if (session?.token) {
-          headers['Authorization'] = `Bearer ${session.token}`;
-        }
-        const response = await fetch('/api/members?limit=500', { headers });
+        const response = await fetch('/api/members?limit=500');
         if (response.ok) {
           const result = await response.json();
           setAllMembers(result.data || []);
@@ -81,7 +74,7 @@ export default function HistoryPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
 
   // Load data from localStorage
   useEffect(() => {
