@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { FamilyMember } from '@/lib/types';
 import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInDb } from '@/lib/db';
 import { sanitizeString } from '@/lib/sanitize';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
 // Helper to get authenticated user from request

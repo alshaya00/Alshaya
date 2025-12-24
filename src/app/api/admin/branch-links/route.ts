@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 
 // Helper to get authenticated admin user from request
 async function getAuthAdmin(request: NextRequest) {

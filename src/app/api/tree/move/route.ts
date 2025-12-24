@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getMemberByIdFromDb, getAllMembersFromDb, updateMemberInDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
 

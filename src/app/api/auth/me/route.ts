@@ -3,7 +3,7 @@ import {
   findSessionByToken,
   findUserById,
   updateSessionActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest) {

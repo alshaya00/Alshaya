@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAllMembersFromDb } from '@/lib/db';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { apiServiceConfigSchema, validateInput, formatZodErrors } from '@/lib/validations';
 import { emailService } from '@/lib/services/email';
 import { smsService } from '@/lib/services/sms';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 
 // Helper to get authenticated admin user from request
 async function getAuthAdmin(request: NextRequest) {

@@ -10,7 +10,7 @@ import {
   getAllInvites,
   logActivity,
   getSiteSettings,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { getPermissionsForRole, getAssignableRoles } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/auth/types';
 import { hashPassword, validatePassword } from '@/lib/auth/password';

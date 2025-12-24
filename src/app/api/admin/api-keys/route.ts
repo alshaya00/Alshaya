@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { encrypt, decrypt, encryptApiKey, isEncrypted } from '@/lib/encryption';
 
 // Helper to get auth user from request

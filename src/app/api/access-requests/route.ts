@@ -9,7 +9,7 @@ import {
   updateAccessRequest,
   createUser,
   logActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/auth/types';
 

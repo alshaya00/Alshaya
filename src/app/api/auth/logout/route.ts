@@ -4,7 +4,7 @@ import {
   deleteSessionByToken,
   findUserById,
   logActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 
 export async function POST(request: NextRequest) {
   try {

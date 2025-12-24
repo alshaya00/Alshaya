@@ -5,7 +5,7 @@ import {
   findAccessRequestByEmail,
   getSiteSettings,
   logActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 

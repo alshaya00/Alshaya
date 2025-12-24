@@ -8,7 +8,7 @@ import {
   recordFailedLogin,
   clearLoginAttempts,
   logActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 

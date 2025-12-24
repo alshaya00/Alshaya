@@ -9,7 +9,7 @@ import {
   getPermissionMatrix,
   updatePermissionMatrix,
   logActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { getPermissionsForRole, validatePermissionMatrix } from '@/lib/auth/permissions';
 import { PermissionMatrix } from '@/lib/auth/types';
 

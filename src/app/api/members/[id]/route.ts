@@ -3,7 +3,7 @@ import type { FamilyMember } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb, updateMemberInDb, deleteMemberFromDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
-import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
 async function getAuthUser(request: NextRequest) {

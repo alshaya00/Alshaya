@@ -7,7 +7,7 @@ import {
   deleteUser,
   createUser,
   logActivity,
-} from '@/lib/auth/store';
+} from '@/lib/auth/db-store';
 import { getPermissionsForRole, getAssignableRoles } from '@/lib/auth/permissions';
 import { UserRole, UserStatus, ROLE_LABELS, STATUS_LABELS } from '@/lib/auth/types';
 

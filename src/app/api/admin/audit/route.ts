@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findSessionByToken, findUserById, getActivityLogs, StoredActivityLog } from '@/lib/auth/store';
+import { findSessionByToken, findUserById, getActivityLogs, StoredActivityLog } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
 // Helper to get auth user from request
