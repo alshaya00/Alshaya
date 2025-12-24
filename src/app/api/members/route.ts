@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
 import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInDb } from '@/lib/db';
 import { sanitizeString } from '@/lib/sanitize';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
-import { FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Home, UserPlus, Check } from 'lucide-react';
 import { generationColors } from '@/config/theme';
 

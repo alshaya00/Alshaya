@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMemberByIdFromDb, getChildrenFromDb, updateMemberInDb, deleteMemberFromDb } from '@/lib/db';
-import { FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
