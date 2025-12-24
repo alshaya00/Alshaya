@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { FamilyMember } from '@/lib/data';
+import { FamilyMember } from '@/lib/types';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
 

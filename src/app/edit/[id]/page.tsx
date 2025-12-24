@@ -24,7 +24,7 @@ import {
   Eye,
   AlertCircle,
 } from 'lucide-react';
-import { FamilyMember as FamilyMemberType } from '@/lib/data';
+import { FamilyMember as FamilyMemberType } from '@/lib/types';
 import {
   validateEdit,
   validateParentChange,
