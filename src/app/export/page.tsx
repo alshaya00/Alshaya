@@ -18,7 +18,6 @@ import {
   Eye,
   Filter,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   ALL_EXPORT_FIELDS,
   FIELD_CATEGORIES,
@@ -35,19 +34,14 @@ import { ExportField, ExportFormat, ExportFilters, FamilyMember } from '@/lib/ty
 type ViewMode = 'format' | 'fields' | 'filters' | 'preview';
 
 export default function ExportPage() {
-  const { session } = useAuth();
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [stats, setStats] = useState({ totalMembers: 0, males: 0, females: 0, generations: 0 });
 
-  // Fetch members from API
+  // Fetch members from API (public access)
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = {};
-        if (session?.token) {
-          headers['Authorization'] = `Bearer ${session.token}`;
-        }
-        const response = await fetch('/api/members?limit=500', { headers });
+        const response = await fetch('/api/members?limit=500');
         if (response.ok) {
           const result = await response.json();
           setAllMembers(result.data || []);
@@ -57,7 +51,7 @@ export default function ExportPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
 
   // Fetch statistics from API
   useEffect(() => {

@@ -9,7 +9,6 @@ import {
 import Link from 'next/link';
 import FamilyTreeGraph from '@/components/FamilyTreeGraph';
 import { FeatureGate } from '@/components/FeatureGate';
-import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
@@ -26,17 +25,12 @@ function TreePageContent() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
-  const { session } = useAuth();
 
-  // Fetch members from API
+  // Fetch members from API (public access)
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = {};
-        if (session?.token) {
-          headers['Authorization'] = `Bearer ${session.token}`;
-        }
-        const response = await fetch('/api/members?limit=500', { headers });
+        const response = await fetch('/api/members?limit=500');
         if (response.ok) {
           const result = await response.json();
           setAllMembers(result.data || []);
@@ -48,7 +42,7 @@ function TreePageContent() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
 
   // Helper to get member by ID from the loaded members
   const getMemberById = (id: string): FamilyMember | undefined => {

@@ -17,7 +17,6 @@ import {
   TreePine, Eye, QrCode, UserPlus, Zap
 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface BranchData {
   head: FamilyMember;
@@ -60,17 +59,12 @@ export default function BranchesPage() {
   const [showLinkModal, setShowLinkModal] = useState<BranchData | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
-  const { session } = useAuth();
 
-  // Fetch members from API
+  // Fetch members from API (public access)
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = {};
-        if (session?.token) {
-          headers['Authorization'] = `Bearer ${session.token}`;
-        }
-        const response = await fetch('/api/members?limit=500', { headers });
+        const response = await fetch('/api/members?limit=500');
         if (response.ok) {
           const result = await response.json();
           setAllMembers(result.data || []);
@@ -82,7 +76,7 @@ export default function BranchesPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
 
   // Helper to get member by ID from loaded members
   const getMemberById = (id: string): FamilyMember | undefined => {

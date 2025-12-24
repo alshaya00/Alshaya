@@ -5,13 +5,11 @@ import Link from 'next/link';
 import { FamilyMember } from '@/lib/types';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 type SortField = 'id' | 'firstName' | 'generation' | 'birthYear';
 type SortOrder = 'asc' | 'desc';
 
 export default function RegistryPage() {
-  const { getAuthHeader, isLoading: authLoading, isAuthenticated } = useAuth();
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [gen2Branches, setGen2Branches] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,17 +21,11 @@ export default function RegistryPage() {
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
+  // Fetch members from API (public access)
   useEffect(() => {
     const loadData = async () => {
-      // Wait for auth to be ready
-      if (authLoading) return;
-
       try {
-        const res = await fetch('/api/members?limit=500', {
-          headers: {
-            ...getAuthHeader(),
-          },
-        });
+        const res = await fetch('/api/members?limit=500');
         const data = await res.json();
         const members = data.data || [];
         setAllMembers(members);
@@ -46,7 +38,7 @@ export default function RegistryPage() {
       }
     };
     loadData();
-  }, [authLoading, getAuthHeader]);
+  }, []);
 
   const generations = [...new Set(allMembers.map((m) => m.generation))].sort();
   const branches = [...new Set(allMembers.map((m) => m.branch).filter(Boolean))];
@@ -123,7 +115,7 @@ export default function RegistryPage() {
     return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
-  if (isLoading || authLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
