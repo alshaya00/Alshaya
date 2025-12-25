@@ -1,0 +1,34 @@
+1. Data Formatting Issue: Naming Convention (EN)
+Issue: The English name generation logic automatically inserts the word "bin" between all name parts.
+
+Impact: This results in non-standard naming formats (e.g., Al-hamd bin Ibrahim bin...) which may not align with official documentation or preferred display styles.
+
+Requirement: Provide an option to toggle "bin" on/off or replace it with a standard space in the Full_Name_EN (Column N) generation script.
+
+2. System Integration: Dashboard Sync Failure
+Issue: Users receive a "Success" message and Request ID (e.g., id_b36eb417...) upon submitting a membership request, but the Admin Dashboard shows "0 Pending Requests".
+
+Impact: Admin is unable to approve new members, breaking the onboarding workflow.
+
+Requirement: Verify the connection between the frontend submission form and the SQLite database (MB 2.5) to ensure requests are being written to the pending_requests table.
+
+3. Data Logic: Name Reversal During Matching
+Issue: During the "Matching Step" (Step 2), the system is incorrectly swapping the positions of the Father and Grandfather names (specifically with the name "Hamad").
+
+Impact: Even with a 100% match rate, the displayed lineage is genealogically incorrect.
+
+Requirement: Audit the mapping logic between the Full_Name_AR (Column M) in the source sheet and the web matching algorithm to ensure the sequence (Name > Father > Grandfather) is preserved.
+
+4. UI/UX: Missing Field Validation
+Issue: The "Birth Year" and "Phone Number" fields are currently treated as optional or are not being captured correctly, resulting in "0" values in the database.
+
+Impact: Missing vital data for member identification and communication.
+
+Requirement: Set Birth_Year and Phone fields as Required in the member addition/onboarding form to ensure data completeness in the Family_Tree_Ultimate_System.xlsx.
+
+5. Security & Privacy: Anonymous Access
+Issue: Active "Anonymous" cursors (e.g., "Anonymous Rabbit") are visible on the document.
+
+Impact: Indicates the data is set to "Anyone with the link," posing a privacy risk for family contact details (Column Q).
+
+Requirement: Restrict sheet access to specific admin emails and disable public link sharing.
