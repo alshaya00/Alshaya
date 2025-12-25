@@ -410,63 +410,191 @@ export default function RegisterPage() {
 
             {/* Registration Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Info Section */}
+              {/* Step 1: Find yourself in the family tree */}
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">1</span>
-                  المعلومات الشخصية
+                  ابحث عن اسمك في شجرة العائلة
                 </h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الاسم بالعربي <span className="text-red-500">*</span>
-                    </label>
+                <p className="text-sm text-gray-600 mb-4">
+                  ابحث عن اسمك في الشجرة لتسهيل عملية التحقق من هويتك
+                </p>
+
+                {/* Member Search with improved styling */}
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
-                      name="nameArabic"
-                      value={formData.nameArabic}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="أحمد محمد آل شايع"
-                      required
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setShowMemberDropdown(true);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMemberDropdown(true);
+                      }}
+                      className="w-full pr-11 pl-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg"
+                      placeholder="ابحث بالاسم الأول أو اسم العائلة..."
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الاسم بالإنجليزي
-                    </label>
-                    <input
-                      type="text"
-                      name="nameEnglish"
-                      value={formData.nameEnglish}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="Ahmed Mohammed Al-Shaye"
-                      dir="ltr"
-                    />
+                  {showMemberDropdown && filteredMembers.length > 0 && (
+                    <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto">
+                      {filteredMembers.map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMemberSelect(member.id);
+                            setFormData({
+                              ...formData,
+                              relatedMemberId: member.id,
+                              nameArabic: member.fullNameAr || member.firstName,
+                              nameEnglish: member.fullNameEn || '',
+                              claimedRelation: `أنا ${member.fullNameAr || member.firstName}`,
+                              relationshipType: 'self',
+                            });
+                          }}
+                          className="w-full px-4 py-4 text-right hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-semibold text-gray-900">
+                                {member.fullNameAr || member.firstName}
+                              </span>
+                              {member.fullNameEn && (
+                                <span className="text-sm text-gray-500 mr-2" dir="ltr">
+                                  ({member.fullNameEn})
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              الجيل {member.generation}
+                            </div>
+                          </div>
+                          {member.branch && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              فرع: {member.branch}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchQuery && filteredMembers.length === 0 && showMemberDropdown && (
+                    <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl p-4 text-center text-gray-500">
+                      لم يتم العثور على نتائج. يمكنك إدخال اسمك يدوياً أدناه.
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Member Card */}
+                {selectedMember && (
+                  <div className="mt-4 p-4 bg-gradient-to-l from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-green-900 text-lg">
+                            {selectedMember.fullNameAr || selectedMember.firstName}
+                          </p>
+                          <p className="text-sm text-green-700">
+                            الجيل {selectedMember.generation} {selectedMember.branch ? `- فرع ${selectedMember.branch}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ 
+                            ...formData, 
+                            relatedMemberId: '', 
+                            claimedRelation: '',
+                            nameArabic: '',
+                            nameEnglish: '',
+                            relationshipType: '',
+                          });
+                        }}
+                        className="text-green-600 hover:text-green-800 p-2 hover:bg-green-100 rounded-lg transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      رقم الاتصال <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="+966 5XX XXX XXXX"
-                      dir="ltr"
-                      required
-                    />
+                )}
+              </div>
+
+              {/* Personal Info Section - Only show if member not selected */}
+              {!selectedMember && (
+                <div className="border-b pb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center text-sm font-bold text-gray-600">أو</span>
+                    أدخل معلوماتك يدوياً
+                  </h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        الاسم بالعربي <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="nameArabic"
+                        value={formData.nameArabic}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="أحمد محمد آل شايع"
+                        required={!selectedMember}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        الاسم بالإنجليزي
+                      </label>
+                      <input
+                        type="text"
+                        name="nameEnglish"
+                        value={formData.nameEnglish}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="Ahmed Mohammed Al-Shaye"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
+                </div>
+              )}
+
+              {/* Contact Info */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">2</span>
+                  معلومات التواصل
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    رقم الاتصال <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="+966 5XX XXX XXXX"
+                    dir="ltr"
+                    required
+                  />
                 </div>
               </div>
 
               {/* Account Info Section */}
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">2</span>
+                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">3</span>
                   معلومات الحساب
                 </h3>
                 <div className="grid gap-4">
@@ -523,118 +651,33 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Family Relation Section */}
+              {/* Family Relation Section - Only show if not claiming self */}
+              {!selectedMember && (
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">3</span>
+                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">4</span>
                   صلة القرابة
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  يرجى تحديد صلتك بالعائلة حتى يتمكن المسؤولون من التحقق من طلبك
+                  إذا لم تجد اسمك في الشجرة، يرجى وصف صلة قرابتك بالعائلة
                 </p>
 
-                {/* Member Search */}
-                <div className="mb-4 relative">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Search className="w-4 h-4 inline ml-1" />
-                    ابحث عن قريبك في الشجرة
+                    وصف صلة القرابة <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowMemberDropdown(true);
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMemberDropdown(true);
-                    }}
+                    name="claimedRelation"
+                    value={formData.claimedRelation}
+                    onChange={handleChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="ابحث بالاسم..."
+                    placeholder="مثال: ابن محمد أحمد آل شايع"
+                    required={!selectedMember}
                   />
-                  {showMemberDropdown && filteredMembers.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-                      {filteredMembers.map((member) => (
-                        <button
-                          key={member.id}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMemberSelect(member.id);
-                          }}
-                          className="w-full px-4 py-3 text-right hover:bg-green-50 border-b border-gray-100 last:border-0"
-                        >
-                          <span className="font-medium">
-                            {member.fullNameAr || member.firstName}
-                          </span>
-                          <span className="text-sm text-gray-500 mr-2">
-                            ({member.id})
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected Member */}
-                {selectedMember && (
-                  <div className="mb-4 p-4 bg-green-50 rounded-xl flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-green-800">
-                        {selectedMember.fullNameAr || selectedMember.firstName}
-                      </p>
-                      <p className="text-sm text-green-600">
-                        الجيل {selectedMember.generation} - {selectedMember.branch || 'الأصل'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({ ...formData, relatedMemberId: '', claimedRelation: '' })
-                      }
-                      className="text-green-600 hover:text-green-800 p-1"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      نوع العلاقة
-                    </label>
-                    <select
-                      name="relationshipType"
-                      value={formData.relationshipType}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    >
-                      <option value="">اختر نوع العلاقة</option>
-                      {RELATIONSHIP_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.labelAr}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      وصف صلة القرابة <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="claimedRelation"
-                      value={formData.claimedRelation}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="مثال: ابن محمد أحمد آل شايع"
-                      required
-                    />
-                  </div>
                 </div>
               </div>
+              )}
 
               {/* Additional Message */}
               <div>

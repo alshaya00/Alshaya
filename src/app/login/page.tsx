@@ -45,7 +45,9 @@ function LoginForm() {
       const result = await login(email, password, rememberMe);
 
       if (result.success) {
-        router.push('/');
+        // Redirect admins to dashboard, others to home
+        const isAdmin = result.user?.role === 'SUPER_ADMIN' || result.user?.role === 'ADMIN';
+        router.push(isAdmin ? '/admin' : '/');
       } else if (result.requires2FA) {
         setShow2FA(true);
       } else {

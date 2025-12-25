@@ -28,7 +28,7 @@ interface AuthContextType {
   isGuest: boolean;
 
   // Actions
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; requires2FA?: boolean; user?: { role: string } }>;
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
@@ -172,7 +172,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       email: string,
       password: string,
       rememberMe: boolean = false
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; requires2FA?: boolean; user?: { role: string } }> => {
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
@@ -189,6 +189,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           };
         }
 
+        // Handle 2FA requirement
+        if (data.requires2FA) {
+          return { success: false, requires2FA: true };
+        }
+
         if (data.success && data.user && data.token) {
           const newSession: AuthSession = {
             user: {
@@ -202,7 +207,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           storeSession(newSession, rememberMe);
           setSession(newSession);
 
-          return { success: true };
+          return { success: true, user: { role: data.user.role } };
         }
 
         return { success: false, error: data.message || 'Login failed' };
