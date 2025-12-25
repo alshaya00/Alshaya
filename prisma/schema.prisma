@@ -440,6 +440,43 @@ model PrivacySettings {
 }
 
 // ============================================
+// SYSTEM CONFIGURATION (Dynamic Settings)
+// ============================================
+
+model SystemConfig {
+  id                      String  @id @default("default")
+
+  // Display Settings (العرض)
+  defaultLanguage         String  @default("ar")       // ar, en
+  dateFormat              String  @default("DD/MM/YYYY")
+  treeDisplayMode         String  @default("vertical") // vertical, horizontal
+  showDeceasedMembers     Boolean @default(true)
+
+  // Validation Rules (التحقق)
+  minBirthYear            Int     @default(1400)
+  maxBirthYear            Int     @default(2025)
+  requirePhone            Boolean @default(false)
+  requireEmail            Boolean @default(false)
+  allowDuplicateNames     Boolean @default(true)
+
+  // Security Settings (الأمان)
+  sessionTimeout          Int     @default(60)         // minutes
+  maxLoginAttempts        Int     @default(20)
+  requireStrongAccessCode Boolean @default(false)
+
+  // Feature Toggles (الميزات)
+  enableBranchEntries     Boolean @default(true)
+  enablePublicRegistry    Boolean @default(true)
+  enableExport            Boolean @default(true)
+  enableImport            Boolean @default(true)
+  autoBackup              Boolean @default(true)
+  autoBackupInterval      Int     @default(24)         // hours
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ============================================
 // ACTIVITY & NOTIFICATIONS
 // ============================================
 
