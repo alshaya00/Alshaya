@@ -129,6 +129,7 @@ export async function isDatabaseAvailable(): Promise<boolean> {
 
 export async function getAllMembers(): Promise<FamilyMember[]> {
   const rows = await prisma.familyMember.findMany({
+    where: { deletedAt: null },
     orderBy: { id: 'asc' },
   });
   return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
@@ -143,7 +144,7 @@ export async function getMemberById(id: string): Promise<FamilyMember | null> {
 
 export async function getMaleMembers(): Promise<FamilyMember[]> {
   const rows = await prisma.familyMember.findMany({
-    where: { gender: 'Male' },
+    where: { gender: 'Male', deletedAt: null },
     orderBy: { id: 'asc' },
   });
   return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
@@ -151,7 +152,7 @@ export async function getMaleMembers(): Promise<FamilyMember[]> {
 
 export async function getChildren(parentId: string): Promise<FamilyMember[]> {
   const rows = await prisma.familyMember.findMany({
-    where: { fatherId: parentId },
+    where: { fatherId: parentId, deletedAt: null },
     orderBy: { id: 'asc' },
   });
   return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
