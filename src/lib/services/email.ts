@@ -1,8 +1,9 @@
 // Email Service
 // Al-Shaye Family Tree Application
-// Supports multiple providers: Resend, SendGrid, Mailgun, SMTP
+// Supports multiple providers: Resend (via Replit connector), SendGrid, Mailgun, SMTP
 
 import { prisma } from '@/lib/prisma';
+import { sendEmailViaResendConnector, isResendConnectorAvailable } from './resend-client';
 
 // ============================================
 // TYPES
@@ -319,8 +320,22 @@ function renderTemplate(templateName: string, data: Record<string, unknown>): { 
 // ============================================
 
 async function sendViaResend(config: EmailConfig, options: SendEmailOptions): Promise<EmailResult> {
+  // First try Replit connector (preferred - handles API key automatically)
+  const connectorAvailable = await isResendConnectorAvailable();
+  if (connectorAvailable) {
+    return sendEmailViaResendConnector({
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+      fromName: config.fromName,
+      replyTo: options.replyTo,
+    });
+  }
+
+  // Fallback to direct API if connector not available
   if (!config.apiKey) {
-    return { success: false, error: 'Resend API key not configured' };
+    return { success: false, error: 'Resend API key not configured and connector not available' };
   }
 
   try {
