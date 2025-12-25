@@ -33,6 +33,7 @@ import {
 } from '@/lib/edit-utils';
 import type { FamilyMember, ValidationError } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import MemberPhotoSection from '@/components/MemberPhotoSection';
 
 type EditSection = 'identity' | 'family' | 'personal' | 'contact';
 
@@ -813,6 +814,12 @@ export default function EditMemberPage() {
                 </div>
               </div>
             </div>
+
+            {/* Photo Section */}
+            <MemberPhotoSection
+              memberId={memberId}
+              memberName={formData.fullNameAr || formData.firstName || 'العضو'}
+            />
 
             {/* Changed fields summary */}
             {changedFields.length > 0 && (
