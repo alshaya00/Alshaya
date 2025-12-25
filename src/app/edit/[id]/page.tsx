@@ -199,34 +199,30 @@ export default function EditMemberPage() {
     setIsSaving(true);
 
     try {
-      // In real implementation, this would call an API
-      // For now, save to localStorage
-
       const changes = changedFields.reduce((acc, field) => {
         acc[field] = formData[field as keyof FamilyMember];
         return acc;
       }, {} as Record<string, unknown>);
 
-      // Save edit history
-      const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');
-      editHistory.push({
-        memberId,
-        memberName: originalMember?.fullNameAr || originalMember?.firstName,
-        changes,
-        reason: changeReason,
-        timestamp: new Date().toISOString(),
-        cascadeUpdates: cascadeUpdates.length > 0 ? cascadeUpdates : undefined
+      // Save changes via API
+      const headers: HeadersInit = session?.token ? { 
+        Authorization: `Bearer ${session.token}`,
+        'Content-Type': 'application/json'
+      } : { 'Content-Type': 'application/json' };
+      
+      const res = await fetch(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          ...changes,
+          reason: changeReason || undefined
+        }),
       });
-      localStorage.setItem('alshaye_edit_history', JSON.stringify(editHistory));
 
-      // Update member data in localStorage
-      const storedMembers = JSON.parse(localStorage.getItem('alshaye_edited_members') || '{}');
-      storedMembers[memberId] = {
-        ...originalMember,
-        ...formData,
-        updatedAt: new Date().toISOString()
-      };
-      localStorage.setItem('alshaye_edited_members', JSON.stringify(storedMembers));
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'فشل في حفظ التغييرات');
+      }
 
       setSaveSuccess(true);
       setTimeout(() => {
@@ -234,7 +230,7 @@ export default function EditMemberPage() {
       }, 1500);
     } catch (error) {
       console.error('Save failed:', error);
-      alert('حدث خطأ أثناء الحفظ');
+      alert(error instanceof Error ? error.message : 'حدث خطأ أثناء الحفظ');
     } finally {
       setIsSaving(false);
     }

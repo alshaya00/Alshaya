@@ -233,23 +233,6 @@ function ImportPageContent() {
         }
       }
 
-      // Save to localStorage for demonstration
-      const storedImports = JSON.parse(localStorage.getItem('alshaye_imports') || '[]');
-      storedImports.push({
-        date: new Date().toISOString(),
-        fileName: file?.name,
-        results: importResults
-      });
-      localStorage.setItem('alshaye_imports', JSON.stringify(storedImports));
-
-      // Store the actual imported members
-      const currentStored = JSON.parse(localStorage.getItem('alshaye_new_members') || '[]');
-      localStorage.setItem('alshaye_new_members', JSON.stringify([
-        ...currentStored,
-        ...importResults.added,
-        ...importResults.updated
-      ]));
-
       setCurrentStep('complete');
     } catch (error) {
       console.error('Import failed:', error);

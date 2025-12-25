@@ -126,26 +126,7 @@ export default function HistoryPage() {
         }
       } catch (error) {
         console.error('Error fetching change history:', error);
-        const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');
-        const treeChanges = JSON.parse(localStorage.getItem('alshaye_tree_changes') || '[]');
-        const allChanges: ChangeRecord[] = [
-          ...editHistory.map((item: any, i: number) => ({
-            id: `edit_${i}`,
-            ...item
-          })),
-          ...treeChanges.flatMap((batch: any, i: number) =>
-            batch.changes.map((change: any, j: number) => ({
-              id: `tree_${i}_${j}`,
-              memberId: change.memberId,
-              memberName: change.memberName,
-              changes: { fatherId: change.newParentId },
-              reason: `تغيير الأب من ${change.oldParentName || 'جذر'} إلى ${change.newParentName || 'جذر'}`,
-              timestamp: batch.timestamp
-            }))
-          )
-        ];
-        allChanges.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setChanges(allChanges);
+        setChanges([]);
       }
     }
 
@@ -258,10 +239,6 @@ export default function HistoryPage() {
       reason: `استرجاع التغيير: ${selectedRollback.reason || 'بدون سبب'}`,
       timestamp: new Date().toISOString()
     };
-
-    const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');
-    editHistory.push(rollbackRecord);
-    localStorage.setItem('alshaye_edit_history', JSON.stringify(editHistory));
 
     setChanges(prev => [rollbackRecord, ...prev]);
     setShowRollbackDialog(false);

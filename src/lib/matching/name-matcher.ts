@@ -18,6 +18,8 @@ export interface NameInput {
   fatherName: string;         // اسم الأب - Father's first name
   grandfatherName?: string;   // اسم الجد - Grandfather's first name
   greatGrandfatherName?: string; // اسم جد الأب - Great-grandfather's first name
+  great2GrandfatherName?: string; // جد الجد الثالث - 5th ancestor
+  great3GrandfatherName?: string; // جد الجد الرابع - 6th ancestor
 }
 
 /**
@@ -49,6 +51,8 @@ export interface MatchCandidate {
     father: AncestorMatch;
     grandfather: AncestorMatch | null;
     greatGrandfather: AncestorMatch | null;
+    great2Grandfather: AncestorMatch | null;
+    great3Grandfather: AncestorMatch | null;
   };
 
   // Family context for confirmation
@@ -59,6 +63,8 @@ export interface MatchCandidate {
   // Lineage information
   grandfather: FamilyMember | null;
   greatGrandfather: FamilyMember | null;
+  great2Grandfather: FamilyMember | null;
+  great3Grandfather: FamilyMember | null;
   fullLineage: FamilyMember[];        // All ancestors from Gen 1 to father
 
   // Calculated fields for new member
@@ -101,8 +107,10 @@ export interface MatchResult {
 export interface MatchConfig {
   // Weight for each ancestor level (should sum to 100)
   fatherWeight: number;              // Default: 40
-  grandfatherWeight: number;         // Default: 35
-  greatGrandfatherWeight: number;    // Default: 25
+  grandfatherWeight: number;         // Default: 30
+  greatGrandfatherWeight: number;    // Default: 15
+  great2GrandfatherWeight: number;   // Default: 10
+  great3GrandfatherWeight: number;   // Default: 5
 
   // Minimum scores to consider a match
   minimumTotalScore: number;         // Default: 40
@@ -114,8 +122,10 @@ export interface MatchConfig {
 
 const DEFAULT_CONFIG: MatchConfig = {
   fatherWeight: 40,
-  grandfatherWeight: 35,
-  greatGrandfatherWeight: 25,
+  grandfatherWeight: 30,
+  greatGrandfatherWeight: 15,
+  great2GrandfatherWeight: 10,
+  great3GrandfatherWeight: 5,
   minimumTotalScore: 40,
   minimumFatherScore: 70,
   includeLowConfidence: true,
@@ -231,6 +241,8 @@ function calculateCandidateScore(
   fatherMatch: NameMatchResult,
   grandfatherMatch: NameMatchResult | null,
   greatGrandfatherMatch: NameMatchResult | null,
+  great2GrandfatherMatch: NameMatchResult | null,
+  great3GrandfatherMatch: NameMatchResult | null,
   config: MatchConfig
 ): number {
   let totalScore = 0;
@@ -250,6 +262,18 @@ function calculateCandidateScore(
   if (greatGrandfatherMatch) {
     totalScore += greatGrandfatherMatch.similarity * config.greatGrandfatherWeight;
     totalWeight += config.greatGrandfatherWeight;
+  }
+
+  // Great2-grandfather score (if provided and found)
+  if (great2GrandfatherMatch) {
+    totalScore += great2GrandfatherMatch.similarity * config.great2GrandfatherWeight;
+    totalWeight += config.great2GrandfatherWeight;
+  }
+
+  // Great3-grandfather score (if provided and found)
+  if (great3GrandfatherMatch) {
+    totalScore += great3GrandfatherMatch.similarity * config.great3GrandfatherWeight;
+    totalWeight += config.great3GrandfatherWeight;
   }
 
   // Normalize to 0-100
@@ -273,11 +297,15 @@ function getConfidence(
   score: number,
   fatherMatch: NameMatchResult,
   hasGrandfatherMatch: boolean,
-  hasGreatGrandfatherMatch: boolean
+  hasGreatGrandfatherMatch: boolean,
+  hasGreat2GrandfatherMatch: boolean = false,
+  hasGreat3GrandfatherMatch: boolean = false
 ): 'high' | 'medium' | 'low' {
+  const ancestorMatchCount = [hasGrandfatherMatch, hasGreatGrandfatherMatch, hasGreat2GrandfatherMatch, hasGreat3GrandfatherMatch].filter(Boolean).length;
+  
   // High confidence: exact father match + at least one ancestor confirmed
   if (fatherMatch.matchType === 'exact' || fatherMatch.matchType === 'normalized') {
-    if (hasGrandfatherMatch || hasGreatGrandfatherMatch) {
+    if (ancestorMatchCount >= 1) {
       return 'high';
     }
     return score >= 90 ? 'high' : 'medium';
@@ -285,7 +313,7 @@ function getConfidence(
 
   // Medium confidence: variation or phonetic match with ancestor confirmation
   if (fatherMatch.matchType === 'variation' || fatherMatch.matchType === 'phonetic') {
-    if (hasGrandfatherMatch && hasGreatGrandfatherMatch) {
+    if (ancestorMatchCount >= 2) {
       return 'high';
     }
     return 'medium';
@@ -318,6 +346,12 @@ export function findMatches(
     const greatGrandfather = grandfather?.fatherId
       ? memberMap.get(grandfather.fatherId) || null
       : null;
+    const great2Grandfather = greatGrandfather?.fatherId
+      ? memberMap.get(greatGrandfather.fatherId) || null
+      : null;
+    const great3Grandfather = great2Grandfather?.fatherId
+      ? memberMap.get(great2Grandfather.fatherId) || null
+      : null;
 
     // Match grandfather if input provided
     let grandfatherMatch: NameMatchResult | null = null;
@@ -337,11 +371,31 @@ export function findMatches(
       );
     }
 
+    // Match great2-grandfather if input provided
+    let great2GrandfatherMatch: NameMatchResult | null = null;
+    if (input.great2GrandfatherName && great2Grandfather) {
+      great2GrandfatherMatch = comprehensiveNameMatch(
+        great2Grandfather.firstName,
+        input.great2GrandfatherName
+      );
+    }
+
+    // Match great3-grandfather if input provided
+    let great3GrandfatherMatch: NameMatchResult | null = null;
+    if (input.great3GrandfatherName && great3Grandfather) {
+      great3GrandfatherMatch = comprehensiveNameMatch(
+        great3Grandfather.firstName,
+        input.great3GrandfatherName
+      );
+    }
+
     // Calculate overall score
     const matchScore = calculateCandidateScore(
       fatherMatch,
       input.grandfatherName ? grandfatherMatch : null,
       input.greatGrandfatherName ? greatGrandfatherMatch : null,
+      input.great2GrandfatherName ? great2GrandfatherMatch : null,
+      input.great3GrandfatherName ? great3GrandfatherMatch : null,
       cfg
     );
 
@@ -354,7 +408,9 @@ export function findMatches(
       matchScore,
       fatherMatch,
       grandfatherMatch?.isMatch || false,
-      greatGrandfatherMatch?.isMatch || false
+      greatGrandfatherMatch?.isMatch || false,
+      great2GrandfatherMatch?.isMatch || false,
+      great3GrandfatherMatch?.isMatch || false
     );
 
     // Skip low confidence if not included
@@ -416,12 +472,28 @@ export function findMatches(
           matchResult: greatGrandfatherMatch!,
           generation: greatGrandfather.generation,
         } : null,
+        great2Grandfather: great2Grandfather && input.great2GrandfatherName ? {
+          inputName: input.great2GrandfatherName,
+          matchedName: great2Grandfather.firstName,
+          matchedMember: great2Grandfather,
+          matchResult: great2GrandfatherMatch!,
+          generation: great2Grandfather.generation,
+        } : null,
+        great3Grandfather: great3Grandfather && input.great3GrandfatherName ? {
+          inputName: input.great3GrandfatherName,
+          matchedName: great3Grandfather.firstName,
+          matchedMember: great3Grandfather,
+          matchResult: great3GrandfatherMatch!,
+          generation: great3Grandfather.generation,
+        } : null,
       },
       siblings,
       unclesAunts,
       cousins,
       grandfather,
       greatGrandfather,
+      great2Grandfather,
+      great3Grandfather,
       fullLineage,
       generation: father.generation + 1,
       branch: father.branch,
@@ -539,6 +611,30 @@ export function getMatchExplanation(candidate: MatchCandidate): {
     } else {
       details.push(`Great-grandfather name "${ggm.inputName}" does not match "${ggm.matchedName}"`);
       detailsAr.push(`اسم جد الأب "${ggm.inputName}" لا يتطابق مع "${ggm.matchedName}"`);
+    }
+  }
+
+  // Great2-grandfather match details (5th ancestor)
+  const g2gm = candidate.ancestorMatches.great2Grandfather;
+  if (g2gm) {
+    if (g2gm.matchResult.isMatch) {
+      details.push(`5th ancestor name "${g2gm.inputName}" confirmed as "${g2gm.matchedName}"`);
+      detailsAr.push(`اسم جد الجد الثالث "${g2gm.inputName}" مؤكد كـ "${g2gm.matchedName}"`);
+    } else {
+      details.push(`5th ancestor name "${g2gm.inputName}" does not match "${g2gm.matchedName}"`);
+      detailsAr.push(`اسم جد الجد الثالث "${g2gm.inputName}" لا يتطابق مع "${g2gm.matchedName}"`);
+    }
+  }
+
+  // Great3-grandfather match details (6th ancestor)
+  const g3gm = candidate.ancestorMatches.great3Grandfather;
+  if (g3gm) {
+    if (g3gm.matchResult.isMatch) {
+      details.push(`6th ancestor name "${g3gm.inputName}" confirmed as "${g3gm.matchedName}"`);
+      detailsAr.push(`اسم جد الجد الرابع "${g3gm.inputName}" مؤكد كـ "${g3gm.matchedName}"`);
+    } else {
+      details.push(`6th ancestor name "${g3gm.inputName}" does not match "${g3gm.matchedName}"`);
+      detailsAr.push(`اسم جد الجد الرابع "${g3gm.inputName}" لا يتطابق مع "${g3gm.matchedName}"`);
     }
   }
 

@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
       fatherName: body.fatherName?.trim() || '',
       grandfatherName: body.grandfatherName?.trim() || undefined,
       greatGrandfatherName: body.greatGrandfatherName?.trim() || undefined,
+      great2GrandfatherName: body.great2GrandfatherName?.trim() || undefined,
+      great3GrandfatherName: body.great3GrandfatherName?.trim() || undefined,
     };
 
     // Validate input

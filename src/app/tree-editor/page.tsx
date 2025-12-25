@@ -506,16 +506,6 @@ export default function TreeEditorPage() {
         }
       }
     }
-    
-    // Also save to localStorage for history
-    const history = JSON.parse(localStorage.getItem('alshaye_tree_changes') || '[]');
-    history.push({
-      timestamp: new Date().toISOString(),
-      changes: pendingChanges,
-      savedToDb: successCount,
-      errors: errorCount
-    });
-    localStorage.setItem('alshaye_tree_changes', JSON.stringify(history));
 
     // Clear pending
     setPendingChanges([]);

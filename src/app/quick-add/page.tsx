@@ -39,6 +39,8 @@ interface NewMemberData {
   fatherName: string;
   grandfatherName: string;
   greatGrandfatherName: string;
+  great2GrandfatherName: string;
+  great3GrandfatherName: string;
   fatherId: string;
   gender: 'Male' | 'Female';
   birthYear: string;
@@ -53,6 +55,8 @@ interface AutoFillData {
   fatherName: string | null;
   grandfatherName: string | null;
   greatGrandfatherName: string | null;
+  great2GrandfatherName: string | null;
+  great3GrandfatherName: string | null;
   generation: number;
   branch: string | null;
   fullNamePreview: string;
@@ -88,6 +92,8 @@ export default function QuickAddPage() {
     fatherName: '',
     grandfatherName: '',
     greatGrandfatherName: '',
+    great2GrandfatherName: '',
+    great3GrandfatherName: '',
     fatherId: '',
     gender: 'Male',
     birthYear: '',
@@ -121,12 +127,6 @@ export default function QuickAddPage() {
       }
     };
     loadData();
-
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const members = JSON.parse(saved);
-      setSavedMembers(members.length);
-    }
   }, []);
 
   // Handle URL parameters for pre-filled links
@@ -143,6 +143,8 @@ export default function QuickAddPage() {
           fatherName: father.firstName,
           grandfatherName: father.fatherName,
           greatGrandfatherName: father.grandfatherName,
+          great2GrandfatherName: father.greatGrandfatherName || null,
+          great3GrandfatherName: null,
           generation: father.generation + 1,
           branch: father.branch || branch,
           fullNamePreview: `? ${connector} ${father.firstName} ${
@@ -166,6 +168,8 @@ export default function QuickAddPage() {
         fatherName: selectedMatch.father.firstName,
         grandfatherName: selectedMatch.grandfather?.firstName || null,
         greatGrandfatherName: selectedMatch.greatGrandfather?.firstName || null,
+        great2GrandfatherName: selectedMatch.great2Grandfather?.firstName || null,
+        great3GrandfatherName: selectedMatch.great3Grandfather?.firstName || null,
         generation: selectedMatch.generation,
         branch: selectedMatch.branch,
         fullNamePreview: selectedMatch.fullNamePreview.replace(
@@ -236,6 +240,8 @@ export default function QuickAddPage() {
         fatherName: formData.fatherName,
         grandfatherName: formData.grandfatherName || undefined,
         greatGrandfatherName: formData.greatGrandfatherName || undefined,
+        great2GrandfatherName: formData.great2GrandfatherName || undefined,
+        great3GrandfatherName: formData.great3GrandfatherName || undefined,
       });
 
       if (result.success && result.data) {
@@ -257,7 +263,7 @@ export default function QuickAddPage() {
       console.error('Matching error:', error);
       setMatchingState('no_match');
     }
-  }, [formData.firstName, formData.fatherName, formData.grandfatherName, formData.greatGrandfatherName, nameMatch]);
+  }, [formData.firstName, formData.fatherName, formData.grandfatherName, formData.greatGrandfatherName, formData.great2GrandfatherName, formData.great3GrandfatherName, nameMatch]);
 
   const handleSelectMatch = (candidate: MatchCandidate) => {
     setSelectedMatch(candidate);
@@ -282,6 +288,8 @@ export default function QuickAddPage() {
         fatherName: member.firstName,
         grandfatherName: member.fatherName,
         greatGrandfatherName: member.grandfatherName,
+        great2GrandfatherName: member.greatGrandfatherName || null,
+        great3GrandfatherName: null,
         generation: member.generation + 1,
         branch: member.branch,
         fullNamePreview: `${formData.firstName} ${connector} ${member.firstName} ${
@@ -347,14 +355,7 @@ export default function QuickAddPage() {
       // Submit to pending members for admin approval
       await submitPending.mutateAsync(pendingMember);
 
-      // Also save to local storage as backup
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const members = saved ? JSON.parse(saved) : [];
-      members.push({ ...pendingMember, id: newMemberId, status: 'PENDING', savedAt: new Date().toISOString() });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
-
       setSubmitted(true);
-      setSavedMembers(members.length);
 
       setTimeout(() => {
         setSubmitted(false);
@@ -363,6 +364,8 @@ export default function QuickAddPage() {
           fatherName: '',
           grandfatherName: '',
           greatGrandfatherName: '',
+          great2GrandfatherName: '',
+          great3GrandfatherName: '',
           fatherId: '',
           gender: 'Male',
           birthYear: '',
@@ -392,6 +395,8 @@ export default function QuickAddPage() {
       fatherName: '',
       grandfatherName: '',
       greatGrandfatherName: '',
+      great2GrandfatherName: '',
+      great3GrandfatherName: '',
       fatherId: '',
       gender: 'Male',
       birthYear: '',
@@ -610,6 +615,40 @@ export default function QuickAddPage() {
                       onChange={(e) => updateField('greatGrandfatherName', e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
                       placeholder="مثال: شايع"
+                      dir="rtl"
+                    />
+                  </div>
+
+                  {/* Great2-Grandfather Name (5th ancestor) */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <User size={18} />
+                      جد الجد الثالث
+                      <span className="text-xs text-gray-400 font-normal">(اختياري - الجد الخامس)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.great2GrandfatherName}
+                      onChange={(e) => updateField('great2GrandfatherName', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
+                      placeholder="اسم الجد الخامس"
+                      dir="rtl"
+                    />
+                  </div>
+
+                  {/* Great3-Grandfather Name (6th ancestor) */}
+                  <div>
+                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
+                      <User size={18} />
+                      جد الجد الرابع
+                      <span className="text-xs text-gray-400 font-normal">(اختياري - الجد السادس)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.great3GrandfatherName}
+                      onChange={(e) => updateField('great3GrandfatherName', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
+                      placeholder="اسم الجد السادس"
                       dir="rtl"
                     />
                   </div>
@@ -1087,7 +1126,8 @@ export default function QuickAddPage() {
         <div className="mt-8 bg-indigo-50 rounded-xl p-6 border border-indigo-200">
           <h3 className="font-bold text-indigo-800 mb-3">💡 نصائح للإضافة السريعة</h3>
           <ul className="space-y-2 text-sm text-indigo-700">
-            <li>• أدخل اسم جدك وجد أبيك للحصول على مطابقة أدق</li>
+            <li>• يمكنك إدخال حتى 6 أسماء من الأجداد للحصول على مطابقة أدق</li>
+            <li>• كلما زادت أسماء الأجداد المدخلة، كانت نتائج البحث أكثر دقة</li>
             <li>• النظام يتعرف على الأسماء العربية بجميع أشكالها (محمد = محمّد = مُحَمَّد)</li>
             <li>• إذا لم تجد تطابقاً، استخدم التنقل اليدوي في الشجرة</li>
             <li>• جميع الإضافات تخضع لمراجعة المسؤول قبل النشر</li>
