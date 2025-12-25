@@ -35,7 +35,11 @@ function TreePageContent() {
     async function fetchMembers() {
       try {
         const res = await fetch('/api/members?limit=500', {
-          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+          },
         });
         if (res.ok) {
           const data = await res.json();

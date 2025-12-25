@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getAllMembersFromDb } from '@/lib/db';
 import type { FamilyMember } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface TreeNode {
   id: string;
   firstName: string;
@@ -69,7 +72,10 @@ export async function GET() {
     if (!tree) {
       return NextResponse.json({ error: 'No family tree data available' }, { status: 404 });
     }
-    return NextResponse.json(tree);
+    
+    const response = NextResponse.json(tree);
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return response;
   } catch (error) {
     console.error('Error building family tree:', error);
     return NextResponse.json({ error: 'Failed to build family tree' }, { status: 500 });

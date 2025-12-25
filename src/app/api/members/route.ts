@@ -6,6 +6,9 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -110,7 +113,7 @@ export async function GET(request: NextRequest) {
     const endIndex = startIndex + limit;
     const paginatedMembers = members.slice(startIndex, endIndex);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: paginatedMembers,
       pagination: {
@@ -120,6 +123,9 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit)
       }
     });
+    
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return response;
   } catch (error) {
     console.error('Error fetching members:', error);
     return NextResponse.json(
