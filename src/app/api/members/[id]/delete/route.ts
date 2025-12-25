@@ -25,7 +25,7 @@ export async function POST(
     }
 
     const permissions = getPermissionsForRole(user.role);
-    if (!permissions.edit_member_profiles) {
+    if (!permissions.edit_member) {
       return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
     }
 
@@ -70,7 +70,7 @@ export async function POST(
         newValue: new Date().toISOString(),
         changeType: 'DELETE',
         changedBy: user.id,
-        changedByName: user.name,
+        changedByName: user.nameArabic,
         fullSnapshot,
         reason: reason || (mergedIntoId ? `Merged into ${mergedIntoId}` : 'Manual deletion'),
       },

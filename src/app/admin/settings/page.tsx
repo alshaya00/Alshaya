@@ -230,7 +230,7 @@ export default function AdminSettingsPage() {
     );
   }
 
-  if (!isAuthenticated || !hasPermission('manage_admins')) {
+  if (!isAuthenticated || !hasPermission('change_user_roles')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">

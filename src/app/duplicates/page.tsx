@@ -473,7 +473,7 @@ function DuplicatesPageContent() {
                                     احتفظ بـ {pair.member2.firstName}
                                   </button>
                                 </div>
-                                <span className="text-xs text-gray-500">* يمكن استعادة العضو المحذوف من صفحة "المحذوفين مؤخراً"</span>
+                                <span className="text-xs text-gray-500">* يمكن استعادة العضو المحذوف من صفحة &quot;المحذوفين مؤخراً&quot;</span>
                               </div>
                             </>
                           )}

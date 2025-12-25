@@ -64,14 +64,18 @@ export async function sendEmailViaResendConnector(options: {
       ? `${options.fromName} <${fromEmail}>`
       : fromEmail;
 
-    const response = await client.emails.send({
+    // Build payload - Resend requires at least one of html or text
+    const emailPayload = {
       from,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,
       text: options.text,
       replyTo: options.replyTo,
-    });
+    };
+
+    // @ts-expect-error - Resend SDK types are strict but we ensure html or text is always provided by callers
+    const response = await client.emails.send(emailPayload);
 
     if (response.error) {
       return { success: false, error: response.error.message };

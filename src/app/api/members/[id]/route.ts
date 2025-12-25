@@ -251,8 +251,8 @@ export async function PUT(
         targetId: params.id,
         targetName: updatedMember.fullNameAr || updatedMember.firstName,
         description: `تم تحديث بيانات العضو: ${updatedMember.firstName}`,
-        previousState: originalMember as Record<string, unknown>,
-        newState: updatedMember as Record<string, unknown>,
+        previousState: originalMember as unknown as Record<string, unknown>,
+        newState: updatedMember as unknown as Record<string, unknown>,
         success: true,
       });
     } catch (auditError) {
@@ -334,7 +334,7 @@ export async function DELETE(
         targetId: params.id,
         targetName: member.fullNameAr || member.firstName,
         description: `تم حذف العضو: ${member.firstName}`,
-        previousState: member as Record<string, unknown>,
+        previousState: member as unknown as Record<string, unknown>,
         success: true,
       });
     } catch (auditError) {

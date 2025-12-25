@@ -137,7 +137,7 @@ export default function TreeEditorPage() {
               daughtersCount: node.daughtersCount || 0,
               fatherId: parentId,
               children: node.children,
-            } as FamilyMember);
+            } as unknown as FamilyMember);
             if (node.children) {
               node.children.forEach((child: any) => extractMembers(child, node.id));
             }

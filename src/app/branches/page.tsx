@@ -115,56 +115,59 @@ function BranchesPageContent() {
 
   // Find main branches (children of root P001)
   useEffect(() => {
-    const root = getMemberById('P001');
-    if (!root) return;
+    async function loadBranches() {
+      const root = getMemberById('P001');
+      if (!root) return;
 
-    // Get all direct children of root (Generation 2) - these are branch heads
-    const branchHeads = allMembers.filter(m => m.fatherId === 'P001' && m.gender === 'Male');
+      // Get all direct children of root (Generation 2) - these are branch heads
+      const branchHeads = allMembers.filter(m => m.fatherId === 'P001' && m.gender === 'Male');
 
-    // Also get Generation 3+ branch heads for more granular control
-    const gen3Heads = allMembers.filter(m => m.generation >= 3 && m.gender === 'Male' && m.sonsCount > 0);
+      // Also get Generation 3+ branch heads for more granular control
+      const gen3Heads = allMembers.filter(m => m.generation >= 3 && m.gender === 'Male' && m.sonsCount > 0);
 
-    // Combine and dedupe
-    const allBranchHeads = [...branchHeads, ...gen3Heads];
+      // Combine and dedupe
+      const allBranchHeads = [...branchHeads, ...gen3Heads];
 
-    const links = getBranchLinks();
+      const links = await getBranchLinks();
 
-    // Filter pending members with PENDING status
-    const activePending = pendingMembers.filter(p => p.reviewStatus === 'PENDING');
+      // Filter pending members with PENDING status
+      const activePending = pendingMembers.filter(p => p.reviewStatus === 'PENDING');
 
-    const branchData: BranchData[] = allBranchHeads.map(head => {
-      // Count all descendants
-      const descendants = getDescendants(head.id, allMembers);
-      const descendantIds = new Set([head.id, ...descendants.map(d => d.id)]);
-      const generations = [...new Set(descendants.map(d => d.generation))];
-      const directChildren = allMembers.filter(m => m.fatherId === head.id);
-      const link = links.find(l => l.branchHeadId === head.id && l.isActive);
-      const pendingCount = activePending.filter(p => 
-        p.proposedFatherId && descendantIds.has(p.proposedFatherId)
-      ).length;
-      const fullName = getFullLineageName(head, allMembers, 4);
+      const branchData: BranchData[] = allBranchHeads.map(head => {
+        // Count all descendants
+        const descendants = getDescendants(head.id, allMembers);
+        const descendantIds = new Set([head.id, ...descendants.map(d => d.id)]);
+        const generations = [...new Set(descendants.map(d => d.generation))];
+        const directChildren = allMembers.filter(m => m.fatherId === head.id);
+        const link = links.find(l => l.branchHeadId === head.id && l.isActive);
+        const pendingCount = activePending.filter(p => 
+          p.proposedFatherId && descendantIds.has(p.proposedFatherId)
+        ).length;
+        const fullName = getFullLineageName(head, allMembers, 4);
 
-      return {
-        head,
-        totalMembers: descendants.length + 1, // +1 for head
-        generations,
-        children: directChildren,
-        link,
-        pendingCount,
-        fullName,
-      };
-    });
+        return {
+          head,
+          totalMembers: descendants.length + 1, // +1 for head
+          generations,
+          children: directChildren,
+          link,
+          pendingCount,
+          fullName,
+        };
+      });
 
-    // Sort by generation, then by member count
-    branchData.sort((a, b) => {
-      if (a.head.generation !== b.head.generation) {
-        return a.head.generation - b.head.generation;
-      }
-      return b.totalMembers - a.totalMembers;
-    });
+      // Sort by generation, then by member count
+      branchData.sort((a, b) => {
+        if (a.head.generation !== b.head.generation) {
+          return a.head.generation - b.head.generation;
+        }
+        return b.totalMembers - a.totalMembers;
+      });
 
-    setBranches(branchData);
-    setTotalPending(activePending.length);
+      setBranches(branchData);
+      setTotalPending(activePending.length);
+    }
+    loadBranches();
   }, [allMembers, pendingMembers]);
 
   // Get all descendants of a member
@@ -177,8 +180,9 @@ function BranchesPageContent() {
     return descendants;
   }
 
-  const handleGenerateLink = (branch: BranchData) => {
-    const link = createBranchLink(branch.head.id, branch.head.firstName);
+  const handleGenerateLink = async (branch: BranchData) => {
+    const link = await createBranchLink(branch.head.id, branch.head.firstName);
+    if (!link) return;
     // Update state
     setBranches(prev => prev.map(b =>
       b.head.id === branch.head.id ? { ...b, link } : b

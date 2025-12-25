@@ -1709,4 +1709,4 @@ export function createMemberFixture(overrides: Partial<FamilyMemberFixture> = {}
   };
 }
 
-export { FamilyMemberFixture };
+export type { FamilyMemberFixture };

@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && user) {
-        const isAdmin = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || hasPermission('manage_admins');
+        const isAdmin = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || hasPermission('change_user_roles');
         setIsAuthorized(isAdmin);
       } else {
         setIsAuthorized(false);

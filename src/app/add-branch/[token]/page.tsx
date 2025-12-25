@@ -238,27 +238,27 @@ export default function BranchEntryPage() {
   useEffect(() => {
     if (allMembers.length === 0) return;
 
-    const foundLink = getLinkByToken(token);
-    if (!foundLink) {
-      setError('الرابط غير صالح أو منتهي الصلاحية');
+    async function initializeBranchData() {
+      const foundLink = await getLinkByToken(token);
+      if (!foundLink) {
+        setError('الرابط غير صالح أو منتهي الصلاحية');
+        setLoading(false);
+        return;
+      }
+
+      const head = allMembers.find(m => m.id === foundLink.branchHeadId);
+      if (!head) {
+        setError('لم يتم العثور على رأس الفرع');
+        setLoading(false);
+        return;
+      }
+
+      setLink(foundLink);
+      setBranchHead(head);
+      setFatherId(head.id);
       setLoading(false);
-      return;
-    }
 
-    const head = allMembers.find(m => m.id === foundLink.branchHeadId);
-    if (!head) {
-      setError('لم يتم العثور على رأس الفرع');
-      setLoading(false);
-      return;
-    }
-
-    setLink(foundLink);
-    setBranchHead(head);
-    setFatherId(head.id);
-    setLoading(false);
-
-    // Fetch pending members from database API
-    async function fetchPendingMembers() {
+      // Fetch pending members from database API
       try {
         const res = await fetch(`/api/admin/pending?submittedVia=${token}`);
         if (res.ok) {
@@ -289,7 +289,7 @@ export default function BranchEntryPage() {
         console.error('Error fetching pending members:', err);
       }
     }
-    fetchPendingMembers();
+    initializeBranchData();
   }, [token, allMembers]);
 
   // Get branch members for father selection

@@ -25,7 +25,7 @@ export async function POST(
     }
 
     const permissions = getPermissionsForRole(user.role);
-    if (!permissions.edit_member_profiles) {
+    if (!permissions.edit_member) {
       return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
     }
 
@@ -58,7 +58,7 @@ export async function POST(
         newValue: null,
         changeType: 'RESTORE',
         changedBy: user.id,
-        changedByName: user.name,
+        changedByName: user.nameArabic,
         reason: 'Restored from deleted',
       },
     });

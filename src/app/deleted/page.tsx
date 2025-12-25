@@ -258,7 +258,7 @@ function DeletedMembersContent() {
                 <h4 className="font-bold text-yellow-800">ملاحظة مهمة</h4>
                 <p className="text-yellow-700 text-sm mt-1">
                   الأعضاء المحذوفين لا يظهرون في شجرة العائلة أو في نتائج البحث.
-                  يمكنك استعادتهم في أي وقت بالضغط على زر "استعادة".
+                  يمكنك استعادتهم في أي وقت بالضغط على زر &quot;استعادة&quot;.
                 </p>
               </div>
             </div>
