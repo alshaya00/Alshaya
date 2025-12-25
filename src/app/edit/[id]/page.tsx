@@ -45,6 +45,7 @@ export default function EditMemberPage() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [originalMember, setOriginalMember] = useState<FamilyMember | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<'unauthorized' | 'not_found' | 'error' | null>(null);
 
   const [formData, setFormData] = useState<Partial<FamilyMember>>({});
   const [expandedSections, setExpandedSections] = useState<EditSection[]>(['identity', 'family']);
@@ -58,23 +59,47 @@ export default function EditMemberPage() {
 
   useEffect(() => {
     async function fetchData() {
+      if (!session?.token) {
+        return;
+      }
+      
+      setLoadError(null);
+      setIsLoadingData(true);
+      
       try {
-        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
         const [memberRes, allRes] = await Promise.all([
           fetch(`/api/members/${memberId}`, { headers }),
           fetch('/api/members?limit=500', { headers })
         ]);
-        if (memberRes.ok) {
-          const memberData = await memberRes.json();
-          setOriginalMember(memberData);
-          setFormData({ ...memberData });
+        
+        if (memberRes.status === 401) {
+          setLoadError('unauthorized');
+          return;
         }
+        
+        if (memberRes.status === 404) {
+          setLoadError('not_found');
+          return;
+        }
+        
+        if (!memberRes.ok) {
+          setLoadError('error');
+          return;
+        }
+        
+        const memberData = await memberRes.json();
+        const member = memberData.data || memberData;
+        setOriginalMember(member);
+        setFormData({ ...member });
+        
         if (allRes.ok) {
           const allData = await allRes.json();
           setAllMembers(allData.data || []);
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        setLoadError('error');
       } finally {
         setIsLoadingData(false);
       }
@@ -245,7 +270,33 @@ export default function EditMemberPage() {
     setSaveSuccess(false);
   };
 
-  if (!originalMember) {
+  if (isLoadingData || !session?.token) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <RefreshCw className="w-16 h-16 text-blue-500 mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">جاري تحميل بيانات العضو...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError === 'unauthorized') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">غير مصرح</h2>
+          <p className="text-gray-600 mb-4">يجب تسجيل الدخول للوصول لهذه الصفحة</p>
+          <Link href="/login" className="text-blue-600 hover:underline">
+            تسجيل الدخول
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError === 'not_found' || !originalMember) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
         <div className="text-center">
@@ -254,6 +305,23 @@ export default function EditMemberPage() {
           <Link href="/tree" className="text-blue-600 hover:underline">
             العودة للشجرة
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">حدث خطأ أثناء التحميل</h2>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-blue-600 hover:underline"
+          >
+            إعادة المحاولة
+          </button>
         </div>
       </div>
     );
