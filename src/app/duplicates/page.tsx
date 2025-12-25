@@ -131,7 +131,7 @@ function DuplicatesPageContent() {
         },
         body: JSON.stringify({
           reason: `تم الدمج مع العضو ${keepMember.fullNameAr || keepMember.firstName} (${keepMember.id})`,
-          mergeIntoId: keepMember.id,
+          mergedIntoId: keepMember.id,
         }),
       });
 
