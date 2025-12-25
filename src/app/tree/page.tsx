@@ -162,6 +162,10 @@ function TreePageContent() {
     6: 'bg-blue-500',
     7: 'bg-indigo-500',
     8: 'bg-purple-500',
+    9: 'bg-pink-500',
+    10: 'bg-cyan-500',
+    11: 'bg-lime-500',
+    12: 'bg-rose-500',
   };
 
   // Render tree node recursively

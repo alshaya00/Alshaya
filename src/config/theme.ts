@@ -32,7 +32,7 @@ export const brandColors = {
 } as const;
 
 // ============================================
-// GENERATION COLORS (8 generations)
+// GENERATION COLORS (12 generations)
 // Used in family tree visualization
 // ============================================
 
@@ -45,6 +45,10 @@ export const generationColors: Record<number, ColorPalette> = {
   6: { primary: '#2563eb', secondary: '#bfdbfe', gradient: ['#3b82f6', '#2563eb'] }, // Blue
   7: { primary: '#4f46e5', secondary: '#c7d2fe', gradient: ['#6366f1', '#4f46e5'] }, // Indigo
   8: { primary: '#9333ea', secondary: '#e9d5ff', gradient: ['#a855f7', '#9333ea'] }, // Purple
+  9: { primary: '#db2777', secondary: '#fbcfe8', gradient: ['#ec4899', '#db2777'] }, // Pink
+  10: { primary: '#0891b2', secondary: '#a5f3fc', gradient: ['#06b6d4', '#0891b2'] }, // Cyan
+  11: { primary: '#65a30d', secondary: '#d9f99d', gradient: ['#84cc16', '#65a30d'] }, // Lime
+  12: { primary: '#be185d', secondary: '#fce7f3', gradient: ['#f472b6', '#be185d'] }, // Rose
 };
 
 // Simple hex array for generation colors (for charts, exports)
@@ -57,6 +61,10 @@ export const generationHexColors: string[] = [
   '#2563EB', // Gen 6 - Blue
   '#4F46E5', // Gen 7 - Indigo
   '#9333EA', // Gen 8 - Purple
+  '#DB2777', // Gen 9 - Pink
+  '#0891B2', // Gen 10 - Cyan
+  '#65A30D', // Gen 11 - Lime
+  '#BE185D', // Gen 12 - Rose
 ];
 
 // ============================================

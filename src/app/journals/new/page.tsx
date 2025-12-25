@@ -451,7 +451,7 @@ export default function NewJournalPage() {
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all"
                     >
                       <option value="">اختر الجيل (اختياري)</option>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((gen) => (
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((gen) => (
                         <option key={gen} value={gen}>الجيل {gen}</option>
                       ))}
                     </select>

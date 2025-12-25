@@ -105,6 +105,10 @@ export default function SearchableDropdown({
     6: 'bg-blue-100 text-blue-800',
     7: 'bg-indigo-100 text-indigo-800',
     8: 'bg-purple-100 text-purple-800',
+    9: 'bg-pink-100 text-pink-800',
+    10: 'bg-cyan-100 text-cyan-800',
+    11: 'bg-lime-100 text-lime-800',
+    12: 'bg-rose-100 text-rose-800',
   };
 
   return (

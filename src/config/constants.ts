@@ -20,11 +20,11 @@ export const familyInfo = {
 // ============================================
 
 export const generationSettings = {
-  maxGenerations: 8,
-  icons: ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'] as const,
+  maxGenerations: 12,
+  icons: ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫'] as const,
   labels: {
-    ar: ['الجيل الأول', 'الجيل الثاني', 'الجيل الثالث', 'الجيل الرابع', 'الجيل الخامس', 'الجيل السادس', 'الجيل السابع', 'الجيل الثامن'],
-    en: ['1st Generation', '2nd Generation', '3rd Generation', '4th Generation', '5th Generation', '6th Generation', '7th Generation', '8th Generation'],
+    ar: ['الجيل الأول', 'الجيل الثاني', 'الجيل الثالث', 'الجيل الرابع', 'الجيل الخامس', 'الجيل السادس', 'الجيل السابع', 'الجيل الثامن', 'الجيل التاسع', 'الجيل العاشر', 'الجيل الحادي عشر', 'الجيل الثاني عشر'],
+    en: ['1st Generation', '2nd Generation', '3rd Generation', '4th Generation', '5th Generation', '6th Generation', '7th Generation', '8th Generation', '9th Generation', '10th Generation', '11th Generation', '12th Generation'],
   },
 };
 

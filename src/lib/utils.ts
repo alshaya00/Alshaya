@@ -20,6 +20,10 @@ export function formatGeneration(gen: number): string {
     6: 'السادس',
     7: 'السابع',
     8: 'الثامن',
+    9: 'التاسع',
+    10: 'العاشر',
+    11: 'الحادي عشر',
+    12: 'الثاني عشر',
   };
   return `الجيل ${arabicNumbers[gen] || gen}`;
 }
@@ -34,6 +38,10 @@ export function getGenerationColor(gen: number): string {
     6: 'bg-blue-500',
     7: 'bg-indigo-500',
     8: 'bg-purple-500',
+    9: 'bg-pink-500',
+    10: 'bg-cyan-500',
+    11: 'bg-lime-500',
+    12: 'bg-rose-500',
   };
   return colors[gen] || 'bg-gray-500';
 }
