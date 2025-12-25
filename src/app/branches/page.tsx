@@ -65,7 +65,10 @@ function BranchesPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [pendingMembers, setPendingMembers] = useState<PendingMemberApi[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  
+  // Check if user is admin (can view pending section)
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
     async function fetchMembers() {
@@ -139,7 +142,7 @@ function BranchesPageContent() {
       const pendingCount = activePending.filter(p => 
         p.proposedFatherId && descendantIds.has(p.proposedFatherId)
       ).length;
-      const fullName = getFullLineageName(head, allMembers, 3);
+      const fullName = getFullLineageName(head, allMembers, 4);
 
       return {
         head,
@@ -245,7 +248,7 @@ ${url}
         </div>
 
         {/* Stats Bar */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className={`grid ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
           <div className="bg-white rounded-xl p-4 text-center shadow-sm border">
             <p className="text-3xl font-bold text-green-600">{branches.length}</p>
             <p className="text-sm text-gray-500">فرع</p>
@@ -256,13 +259,15 @@ ${url}
             </p>
             <p className="text-sm text-gray-500">رابط نشط</p>
           </div>
-          <Link
-            href="/admin/pending"
-            className="bg-white rounded-xl p-4 text-center shadow-sm border hover:border-orange-300 transition-colors"
-          >
-            <p className="text-3xl font-bold text-orange-600">{totalPending}</p>
-            <p className="text-sm text-gray-500">بانتظار المراجعة</p>
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin/pending"
+              className="bg-white rounded-xl p-4 text-center shadow-sm border hover:border-orange-300 transition-colors"
+            >
+              <p className="text-3xl font-bold text-orange-600">{totalPending}</p>
+              <p className="text-sm text-gray-500">بانتظار المراجعة</p>
+            </Link>
+          )}
         </div>
 
         {/* Quick Add Link Generator */}
@@ -327,7 +332,7 @@ ${url}
                       <span className={`text-xs px-2 py-0.5 rounded-full text-white ${generationColors[branch.head.generation]} flex-shrink-0`}>
                         ج{branch.head.generation}
                       </span>
-                      {branch.pendingCount > 0 && (
+                      {isAdmin && branch.pendingCount > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500 text-white flex-shrink-0">
                           {branch.pendingCount} جديد
                         </span>
