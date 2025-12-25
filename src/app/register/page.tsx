@@ -56,8 +56,7 @@ export default function RegisterPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
-        const res = await fetch('/api/members?limit=500', { headers });
+        const res = await fetch('/api/members/public?limit=500');
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);
@@ -67,7 +66,7 @@ export default function RegisterPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, []);
 
   const filteredMembers = allMembers.filter((m) => {
     if (!searchQuery) return false;
