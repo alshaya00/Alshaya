@@ -68,35 +68,130 @@ function SearchPageContent() {
     }));
   }, [allMembers, membersMap]);
 
+  // Normalize Arabic text for flexible matching
+  const normalizeArabic = (text: string): string => {
+    if (!text) return '';
+    return text
+      // Remove diacritics (tashkeel)
+      .replace(/[\u064B-\u065F\u0670]/g, '')
+      // Normalize alef variations (أ إ آ ا)
+      .replace(/[أإآا]/g, 'ا')
+      // Normalize ya variations (ي ى)
+      .replace(/[ىي]/g, 'ي')
+      // Normalize ta marbuta to ha (ة → ه)
+      .replace(/ة/g, 'ه')
+      // Normalize hamza variations
+      .replace(/ؤ/g, 'و')
+      .replace(/ئ/g, 'ي')
+      .replace(/ء/g, '')
+      // Remove common connectors for flexible matching
+      .replace(/\s+بن\s+/g, ' ')
+      .replace(/\s+بنت\s+/g, ' ')
+      .replace(/\s+ال/g, ' ')
+      .replace(/^ال/, '')
+      // Normalize spaces
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  };
+
+  // Calculate similarity score between two strings (0-1)
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const s1 = normalizeArabic(str1);
+    const s2 = normalizeArabic(str2);
+    
+    if (s1 === s2) return 1;
+    if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+    
+    // Check if all characters of shorter string exist in longer
+    const shorter = s1.length < s2.length ? s1 : s2;
+    const longer = s1.length < s2.length ? s2 : s1;
+    
+    let matchCount = 0;
+    for (const char of shorter) {
+      if (longer.includes(char)) matchCount++;
+    }
+    
+    return matchCount / shorter.length;
+  };
+
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
 
-    const term = query.toLowerCase().trim();
-    const terms = term.split(/\s+/).filter(t => t.length > 0);
+    const normalizedQuery = normalizeArabic(query);
+    const queryTerms = normalizedQuery.split(/\s+/).filter(t => t.length > 0);
     
-    return membersWithAncestry
-      .filter((m) => {
-        const ancestorChainLower = m.ancestorChain.toLowerCase();
-        const allTermsMatch = terms.every(t => ancestorChainLower.includes(t));
-        
-        return allTermsMatch ||
-          m.firstName.toLowerCase().includes(term) ||
-          m.fullNameAr?.toLowerCase().includes(term) ||
-          m.fullNameEn?.toLowerCase().includes(term) ||
-          m.id.toLowerCase().includes(term) ||
-          m.city?.toLowerCase().includes(term) ||
-          m.occupation?.toLowerCase().includes(term) ||
-          m.fatherName?.toLowerCase().includes(term) ||
-          m.lineageBranchName?.toLowerCase().includes(term) ||
-          m.subBranchName?.toLowerCase().includes(term);
-      })
-      .sort((a, b) => {
-        const aChainLower = a.ancestorChain.toLowerCase();
-        const bChainLower = b.ancestorChain.toLowerCase();
-        const aMatchCount = terms.filter(t => aChainLower.includes(t)).length;
-        const bMatchCount = terms.filter(t => bChainLower.includes(t)).length;
-        return bMatchCount - aMatchCount;
-      });
+    // Score each member based on match quality
+    const scoredResults = membersWithAncestry.map((m) => {
+      const normalizedChain = normalizeArabic(m.ancestorChain);
+      const normalizedFirstName = normalizeArabic(m.firstName);
+      const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
+      const normalizedFatherName = normalizeArabic(m.fatherName || '');
+      const normalizedCity = normalizeArabic(m.city || '');
+      const normalizedOccupation = normalizeArabic(m.occupation || '');
+      const fullNameEnLower = (m.fullNameEn || '').toLowerCase();
+      
+      let score = 0;
+      
+      // Exact match on first name (highest priority)
+      if (normalizedFirstName === normalizedQuery) {
+        score += 100;
+      } else if (normalizedFirstName.startsWith(normalizedQuery)) {
+        score += 80;
+      } else if (normalizedFirstName.includes(normalizedQuery)) {
+        score += 60;
+      }
+      
+      // Match on full Arabic name
+      if (normalizedFullNameAr.includes(normalizedQuery)) {
+        score += 50;
+      }
+      
+      // Match on ancestor chain
+      if (normalizedChain.includes(normalizedQuery)) {
+        score += 40;
+      }
+      
+      // Match individual terms (for multi-word queries)
+      const matchedTerms = queryTerms.filter(term => 
+        normalizedChain.includes(term) ||
+        normalizedFirstName.includes(term) ||
+        normalizedFatherName.includes(term)
+      );
+      score += matchedTerms.length * 20;
+      
+      // Fuzzy match on first name (for typos)
+      const firstNameSimilarity = calculateSimilarity(m.firstName, query);
+      if (firstNameSimilarity > 0.7) {
+        score += firstNameSimilarity * 30;
+      }
+      
+      // Match on English name
+      if (fullNameEnLower.includes(query.toLowerCase())) {
+        score += 35;
+      }
+      
+      // Match on city or occupation
+      if (normalizedCity.includes(normalizedQuery)) {
+        score += 15;
+      }
+      if (normalizedOccupation.includes(normalizedQuery)) {
+        score += 10;
+      }
+      
+      // Match on ID
+      if (m.id.toLowerCase().includes(query.toLowerCase())) {
+        score += 25;
+      }
+      
+      return { member: m, score };
+    });
+    
+    // Filter members with any match and sort by score
+    return scoredResults
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(r => r.member);
   }, [membersWithAncestry, query]);
 
   const handleSearch = (searchTerm: string) => {
@@ -112,9 +207,16 @@ function SearchPageContent() {
 
   const suggestions = useMemo(() => {
     if (query.length < 2) return [];
+    const normalizedQuery = normalizeArabic(query);
     return membersWithAncestry
-      .filter((m) => m.ancestorChain.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 5);
+      .filter((m) => {
+        const normalizedChain = normalizeArabic(m.ancestorChain);
+        const normalizedFirstName = normalizeArabic(m.firstName);
+        return normalizedChain.includes(normalizedQuery) || 
+               normalizedFirstName.includes(normalizedQuery) ||
+               calculateSimilarity(m.firstName, query) > 0.7;
+      })
+      .slice(0, 8);
   }, [membersWithAncestry, query]);
 
   if (isLoading) {
