@@ -1,7 +1,5 @@
-// Branch Entry System - Types and Utilities
-
-import { storageKeys } from '@/config/storage-keys';
-import { randomBytes } from 'crypto';
+// Branch Entry System - Database-backed via API
+// All branch links and pending members are stored in the PostgreSQL database
 
 export interface BranchEntryLink {
   id: string;
@@ -27,145 +25,208 @@ export interface PendingMember {
   branch: string;
   fullNameAr: string;
   submittedAt: string;
-  submittedVia: string; // token
+  submittedVia: string;
   branchHeadId: string;
   status: 'pending' | 'approved' | 'rejected';
   reviewNote?: string;
 }
 
-const LINKS_STORAGE_KEY = storageKeys.branchLinks;
-const PENDING_STORAGE_KEY = storageKeys.pendingMembers;
+// Client-side function to get auth header from storage
+function getAuthHeader(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('alshaye_token') || sessionStorage.getItem('alshaye_token');
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` };
+  }
+  return {};
+}
 
-// SECURITY: Generate cryptographically secure token
+// Generate token (client-side fallback, but server generates the real one)
 export function generateToken(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = randomBytes(8);
   let token = '';
   for (let i = 0; i < 8; i++) {
-    token += chars[bytes[i] % chars.length];
+    token += chars[Math.floor(Math.random() * chars.length)];
   }
   return token;
 }
 
-// SECURITY: Generate unique temp ID for pending members
+// Generate unique temp ID for pending members
 export function generateTempId(): string {
-  return 'TEMP_' + Date.now() + '_' + randomBytes(4).toString('hex');
+  return 'TEMP_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
 }
 
-// Get all branch links
-export function getBranchLinks(): BranchEntryLink[] {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(LINKS_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
-}
-
-// Save branch links
-export function saveBranchLinks(links: BranchEntryLink[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
-}
-
-// Create a new branch link
-export function createBranchLink(branchHeadId: string, branchHeadName: string): BranchEntryLink {
-  const links = getBranchLinks();
-
-  // Check if link already exists for this branch head
-  const existing = links.find(l => l.branchHeadId === branchHeadId && l.isActive);
-  if (existing) {
-    return existing;
-  }
-
-  const newLink: BranchEntryLink = {
-    id: generateToken(),
-    branchHeadId,
-    branchHeadName,
-    token: generateToken(),
-    createdAt: new Date().toISOString(),
-    isActive: true,
-  };
-
-  links.push(newLink);
-  saveBranchLinks(links);
-  return newLink;
-}
-
-// Get link by token
-export function getLinkByToken(token: string): BranchEntryLink | null {
-  const links = getBranchLinks();
-  return links.find(l => l.token === token && l.isActive) || null;
-}
-
-// Deactivate a link
-export function deactivateLink(token: string): void {
-  const links = getBranchLinks();
-  const link = links.find(l => l.token === token);
-  if (link) {
-    link.isActive = false;
-    saveBranchLinks(links);
+// Get all branch links from database via API
+export async function getBranchLinks(): Promise<BranchEntryLink[]> {
+  try {
+    const res = await fetch('/api/admin/branch-links', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    if (!res.ok) {
+      console.error('Failed to fetch branch links');
+      return [];
+    }
+    const data = await res.json();
+    return data.links || [];
+  } catch (error) {
+    console.error('Error fetching branch links:', error);
+    return [];
   }
 }
 
-// Get all pending members
-export function getPendingMembers(): PendingMember[] {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(PENDING_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+// Create a new branch link via API
+export async function createBranchLink(branchHeadId: string, branchHeadName: string): Promise<BranchEntryLink | null> {
+  try {
+    const res = await fetch('/api/admin/branch-links', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ branchHeadId, branchHeadName }),
+    });
+
+    if (!res.ok) {
+      console.error('Failed to create branch link');
+      return null;
+    }
+
+    const data = await res.json();
+    return data.link || null;
+  } catch (error) {
+    console.error('Error creating branch link:', error);
+    return null;
+  }
 }
 
-// Save pending members
-export function savePendingMembers(members: PendingMember[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(members));
+// Get link by token via API (public - no auth needed for branch entry)
+export async function getLinkByToken(token: string): Promise<BranchEntryLink | null> {
+  try {
+    const res = await fetch(`/api/branch-links/${token}`);
+    if (!res.ok) {
+      return null;
+    }
+    const data = await res.json();
+    return data.link || null;
+  } catch (error) {
+    console.error('Error fetching link by token:', error);
+    return null;
+  }
 }
 
-// Add a pending member
-export function addPendingMember(member: Omit<PendingMember, 'id' | 'tempId' | 'submittedAt' | 'status'>): PendingMember {
-  const members = getPendingMembers();
-
-  const newMember: PendingMember = {
-    ...member,
-    id: generateToken(),
-    tempId: generateTempId(),
-    submittedAt: new Date().toISOString(),
-    status: 'pending',
-  };
-
-  members.push(newMember);
-  savePendingMembers(members);
-  return newMember;
+// Deactivate a link via API
+export async function deactivateLink(token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/admin/branch-links/${token}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    return res.ok;
+  } catch (error) {
+    console.error('Error deactivating link:', error);
+    return false;
+  }
 }
 
-// Update pending member status
-export function updatePendingStatus(
+// Get all pending members from database via API
+export async function getPendingMembers(): Promise<PendingMember[]> {
+  try {
+    const res = await fetch('/api/admin/pending', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    if (!res.ok) {
+      console.error('Failed to fetch pending members');
+      return [];
+    }
+    const data = await res.json();
+    return data.members || data.entries || [];
+  } catch (error) {
+    console.error('Error fetching pending members:', error);
+    return [];
+  }
+}
+
+// Add a pending member via API (public - for branch entry form)
+export async function addPendingMember(member: Omit<PendingMember, 'id' | 'tempId' | 'submittedAt' | 'status'>): Promise<PendingMember | null> {
+  try {
+    const res = await fetch('/api/admin/pending', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(member),
+    });
+
+    if (!res.ok) {
+      console.error('Failed to add pending member');
+      return null;
+    }
+
+    const data = await res.json();
+    return data.member || data.entry || null;
+  } catch (error) {
+    console.error('Error adding pending member:', error);
+    return null;
+  }
+}
+
+// Update pending member status via API
+export async function updatePendingStatus(
   id: string,
   status: 'approved' | 'rejected',
   reviewNote?: string
-): void {
-  const members = getPendingMembers();
-  const member = members.find(m => m.id === id);
-  if (member) {
-    member.status = status;
-    member.reviewNote = reviewNote;
-    savePendingMembers(members);
+): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/admin/pending/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ status, reviewNote }),
+    });
+    return res.ok;
+  } catch (error) {
+    console.error('Error updating pending status:', error);
+    return false;
   }
 }
 
-// Remove pending member
-export function removePendingMember(id: string): void {
-  const members = getPendingMembers();
-  const filtered = members.filter(m => m.id !== id);
-  savePendingMembers(filtered);
+// Remove pending member via API
+export async function removePendingMember(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/admin/pending/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    return res.ok;
+  } catch (error) {
+    console.error('Error removing pending member:', error);
+    return false;
+  }
 }
 
-// Get pending count by branch
-export function getPendingCountByBranch(branchHeadId: string): number {
-  const members = getPendingMembers();
+// Get pending count by branch (client-side filter on fetched data)
+export async function getPendingCountByBranch(branchHeadId: string): Promise<number> {
+  const members = await getPendingMembers();
   return members.filter(m => m.branchHeadId === branchHeadId && m.status === 'pending').length;
 }
 
-// Get total pending count
-export function getTotalPendingCount(): number {
-  const members = getPendingMembers();
+// Get total pending count (client-side filter on fetched data)
+export async function getTotalPendingCount(): Promise<number> {
+  const members = await getPendingMembers();
   return members.filter(m => m.status === 'pending').length;
 }
 

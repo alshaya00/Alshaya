@@ -1,5 +1,9 @@
-// Audit Log Service - Comprehensive tracking for all system actions
-// This service tracks every action in the system for traceability
+// Audit Log Service - Hybrid server/client implementation
+// - Server-side: Use logAuditToDb from db-audit.ts (direct Prisma)
+// - Client-side: Use these API-based functions with auth headers
+
+// Re-export server-side functions for API routes
+export { logAuditToDb, getAuditLogsFromDb } from './db-audit';
 
 export type AuditAction =
   | 'MEMBER_CREATE'
@@ -61,104 +65,81 @@ export interface AuditLogFilter {
   startDate?: string;
   endDate?: string;
   success?: boolean;
+  page?: number;
+  limit?: number;
 }
 
-import { storageKeys } from '@/config/storage-keys';
-import { paginationSettings } from '@/config/constants';
-
-const AUDIT_LOG_KEY = storageKeys.auditLog;
-const MAX_AUDIT_ENTRIES = paginationSettings.maxAuditEntries;
-
-// Get current admin info
-function getCurrentAdmin(): { id: string; name: string; role: string } {
-  try {
-    const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]');
-    const authStatus = localStorage.getItem(storageKeys.adminAuth);
-    if (authStatus === 'true' && admins.length > 0) {
-      return {
-        id: admins[0].id || 'admin',
-        name: admins[0].name || 'المدير',
-        role: admins[0].role || 'ADMIN',
-      };
-    }
-  } catch {
-    // Ignore
+// Client-side function to get auth header from storage
+function getAuthHeader(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('alshaye_token') || sessionStorage.getItem('alshaye_token');
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` };
   }
-  return { id: 'system', name: 'النظام', role: 'SYSTEM' };
+  return {};
 }
 
-// SECURITY: Generate unique ID using Web Crypto API
-function generateId(): string {
-  const array = new Uint8Array(8);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(array);
-  }
-  const hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-  return `audit_${Date.now()}_${hex}`;
-}
-
-// Get all audit logs
-export function getAuditLogs(filter?: AuditLogFilter): AuditLogEntry[] {
+// Get all audit logs from database via API (CLIENT-SIDE ONLY)
+export async function getAuditLogs(filter?: AuditLogFilter): Promise<AuditLogEntry[]> {
   try {
-    let logs: AuditLogEntry[] = JSON.parse(localStorage.getItem(AUDIT_LOG_KEY) || '[]');
-
+    const params = new URLSearchParams();
     if (filter) {
-      if (filter.action) {
-        logs = logs.filter((l) => l.action === filter.action);
-      }
-      if (filter.userId) {
-        logs = logs.filter((l) => l.userId === filter.userId);
-      }
-      if (filter.targetType) {
-        logs = logs.filter((l) => l.targetType === filter.targetType);
-      }
-      if (filter.targetId) {
-        logs = logs.filter((l) => l.targetId === filter.targetId);
-      }
-      if (filter.severity) {
-        logs = logs.filter((l) => l.severity === filter.severity);
-      }
-      if (filter.startDate) {
-        logs = logs.filter((l) => new Date(l.timestamp) >= new Date(filter.startDate!));
-      }
-      if (filter.endDate) {
-        logs = logs.filter((l) => new Date(l.timestamp) <= new Date(filter.endDate!));
-      }
-      if (filter.success !== undefined) {
-        logs = logs.filter((l) => l.success === filter.success);
-      }
+      if (filter.action) params.set('action', filter.action);
+      if (filter.userId) params.set('userId', filter.userId);
+      if (filter.targetType) params.set('targetType', filter.targetType);
+      if (filter.targetId) params.set('targetId', filter.targetId);
+      if (filter.severity) params.set('severity', filter.severity);
+      if (filter.startDate) params.set('startDate', filter.startDate);
+      if (filter.endDate) params.set('endDate', filter.endDate);
+      if (filter.success !== undefined) params.set('success', String(filter.success));
+      if (filter.page) params.set('page', String(filter.page));
+      if (filter.limit) params.set('limit', String(filter.limit));
     }
 
-    return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  } catch {
+    const res = await fetch(`/api/admin/audit?${params.toString()}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    if (!res.ok) {
+      console.error('Failed to fetch audit logs');
+      return [];
+    }
+
+    const data = await res.json();
+    return data.logs || [];
+  } catch (error) {
+    console.error('Error fetching audit logs:', error);
     return [];
   }
 }
 
-// Save audit log entry
-export function logAudit(params: {
-  action: AuditAction;
-  severity?: AuditSeverity;
-  targetType: string;
-  targetId?: string | null;
-  targetName?: string | null;
-  description: string;
-  details?: Record<string, unknown>;
-  previousState?: Record<string, unknown> | null;
-  newState?: Record<string, unknown> | null;
-  success?: boolean;
-  errorMessage?: string | null;
-}): AuditLogEntry {
-  const admin = getCurrentAdmin();
+// Log audit entry via API (CLIENT-SIDE ONLY)
+export async function logAuditAsync(
+  user: { id: string; name: string; role: string } | null,
+  params: {
+    action: AuditAction;
+    severity?: AuditSeverity;
+    targetType: string;
+    targetId?: string | null;
+    targetName?: string | null;
+    description: string;
+    details?: Record<string, unknown>;
+    previousState?: Record<string, unknown> | null;
+    newState?: Record<string, unknown> | null;
+    success?: boolean;
+    errorMessage?: string | null;
+  }
+): Promise<AuditLogEntry | null> {
+  const effectiveUser = user || { id: 'system', name: 'النظام', role: 'SYSTEM' };
 
-  const entry: AuditLogEntry = {
-    id: generateId(),
-    timestamp: new Date().toISOString(),
+  const entry = {
     action: params.action,
     severity: params.severity || 'INFO',
-    userId: admin.id,
-    userName: admin.name,
-    userRole: admin.role,
+    userId: effectiveUser.id,
+    userName: effectiveUser.name,
+    userRole: effectiveUser.role,
     targetType: params.targetType,
     targetId: params.targetId || null,
     targetName: params.targetName || null,
@@ -166,30 +147,57 @@ export function logAudit(params: {
     details: params.details || {},
     previousState: params.previousState || null,
     newState: params.newState || null,
-    ipAddress: null,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    sessionId: localStorage.getItem(storageKeys.sessionId),
     success: params.success !== false,
     errorMessage: params.errorMessage || null,
   };
 
   try {
-    const logs = getAuditLogs();
-    logs.unshift(entry);
+    const res = await fetch('/api/admin/audit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(entry),
+    });
 
-    // Keep only the last MAX_AUDIT_ENTRIES
-    const trimmedLogs = logs.slice(0, MAX_AUDIT_ENTRIES);
-    localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(trimmedLogs));
+    if (!res.ok) {
+      console.error('Failed to save audit log');
+      return null;
+    }
+
+    const data = await res.json();
+    return data.log || null;
   } catch (error) {
-    console.error('Failed to save audit log:', error);
+    console.error('Error saving audit log:', error);
+    return null;
   }
-
-  return entry;
 }
 
-// Helper functions for common audit actions
-export function logMemberCreate(member: Record<string, unknown>): void {
-  logAudit({
+// Synchronous wrapper for backward compatibility (fires and forgets) - CLIENT-SIDE ONLY
+export function logAudit(
+  user: { id: string; name: string; role: string } | null,
+  params: {
+    action: AuditAction;
+    severity?: AuditSeverity;
+    targetType: string;
+    targetId?: string | null;
+    targetName?: string | null;
+    description: string;
+    details?: Record<string, unknown>;
+    previousState?: Record<string, unknown> | null;
+    newState?: Record<string, unknown> | null;
+    success?: boolean;
+    errorMessage?: string | null;
+  }
+): void {
+  logAuditAsync(user, params).catch(console.error);
+}
+
+// Helper functions for common audit actions (CLIENT-SIDE ONLY)
+export function logMemberCreate(user: { id: string; name: string; role: string } | null, member: Record<string, unknown>): void {
+  logAudit(user, {
     action: 'MEMBER_CREATE',
     targetType: 'MEMBER',
     targetId: member.id as string,
@@ -200,13 +208,14 @@ export function logMemberCreate(member: Record<string, unknown>): void {
 }
 
 export function logMemberUpdate(
+  user: { id: string; name: string; role: string } | null,
   memberId: string,
   memberName: string,
   previousState: Record<string, unknown>,
   newState: Record<string, unknown>,
   changedFields: string[]
 ): void {
-  logAudit({
+  logAudit(user, {
     action: 'MEMBER_UPDATE',
     targetType: 'MEMBER',
     targetId: memberId,
@@ -218,8 +227,8 @@ export function logMemberUpdate(
   });
 }
 
-export function logMemberDelete(memberId: string, memberName: string, memberData: Record<string, unknown>): void {
-  logAudit({
+export function logMemberDelete(user: { id: string; name: string; role: string } | null, memberId: string, memberName: string, memberData: Record<string, unknown>): void {
+  logAudit(user, {
     action: 'MEMBER_DELETE',
     severity: 'WARNING',
     targetType: 'MEMBER',
@@ -230,8 +239,8 @@ export function logMemberDelete(memberId: string, memberName: string, memberData
   });
 }
 
-export function logBackupCreate(backupId: string, backupName: string, memberCount: number): void {
-  logAudit({
+export function logBackupCreate(user: { id: string; name: string; role: string } | null, backupId: string, backupName: string, memberCount: number): void {
+  logAudit(user, {
     action: 'BACKUP_CREATE',
     targetType: 'BACKUP',
     targetId: backupId,
@@ -241,8 +250,8 @@ export function logBackupCreate(backupId: string, backupName: string, memberCoun
   });
 }
 
-export function logBackupRestore(backupId: string, backupName: string): void {
-  logAudit({
+export function logBackupRestore(user: { id: string; name: string; role: string } | null, backupId: string, backupName: string): void {
+  logAudit(user, {
     action: 'BACKUP_RESTORE',
     severity: 'WARNING',
     targetType: 'BACKUP',
@@ -252,8 +261,8 @@ export function logBackupRestore(backupId: string, backupName: string): void {
   });
 }
 
-export function logConfigUpdate(setting: string, oldValue: unknown, newValue: unknown): void {
-  logAudit({
+export function logConfigUpdate(user: { id: string; name: string; role: string } | null, setting: string, oldValue: unknown, newValue: unknown): void {
+  logAudit(user, {
     action: 'CONFIG_UPDATE',
     targetType: 'CONFIG',
     targetId: setting,
@@ -264,8 +273,8 @@ export function logConfigUpdate(setting: string, oldValue: unknown, newValue: un
   });
 }
 
-export function logAdminLogin(adminId: string, adminName: string, success: boolean, errorMessage?: string): void {
-  logAudit({
+export function logAdminLogin(user: { id: string; name: string; role: string } | null, adminId: string, adminName: string, success: boolean, errorMessage?: string): void {
+  logAudit(user, {
     action: 'ADMIN_LOGIN',
     severity: success ? 'INFO' : 'WARNING',
     targetType: 'ADMIN',
@@ -277,8 +286,8 @@ export function logAdminLogin(adminId: string, adminName: string, success: boole
   });
 }
 
-export function logExportData(format: string, memberCount: number, filters?: Record<string, unknown>): void {
-  logAudit({
+export function logExportData(user: { id: string; name: string; role: string } | null, format: string, memberCount: number, filters?: Record<string, unknown>): void {
+  logAudit(user, {
     action: 'EXPORT_DATA',
     targetType: 'EXPORT',
     description: `تم تصدير البيانات بتنسيق ${format}`,
@@ -286,8 +295,8 @@ export function logExportData(format: string, memberCount: number, filters?: Rec
   });
 }
 
-export function logImportData(fileName: string, recordCount: number, successCount: number, errorCount: number): void {
-  logAudit({
+export function logImportData(user: { id: string; name: string; role: string } | null, fileName: string, recordCount: number, successCount: number, errorCount: number): void {
+  logAudit(user, {
     action: 'IMPORT_DATA',
     severity: errorCount > 0 ? 'WARNING' : 'INFO',
     targetType: 'IMPORT',
@@ -298,63 +307,77 @@ export function logImportData(fileName: string, recordCount: number, successCoun
   });
 }
 
-// Get audit log statistics
-export function getAuditStats(): {
+// Get audit log statistics from API (CLIENT-SIDE ONLY)
+export async function getAuditStats(): Promise<{
   total: number;
   today: number;
   thisWeek: number;
   byAction: Record<string, number>;
   bySeverity: Record<string, number>;
   byUser: Record<string, number>;
-} {
-  const logs = getAuditLogs();
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+}> {
+  try {
+    const res = await fetch('/api/admin/audit/stats', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    if (!res.ok) {
+      console.error('Failed to fetch audit stats');
+      return {
+        total: 0,
+        today: 0,
+        thisWeek: 0,
+        byAction: {},
+        bySeverity: {},
+        byUser: {},
+      };
+    }
 
-  const byAction: Record<string, number> = {};
-  const bySeverity: Record<string, number> = {};
-  const byUser: Record<string, number> = {};
-  let today = 0;
-  let thisWeek = 0;
-
-  logs.forEach((log) => {
-    const logDate = new Date(log.timestamp);
-    if (logDate >= todayStart) today++;
-    if (logDate >= weekStart) thisWeek++;
-
-    byAction[log.action] = (byAction[log.action] || 0) + 1;
-    bySeverity[log.severity] = (bySeverity[log.severity] || 0) + 1;
-    byUser[log.userName] = (byUser[log.userName] || 0) + 1;
-  });
-
-  return {
-    total: logs.length,
-    today,
-    thisWeek,
-    byAction,
-    bySeverity,
-    byUser,
-  };
+    const data = await res.json();
+    return data.stats || {
+      total: 0,
+      today: 0,
+      thisWeek: 0,
+      byAction: {},
+      bySeverity: {},
+      byUser: {},
+    };
+  } catch (error) {
+    console.error('Error fetching audit stats:', error);
+    return {
+      total: 0,
+      today: 0,
+      thisWeek: 0,
+      byAction: {},
+      bySeverity: {},
+      byUser: {},
+    };
+  }
 }
 
-// Clear old audit logs (keep last N days)
-export function cleanupAuditLogs(daysToKeep: number = 90): number {
-  const logs = getAuditLogs();
-  const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
-  const filteredLogs = logs.filter((l) => new Date(l.timestamp) >= cutoffDate);
-  const deletedCount = logs.length - filteredLogs.length;
-
-  localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(filteredLogs));
-
-  if (deletedCount > 0) {
-    logAudit({
-      action: 'SYSTEM_CLEANUP',
-      targetType: 'AUDIT_LOG',
-      description: `تم حذف ${deletedCount} سجل قديم من سجل المراجعة`,
-      details: { deletedCount, daysToKeep },
+// Clear old audit logs via API (CLIENT-SIDE ONLY)
+export async function cleanupAuditLogs(daysToKeep: number = 90): Promise<number> {
+  try {
+    const res = await fetch('/api/admin/audit/cleanup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ daysToKeep }),
     });
-  }
 
-  return deletedCount;
+    if (!res.ok) {
+      console.error('Failed to cleanup audit logs');
+      return 0;
+    }
+
+    const data = await res.json();
+    return data.deletedCount || 0;
+  } catch (error) {
+    console.error('Error cleaning up audit logs:', error);
+    return 0;
+  }
 }

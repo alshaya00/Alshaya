@@ -94,19 +94,19 @@ export default function ConfigPage() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/config', { headers });
+      if (!res.ok) {
+        throw new Error('Failed to load config');
+      }
       const data = await res.json();
       if (data.config) {
         setConfig(data.config);
         setOriginalConfig(data.config);
       }
     } catch (error) {
-      // Load from localStorage as fallback
-      const stored = localStorage.getItem('alshaye_system_config');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setConfig(parsed);
-        setOriginalConfig(parsed);
-      }
+      console.error('Error loading config:', error);
+      // Use default config if API fails
+      setConfig(defaultConfig);
+      setOriginalConfig(defaultConfig);
     } finally {
       setIsLoading(false);
     }
@@ -115,14 +115,15 @@ export default function ConfigPage() {
   const saveConfig = async () => {
     setIsSaving(true);
     try {
-      await fetch('/api/admin/config', {
+      const res = await fetch('/api/admin/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(config),
-      }).catch(() => {
-        // Fallback to localStorage
-        localStorage.setItem('alshaye_system_config', JSON.stringify(config));
       });
+
+      if (!res.ok) {
+        throw new Error('Failed to save config');
+      }
 
       setOriginalConfig(config);
       alert('تم حفظ الإعدادات بنجاح');

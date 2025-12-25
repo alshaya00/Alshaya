@@ -95,9 +95,12 @@ export default function AdminDashboardPage() {
       const statsRes = await fetch('/api/statistics', { headers });
       const statsData = await statsRes.json();
 
-      // Load admins from localStorage
-      const admins = JSON.parse(localStorage.getItem('alshaye_admins') || '[]');
-      const activeAdmins = admins.filter((a: { isActive: boolean }) => a.isActive).length;
+      // Load active admins count from users API
+      const usersRes = await fetch('/api/users', { headers });
+      const usersData = await usersRes.json().catch(() => ({ users: [] }));
+      const activeAdmins = usersData.users?.filter((u: { role: string; isActive?: boolean }) => 
+        (u.role === 'ADMIN' || u.role === 'SUPER_ADMIN') && u.isActive !== false
+      ).length || 1;
 
       // Load pending members
       const pendingRes = await fetch('/api/admin/pending', { headers });

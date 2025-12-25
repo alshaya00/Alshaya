@@ -3,7 +3,6 @@
  * Manages admin permissions and access control across the application
  */
 
-import { storageKeys } from '@/config/storage-keys';
 import { accessCodeConfig } from '@/config/admin-config';
 
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'EDITOR' | 'VIEWER';
@@ -124,23 +123,9 @@ export const CATEGORY_LABELS: Record<string, { label: string; labelEn: string }>
 };
 
 /**
- * Get current admin from localStorage
+ * Check if an admin has a specific permission
  */
-export function getCurrentAdmin(): Admin | null {
-  if (typeof window === 'undefined') return null;
-
-  const currentAdminId = localStorage.getItem(storageKeys.currentAdmin);
-  if (!currentAdminId) return null;
-
-  const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]') as Admin[];
-  return admins.find(a => a.id === currentAdminId && a.isActive) || null;
-}
-
-/**
- * Check if current admin has a specific permission
- */
-export function hasPermission(permission: string): boolean {
-  const admin = getCurrentAdmin();
+export function hasPermission(admin: Admin | null, permission: string): boolean {
   if (!admin) return false;
 
   // Super admin has all permissions
@@ -150,10 +135,9 @@ export function hasPermission(permission: string): boolean {
 }
 
 /**
- * Check if current admin has any of the specified permissions
+ * Check if an admin has any of the specified permissions
  */
-export function hasAnyPermission(permissions: string[]): boolean {
-  const admin = getCurrentAdmin();
+export function hasAnyPermission(admin: Admin | null, permissions: string[]): boolean {
   if (!admin) return false;
 
   // Super admin has all permissions
@@ -163,60 +147,15 @@ export function hasAnyPermission(permissions: string[]): boolean {
 }
 
 /**
- * Check if current admin has all of the specified permissions
+ * Check if an admin has all of the specified permissions
  */
-export function hasAllPermissions(permissions: string[]): boolean {
-  const admin = getCurrentAdmin();
+export function hasAllPermissions(admin: Admin | null, permissions: string[]): boolean {
   if (!admin) return false;
 
   // Super admin has all permissions
   if (admin.role === 'SUPER_ADMIN') return true;
 
   return permissions.every(p => admin.permissions.includes(p));
-}
-
-/**
- * Set current admin after login
- */
-export function setCurrentAdmin(adminId: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(storageKeys.currentAdmin, adminId);
-}
-
-/**
- * Clear current admin (logout)
- */
-export function clearCurrentAdmin(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(storageKeys.currentAdmin);
-}
-
-/**
- * Validate access code and return admin if valid
- */
-export function validateAccessCode(code: string): Admin | null {
-  if (typeof window === 'undefined') return null;
-
-  const codes = JSON.parse(localStorage.getItem(storageKeys.adminCodes) || '{}');
-  const admins = JSON.parse(localStorage.getItem(storageKeys.admins) || '[]') as Admin[];
-
-  // Find admin with matching code
-  for (const [adminId, adminCode] of Object.entries(codes)) {
-    if (adminCode === code) {
-      const admin = admins.find(a => a.id === adminId && a.isActive);
-      if (admin) {
-        return admin;
-      }
-    }
-  }
-
-  // Check default admin code from config
-  if (code === accessCodeConfig.defaultAdminCode) {
-    const superAdmin = admins.find(a => a.role === 'SUPER_ADMIN' && a.isActive);
-    return superAdmin || null;
-  }
-
-  return null;
 }
 
 /**

@@ -52,15 +52,14 @@ export default function SnapshotsPage() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/snapshots', { headers });
+      if (!res.ok) {
+        throw new Error('Failed to load snapshots');
+      }
       const data = await res.json();
       setSnapshots(data.snapshots || []);
     } catch (error) {
       console.error('Error loading snapshots:', error);
-      // Load from localStorage as fallback
-      const stored = localStorage.getItem('alshaye_snapshots');
-      if (stored) {
-        setSnapshots(JSON.parse(stored));
-      }
+      setSnapshots([]);
     } finally {
       setIsLoading(false);
     }
@@ -91,18 +90,18 @@ export default function SnapshotsPage() {
       };
 
       // Save to API
-      await fetch('/api/admin/snapshots', {
+      const res = await fetch('/api/admin/snapshots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(snapshot),
-      }).catch(() => {
-        // Fallback to localStorage
-        const stored = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
-        stored.unshift(snapshot);
-        localStorage.setItem('alshaye_snapshots', JSON.stringify(stored));
       });
 
-      setSnapshots((prev) => [snapshot, ...prev]);
+      if (!res.ok) {
+        throw new Error('Failed to create snapshot');
+      }
+
+      const data = await res.json();
+      setSnapshots((prev) => [data.snapshot || snapshot, ...prev]);
       setShowCreateModal(false);
       setNewSnapshot({ name: '', description: '' });
       alert('تم إنشاء النسخة الاحتياطية بنجاح');
@@ -138,18 +137,14 @@ export default function SnapshotsPage() {
     if (!confirm('هل أنت متأكد من حذف هذه النسخة الاحتياطية؟')) return;
 
     try {
-      await fetch(`/api/admin/snapshots/${id}`, { method: 'DELETE', headers }).catch(() => {
-        // Fallback to localStorage
-        const stored = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
-        localStorage.setItem(
-          'alshaye_snapshots',
-          JSON.stringify(stored.filter((s: Snapshot) => s.id !== id))
-        );
-      });
-
+      const res = await fetch(`/api/admin/snapshots/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) {
+        throw new Error('Failed to delete snapshot');
+      }
       setSnapshots((prev) => prev.filter((s) => s.id !== id));
     } catch (error) {
       console.error('Error deleting snapshot:', error);
+      alert('حدث خطأ أثناء حذف النسخة الاحتياطية');
     }
   };
 

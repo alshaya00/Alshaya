@@ -65,15 +65,14 @@ export default function HistoryPage() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/history?limit=500', { headers });
+      if (!res.ok) {
+        throw new Error('Failed to load history');
+      }
       const data = await res.json();
       setChanges(data.changes || []);
     } catch (error) {
       console.error('Error loading history:', error);
-      // Load from localStorage as fallback
-      const stored = localStorage.getItem('alshaye_change_history');
-      if (stored) {
-        setChanges(JSON.parse(stored));
-      }
+      setChanges([]);
     } finally {
       setIsLoading(false);
     }

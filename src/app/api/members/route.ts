@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
         targetId: createdMember.id,
         targetName: createdMember.fullNameAr || createdMember.firstName,
         description: `تم إنشاء عضو جديد: ${createdMember.firstName}`,
-        newState: createdMember as Record<string, unknown>,
+        newState: createdMember as unknown as Record<string, unknown>,
         success: true,
       });
     } catch (auditError) {

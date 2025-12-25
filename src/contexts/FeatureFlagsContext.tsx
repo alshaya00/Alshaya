@@ -188,21 +188,16 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps) {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/features');
+      if (!res.ok) {
+        console.error('Failed to load feature flags, using defaults');
+        return;
+      }
       const data = await res.json();
       if (data.flags) {
         setFlags(data.flags);
       }
     } catch (error) {
       console.error('Failed to load feature flags:', error);
-      // Try localStorage fallback
-      const stored = localStorage.getItem('alshaye_feature_flags');
-      if (stored) {
-        try {
-          setFlags(JSON.parse(stored));
-        } catch {
-          // Use defaults
-        }
-      }
     } finally {
       setIsLoading(false);
     }
@@ -217,15 +212,18 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps) {
     setFlags(newFlags);
 
     try {
-      await fetch('/api/admin/features', {
+      const res = await fetch('/api/admin/features', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [feature]: enabled }),
       });
+      if (!res.ok) {
+        throw new Error('Failed to save feature flag');
+      }
     } catch (error) {
       console.error('Failed to update feature flag:', error);
-      // Save to localStorage as fallback
-      localStorage.setItem('alshaye_feature_flags', JSON.stringify(newFlags));
+      setFlags(flags);
+      throw error;
     }
   }, [flags]);
 
@@ -234,14 +232,18 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps) {
     setFlags(updatedFlags);
 
     try {
-      await fetch('/api/admin/features', {
+      const res = await fetch('/api/admin/features', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFlags),
       });
+      if (!res.ok) {
+        throw new Error('Failed to save feature flags');
+      }
     } catch (error) {
       console.error('Failed to update feature flags:', error);
-      localStorage.setItem('alshaye_feature_flags', JSON.stringify(updatedFlags));
+      setFlags(flags);
+      throw error;
     }
   }, [flags]);
 
@@ -250,22 +252,28 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps) {
   }, []);
 
   const enableAll = useCallback(async () => {
+    const previousFlags = flags;
     const allEnabled: FeatureFlags = { ...defaultFlags };
     setFlags(allEnabled);
 
     try {
-      await fetch('/api/admin/features', {
+      const res = await fetch('/api/admin/features', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(allEnabled),
       });
+      if (!res.ok) {
+        throw new Error('Failed to enable all features');
+      }
     } catch (error) {
       console.error('Failed to enable all features:', error);
-      localStorage.setItem('alshaye_feature_flags', JSON.stringify(allEnabled));
+      setFlags(previousFlags);
+      throw error;
     }
-  }, []);
+  }, [flags]);
 
   const disableAll = useCallback(async () => {
+    const previousFlags = flags;
     const allDisabled: FeatureFlags = {
       familyTree: false,
       registry: false,
@@ -297,16 +305,20 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps) {
     setFlags(allDisabled);
 
     try {
-      await fetch('/api/admin/features', {
+      const res = await fetch('/api/admin/features', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(allDisabled),
       });
+      if (!res.ok) {
+        throw new Error('Failed to disable all features');
+      }
     } catch (error) {
       console.error('Failed to disable all features:', error);
-      localStorage.setItem('alshaye_feature_flags', JSON.stringify(allDisabled));
+      setFlags(previousFlags);
+      throw error;
     }
-  }, []);
+  }, [flags]);
 
   const value: FeatureFlagsContextType = {
     flags,

@@ -1,40 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { Shield, Eye, EyeOff } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [accessCode, setAccessCode] = useState('');
-  const [showAccessCode, setShowAccessCode] = useState(false);
-  const [authError, setAuthError] = useState('');
+  const { user, isLoading, isAuthenticated, hasPermission } = useAuth();
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Check if already authenticated
-    const authStatus = localStorage.getItem('alshaye_admin_auth');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
+    if (!isLoading) {
+      if (isAuthenticated && user) {
+        const isAdmin = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || hasPermission('manage_admins');
+        setIsAuthorized(isAdmin);
+      } else {
+        setIsAuthorized(false);
+      }
     }
-    setIsLoading(false);
-  }, []);
-
-  const handleAuth = () => {
-    const codes = JSON.parse(localStorage.getItem('alshaye_admin_codes') || '{}');
-    const validCodes = Object.values(codes);
-
-    if (validCodes.includes(accessCode) || accessCode === 'admin123') {
-      setIsAuthenticated(true);
-      localStorage.setItem('alshaye_admin_auth', 'true');
-      setAuthError('');
-    } else {
-      setAuthError('رمز الوصول غير صحيح');
-    }
-  };
+  }, [isLoading, isAuthenticated, user, hasPermission]);
 
   if (isLoading) {
     return (
@@ -56,50 +43,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-800">لوحة الإدارة</h1>
-            <p className="text-gray-500 mt-2">يرجى إدخال رمز الوصول للمتابعة</p>
+            <p className="text-gray-500 mt-2">يرجى تسجيل الدخول للوصول إلى لوحة الإدارة</p>
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                رمز الوصول
-              </label>
-              <div className="relative">
-                <input
-                  type={showAccessCode ? 'text' : 'password'}
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                  placeholder="أدخل رمز الوصول"
-                  className="w-full px-4 py-3 border rounded-lg pl-12"
-                  dir="ltr"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAccessCode(!showAccessCode)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {showAccessCode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            {authError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                {authError}
-              </div>
-            )}
-
             <button
-              onClick={handleAuth}
+              onClick={() => router.push('/login?redirect=/admin')}
               className="w-full py-3 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2D5A87] font-bold"
             >
-              دخول
+              تسجيل الدخول
             </button>
           </div>
 
           <div className="mt-6 text-center">
             <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
+              العودة للرئيسية
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-red-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">غير مصرح</h1>
+            <p className="text-gray-500 mt-2">ليس لديك صلاحية للوصول إلى لوحة الإدارة</p>
+          </div>
+
+          <div className="space-y-4">
+            <Link
+              href="/"
+              className="block w-full py-3 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2D5A87] font-bold text-center"
+            >
               العودة للرئيسية
             </Link>
           </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { logAudit } from '@/lib/audit';
 import {
   Wrench,
   ChevronLeft,
@@ -114,6 +115,7 @@ export default function ToolsPage() {
   const createBackup = async () => {
     setIsBackingUp(true);
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+    const userForAudit = session?.user ? { id: session.user.id, name: session.user.nameArabic, role: session.user.role } : null;
     try {
       const membersRes = await fetch('/api/members?limit=500', { headers });
       const membersData = await membersRes.json();
@@ -148,6 +150,12 @@ export default function ToolsPage() {
           name: `نسخة يدوية - ${new Date().toLocaleDateString('ar-SA')}`,
           snapshotType: 'MANUAL',
         }),
+      });
+
+      logAudit(userForAudit, {
+        action: 'BACKUP_CREATE',
+        targetType: 'BACKUP',
+        description: 'تم إنشاء نسخة احتياطية يدوية وتحميلها',
       });
 
       alert('تم إنشاء النسخة الاحتياطية وتحميلها بنجاح');

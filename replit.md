@@ -227,5 +227,27 @@ Database-persisted system configuration that controls application behavior in re
 - `src/app/tree-editor/page.tsx` - Fetches from API
 - All breastfeeding API routes - Use database functions
 
+### LocalStorage Migration (Dec 2024)
+Complete elimination of localStorage for data persistence - all critical data now stored in PostgreSQL:
+
+**Architecture Changes:**
+- **Server-side logging**: `logAuditToDb()` in `src/lib/db-audit.ts` - Direct Prisma for API routes
+- **Client-side logging**: `logAudit()` in `src/lib/audit.ts` - API calls with auth headers
+- **Branch links/pending**: `src/lib/branchEntry.ts` - All async API calls, no localStorage
+- **Feature flags**: `FeatureFlagsContext` - Fetches from `/api/admin/features`, no localStorage fallback
+- **Backups**: `src/lib/backup.ts` - Uses `/api/admin/snapshots` exclusively
+- **Admin pages**: All settings pages use API calls, no localStorage fallbacks
+
+**Acceptable localStorage usage (UX preferences, not data):**
+- `AuthContext.tsx` / `session.ts` - Auth tokens (validated server-side, standard SPA pattern)
+- `ThemeContext.tsx` - Theme preference (light/dark/system)
+- `Onboarding.tsx` - Onboarding completion state
+- `AccessCodeGate.tsx` - Session gate for access code
+
+**Data Flow:**
+- Client-side code → API endpoints → Prisma → PostgreSQL
+- Server-side code → Direct Prisma calls → PostgreSQL
+- No localStorage fallbacks for critical data (settings, configs, audit logs, backups)
+
 ---
 🌳 **شجرة آل شايع** 🌳

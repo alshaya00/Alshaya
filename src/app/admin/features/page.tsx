@@ -135,6 +135,9 @@ export default function FeaturesPage() {
       const res = await fetch('/api/admin/features', {
         headers: getAuthHeader(),
       });
+      if (!res.ok) {
+        throw new Error('Failed to load feature flags');
+      }
       const data = await res.json();
       if (data.flags) {
         setFlags(data.flags);
@@ -142,17 +145,9 @@ export default function FeaturesPage() {
       }
     } catch (error) {
       console.error('Failed to load feature flags:', error);
-      // Try localStorage fallback
-      const stored = localStorage.getItem('alshaye_feature_flags');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setFlags(parsed);
-          setOriginalFlags(parsed);
-        } catch {
-          // Use defaults
-        }
-      }
+      // Use default flags if API fails
+      setFlags(defaultFlags);
+      setOriginalFlags(defaultFlags);
     } finally {
       setIsLoading(false);
     }
@@ -177,8 +172,6 @@ export default function FeaturesPage() {
       if (data.success) {
         setOriginalFlags(flags);
         setSaveMessage({ type: 'success', text: 'تم حفظ الإعدادات بنجاح' });
-        // Also save to localStorage as backup
-        localStorage.setItem('alshaye_feature_flags', JSON.stringify(flags));
         // Refresh the global FeatureFlagsContext so navigation updates immediately
         await refreshGlobalFlags();
       } else {
@@ -186,12 +179,7 @@ export default function FeaturesPage() {
       }
     } catch (error) {
       console.error('Error saving feature flags:', error);
-      // Fallback to localStorage
-      localStorage.setItem('alshaye_feature_flags', JSON.stringify(flags));
-      setSaveMessage({ type: 'success', text: 'تم الحفظ محلياً' });
-      setOriginalFlags(flags);
-      // Refresh the global FeatureFlagsContext so navigation updates immediately
-      await refreshGlobalFlags();
+      setSaveMessage({ type: 'error', text: 'حدث خطأ أثناء الحفظ. يرجى المحاولة مرة أخرى.' });
     } finally {
       setIsSaving(false);
       // Clear message after 3 seconds

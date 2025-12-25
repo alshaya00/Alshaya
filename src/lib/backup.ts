@@ -105,13 +105,16 @@ export async function getBackups(): Promise<BackupEntry[]> {
 }
 
 // Create a backup - Database driven
-export async function createBackup(options: {
-  name?: string;
-  description?: string;
-  type?: BackupEntry['type'];
-  includeConfig?: boolean;
-  includeAdmins?: boolean;
-}): Promise<BackupEntry | null> {
+export async function createBackup(
+  user: { id: string; name: string; role: string } | null,
+  options: {
+    name?: string;
+    description?: string;
+    type?: BackupEntry['type'];
+    includeConfig?: boolean;
+    includeAdmins?: boolean;
+  }
+): Promise<BackupEntry | null> {
   const {
     name,
     description,
@@ -151,7 +154,7 @@ export async function createBackup(options: {
       });
 
       // Log audit
-      logBackupCreate(entry.id, entry.name, entry.memberCount);
+      logBackupCreate(user, entry.id, entry.name, entry.memberCount);
 
       return entry;
     }
@@ -163,7 +166,10 @@ export async function createBackup(options: {
 }
 
 // Restore from backup
-export async function restoreBackup(backupId: string): Promise<{ success: boolean; error?: string }> {
+export async function restoreBackup(
+  user: { id: string; name: string; role: string } | null,
+  backupId: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     // API uses POST with action: 'restore' per existing route implementation
     // The instruction said PUT, but existing route uses POST. I will implement PUT in the route later to be safe.
@@ -176,7 +182,7 @@ export async function restoreBackup(backupId: string): Promise<{ success: boolea
     const data = await res.json();
     if (res.ok && data.success) {
       // Log restore action
-      logBackupRestore(backupId, data.snapshotName || backupId);
+      logBackupRestore(user, backupId, data.snapshotName || backupId);
       return { success: true };
     }
     return { success: false, error: data.messageAr || data.message || 'فشلت استعادة النسخة الاحتياطية' };
@@ -187,14 +193,17 @@ export async function restoreBackup(backupId: string): Promise<{ success: boolea
 }
 
 // Delete a backup
-export async function deleteBackup(backupId: string): Promise<boolean> {
+export async function deleteBackup(
+  user: { id: string; name: string; role: string } | null,
+  backupId: string
+): Promise<boolean> {
   try {
     const res = await fetch(`/api/admin/snapshots/${backupId}`, {
       method: 'DELETE',
     });
 
     if (res.ok) {
-      logAudit({
+      logAudit(user, {
         action: 'BACKUP_DELETE',
         severity: 'WARNING',
         targetType: 'BACKUP',
@@ -210,7 +219,10 @@ export async function deleteBackup(backupId: string): Promise<boolean> {
 }
 
 // Download backup as file
-export async function downloadBackup(backupId: string): Promise<boolean> {
+export async function downloadBackup(
+  user: { id: string; name: string; role: string } | null,
+  backupId: string
+): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
   try {
@@ -236,7 +248,7 @@ export async function downloadBackup(backupId: string): Promise<boolean> {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    logAudit({
+    logAudit(user, {
       action: 'BACKUP_DOWNLOAD',
       targetType: 'BACKUP',
       targetId: backupId,
@@ -266,10 +278,10 @@ export async function checkAutoBackup(): Promise<boolean> {
 }
 
 // Run auto backup if needed
-export async function runAutoBackupIfNeeded(): Promise<BackupEntry | null> {
+export async function runAutoBackupIfNeeded(user: { id: string; name: string; role: string } | null): Promise<BackupEntry | null> {
   if (!(await checkAutoBackup())) return null;
 
-  const backup = await createBackup({
+  const backup = await createBackup(user, {
     type: 'AUTO',
     description: 'نسخة احتياطية تلقائية حسب الجدولة',
   });
@@ -281,11 +293,11 @@ export async function runAutoBackupIfNeeded(): Promise<BackupEntry | null> {
  * Start auto backup scheduler
  * Replit-compatible: Runs check once on mount, no setInterval
  */
-export function startBackupScheduler(): void {
+export function startBackupScheduler(user: { id: string; name: string; role: string } | null): void {
   if (typeof window === 'undefined') return;
 
   // Run once to check if backup is needed (no interval)
-  runAutoBackupIfNeeded().catch(console.error);
+  runAutoBackupIfNeeded(user).catch(console.error);
 
   // Trigger server-side backup check via API
   fetch('/api/backup/check', { method: 'POST' }).catch(() => {

@@ -19,7 +19,6 @@ import {
   Zap,
 } from 'lucide-react';
 import type { BranchEntryLink } from '@/lib/types';
-import { storageKeys } from '@/config/storage-keys';
 import { tokenConfig } from '@/config/admin-config';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -47,15 +46,14 @@ export default function BranchLinksPage() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/branch-links', { headers });
+      if (!res.ok) {
+        throw new Error('Failed to load branch links');
+      }
       const data = await res.json();
       setLinks(data.links || []);
     } catch (error) {
       console.error('Error loading links:', error);
-      // Load from localStorage as fallback
-      const stored = localStorage.getItem(storageKeys.branchLinks);
-      if (stored) {
-        setLinks(JSON.parse(stored));
-      }
+      setLinks([]);
     } finally {
       setIsLoading(false);
     }
@@ -93,22 +91,23 @@ export default function BranchLinksPage() {
     };
 
     try {
-      await fetch('/api/admin/branch-links', {
+      const res = await fetch('/api/admin/branch-links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(link),
-      }).catch(() => {
-        // Fallback to localStorage
-        const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
-        stored.push(link);
-        localStorage.setItem(storageKeys.branchLinks, JSON.stringify(stored));
       });
 
-      setLinks((prev) => [...prev, link]);
+      if (!res.ok) {
+        throw new Error('Failed to create branch link');
+      }
+
+      const data = await res.json();
+      setLinks((prev) => [...prev, data.link || link]);
       setShowCreateModal(false);
       setNewLink({ branchName: '', branchHeadId: '', branchHeadName: '', maxUses: '' });
     } catch (error) {
       console.error('Error creating link:', error);
+      alert('حدث خطأ أثناء إنشاء الرابط');
     }
   };
 
@@ -117,24 +116,22 @@ export default function BranchLinksPage() {
     if (!link) return;
 
     try {
-      await fetch(`/api/admin/branch-links/${id}`, {
+      const res = await fetch(`/api/admin/branch-links/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ isActive: !link.isActive }),
-      }).catch(() => {
-        // Fallback
-        const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
-        const updated = stored.map((l: BranchEntryLink) =>
-          l.id === id ? { ...l, isActive: !l.isActive } : l
-        );
-        localStorage.setItem(storageKeys.branchLinks, JSON.stringify(updated));
       });
+
+      if (!res.ok) {
+        throw new Error('Failed to toggle link');
+      }
 
       setLinks((prev) =>
         prev.map((l) => (l.id === id ? { ...l, isActive: !l.isActive } : l))
       );
     } catch (error) {
       console.error('Error toggling link:', error);
+      alert('حدث خطأ أثناء تغيير حالة الرابط');
     }
   };
 
@@ -142,18 +139,14 @@ export default function BranchLinksPage() {
     if (!confirm('هل أنت متأكد من حذف هذا الرابط؟')) return;
 
     try {
-      await fetch(`/api/admin/branch-links/${id}`, { method: 'DELETE', headers }).catch(() => {
-        // Fallback
-        const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
-        localStorage.setItem(
-          storageKeys.branchLinks,
-          JSON.stringify(stored.filter((l: BranchEntryLink) => l.id !== id))
-        );
-      });
-
+      const res = await fetch(`/api/admin/branch-links/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) {
+        throw new Error('Failed to delete link');
+      }
       setLinks((prev) => prev.filter((l) => l.id !== id));
     } catch (error) {
       console.error('Error deleting link:', error);
+      alert('حدث خطأ أثناء حذف الرابط');
     }
   };
 
