@@ -36,10 +36,7 @@ export async function GET(request: NextRequest) {
         fatherName: true,
         grandfatherName: true,
       },
-      orderBy: [
-        { generation: 'asc' },
-        { firstName: 'asc' },
-      ],
+      orderBy: { id: 'asc' },
       take: limit,
     });
 
