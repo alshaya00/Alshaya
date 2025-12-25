@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function normalizeArabicSearch(text: string): string {
+  return text
+    .replace(/[أإآا]/g, 'ا')
+    .replace(/[ىي]/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/\s+بن\s+/g, ' ')
+    .replace(/\s+بنت\s+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 1000);
 
     const members = await prisma.familyMember.findMany({
       where: {
         deletedAt: null,
-        OR: query ? [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { fullNameAr: { contains: query, mode: 'insensitive' } },
-          { fullNameEn: { contains: query, mode: 'insensitive' } },
-        ] : undefined,
       },
       select: {
         id: true,
@@ -24,6 +33,8 @@ export async function GET(request: NextRequest) {
         generation: true,
         branch: true,
         fatherId: true,
+        fatherName: true,
+        grandfatherName: true,
       },
       orderBy: [
         { generation: 'asc' },
@@ -32,10 +43,31 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
+    let filteredMembers = members;
+    if (query) {
+      const normalizedQuery = normalizeArabicSearch(query);
+      const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
+      
+      filteredMembers = members.filter(member => {
+        const normalizedFirstName = normalizeArabicSearch(member.firstName || '');
+        const normalizedFullNameAr = normalizeArabicSearch(member.fullNameAr || '');
+        const normalizedFullNameEn = (member.fullNameEn || '').toLowerCase();
+        const combinedName = `${normalizedFirstName} ${member.fatherName ? normalizeArabicSearch(member.fatherName) : ''} ${member.grandfatherName ? normalizeArabicSearch(member.grandfatherName) : ''}`;
+        
+        return queryParts.every(part => 
+          normalizedFirstName.includes(part) ||
+          normalizedFullNameAr.includes(part) ||
+          normalizedFullNameEn.includes(part) ||
+          combinedName.includes(part) ||
+          member.id.toLowerCase().includes(part)
+        );
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      data: members,
-      count: members.length,
+      data: filteredMembers,
+      count: filteredMembers.length,
     });
   } catch (error) {
     console.error('Error fetching public members:', error);

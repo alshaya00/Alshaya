@@ -68,15 +68,36 @@ export default function RegisterPage() {
     fetchMembers();
   }, []);
 
+  const normalizeArabic = (text: string): string => {
+    return text
+      .replace(/[أإآا]/g, 'ا')
+      .replace(/[ىي]/g, 'ي')
+      .replace(/ة/g, 'ه')
+      .replace(/ؤ/g, 'و')
+      .replace(/ئ/g, 'ي')
+      .replace(/\s+بن\s+/g, ' ')
+      .replace(/\s+بنت\s+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  };
+
   const filteredMembers = allMembers.filter((m) => {
-    if (!searchQuery) return false;
-    const query = searchQuery.toLowerCase();
-    return (
-      m.firstName.toLowerCase().includes(query) ||
-      m.fullNameAr?.toLowerCase().includes(query) ||
-      m.id.toLowerCase().includes(query)
+    if (!searchQuery || searchQuery.length < 2) return false;
+    const normalizedQuery = normalizeArabic(searchQuery);
+    const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
+    
+    const normalizedFirstName = normalizeArabic(m.firstName || '');
+    const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
+    const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
+    
+    return queryParts.every(part => 
+      normalizedFirstName.includes(part) ||
+      normalizedFullNameAr.includes(part) ||
+      normalizedFullNameEn.includes(part) ||
+      m.id.toLowerCase().includes(part)
     );
-  }).slice(0, 10);
+  }).slice(0, 15);
 
   const selectedMember = formData.relatedMemberId
     ? allMembers.find((m) => m.id === formData.relatedMemberId)
