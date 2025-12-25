@@ -281,15 +281,13 @@ export function generateFullName(
 ): { fullNameAr: string; fullNameEn: string } {
   const parts: string[] = [member.firstName || ''];
   let currentMember = member;
-  let depth = 0;
 
-  // Get ancestor names (up to 4 levels)
-  while (currentMember.fatherId && depth < 4) {
+  // Get all ancestor names to the root (no depth limit)
+  while (currentMember.fatherId) {
     const father = allMembers.find(m => m.id === currentMember.fatherId);
     if (father) {
       parts.push(father.firstName);
       currentMember = father;
-      depth++;
     } else {
       break;
     }

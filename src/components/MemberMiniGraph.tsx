@@ -128,8 +128,8 @@ export default function MemberMiniGraph({
       member: person,
     });
 
-    // Siblings
-    const siblingsToShow = siblings.slice(0, 4); // Limit to 4 siblings
+    // Siblings - show all
+    const siblingsToShow = siblings;
     const siblingStartX = centerX - ((siblingsToShow.length) * horizontalGap) / 2;
     siblingsToShow.forEach((sibling, index) => {
       const sibX = siblingStartX + index * horizontalGap;
@@ -151,8 +151,8 @@ export default function MemberMiniGraph({
       }
     });
 
-    // Children
-    const childrenToShow = children.slice(0, 5);
+    // Children - show all
+    const childrenToShow = children;
     const childY = mainPersonY + verticalGap;
     const childStartX = centerX - ((childrenToShow.length - 1) * horizontalGap) / 2;
     childrenToShow.forEach((child, index) => {
@@ -169,24 +169,27 @@ export default function MemberMiniGraph({
       linksList.push({ source: person.id, target: child.id, type: 'blood' });
     });
 
-    // Grandchildren (show under first 2 children max)
+    // Grandchildren - show all under all children
     const grandchildY = childY + verticalGap;
     let grandchildIndex = 0;
-    childrenToShow.slice(0, 2).forEach((child) => {
+    childrenToShow.forEach((child) => {
       const childGrandchildren = grandchildren.filter(gc =>
         gc.fatherId === child.id
-      ).slice(0, 2);
+      );
 
-      childGrandchildren.forEach((gc) => {
+      childGrandchildren.forEach((gc, gcIndex) => {
         const childNode = nodesList.find(n => n.id === child.id);
         if (childNode) {
+          // Spread grandchildren evenly under their parent
+          const gcSpacing = 50;
+          const gcStartX = (childNode.x || centerX) - ((childGrandchildren.length - 1) * gcSpacing) / 2;
           nodesList.push({
             id: gc.id,
             name: gc.firstName,
             gender: gc.gender as 'Male' | 'Female',
             type: 'grandchild',
             fullNameAr: gc.fullNameAr,
-            x: (childNode.x || centerX) + (grandchildIndex % 2 === 0 ? -40 : 40),
+            x: gcStartX + gcIndex * gcSpacing,
             y: grandchildY,
             member: gc,
           });
