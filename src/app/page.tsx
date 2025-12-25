@@ -27,7 +27,12 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch('/api/statistics');
+        const response = await fetch('/api/statistics', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           setStats(data);
