@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { logger } from '@/lib/logging';
+import { z } from 'zod';
 
 // Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {
@@ -17,8 +19,30 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
+// Strict schema for system config - only these fields are allowed
+const systemConfigSchema = z.object({
+  defaultLanguage: z.enum(['ar', 'en']).optional(),
+  dateFormat: z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).optional(),
+  treeDisplayMode: z.enum(['vertical', 'horizontal', 'radial']).optional(),
+  showDeceasedMembers: z.boolean().optional(),
+  minBirthYear: z.number().int().min(1800).max(1950).optional(),
+  maxBirthYear: z.number().int().min(1950).max(new Date().getFullYear() + 1).optional(),
+  requirePhone: z.boolean().optional(),
+  requireEmail: z.boolean().optional(),
+  allowDuplicateNames: z.boolean().optional(),
+  sessionTimeout: z.number().int().min(15).max(1440).optional(), // 15 mins to 24 hours
+  maxLoginAttempts: z.number().int().min(3).max(10).optional(),
+  requireStrongAccessCode: z.boolean().optional(),
+  enableBranchEntries: z.boolean().optional(),
+  enablePublicRegistry: z.boolean().optional(),
+  enableExport: z.boolean().optional(),
+  enableImport: z.boolean().optional(),
+  autoBackup: z.boolean().optional(),
+  autoBackupInterval: z.number().int().min(1).max(168).optional(), // 1 to 168 hours (1 week)
+}).strict(); // Reject any unknown keys
+
 // In-memory config store (in production, use database or file)
-let systemConfig = {
+let systemConfig: z.infer<typeof systemConfigSchema> & Record<string, unknown> = {
   defaultLanguage: 'ar',
   dateFormat: 'DD/MM/YYYY',
   treeDisplayMode: 'vertical',
@@ -56,9 +80,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ config: systemConfig });
+    return NextResponse.json({ success: true, config: systemConfig });
   } catch (error) {
-    console.error('Error fetching config:', error);
+    logger.error('Error fetching config:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch config' },
       { status: 500 }
@@ -77,6 +101,10 @@ export async function PUT(request: NextRequest) {
       );
     }
     if (user.role !== 'SUPER_ADMIN') {
+      logger.security('Non-super-admin attempted to update system config', 'high', {
+        userId: user.id,
+        userRole: user.role,
+      });
       return NextResponse.json(
         { success: false, message: 'Super admin access required', messageAr: 'يتطلب صلاحيات المدير الأعلى' },
         { status: 403 }
@@ -85,15 +113,52 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    // Update config
+    // Validate input using strict schema - rejects unknown keys
+    const validation = systemConfigSchema.safeParse(body);
+    if (!validation.success) {
+      logger.warn('Invalid config update attempt', {
+        userId: user.id,
+        errors: validation.error.flatten().fieldErrors,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid configuration values',
+          errorAr: 'قيم الإعدادات غير صالحة',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Only update validated fields
+    const validatedData = validation.data;
+    const previousConfig = { ...systemConfig };
+
+    // Merge only the validated fields
     systemConfig = {
       ...systemConfig,
-      ...body,
+      ...validatedData,
     };
 
-    return NextResponse.json({ config: systemConfig, success: true });
+    logger.info('System config updated', {
+      userId: user.id,
+      changes: Object.keys(validatedData),
+      previousValues: previousConfig,
+      newValues: systemConfig,
+    });
+
+    return NextResponse.json({
+      success: true,
+      config: systemConfig,
+      message: 'Configuration updated successfully',
+      messageAr: 'تم تحديث الإعدادات بنجاح',
+    });
   } catch (error) {
-    console.error('Error updating config:', error);
-    return NextResponse.json({ success: false, error: 'Failed to update config' }, { status: 500 });
+    logger.error('Error updating config:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update config' },
+      { status: 500 }
+    );
   }
 }

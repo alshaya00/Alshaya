@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { pendingMemberSchema, formatZodErrors } from '@/lib/validations';
+import { logger } from '@/lib/logging';
+import { sanitizeString } from '@/lib/sanitize';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/middleware/rateLimit';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -57,41 +61,102 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ pending });
   } catch (error) {
-    console.error('Error fetching pending:', error);
+    logger.error('Error fetching pending members:', error);
     return NextResponse.json({ pending: [] });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting by IP for public submissions
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const rateCheck = checkRateLimit(`pending-member:${ip}`, {
+      ...RATE_LIMITS.dataTransfer,
+      maxRequests: 10, // 10 submissions per hour per IP
+      windowMs: 60 * 60 * 1000,
+    });
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Too many submissions. Please try again later.',
+          errorAr: 'عدد كبير جداً من الطلبات. يرجى المحاولة لاحقاً.',
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
 
+    // Validate input using Zod schema
+    const validation = pendingMemberSchema.safeParse(body);
+    if (!validation.success) {
+      logger.warn('Pending member validation failed', {
+        errors: validation.error.flatten().fieldErrors,
+        ip,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          errorAr: 'فشل التحقق من البيانات',
+          details: formatZodErrors(validation.error),
+        },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
+
+    // Sanitize string fields to prevent XSS
     const pending = await prisma.pendingMember.create({
       data: {
-        firstName: body.firstName,
-        fatherName: body.fatherName,
-        grandfatherName: body.grandfatherName,
-        greatGrandfatherName: body.greatGrandfatherName,
-        familyName: body.familyName || 'آل شايع',
-        proposedFatherId: body.proposedFatherId,
-        gender: body.gender,
-        birthYear: body.birthYear,
-        generation: body.generation || 1,
-        branch: body.branch,
-        fullNameAr: body.fullNameAr,
-        fullNameEn: body.fullNameEn,
-        phone: body.phone,
-        city: body.city,
-        status: body.status || 'Living',
-        occupation: body.occupation,
-        email: body.email,
-        submittedVia: body.submittedVia,
+        firstName: sanitizeString(validatedData.firstName),
+        fatherName: validatedData.fatherName ? sanitizeString(validatedData.fatherName) : null,
+        grandfatherName: validatedData.grandfatherName ? sanitizeString(validatedData.grandfatherName) : null,
+        greatGrandfatherName: validatedData.greatGrandfatherName ? sanitizeString(validatedData.greatGrandfatherName) : null,
+        familyName: sanitizeString(validatedData.familyName),
+        proposedFatherId: validatedData.proposedFatherId || null,
+        gender: validatedData.gender,
+        birthYear: validatedData.birthYear || null,
+        generation: validatedData.generation,
+        branch: validatedData.branch ? sanitizeString(validatedData.branch) : null,
+        fullNameAr: validatedData.fullNameAr ? sanitizeString(validatedData.fullNameAr) : null,
+        fullNameEn: validatedData.fullNameEn ? sanitizeString(validatedData.fullNameEn) : null,
+        phone: validatedData.phone || null,
+        city: validatedData.city ? sanitizeString(validatedData.city) : null,
+        status: validatedData.status,
+        occupation: validatedData.occupation ? sanitizeString(validatedData.occupation) : null,
+        email: validatedData.email || null,
+        submittedVia: validatedData.submittedVia ? sanitizeString(validatedData.submittedVia) : null,
       },
     });
 
-    return NextResponse.json({ pending });
+    logger.info('Pending member created', {
+      pendingId: pending.id,
+      firstName: pending.firstName,
+      ip,
+    });
+
+    return NextResponse.json({
+      success: true,
+      pending,
+    });
   } catch (error) {
-    console.error('Error creating pending:', error);
-    return NextResponse.json({ error: 'Failed to create pending member' }, { status: 500 });
+    logger.error('Error creating pending member:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to create pending member',
+        errorAr: 'فشل في إنشاء طلب العضوية المعلق',
+      },
+      { status: 500 }
+    );
   }
 }
