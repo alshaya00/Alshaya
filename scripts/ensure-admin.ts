@@ -232,6 +232,68 @@ async function ensureAdmin() {
       console.log('✅ All environment variables configured');
     }
 
+    // Check if automatic backup is needed
+    console.log('💾 Checking automatic backup...');
+    const lastBackup = await prisma.snapshot.findFirst({
+      where: { snapshotType: 'AUTO_BACKUP' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true, memberCount: true },
+    });
+
+    const backupConfigData = await prisma.backupConfig.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (backupConfigData?.enabled !== false) {
+      const intervalHours = backupConfigData?.intervalHours || 24;
+      const needsBackup = !lastBackup || 
+        (Date.now() - lastBackup.createdAt.getTime()) / (1000 * 60 * 60) >= intervalHours;
+
+      if (needsBackup) {
+        console.log('📦 Creating automatic backup...');
+        const members = await prisma.familyMember.findMany();
+
+        const snapshot = await prisma.snapshot.create({
+          data: {
+            name: `Auto Backup - ${new Date().toLocaleString('ar-SA')}`,
+            description: 'Automatic scheduled backup on server startup',
+            treeData: JSON.stringify(members),
+            memberCount: members.length,
+            createdBy: 'SYSTEM',
+            createdByName: 'النظام (تلقائي)',
+            snapshotType: 'AUTO_BACKUP',
+          },
+        });
+
+        await prisma.backupConfig.update({
+          where: { id: 'default' },
+          data: { lastBackupAt: new Date(), lastBackupStatus: 'SUCCESS' },
+        });
+
+        console.log(`✅ Auto backup created: ${snapshot.id} (${members.length} members)`);
+
+        // Cleanup old backups
+        const maxBackups = backupConfigData?.maxBackups || 10;
+        const allAutoBackups = await prisma.snapshot.findMany({
+          where: { snapshotType: 'AUTO_BACKUP' },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (allAutoBackups.length > maxBackups) {
+          const toDelete = allAutoBackups.slice(maxBackups);
+          for (const old of toDelete) {
+            await prisma.snapshot.delete({ where: { id: old.id } });
+          }
+          console.log(`🧹 Cleaned up ${toDelete.length} old backups`);
+        }
+      } else {
+        const hoursSince = Math.round((Date.now() - lastBackup.createdAt.getTime()) / (1000 * 60 * 60));
+        console.log(`✅ Last backup: ${hoursSince}h ago (${lastBackup.memberCount} members)`);
+      }
+    } else {
+      console.log('ℹ️  Automatic backups disabled');
+    }
+
     console.log('🚀 Startup checks complete!');
   } catch (error) {
     console.error('❌ Error during startup:', error);

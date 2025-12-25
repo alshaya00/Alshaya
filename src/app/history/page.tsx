@@ -20,6 +20,7 @@ import {
   Trash2,
   Calendar,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,7 +42,8 @@ interface Snapshot {
   memberCount: number;
   createdAt: string;
   createdBy: string;
-  type: 'MANUAL' | 'AUTO_BACKUP' | 'PRE_IMPORT';
+  createdByName?: string;
+  snapshotType: 'MANUAL' | 'AUTO_BACKUP' | 'PRE_IMPORT' | 'PRE_RESTORE';
 }
 
 export default function HistoryPage() {
@@ -77,35 +79,71 @@ export default function HistoryPage() {
     fetchMembers();
   }, [session?.token]);
 
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(true);
+
   useEffect(() => {
-    const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');
-    const treeChanges = JSON.parse(localStorage.getItem('alshaye_tree_changes') || '[]');
-    const storedSnapshots = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
+    async function fetchSnapshots() {
+      try {
+        setIsLoadingSnapshots(true);
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/admin/snapshots', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setSnapshots(data.snapshots || []);
+        }
+      } catch (error) {
+        console.error('Error fetching snapshots:', error);
+      } finally {
+        setIsLoadingSnapshots(false);
+      }
+    }
 
-    // Combine and format changes
-    const allChanges: ChangeRecord[] = [
-      ...editHistory.map((item: any, i: number) => ({
-        id: `edit_${i}`,
-        ...item
-      })),
-      ...treeChanges.flatMap((batch: any, i: number) =>
-        batch.changes.map((change: any, j: number) => ({
-          id: `tree_${i}_${j}`,
-          memberId: change.memberId,
-          memberName: change.memberName,
-          changes: { fatherId: change.newParentId },
-          reason: `تغيير الأب من ${change.oldParentName || 'جذر'} إلى ${change.newParentName || 'جذر'}`,
-          timestamp: batch.timestamp
-        }))
-      )
-    ];
+    async function fetchChangeHistory() {
+      try {
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/admin/change-history?limit=100', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          const formattedChanges: ChangeRecord[] = (data.changes || []).map((ch: any) => ({
+            id: ch.id,
+            memberId: ch.memberId,
+            memberName: ch.member?.firstName || ch.memberId,
+            changes: { [ch.fieldName]: ch.newValue },
+            reason: ch.reason || `${ch.changeType}: ${ch.fieldName}`,
+            timestamp: ch.changedAt,
+          }));
+          setChanges(formattedChanges);
+        }
+      } catch (error) {
+        console.error('Error fetching change history:', error);
+        const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');
+        const treeChanges = JSON.parse(localStorage.getItem('alshaye_tree_changes') || '[]');
+        const allChanges: ChangeRecord[] = [
+          ...editHistory.map((item: any, i: number) => ({
+            id: `edit_${i}`,
+            ...item
+          })),
+          ...treeChanges.flatMap((batch: any, i: number) =>
+            batch.changes.map((change: any, j: number) => ({
+              id: `tree_${i}_${j}`,
+              memberId: change.memberId,
+              memberName: change.memberName,
+              changes: { fatherId: change.newParentId },
+              reason: `تغيير الأب من ${change.oldParentName || 'جذر'} إلى ${change.newParentName || 'جذر'}`,
+              timestamp: batch.timestamp
+            }))
+          )
+        ];
+        allChanges.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setChanges(allChanges);
+      }
+    }
 
-    // Sort by timestamp descending
-    allChanges.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    setChanges(allChanges);
-    setSnapshots(storedSnapshots);
-  }, []);
+    if (session?.token) {
+      fetchSnapshots();
+      fetchChangeHistory();
+    }
+  }, [session?.token]);
 
   // Filter changes
   const filteredChanges = useMemo(() => {
@@ -147,37 +185,46 @@ export default function HistoryPage() {
     );
   };
 
-  // Create snapshot
-  const createSnapshot = () => {
+  const [savingSnapshot, setSavingSnapshot] = useState(false);
+
+  const createSnapshot = async () => {
     if (!snapshotName.trim()) {
       alert('يرجى إدخال اسم للنسخة');
       return;
     }
 
-    const newSnapshot: Snapshot = {
-      id: `snapshot_${Date.now()}`,
-      name: snapshotName,
-      description: snapshotDescription,
-      memberCount: allMembers.length,
-      createdAt: new Date().toISOString(),
-      createdBy: 'Admin',
-      type: 'MANUAL'
-    };
+    setSavingSnapshot(true);
+    try {
+      const res = await fetch('/api/admin/snapshots', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          name: snapshotName,
+          description: snapshotDescription,
+          snapshotType: 'MANUAL',
+        }),
+      });
 
-    // Save snapshot data
-    const snapshotData = {
-      ...newSnapshot,
-      members: allMembers
-    };
-
-    const storedSnapshots = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
-    storedSnapshots.unshift(snapshotData);
-    localStorage.setItem('alshaye_snapshots', JSON.stringify(storedSnapshots));
-
-    setSnapshots([newSnapshot, ...snapshots]);
-    setIsCreatingSnapshot(false);
-    setSnapshotName('');
-    setSnapshotDescription('');
+      if (res.ok) {
+        const data = await res.json();
+        setSnapshots([data.snapshot, ...snapshots]);
+        setIsCreatingSnapshot(false);
+        setSnapshotName('');
+        setSnapshotDescription('');
+        alert('تم إنشاء النسخة الاحتياطية بنجاح');
+      } else {
+        const err = await res.json();
+        alert(`فشل إنشاء النسخة: ${err.messageAr || err.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error creating snapshot:', error);
+      alert('حدث خطأ أثناء إنشاء النسخة الاحتياطية');
+    } finally {
+      setSavingSnapshot(false);
+    }
   };
 
   // Rollback change
@@ -215,28 +262,68 @@ export default function HistoryPage() {
     alert('تم استرجاع التغيير بنجاح');
   };
 
-  // Restore snapshot
-  const restoreSnapshot = (snapshot: Snapshot) => {
-    if (!confirm(`هل أنت متأكد من استرجاع النسخة "${snapshot.name}"؟\nسيتم استبدال جميع البيانات الحالية.`)) {
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const restoreSnapshot = async (snapshot: Snapshot) => {
+    if (!confirm(`هل أنت متأكد من استرجاع النسخة "${snapshot.name}"؟\n\n⚠️ تحذير: سيتم استبدال جميع البيانات الحالية بالبيانات من هذه النسخة.\n\nسيتم إنشاء نسخة احتياطية تلقائية قبل الاستعادة.`)) {
       return;
     }
 
-    // In real implementation, this would restore the full tree from the snapshot
+    setRestoringId(snapshot.id);
+    try {
+      const res = await fetch(`/api/admin/snapshots/${snapshot.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({ action: 'restore' }),
+      });
 
-    alert('تم استرجاع النسخة بنجاح');
+      if (res.ok) {
+        const data = await res.json();
+        alert(`${data.messageAr}\n\nتم استعادة ${data.details?.restoredCount || snapshot.memberCount} عضو.`);
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(`فشلت الاستعادة: ${err.messageAr || err.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error restoring snapshot:', error);
+      alert('حدث خطأ أثناء استعادة النسخة');
+    } finally {
+      setRestoringId(null);
+    }
   };
 
-  // Delete snapshot
-  const deleteSnapshot = (snapshotId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه النسخة؟')) {
+  const deleteSnapshot = async (snapshotId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه النسخة الاحتياطية؟\n\nلا يمكن التراجع عن هذا الإجراء.')) {
       return;
     }
 
-    const storedSnapshots = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
-    const updated = storedSnapshots.filter((s: Snapshot) => s.id !== snapshotId);
-    localStorage.setItem('alshaye_snapshots', JSON.stringify(updated));
+    setDeletingId(snapshotId);
+    try {
+      const res = await fetch(`/api/admin/snapshots/${snapshotId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session?.token}`,
+        },
+      });
 
-    setSnapshots(prev => prev.filter(s => s.id !== snapshotId));
+      if (res.ok) {
+        setSnapshots(prev => prev.filter(s => s.id !== snapshotId));
+        alert('تم حذف النسخة الاحتياطية');
+      } else {
+        const err = await res.json();
+        alert(`فشل الحذف: ${err.messageAr || err.message || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting snapshot:', error);
+      alert('حدث خطأ أثناء حذف النسخة');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Format timestamp
@@ -504,20 +591,28 @@ export default function HistoryPage() {
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className={`px-2 py-1 rounded text-xs ${
-                        snapshot.type === 'MANUAL'
+                        snapshot.snapshotType === 'MANUAL'
                           ? 'bg-blue-100 text-blue-700'
-                          : snapshot.type === 'AUTO_BACKUP'
+                          : snapshot.snapshotType === 'AUTO_BACKUP'
                           ? 'bg-green-100 text-green-700'
+                          : snapshot.snapshotType === 'PRE_RESTORE'
+                          ? 'bg-purple-100 text-purple-700'
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {snapshot.type === 'MANUAL' ? 'يدوي' :
-                         snapshot.type === 'AUTO_BACKUP' ? 'تلقائي' : 'قبل الاستيراد'}
+                        {snapshot.snapshotType === 'MANUAL' ? 'يدوي' :
+                         snapshot.snapshotType === 'AUTO_BACKUP' ? 'تلقائي' :
+                         snapshot.snapshotType === 'PRE_RESTORE' ? 'قبل الاستعادة' : 'قبل الاستيراد'}
                       </div>
                       <button
                         onClick={() => deleteSnapshot(snapshot.id)}
-                        className="p-1 hover:bg-red-100 rounded text-red-500"
+                        disabled={deletingId === snapshot.id}
+                        className="p-1 hover:bg-red-100 rounded text-red-500 disabled:opacity-50"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {deletingId === snapshot.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
 
@@ -539,9 +634,14 @@ export default function HistoryPage() {
 
                     <button
                       onClick={() => restoreSnapshot(snapshot)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2D5A87]"
+                      disabled={restoringId !== null}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2D5A87] disabled:opacity-50"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      {restoringId === snapshot.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-4 h-4" />
+                      )}
                       استرجاع هذه النسخة
                     </button>
                   </div>
