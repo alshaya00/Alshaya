@@ -72,14 +72,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prismaClient = prisma as any;
     const [logs, total] = await Promise.all([
-      prisma.auditLog.findMany({
+      prismaClient.auditLog.findMany({
         where,
         orderBy: { timestamp: 'desc' },
         skip,
         take: limit,
       }),
-      prisma.auditLog.count({ where }),
+      prismaClient.auditLog.count({ where }),
     ]);
 
     return NextResponse.json({
@@ -98,79 +100,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
-
-    const permissions = getPermissionsForRole(user.role);
-    if (!permissions.view_audit_logs && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const {
-      action,
-      severity = 'INFO',
-      targetType,
-      targetId,
-      targetName,
-      description,
-      details,
-      previousState,
-      newState,
-      success = true,
-      errorMessage,
-    } = body;
-
-    if (!action || !targetType || !description) {
-      return NextResponse.json(
-        { success: false, message: 'Missing required fields: action, targetType, description' },
-        { status: 400 }
-      );
-    }
-
-    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null;
-    const userAgent = request.headers.get('user-agent') || null;
-
-    const log = await prisma.auditLog.create({
-      data: {
-        action,
-        severity,
-        userId: user.id,
-        userName: user.nameArabic || user.email,
-        userRole: user.role,
-        targetType,
-        targetId: targetId || null,
-        targetName: targetName || null,
-        description,
-        details: details || null,
-        previousState: previousState || null,
-        newState: newState || null,
-        success,
-        errorMessage: errorMessage || null,
-        ipAddress,
-        userAgent,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      log,
-    });
-  } catch (error) {
-    console.error('Error creating audit log:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to create audit log' },
-      { status: 500 }
-    );
-  }
-}

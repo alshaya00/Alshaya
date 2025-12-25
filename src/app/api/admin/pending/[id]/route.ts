@@ -4,6 +4,7 @@ import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/db-sto
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { getNextIdFromDb, createMemberInDb } from '@/lib/db';
 import type { FamilyMember } from '@/lib/types';
+import { logAuditToDb } from '@/lib/db-audit';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -177,6 +178,25 @@ export async function POST(
         success: true,
       });
 
+      try {
+        await logAuditToDb({
+          action: 'PENDING_APPROVE',
+          severity: 'INFO',
+          userId: user.id,
+          userName: user.email,
+          userRole: user.role,
+          targetType: 'PENDING_MEMBER',
+          targetId: params.id,
+          targetName: pending.fullNameAr || pending.firstName,
+          description: `تمت الموافقة على العضو المعلق: ${pending.firstName}`,
+          details: { newMemberId: newId, reviewNote },
+          newState: newMember as unknown as Record<string, unknown>,
+          success: true,
+        });
+      } catch (auditError) {
+        console.error('Audit logging failed:', auditError);
+      }
+
       return NextResponse.json({
         success: true,
         message: 'Pending member approved and added to family tree',
@@ -210,6 +230,25 @@ export async function POST(
         userAgent,
         success: true,
       });
+
+      try {
+        await logAuditToDb({
+          action: 'PENDING_REJECT',
+          severity: 'WARNING',
+          userId: user.id,
+          userName: user.email,
+          userRole: user.role,
+          targetType: 'PENDING_MEMBER',
+          targetId: params.id,
+          targetName: pending.fullNameAr || pending.firstName,
+          description: `تم رفض العضو المعلق: ${pending.firstName}`,
+          details: { reason: reviewNote },
+          previousState: pending as unknown as Record<string, unknown>,
+          success: true,
+        });
+      } catch (auditError) {
+        console.error('Audit logging failed:', auditError);
+      }
 
       return NextResponse.json({
         success: true,

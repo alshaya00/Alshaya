@@ -5,6 +5,7 @@ import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb, updateMemb
 import { randomUUID } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { logAuditToDb } from '@/lib/db-audit';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -239,6 +240,25 @@ export async function PUT(
       body.changedByName || 'النظام'
     ).catch(err => console.log('Change history recording failed:', err));
 
+    try {
+      await logAuditToDb({
+        action: 'MEMBER_UPDATE',
+        severity: 'INFO',
+        userId: user.id,
+        userName: user.email,
+        userRole: user.role,
+        targetType: 'MEMBER',
+        targetId: params.id,
+        targetName: updatedMember.fullNameAr || updatedMember.firstName,
+        description: `تم تحديث بيانات العضو: ${updatedMember.firstName}`,
+        previousState: originalMember as Record<string, unknown>,
+        newState: updatedMember as Record<string, unknown>,
+        success: true,
+      });
+    } catch (auditError) {
+      console.error('Audit logging failed:', auditError);
+    }
+
     return NextResponse.json({
       success: true,
       data: updatedMember,
@@ -301,6 +321,24 @@ export async function DELETE(
         { success: false, error: 'Failed to delete member' },
         { status: 500 }
       );
+    }
+
+    try {
+      await logAuditToDb({
+        action: 'MEMBER_DELETE',
+        severity: 'WARNING',
+        userId: user.id,
+        userName: user.email,
+        userRole: user.role,
+        targetType: 'MEMBER',
+        targetId: params.id,
+        targetName: member.fullNameAr || member.firstName,
+        description: `تم حذف العضو: ${member.firstName}`,
+        previousState: member as Record<string, unknown>,
+        success: true,
+      });
+    } catch (auditError) {
+      console.error('Audit logging failed:', auditError);
     }
 
     return NextResponse.json({

@@ -4,6 +4,7 @@ import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInD
 import { sanitizeString } from '@/lib/sanitize';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { logAuditToDb } from '@/lib/db-audit';
 
 // Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {
@@ -218,6 +219,24 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Failed to create member in database'
       }, { status: 500 });
+    }
+
+    try {
+      await logAuditToDb({
+        action: 'MEMBER_CREATE',
+        severity: 'INFO',
+        userId: user.id,
+        userName: user.email,
+        userRole: user.role,
+        targetType: 'MEMBER',
+        targetId: createdMember.id,
+        targetName: createdMember.fullNameAr || createdMember.firstName,
+        description: `تم إنشاء عضو جديد: ${createdMember.firstName}`,
+        newState: createdMember as Record<string, unknown>,
+        success: true,
+      });
+    } catch (auditError) {
+      console.error('Audit logging failed:', auditError);
     }
 
     return NextResponse.json({

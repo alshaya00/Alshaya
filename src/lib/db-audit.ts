@@ -1,4 +1,14 @@
-import prisma from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
+
+// Create a dedicated Prisma client for audit logging
+// This bypasses the mock pattern used in src/lib/prisma.ts
+const auditPrisma = new PrismaClient() as PrismaClient & {
+  auditLog: {
+    create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
+    findMany: (args: Record<string, unknown>) => Promise<unknown[]>;
+    count: (args: Record<string, unknown>) => Promise<number>;
+  };
+};
 
 export async function logAuditToDb(params: {
   action: string;
@@ -17,9 +27,14 @@ export async function logAuditToDb(params: {
   errorMessage?: string;
   ipAddress?: string;
   userAgent?: string;
-}): Promise<void> {
+}): Promise<boolean> {
+  if (!process.env.DATABASE_URL) {
+    console.error('[AUDIT] DATABASE_URL not set - audit log not persisted');
+    return false;
+  }
+
   try {
-    await prisma.auditLog.create({
+    await auditPrisma.auditLog.create({
       data: {
         action: params.action,
         severity: params.severity || 'INFO',
@@ -39,8 +54,10 @@ export async function logAuditToDb(params: {
         userAgent: params.userAgent || null,
       },
     });
+    return true;
   } catch (error) {
-    console.error('Failed to write audit log to database:', error);
+    console.error('[AUDIT] Failed to write audit log to database:', error);
+    return false;
   }
 }
 
@@ -91,13 +108,13 @@ export async function getAuditLogsFromDb(params: {
   }
 
   const [logs, total] = await Promise.all([
-    prisma.auditLog.findMany({
+    auditPrisma.auditLog.findMany({
       where,
       orderBy: { timestamp: 'desc' },
       skip,
       take: limit,
     }),
-    prisma.auditLog.count({ where }),
+    auditPrisma.auditLog.count({ where }),
   ]);
 
   return { logs, total, page, limit };
