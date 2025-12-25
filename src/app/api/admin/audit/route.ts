@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findSessionByToken, findUserById, getActivityLogs, StoredActivityLog } from '@/lib/auth/db-store';
+import prisma from '@/lib/prisma';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
-// Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -18,7 +18,6 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// GET /api/admin/audit - Get audit logs with filtering and statistics
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser(request);
@@ -38,61 +37,57 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action');
-    const category = searchParams.get('category');
-    const userId = searchParams.get('userId');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const includeStats = searchParams.get('stats') === 'true';
+    const action = searchParams.get('action') || undefined;
+    const userId = searchParams.get('userId') || undefined;
+    const targetType = searchParams.get('targetType') || undefined;
+    const targetId = searchParams.get('targetId') || undefined;
+    const severity = searchParams.get('severity') || undefined;
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
+    const successParam = searchParams.get('success');
+    const success = successParam === 'true' ? true : successParam === 'false' ? false : undefined;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
 
-    // Get activity logs
-    let logs = await getActivityLogs();
+    const skip = (page - 1) * limit;
 
-    // Apply filters
-    if (action) {
-      logs = logs.filter(log => log.action === action);
-    }
-    if (category) {
-      logs = logs.filter(log => log.category === category);
-    }
-    if (userId) {
-      logs = logs.filter(log => log.userId === userId);
-    }
-    if (startDate) {
-      const start = new Date(startDate);
-      logs = logs.filter(log => new Date(log.createdAt) >= start);
-    }
-    if (endDate) {
-      const end = new Date(endDate);
-      logs = logs.filter(log => new Date(log.createdAt) <= end);
+    const where: Record<string, unknown> = {};
+
+    if (action) where.action = action;
+    if (userId) where.userId = userId;
+    if (targetType) where.targetType = targetType;
+    if (targetId) where.targetId = targetId;
+    if (severity) where.severity = severity;
+    if (success !== undefined) where.success = success;
+
+    if (startDate || endDate) {
+      where.timestamp = {};
+      if (startDate) {
+        (where.timestamp as Record<string, Date>).gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        (where.timestamp as Record<string, Date>).lte = end;
+      }
     }
 
-    // Sort by createdAt descending
-    logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    const total = logs.length;
-
-    // Apply pagination
-    const paginatedLogs = logs.slice(offset, offset + limit);
-
-    // Calculate statistics if requested
-    let statistics = null;
-    if (includeStats) {
-      statistics = calculateAuditStatistics(logs);
-    }
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { timestamp: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
 
     return NextResponse.json({
       success: true,
-      logs: paginatedLogs,
-      pagination: {
-        total,
-        limit,
-        offset,
-        hasMore: offset + limit < total,
-      },
-      ...(statistics && { statistics }),
+      logs,
+      total,
+      page,
+      limit,
     });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
@@ -103,103 +98,79 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Calculate statistics from audit logs
-function calculateAuditStatistics(logs: StoredActivityLog[]) {
-  // Stats by action
-  const byAction: Record<string, number> = {};
-  logs.forEach(log => {
-    byAction[log.action] = (byAction[log.action] || 0) + 1;
-  });
-
-  // Stats by category
-  const byCategory: Record<string, number> = {};
-  logs.forEach(log => {
-    byCategory[log.category] = (byCategory[log.category] || 0) + 1;
-  });
-
-  // Stats by user (top 10 most active)
-  const byUser: Record<string, { count: number; name: string }> = {};
-  logs.forEach(log => {
-    const logUserId = log.userId || 'unknown';
-    const logUserName = log.userName || 'Unknown';
-    if (!byUser[logUserId]) {
-      byUser[logUserId] = { count: 0, name: logUserName };
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
     }
-    byUser[logUserId].count++;
-  });
 
-  const topUsers = Object.entries(byUser)
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 10)
-    .map(([userId, data]) => ({
-      userId,
-      userName: data.name,
-      count: data.count,
-    }));
-
-  // Stats by severity (if available)
-  const bySeverity: Record<string, number> = {
-    INFO: 0,
-    WARNING: 0,
-    ERROR: 0,
-    CRITICAL: 0,
-  };
-
-  logs.forEach(log => {
-    // Determine severity based on action type
-    if (log.action.includes('FAILED') || !log.success) {
-      bySeverity.ERROR++;
-    } else if (log.action.includes('DELETE') || log.action.includes('DISABLE')) {
-      bySeverity.WARNING++;
-    } else if (log.action.includes('CRITICAL')) {
-      bySeverity.CRITICAL++;
-    } else {
-      bySeverity.INFO++;
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.view_audit_logs && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
     }
-  });
 
-  // Success rate
-  const successful = logs.filter(log => log.success !== false).length;
-  const failed = logs.filter(log => log.success === false).length;
-  const successRate = logs.length > 0 ? (successful / logs.length) * 100 : 100;
+    const body = await request.json();
+    const {
+      action,
+      severity = 'INFO',
+      targetType,
+      targetId,
+      targetName,
+      description,
+      details,
+      previousState,
+      newState,
+      success = true,
+      errorMessage,
+    } = body;
 
-  // Activity over time (last 30 days)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    if (!action || !targetType || !description) {
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields: action, targetType, description' },
+        { status: 400 }
+      );
+    }
 
-  const activityByDay: Record<string, number> = {};
-  logs
-    .filter(log => new Date(log.createdAt) >= thirtyDaysAgo)
-    .forEach(log => {
-      const day = new Date(log.createdAt).toISOString().split('T')[0];
-      activityByDay[day] = (activityByDay[day] || 0) + 1;
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null;
+    const userAgent = request.headers.get('user-agent') || null;
+
+    const log = await prisma.auditLog.create({
+      data: {
+        action,
+        severity,
+        userId: user.id,
+        userName: user.nameArabic || user.email,
+        userRole: user.role,
+        targetType,
+        targetId: targetId || null,
+        targetName: targetName || null,
+        description,
+        details: details || null,
+        previousState: previousState || null,
+        newState: newState || null,
+        success,
+        errorMessage: errorMessage || null,
+        ipAddress,
+        userAgent,
+      },
     });
 
-  return {
-    total: logs.length,
-    byAction,
-    byCategory,
-    bySeverity,
-    topUsers,
-    successRate: Math.round(successRate * 100) / 100,
-    successful,
-    failed,
-    activityByDay,
-    summary: {
-      totalToday: logs.filter(log => {
-        const today = new Date().toISOString().split('T')[0];
-        return log.createdAt.toISOString().startsWith(today);
-      }).length,
-      totalThisWeek: logs.filter(log => {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(log.createdAt) >= weekAgo;
-      }).length,
-      totalThisMonth: logs.filter(log => {
-        const monthAgo = new Date();
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        return new Date(log.createdAt) >= monthAgo;
-      }).length,
-    },
-  };
+    return NextResponse.json({
+      success: true,
+      log,
+    });
+  } catch (error) {
+    console.error('Error creating audit log:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to create audit log' },
+      { status: 500 }
+    );
+  }
 }

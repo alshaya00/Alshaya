@@ -2,8 +2,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 
 export { Prisma };
 
-// Type for the Prisma client - using Record to allow dynamic model access
-type PrismaClientType = PrismaClient & Record<string, unknown>;
+// Type for the Prisma client
+type PrismaClientType = PrismaClient;
 
 // Create a mock Prisma client for build time when Prisma isn't fully initialized
 function createMockPrismaClient(): PrismaClientType {

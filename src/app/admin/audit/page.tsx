@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -9,28 +9,66 @@ import {
   Search,
   Filter,
   Download,
-  Calendar,
-  User,
   Clock,
+  User,
   CheckCircle,
   AlertTriangle,
   XCircle,
   Info,
-  Shield,
   Eye,
   X,
   ChevronDown,
-  Trash2,
 } from 'lucide-react';
-import {
-  getAuditLogs,
-  getAuditStats,
-  cleanupAuditLogs,
-  type AuditLogEntry,
-  type AuditAction,
-  type AuditSeverity,
-} from '@/lib/audit';
+import { useAuth } from '@/contexts/AuthContext';
 import { paginationSettings } from '@/config/constants';
+
+type AuditAction =
+  | 'MEMBER_CREATE'
+  | 'MEMBER_UPDATE'
+  | 'MEMBER_DELETE'
+  | 'MEMBER_VIEW'
+  | 'PARENT_CHANGE'
+  | 'BACKUP_CREATE'
+  | 'BACKUP_RESTORE'
+  | 'BACKUP_DELETE'
+  | 'BACKUP_DOWNLOAD'
+  | 'CONFIG_UPDATE'
+  | 'ADMIN_CREATE'
+  | 'ADMIN_UPDATE'
+  | 'ADMIN_DELETE'
+  | 'ADMIN_LOGIN'
+  | 'ADMIN_LOGOUT'
+  | 'EXPORT_DATA'
+  | 'IMPORT_DATA'
+  | 'BRANCH_LINK_CREATE'
+  | 'BRANCH_LINK_UPDATE'
+  | 'BRANCH_LINK_DELETE'
+  | 'PENDING_APPROVE'
+  | 'PENDING_REJECT'
+  | 'DUPLICATE_RESOLVE'
+  | 'SYSTEM_CLEANUP'
+  | 'INTEGRITY_CHECK';
+
+type AuditSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+
+interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  severity: AuditSeverity;
+  userId: string | null;
+  userName: string | null;
+  userRole: string | null;
+  targetType: string;
+  targetId: string | null;
+  targetName: string | null;
+  description: string;
+  details: Record<string, unknown> | null;
+  previousState: Record<string, unknown> | null;
+  newState: Record<string, unknown> | null;
+  success: boolean;
+  errorMessage: string | null;
+}
 
 const ACTION_LABELS: Record<AuditAction, { label: string; icon: React.ReactNode; color: string }> = {
   MEMBER_CREATE: { label: 'إنشاء عضو', icon: null, color: 'bg-green-100 text-green-700' },
@@ -68,10 +106,11 @@ const SEVERITY_ICONS: Record<AuditSeverity, React.ReactNode> = {
 };
 
 export default function AuditLogPage() {
+  const { session } = useAuth();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLogEntry[]>([]);
-  const [stats, setStats] = useState<ReturnType<typeof getAuditStats> | null>(null);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
@@ -85,84 +124,73 @@ export default function AuditLogPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = paginationSettings.auditLogItemsPerPage;
 
-  useEffect(() => {
-    loadAuditLogs();
-  }, []);
+  const loadAuditLogs = useCallback(async () => {
+    if (!session?.token) return;
 
-  useEffect(() => {
-    applyFilters();
-  }, [logs, searchQuery, filters]);
-
-  const loadAuditLogs = () => {
     setIsLoading(true);
+    setError(null);
+
     try {
-      const allLogs = getAuditLogs();
-      setLogs(allLogs);
-      setStats(getAuditStats());
-    } catch (error) {
-      console.error('Error loading audit logs:', error);
+      const params = new URLSearchParams();
+      params.set('page', currentPage.toString());
+      params.set('limit', itemsPerPage.toString());
+
+      if (filters.action) params.set('action', filters.action);
+      if (filters.severity) params.set('severity', filters.severity);
+      if (filters.startDate) params.set('startDate', filters.startDate);
+      if (filters.endDate) params.set('endDate', filters.endDate);
+      if (filters.success) params.set('success', filters.success);
+
+      const response = await fetch(`/api/admin/audit?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch audit logs');
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setLogs(data.logs);
+        setTotal(data.total);
+      } else {
+        throw new Error(data.message || 'Failed to fetch audit logs');
+      }
+    } catch (err) {
+      console.error('Error loading audit logs:', err);
+      setError(err instanceof Error ? err.message : 'حدث خطأ في تحميل السجلات');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.token, currentPage, itemsPerPage, filters]);
 
-  const applyFilters = () => {
-    let result = [...logs];
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (log) =>
-          log.description.toLowerCase().includes(query) ||
-          log.userName.toLowerCase().includes(query) ||
-          log.targetName?.toLowerCase().includes(query) ||
-          log.targetId?.toLowerCase().includes(query)
-      );
-    }
-
-    if (filters.action) {
-      result = result.filter((log) => log.action === filters.action);
-    }
-
-    if (filters.severity) {
-      result = result.filter((log) => log.severity === filters.severity);
-    }
-
-    if (filters.startDate) {
-      result = result.filter((log) => new Date(log.timestamp) >= new Date(filters.startDate));
-    }
-
-    if (filters.endDate) {
-      result = result.filter((log) => new Date(log.timestamp) <= new Date(filters.endDate));
-    }
-
-    if (filters.success !== '') {
-      result = result.filter((log) => log.success === (filters.success === 'true'));
-    }
-
-    setFilteredLogs(result);
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1);
   };
 
-  const handleCleanup = () => {
-    const days = prompt('أدخل عدد الأيام للاحتفاظ بالسجلات (مثال: 90):', '90');
-    if (days) {
-      const daysNum = parseInt(days);
-      if (isNaN(daysNum) || daysNum < 1) {
-        alert('يرجى إدخال رقم صحيح');
-        return;
-      }
-      const deleted = cleanupAuditLogs(daysNum);
-      alert(`تم حذف ${deleted} سجل قديم`);
-      loadAuditLogs();
-    }
-  };
+  const filteredLogs = searchQuery
+    ? logs.filter(
+        (log) =>
+          log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.targetName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.targetId?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : logs;
 
   const exportLogs = () => {
     const data = filteredLogs.map((log) => ({
       التاريخ: new Date(log.timestamp).toLocaleString('ar-SA'),
-      الإجراء: ACTION_LABELS[log.action]?.label || log.action,
-      المستخدم: log.userName,
+      الإجراء: ACTION_LABELS[log.action as AuditAction]?.label || log.action,
+      المستخدم: log.userName || '-',
       الهدف: log.targetName || log.targetId || '-',
       الوصف: log.description,
       الحالة: log.success ? 'ناجح' : 'فشل',
@@ -196,13 +224,9 @@ export default function AuditLogPage() {
     });
   };
 
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = Math.ceil(total / itemsPerPage);
 
-  if (isLoading) {
+  if (isLoading && logs.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -213,9 +237,25 @@ export default function AuditLogPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={loadAuditLogs}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 lg:p-8">
-      {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
           <Link href="/admin" className="hover:text-gray-700">لوحة التحكم</Link>
@@ -229,16 +269,17 @@ export default function AuditLogPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-800">سجل المراجعة</h1>
-              <p className="text-sm text-gray-500">Audit Log - {filteredLogs.length} سجل</p>
+              <p className="text-sm text-gray-500">Audit Log - {total} سجل</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={loadAuditLogs}
-              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              disabled={isLoading}
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
               title="تحديث"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={exportLogs}
@@ -247,42 +288,29 @@ export default function AuditLogPage() {
               <Download className="w-5 h-5" />
               تصدير
             </button>
-            <button
-              onClick={handleCleanup}
-              className="flex items-center gap-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg"
-            >
-              <Trash2 className="w-5 h-5" />
-              تنظيف
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <p className="text-sm text-gray-500">إجمالي السجلات</p>
-            <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <p className="text-sm text-gray-500">اليوم</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.today}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <p className="text-sm text-gray-500">هذا الأسبوع</p>
-            <p className="text-2xl font-bold text-green-600">{stats.thisWeek}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <p className="text-sm text-gray-500">التحذيرات</p>
-            <p className="text-2xl font-bold text-yellow-600">
-              {(stats.bySeverity['WARNING'] || 0) + (stats.bySeverity['ERROR'] || 0)}
-            </p>
-          </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">إجمالي السجلات</p>
+          <p className="text-2xl font-bold text-gray-800">{total}</p>
         </div>
-      )}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">الصفحة الحالية</p>
+          <p className="text-2xl font-bold text-blue-600">{filteredLogs.length}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">عدد الصفحات</p>
+          <p className="text-2xl font-bold text-green-600">{totalPages}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">صفحة</p>
+          <p className="text-2xl font-bold text-yellow-600">{currentPage}</p>
+        </div>
+      </div>
 
-      {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
@@ -313,7 +341,7 @@ export default function AuditLogPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">الإجراء</label>
               <select
                 value={filters.action}
-                onChange={(e) => setFilters({ ...filters, action: e.target.value })}
+                onChange={(e) => handleFilterChange('action', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
               >
                 <option value="">الكل</option>
@@ -326,7 +354,7 @@ export default function AuditLogPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">الخطورة</label>
               <select
                 value={filters.severity}
-                onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
+                onChange={(e) => handleFilterChange('severity', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
               >
                 <option value="">الكل</option>
@@ -341,7 +369,7 @@ export default function AuditLogPage() {
               <input
                 type="date"
                 value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                onChange={(e) => handleFilterChange('startDate', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
               />
             </div>
@@ -350,7 +378,7 @@ export default function AuditLogPage() {
               <input
                 type="date"
                 value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                onChange={(e) => handleFilterChange('endDate', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
               />
             </div>
@@ -358,7 +386,7 @@ export default function AuditLogPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
               <select
                 value={filters.success}
-                onChange={(e) => setFilters({ ...filters, success: e.target.value })}
+                onChange={(e) => handleFilterChange('success', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
               >
                 <option value="">الكل</option>
@@ -370,7 +398,6 @@ export default function AuditLogPage() {
         )}
       </div>
 
-      {/* Logs Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -386,7 +413,7 @@ export default function AuditLogPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {paginatedLogs.length === 0 ? (
+              {filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center text-gray-500">
                     <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -394,8 +421,8 @@ export default function AuditLogPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedLogs.map((log) => {
-                  const actionInfo = ACTION_LABELS[log.action] || { label: log.action, color: 'bg-gray-100 text-gray-700' };
+                filteredLogs.map((log) => {
+                  const actionInfo = ACTION_LABELS[log.action as AuditAction] || { label: log.action, color: 'bg-gray-100 text-gray-700' };
                   return (
                     <tr key={log.id} className="hover:bg-gray-50">
                       <td className="p-3 text-sm">
@@ -412,7 +439,7 @@ export default function AuditLogPage() {
                       <td className="p-3 text-sm">
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-gray-400" />
-                          <span>{log.userName}</span>
+                          <span>{log.userName || '-'}</span>
                         </div>
                       </td>
                       <td className="p-3 text-sm text-gray-600">
@@ -448,11 +475,10 @@ export default function AuditLogPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="p-4 border-t bg-gray-50 flex items-center justify-between">
             <span className="text-sm text-gray-600">
-              عرض {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredLogs.length)} من {filteredLogs.length}
+              صفحة {currentPage} من {totalPages} - إجمالي {total} سجل
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -477,7 +503,6 @@ export default function AuditLogPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
       {selectedLog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-auto py-8">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-auto">
@@ -506,8 +531,8 @@ export default function AuditLogPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-500">الإجراء</label>
-                  <p className={`inline-block px-2 py-1 rounded text-sm ${ACTION_LABELS[selectedLog.action]?.color}`}>
-                    {ACTION_LABELS[selectedLog.action]?.label || selectedLog.action}
+                  <p className={`inline-block px-2 py-1 rounded text-sm ${ACTION_LABELS[selectedLog.action as AuditAction]?.color || 'bg-gray-100'}`}>
+                    {ACTION_LABELS[selectedLog.action as AuditAction]?.label || selectedLog.action}
                   </p>
                 </div>
                 <div>
@@ -522,7 +547,7 @@ export default function AuditLogPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-500">المستخدم</label>
-                  <p>{selectedLog.userName} ({selectedLog.userRole})</p>
+                  <p>{selectedLog.userName || '-'} ({selectedLog.userRole || '-'})</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-500">الحالة</label>
@@ -555,52 +580,36 @@ export default function AuditLogPage() {
               {selectedLog.errorMessage && (
                 <div>
                   <label className="text-sm text-gray-500">رسالة الخطأ</label>
-                  <p className="text-red-600">{selectedLog.errorMessage}</p>
-                </div>
-              )}
-
-              {selectedLog.previousState && Object.keys(selectedLog.previousState).length > 0 && (
-                <div>
-                  <label className="text-sm text-gray-500">الحالة السابقة</label>
-                  <pre className="bg-red-50 p-3 rounded-lg text-sm overflow-auto max-h-40">
-                    {JSON.stringify(selectedLog.previousState, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {selectedLog.newState && Object.keys(selectedLog.newState).length > 0 && (
-                <div>
-                  <label className="text-sm text-gray-500">الحالة الجديدة</label>
-                  <pre className="bg-green-50 p-3 rounded-lg text-sm overflow-auto max-h-40">
-                    {JSON.stringify(selectedLog.newState, null, 2)}
-                  </pre>
+                  <p className="text-red-600 bg-red-50 p-2 rounded">{selectedLog.errorMessage}</p>
                 </div>
               )}
 
               {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
                 <div>
-                  <label className="text-sm text-gray-500">تفاصيل إضافية</label>
-                  <pre className="bg-gray-50 p-3 rounded-lg text-sm overflow-auto max-h-40">
+                  <label className="text-sm text-gray-500">التفاصيل</label>
+                  <pre className="bg-gray-50 p-3 rounded text-xs overflow-auto max-h-40 font-mono">
                     {JSON.stringify(selectedLog.details, null, 2)}
                   </pre>
                 </div>
               )}
 
-              {selectedLog.userAgent && (
+              {selectedLog.previousState && (
                 <div>
-                  <label className="text-sm text-gray-500">المتصفح</label>
-                  <p className="text-xs text-gray-600 break-all">{selectedLog.userAgent}</p>
+                  <label className="text-sm text-gray-500">الحالة السابقة</label>
+                  <pre className="bg-gray-50 p-3 rounded text-xs overflow-auto max-h-40 font-mono">
+                    {JSON.stringify(selectedLog.previousState, null, 2)}
+                  </pre>
                 </div>
               )}
-            </div>
 
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-              >
-                إغلاق
-              </button>
+              {selectedLog.newState && (
+                <div>
+                  <label className="text-sm text-gray-500">الحالة الجديدة</label>
+                  <pre className="bg-gray-50 p-3 rounded text-xs overflow-auto max-h-40 font-mono">
+                    {JSON.stringify(selectedLog.newState, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
         </div>
