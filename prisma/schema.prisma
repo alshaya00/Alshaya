@@ -1500,3 +1500,52 @@ model FeatureFlag {
   updatedAt       DateTime @updatedAt
   updatedBy       String?
 }
+
+// ============================================
+// AUDIT LOG (Database-backed audit trail)
+// ============================================
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  
+  // Timestamp
+  timestamp       DateTime @default(now())
+  
+  // Action details
+  action          String   // MEMBER_CREATE, MEMBER_UPDATE, MEMBER_DELETE, etc.
+  severity        String   @default("INFO") // INFO, WARNING, ERROR, CRITICAL
+  
+  // User who performed the action
+  userId          String?
+  userName        String?
+  userRole        String?
+  
+  // Target of the action
+  targetType      String   // MEMBER, BACKUP, CONFIG, ADMIN, EXPORT, IMPORT, etc.
+  targetId        String?
+  targetName      String?
+  
+  // Description
+  description     String
+  
+  // Detailed data (stored as JSON)
+  details         Json?
+  previousState   Json?
+  newState        Json?
+  
+  // Request metadata
+  ipAddress       String?
+  userAgent       String?
+  sessionId       String?
+  
+  // Result
+  success         Boolean  @default(true)
+  errorMessage    String?
+  
+  @@index([timestamp])
+  @@index([action])
+  @@index([userId])
+  @@index([targetType])
+  @@index([targetId])
+  @@index([severity])
+}
