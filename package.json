@@ -19,7 +19,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "migrate:deploy": "prisma migrate deploy",
-    "seed:prod": "tsx prisma/seed.ts"
+    "seed:prod": "tsx prisma/seed.ts",
+    "import:csv": "npx tsx scripts/import-csv.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

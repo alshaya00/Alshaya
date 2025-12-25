@@ -346,6 +346,17 @@ function mapCSVHeaders(headers: string[]): (keyof FamilyMember | null)[] {
     'الحالة': 'status',
     'المهنة': 'occupation',
     'البريد': 'email',
+    // Mixed English-Arabic headers (from CSV export)
+    'Name الاسم': 'firstName',
+    'Father الأب': 'fatherName',
+    'Grandfather الجد': 'grandfatherName',
+    'الجد الثاني': 'greatGrandfatherName',
+    'Father_ID': 'fatherId',
+    'Birth_Year': 'birthYear',
+    'Sons': 'sonsCount',
+    'Daughters': 'daughtersCount',
+    'Full_Name_AR': 'fullNameAr',
+    'Full_Name_EN': 'fullNameEn',
     // English headers
     'ID': 'id',
     'First Name': 'firstName',
