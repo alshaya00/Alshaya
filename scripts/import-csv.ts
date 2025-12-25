@@ -7,6 +7,9 @@ const prisma = new PrismaClient();
 const CSV_FILE_PATH = path.join(process.cwd(), 'attached_assets/Family_Tree_Ultimate_System_Registry_1766701120894.csv');
 const BATCH_SIZE = 100;
 
+const MIN_GENERATION = 1;
+const MAX_GENERATION = 20;
+
 interface FamilyMemberData {
   id: string;
   firstName: string;
@@ -26,6 +29,13 @@ interface FamilyMemberData {
   phone: string | null;
   city: string | null;
   status: string;
+}
+
+interface ValidationIssue {
+  memberId: string;
+  memberName?: string;
+  issue: string;
+  severity: 'error' | 'warning';
 }
 
 function parseCSVLine(line: string): string[] {
@@ -96,6 +106,104 @@ function parseRow(values: string[]): FamilyMemberData | null {
     city: values[17]?.trim() || null,
     status: status === 'Living' || status === 'Deceased' ? status : 'Living',
   };
+}
+
+async function runPostImportValidation(): Promise<ValidationIssue[]> {
+  console.log('\n🔍 Running post-import data integrity validation...');
+  const issues: ValidationIssue[] = [];
+
+  const members = await prisma.familyMember.findMany({
+    where: { deletedAt: null },
+    select: {
+      id: true,
+      firstName: true,
+      generation: true,
+      fatherId: true,
+    },
+  });
+
+  const memberIds = new Set(members.map(m => m.id));
+  const memberMap = new Map(members.map(m => [m.id, m]));
+
+  for (const member of members) {
+    if (member.generation < MIN_GENERATION || member.generation > MAX_GENERATION) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Invalid generation value: ${member.generation}. Must be between ${MIN_GENERATION} and ${MAX_GENERATION}.`,
+        severity: 'error',
+      });
+    }
+
+    if (member.fatherId && !memberIds.has(member.fatherId)) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Father ID '${member.fatherId}' does not exist in the database.`,
+        severity: 'error',
+      });
+    }
+
+    if (member.fatherId) {
+      const father = memberMap.get(member.fatherId);
+      if (father && member.generation <= father.generation) {
+        issues.push({
+          memberId: member.id,
+          memberName: member.firstName,
+          issue: `Member's generation (${member.generation}) should be greater than father's generation (${father.generation}).`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    if (!member.fatherId && member.generation > 2) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Member has no parent but is in generation ${member.generation}. Only generation 1-2 members should be roots.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  return issues;
+}
+
+function printValidationReport(issues: ValidationIssue[]) {
+  console.log('\n📋 Data Integrity Validation Report');
+  console.log('═'.repeat(50));
+
+  if (issues.length === 0) {
+    console.log('✅ No data integrity issues found!');
+    return;
+  }
+
+  const errors = issues.filter(i => i.severity === 'error');
+  const warnings = issues.filter(i => i.severity === 'warning');
+
+  console.log(`Total issues: ${issues.length}`);
+  console.log(`  ❌ Errors: ${errors.length}`);
+  console.log(`  ⚠️  Warnings: ${warnings.length}`);
+
+  if (errors.length > 0) {
+    console.log('\n❌ ERRORS:');
+    for (const error of errors.slice(0, 20)) {
+      console.log(`  ${error.memberId} (${error.memberName}): ${error.issue}`);
+    }
+    if (errors.length > 20) {
+      console.log(`  ... and ${errors.length - 20} more errors`);
+    }
+  }
+
+  if (warnings.length > 0) {
+    console.log('\n⚠️  WARNINGS:');
+    for (const warning of warnings.slice(0, 20)) {
+      console.log(`  ${warning.memberId} (${warning.memberName}): ${warning.issue}`);
+    }
+    if (warnings.length > 20) {
+      console.log(`  ... and ${warnings.length - 20} more warnings`);
+    }
+  }
 }
 
 async function importCSV() {
@@ -195,6 +303,13 @@ async function importCSV() {
   });
 
   console.log('\n✅ Import completed successfully!');
+
+  const validationIssues = await runPostImportValidation();
+  printValidationReport(validationIssues);
+
+  if (validationIssues.filter(i => i.severity === 'error').length > 0) {
+    console.log('\n⚠️  Import completed with data integrity errors. Please review and fix the issues above.');
+  }
 }
 
 importCSV()
