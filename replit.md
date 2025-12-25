@@ -146,6 +146,14 @@ All pages and API routes now fetch exclusively from PostgreSQL:
 - `src/lib/postgres-db.ts` - Direct Prisma queries, no try/catch fallbacks
 - `src/lib/data.ts` - Type definitions only (no longer used for data)
 
+### Audit Log System (Dec 2024)
+Database-backed audit trail system that tracks all important actions:
+- **AuditLog table** - PostgreSQL table with action, severity, user info, target info, details
+- **API Endpoint** - GET `/api/admin/audit` for viewing logs (admin only)
+- **Server-side Logging** - `logAuditToDb()` function logs MEMBER_CREATE, MEMBER_UPDATE, MEMBER_DELETE, PENDING_APPROVE, PENDING_REJECT
+- **Dedicated Prisma client** - Bypasses mock pattern to ensure reliable database writes
+- **Admin Page** - `/admin/audit` shows filterable, paginated audit logs
+
 ### Pending Member Data Consistency (Dec 2024)
 All pending member operations now use the database API instead of localStorage:
 - **Admin Pending Page** - Fetches from `/api/admin/pending` using `reviewStatus` field
