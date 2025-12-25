@@ -113,30 +113,41 @@ function DuplicatesPageContent() {
     );
   };
 
-  // Merge members (keep member1, transfer data from member2)
-  const mergePair = (index: number, keepMemberId: string) => {
+  const [merging, setMerging] = useState<string | null>(null);
+
+  const mergePair = async (index: number, keepMemberId: string) => {
     const pair = duplicatePairs[index];
     const keepMember = keepMemberId === pair.member1.id ? pair.member1 : pair.member2;
     const removeMember = keepMemberId === pair.member1.id ? pair.member2 : pair.member1;
 
-    // In real implementation, this would:
-    // 1. Update all references to removeMember to point to keepMember
-    // 2. Merge any unique data from removeMember to keepMember
-    // 3. Mark removeMember as deleted or merged
+    setMerging(removeMember.id);
 
-    console.log('Merging:', removeMember.id, 'into', keepMember.id);
+    try {
+      const res = await fetch(`/api/members/${removeMember.id}/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          reason: `تم الدمج مع العضو ${keepMember.fullNameAr || keepMember.firstName} (${keepMember.id})`,
+          mergeIntoId: keepMember.id,
+        }),
+      });
 
-    // Store merge action
-    const mergeHistory = JSON.parse(localStorage.getItem('alshaye_merges') || '[]');
-    mergeHistory.push({
-      date: new Date().toISOString(),
-      keptMemberId: keepMember.id,
-      mergedMemberId: removeMember.id,
-      score: pair.score
-    });
-    localStorage.setItem('alshaye_merges', JSON.stringify(mergeHistory));
-
-    updateStatus(index, 'MERGED');
+      if (res.ok) {
+        updateStatus(index, 'MERGED');
+        setAllMembers(prev => prev.filter(m => m.id !== removeMember.id));
+      } else {
+        const err = await res.json();
+        alert(`فشل الدمج: ${err.error || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error merging:', error);
+      alert('حدث خطأ أثناء عملية الدمج');
+    } finally {
+      setMerging(null);
+    }
   };
 
   // Filtered pairs
@@ -166,17 +177,26 @@ function DuplicatesPageContent() {
       {/* Header */}
       <header className="bg-gradient-to-l from-[#1E3A5F] to-[#2D5A87] text-white py-6">
         <div className="container mx-auto px-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <ArrowRight className="w-6 h-6" />
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold">كشف التكرارات</h1>
-              <p className="text-white/80 text-sm">Duplicate Detection & Resolution</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <ArrowRight className="w-6 h-6" />
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold">كشف التكرارات</h1>
+                <p className="text-white/80 text-sm">Duplicate Detection & Resolution</p>
+              </div>
             </div>
+            <Link
+              href="/deleted"
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span>المحذوفين مؤخراً</span>
+            </Link>
           </div>
         </div>
       </header>
@@ -425,21 +445,36 @@ function DuplicatesPageContent() {
                           {pair.status === 'CONFIRMED' && (
                             <>
                               <div className="w-px bg-gray-200 mx-2" />
-                              <span className="text-sm text-gray-500 self-center">دمج - الاحتفاظ بـ:</span>
-                              <button
-                                onClick={() => mergePair(realIndex, pair.member1.id)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg"
-                              >
-                                <Merge className="w-4 h-4" />
-                                {pair.member1.firstName}
-                              </button>
-                              <button
-                                onClick={() => mergePair(realIndex, pair.member2.id)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg"
-                              >
-                                <Merge className="w-4 h-4" />
-                                {pair.member2.firstName}
-                              </button>
+                              <div className="flex flex-col gap-2">
+                                <span className="text-sm text-gray-600 font-medium">اختر العضو للاحتفاظ به (العضو الآخر سيحذف):</span>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => mergePair(realIndex, pair.member1.id)}
+                                    disabled={merging !== null}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+                                  >
+                                    {merging === pair.member2.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                    احتفظ بـ {pair.member1.firstName}
+                                  </button>
+                                  <button
+                                    onClick={() => mergePair(realIndex, pair.member2.id)}
+                                    disabled={merging !== null}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+                                  >
+                                    {merging === pair.member1.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                    احتفظ بـ {pair.member2.firstName}
+                                  </button>
+                                </div>
+                                <span className="text-xs text-gray-500">* يمكن استعادة العضو المحذوف من صفحة "المحذوفين مؤخراً"</span>
+                              </div>
                             </>
                           )}
 
