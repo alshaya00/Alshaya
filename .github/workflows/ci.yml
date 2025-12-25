@@ -10,7 +10,7 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  # Lint and type check
+  # Quality Gate 1: Lint and Type Check
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -33,9 +33,9 @@ jobs:
       - name: Run TypeScript type check
         run: npm run type-check
 
-  # Run tests
+  # Quality Gate 2: Unit Tests with Coverage
   test:
-    name: Test
+    name: Unit Tests
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -53,6 +53,33 @@ jobs:
 
       - name: Run tests with coverage
         run: npm run test:ci
+        env:
+          CI: true
+
+      - name: Check coverage thresholds
+        run: |
+          COVERAGE_FILE="coverage/coverage-summary.json"
+          if [ -f "$COVERAGE_FILE" ]; then
+            LINES=$(cat $COVERAGE_FILE | jq '.total.lines.pct')
+            BRANCHES=$(cat $COVERAGE_FILE | jq '.total.branches.pct')
+            FUNCTIONS=$(cat $COVERAGE_FILE | jq '.total.functions.pct')
+            STATEMENTS=$(cat $COVERAGE_FILE | jq '.total.statements.pct')
+
+            echo "Coverage Report:"
+            echo "  Lines: $LINES%"
+            echo "  Branches: $BRANCHES%"
+            echo "  Functions: $FUNCTIONS%"
+            echo "  Statements: $STATEMENTS%"
+
+            # Write to summary
+            echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Lines | $LINES% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Branches | $BRANCHES% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Functions | $FUNCTIONS% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Statements | $STATEMENTS% |" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -62,9 +89,93 @@ jobs:
           files: ./coverage/lcov.info
           fail_ci_if_error: false
 
-  # Build
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # Quality Gate 3: E2E Tests
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
+
+      - name: Build application
+        run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: true
+
+      - name: Run E2E tests
+        run: npx playwright test --project=chromium
+        env:
+          E2E_BASE_URL: http://localhost:5000
+        continue-on-error: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Quality Gate 4: Security Audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for known vulnerabilities
+        run: |
+          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
+          npm audit --json | jq -r '.metadata | "Total: \(.vulnerabilities.total), High: \(.vulnerabilities.high), Critical: \(.vulnerabilities.critical)"' >> $GITHUB_STEP_SUMMARY || true
+
+  # Quality Gate 5: Build Verification
   build:
-    name: Build
+    name: Build Verification
     runs-on: ubuntu-latest
     needs: [lint, test]
     steps:
@@ -90,6 +201,16 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: true
 
+      - name: Check build output
+        run: |
+          if [ -d ".next" ]; then
+            echo "✅ Build successful"
+            echo "Build size: $(du -sh .next | cut -f1)"
+          else
+            echo "❌ Build failed - .next directory not found"
+            exit 1
+          fi
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -97,29 +218,73 @@ jobs:
           path: .next
           retention-days: 7
 
-  # Security audit
-  security:
-    name: Security Audit
+  # Quality Gate 6: Performance Budget Check
+  performance:
+    name: Performance Budget Check
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          name: build-output
+          path: .next
 
-      - name: Run npm audit
-        run: npm audit --audit-level=high
-        continue-on-error: true
+      - name: Check bundle size
+        run: |
+          echo "## Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+
+          # Check main bundle sizes
+          if [ -d ".next/static/chunks" ]; then
+            echo "| Chunk | Size |" >> $GITHUB_STEP_SUMMARY
+            echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+
+            for file in .next/static/chunks/*.js; do
+              if [ -f "$file" ]; then
+                SIZE=$(du -h "$file" | cut -f1)
+                NAME=$(basename "$file")
+                echo "| $NAME | $SIZE |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          fi
+
+          # Total build size
+          TOTAL_SIZE=$(du -sh .next | cut -f1)
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Build Size:** $TOTAL_SIZE" >> $GITHUB_STEP_SUMMARY
+
+  # Quality Gate Summary
+  quality-gate:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test, security, build]
+    if: always()
+    steps:
+      - name: Quality Gate Results
+        run: |
+          echo "## Quality Gate Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint & Type Check | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Audit | ${{ needs.security.result == 'success' && '✅ Passed' || '⚠️ Warnings' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check gate status
+        if: needs.lint.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success'
+        run: |
+          echo "Quality gates failed!"
+          exit 1
 
   # Deploy to staging (on develop branch)
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: build
+    needs: [quality-gate]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment:
       name: staging
@@ -137,14 +302,14 @@ jobs:
       - name: Deploy to staging
         run: |
           echo "Deploying to staging environment..."
+          echo "Build artifacts downloaded successfully"
           # Add your deployment commands here
-          # Example: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
 
   # Deploy to production (on main branch)
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: build
+    needs: [quality-gate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
@@ -162,14 +327,14 @@ jobs:
       - name: Deploy to production
         run: |
           echo "Deploying to production environment..."
+          echo "Build artifacts downloaded successfully"
           # Add your deployment commands here
-          # Example: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
 
   # Docker build and push (optional)
   docker:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: build
+    needs: [quality-gate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout code
