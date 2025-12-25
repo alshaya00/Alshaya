@@ -10,6 +10,7 @@ import {
   Users, Lock, ArrowRight, Loader2, X, Search
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FormData {
   email: string;
@@ -29,6 +30,7 @@ type JoinPath = 'invite' | 'request' | 'browse' | null;
 const RELATIONSHIP_TYPES = relationshipTypes;
 
 export default function RegisterPage() {
+  const { session } = useAuth();
   const router = useRouter();
   const [joinPath, setJoinPath] = useState<JoinPath>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
@@ -54,7 +56,8 @@ export default function RegisterPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members?limit=500');
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/members?limit=500', { headers });
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);
@@ -64,7 +67,7 @@ export default function RegisterPage() {
       }
     }
     fetchMembers();
-  }, []);
+  }, [session?.token]);
 
   const filteredMembers = allMembers.filter((m) => {
     if (!searchQuery) return false;

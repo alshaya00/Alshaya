@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Mail,
   MessageSquare,
@@ -45,6 +46,7 @@ const EMAIL_PROVIDERS = emailProviders.map(p => ({ ...p, label: p.labelAr }));
 const OTP_PROVIDERS = otpProviders.map(p => ({ ...p, label: p.labelAr }));
 
 export default function ApiServicesPage() {
+  const { session } = useAuth();
   const [config, setConfig] = useState<ApiConfig>({
     emailProvider: 'none',
     emailApiKey: null,
@@ -75,12 +77,15 @@ export default function ApiServicesPage() {
 
   // Load configuration
   useEffect(() => {
-    loadConfig();
-  }, []);
+    if (session?.token) {
+      loadConfig();
+    }
+  }, [session?.token]);
 
   const loadConfig = async () => {
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      const response = await fetch('/api/admin/services');
+      const response = await fetch('/api/admin/services', { headers });
       const data = await response.json();
       if (data.success && data.data) {
         setConfig(data.data);
@@ -96,11 +101,14 @@ export default function ApiServicesPage() {
   const saveConfig = async () => {
     setIsSaving(true);
     setMessage(null);
+    const headers: HeadersInit = session?.token 
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` } 
+      : { 'Content-Type': 'application/json' };
 
     try {
       const response = await fetch('/api/admin/services', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(config),
       });
 
@@ -132,11 +140,14 @@ export default function ApiServicesPage() {
 
     setIsTesting(type);
     setMessage(null);
+    const headers: HeadersInit = session?.token 
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` } 
+      : { 'Content-Type': 'application/json' };
 
     try {
       const response = await fetch('/api/admin/services', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ type, to }),
       });
 

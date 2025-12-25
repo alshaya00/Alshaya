@@ -22,6 +22,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChangeRecord {
   id: string;
@@ -44,6 +45,7 @@ interface Snapshot {
 }
 
 export default function HistoryPage() {
+  const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<'changes' | 'snapshots'>('changes');
   const [changes, setChanges] = useState<ChangeRecord[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
@@ -62,7 +64,8 @@ export default function HistoryPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members?limit=500');
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/members?limit=500', { headers });
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);
@@ -72,7 +75,7 @@ export default function HistoryPage() {
       }
     }
     fetchMembers();
-  }, []);
+  }, [session?.token]);
 
   useEffect(() => {
     const editHistory = JSON.parse(localStorage.getItem('alshaye_edit_history') || '[]');

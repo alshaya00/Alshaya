@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, GitBranch, Calendar, MapPin } from 'lucide-react';
 import ExportPDF from '@/components/ExportPDF';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Statistics {
   totalMembers: number;
@@ -30,6 +31,7 @@ interface FamilyMember {
 }
 
 export default function DashboardPage() {
+  const { session } = useAuth();
   const [stats, setStats] = useState<Statistics>({
     totalMembers: 0,
     males: 0,
@@ -44,11 +46,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const statsRes = await fetch('/api/statistics');
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const statsRes = await fetch('/api/statistics', { headers });
         const statsData = await statsRes.json();
         setStats(statsData);
 
-        const membersRes = await fetch('/api/members?limit=500');
+        const membersRes = await fetch('/api/members?limit=500', { headers });
         if (membersRes.ok) {
           const membersData = await membersRes.json();
           setAllMembers(membersData.data || []);
@@ -60,7 +63,7 @@ export default function DashboardPage() {
       }
     };
     loadData();
-  }, []);
+  }, [session?.token]);
 
   // Calculate additional statistics
   const livingMembers = allMembers.filter((m) => m.status === 'Living').length;

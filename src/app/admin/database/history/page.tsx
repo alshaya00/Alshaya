@@ -18,6 +18,7 @@ import {
   ChevronDown,
   X,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChangeHistoryItem {
   id: string;
@@ -35,6 +36,7 @@ interface ChangeHistoryItem {
 }
 
 export default function HistoryPage() {
+  const { session } = useAuth();
   const [changes, setChanges] = useState<ChangeHistoryItem[]>([]);
   const [filteredChanges, setFilteredChanges] = useState<ChangeHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,9 +49,13 @@ export default function HistoryPage() {
     dateTo: '',
   });
 
+  const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+
   useEffect(() => {
-    loadHistory();
-  }, []);
+    if (session?.token) {
+      loadHistory();
+    }
+  }, [session?.token]);
 
   useEffect(() => {
     applyFilters();
@@ -58,7 +64,7 @@ export default function HistoryPage() {
   const loadHistory = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/history?limit=500');
+      const res = await fetch('/api/admin/history?limit=500', { headers });
       const data = await res.json();
       setChanges(data.changes || []);
     } catch (error) {

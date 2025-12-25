@@ -18,6 +18,7 @@ import {
   TreePine, Clock, AlertCircle, X, Eye, Send, Edit2, Trash2,
   CheckCircle, Users, GitBranch, Info, List, Maximize2, Loader2
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Step definitions
 type Step = 'info' | 'add' | 'review' | 'submitted';
@@ -188,6 +189,7 @@ function PendingTreeNode({
 }
 
 export default function BranchEntryPage() {
+  const { session } = useAuth();
   const params = useParams();
   const token = params.token as string;
 
@@ -222,7 +224,8 @@ export default function BranchEntryPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/members?limit=500');
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/members?limit=500', { headers });
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);
@@ -232,7 +235,7 @@ export default function BranchEntryPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [session?.token]);
 
   useEffect(() => {
     if (allMembers.length === 0) return;

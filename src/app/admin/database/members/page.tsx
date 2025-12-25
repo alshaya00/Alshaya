@@ -21,11 +21,13 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 type SortField = keyof FamilyMember;
 type SortDirection = 'asc' | 'desc';
 
 export default function MembersTablePage() {
+  const { session } = useAuth();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,9 +46,13 @@ export default function MembersTablePage() {
     branch: '',
   });
 
+  const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+
   useEffect(() => {
-    loadMembers();
-  }, []);
+    if (session?.token) {
+      loadMembers();
+    }
+  }, [session?.token]);
 
   useEffect(() => {
     applyFiltersAndSort();
@@ -55,7 +61,7 @@ export default function MembersTablePage() {
   const loadMembers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/members');
+      const res = await fetch('/api/members', { headers });
       const data = await res.json();
       setMembers(data.members || []);
     } catch (error) {
@@ -148,7 +154,7 @@ export default function MembersTablePage() {
 
     for (const id of selectedMembers) {
       try {
-        await fetch(`/api/members/${id}`, { method: 'DELETE' });
+        await fetch(`/api/members/${id}`, { method: 'DELETE', headers });
       } catch (error) {
         console.error(`Error deleting member ${id}:`, error);
       }
@@ -164,7 +170,7 @@ export default function MembersTablePage() {
     try {
       await fetch(`/api/members/${editingMember.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(editingMember),
       });
       setEditingMember(null);

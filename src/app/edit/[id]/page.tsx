@@ -32,10 +32,12 @@ import {
   CascadeUpdate,
 } from '@/lib/edit-utils';
 import type { FamilyMember, ValidationError } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 type EditSection = 'identity' | 'family' | 'personal' | 'contact';
 
 export default function EditMemberPage() {
+  const { session } = useAuth();
   const params = useParams();
   const router = useRouter();
   const memberId = params.id as string;
@@ -57,9 +59,10 @@ export default function EditMemberPage() {
   useEffect(() => {
     async function fetchData() {
       try {
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
         const [memberRes, allRes] = await Promise.all([
-          fetch(`/api/members/${memberId}`),
-          fetch('/api/members?limit=500')
+          fetch(`/api/members/${memberId}`, { headers }),
+          fetch('/api/members?limit=500', { headers })
         ]);
         if (memberRes.ok) {
           const memberData = await memberRes.json();
@@ -77,7 +80,7 @@ export default function EditMemberPage() {
       }
     }
     fetchData();
-  }, [memberId]);
+  }, [memberId, session?.token]);
 
   const potentialFathers = useMemo(() => {
     return allMembers.filter(m =>

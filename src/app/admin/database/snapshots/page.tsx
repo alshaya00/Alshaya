@@ -17,6 +17,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Snapshot {
   id: string;
@@ -31,6 +32,7 @@ interface Snapshot {
 }
 
 export default function SnapshotsPage() {
+  const { session } = useAuth();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -38,14 +40,18 @@ export default function SnapshotsPage() {
   const [showRestoreConfirm, setShowRestoreConfirm] = useState<Snapshot | null>(null);
   const [newSnapshot, setNewSnapshot] = useState({ name: '', description: '' });
 
+  const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+
   useEffect(() => {
-    loadSnapshots();
-  }, []);
+    if (session?.token) {
+      loadSnapshots();
+    }
+  }, [session?.token]);
 
   const loadSnapshots = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/snapshots');
+      const res = await fetch('/api/admin/snapshots', { headers });
       const data = await res.json();
       setSnapshots(data.snapshots || []);
     } catch (error) {
@@ -69,7 +75,7 @@ export default function SnapshotsPage() {
     setIsCreating(true);
     try {
       // Fetch current members
-      const membersRes = await fetch('/api/members');
+      const membersRes = await fetch('/api/members', { headers });
       const membersData = await membersRes.json();
 
       const snapshot: Snapshot = {
@@ -87,7 +93,7 @@ export default function SnapshotsPage() {
       // Save to API
       await fetch('/api/admin/snapshots', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(snapshot),
       }).catch(() => {
         // Fallback to localStorage
@@ -114,7 +120,7 @@ export default function SnapshotsPage() {
       // For now, we'll just show a confirmation
       await fetch('/api/admin/snapshots/restore', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ snapshotId: snapshot.id }),
       }).catch(() => {
         // If API fails, just show success for demo
@@ -132,7 +138,7 @@ export default function SnapshotsPage() {
     if (!confirm('هل أنت متأكد من حذف هذه النسخة الاحتياطية؟')) return;
 
     try {
-      await fetch(`/api/admin/snapshots/${id}`, { method: 'DELETE' }).catch(() => {
+      await fetch(`/api/admin/snapshots/${id}`, { method: 'DELETE', headers }).catch(() => {
         // Fallback to localStorage
         const stored = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
         localStorage.setItem(

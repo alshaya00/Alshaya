@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Wrench,
   ChevronLeft,
@@ -34,6 +35,7 @@ interface CleanupItem {
 }
 
 export default function ToolsPage() {
+  const { session } = useAuth();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [integrityChecks, setIntegrityChecks] = useState<IntegrityCheck[]>([]);
@@ -47,12 +49,15 @@ export default function ToolsPage() {
   });
 
   useEffect(() => {
-    loadStats();
-  }, []);
+    if (session?.token) {
+      loadStats();
+    }
+  }, [session?.token]);
 
   const loadStats = async () => {
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      const membersRes = await fetch('/api/members');
+      const membersRes = await fetch('/api/members', { headers });
       const membersData = await membersRes.json();
 
       setStats({
@@ -96,9 +101,10 @@ export default function ToolsPage() {
 
   const createBackup = async () => {
     setIsBackingUp(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
       // Fetch all data
-      const membersRes = await fetch('/api/members');
+      const membersRes = await fetch('/api/members', { headers });
       const membersData = await membersRes.json();
 
       const backup = {
@@ -158,7 +164,8 @@ export default function ToolsPage() {
     const checks: Array<{ name: string; check: () => Promise<{ passed: boolean; warning?: boolean; message?: string }> }> = [
       { name: 'فحص اتصال قاعدة البيانات', check: async () => ({ passed: true }) },
       { name: 'التحقق من سلامة العلاقات', check: async () => {
-        const res = await fetch('/api/members');
+        const checkHeaders: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/members', { headers: checkHeaders });
         const data = await res.json();
         const members = data.members || [];
         const orphans = members.filter((m: { fatherId: string | null }) =>

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { validateParentChange } from '@/lib/edit-utils';
 import type { FamilyMember, TreeNode } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface D3Node extends d3.HierarchyPointNode<TreeNode> {
   x0?: number;
@@ -75,6 +76,7 @@ function buildFamilyTreeFromMembers(members: FamilyMember[]): TreeNode | null {
 }
 
 export default function TreeEditorPage() {
+  const { session } = useAuth();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +86,8 @@ export default function TreeEditorPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members?limit=500');
+        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const res = await fetch('/api/members?limit=500', { headers });
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);
@@ -96,7 +99,7 @@ export default function TreeEditorPage() {
       }
     }
     fetchMembers();
-  }, []);
+  }, [session?.token]);
 
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [editMode, setEditMode] = useState(false);

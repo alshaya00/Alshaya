@@ -18,6 +18,7 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SystemConfig {
   // Display Settings
@@ -69,6 +70,7 @@ const defaultConfig: SystemConfig = {
 };
 
 export default function ConfigPage() {
+  const { session } = useAuth();
   const [config, setConfig] = useState<SystemConfig>(defaultConfig);
   const [originalConfig, setOriginalConfig] = useState<SystemConfig>(defaultConfig);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,9 +78,13 @@ export default function ConfigPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<'display' | 'validation' | 'security' | 'features'>('display');
 
+  const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+
   useEffect(() => {
-    loadConfig();
-  }, []);
+    if (session?.token) {
+      loadConfig();
+    }
+  }, [session?.token]);
 
   useEffect(() => {
     setHasChanges(JSON.stringify(config) !== JSON.stringify(originalConfig));
@@ -87,7 +93,7 @@ export default function ConfigPage() {
   const loadConfig = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/config');
+      const res = await fetch('/api/admin/config', { headers });
       const data = await res.json();
       if (data.config) {
         setConfig(data.config);
@@ -111,7 +117,7 @@ export default function ConfigPage() {
     try {
       await fetch('/api/admin/config', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(config),
       }).catch(() => {
         // Fallback to localStorage

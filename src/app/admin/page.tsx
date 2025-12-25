@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Users,
   UserCheck,
@@ -63,6 +64,7 @@ interface RecentActivity {
 }
 
 export default function AdminDashboardPage() {
+  const { session } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     pendingApprovals: 0,
@@ -80,14 +82,17 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (session?.token) {
+      loadDashboardData();
+    }
+  }, [session?.token]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
       // Load statistics from API
-      const statsRes = await fetch('/api/statistics');
+      const statsRes = await fetch('/api/statistics', { headers });
       const statsData = await statsRes.json();
 
       // Load admins from localStorage
@@ -95,31 +100,31 @@ export default function AdminDashboardPage() {
       const activeAdmins = admins.filter((a: { isActive: boolean }) => a.isActive).length;
 
       // Load pending members
-      const pendingRes = await fetch('/api/admin/pending');
+      const pendingRes = await fetch('/api/admin/pending', { headers });
       const pendingData = await pendingRes.json().catch(() => ({ pending: [] }));
 
       // Load snapshots for last backup
-      const snapshotsRes = await fetch('/api/admin/snapshots');
+      const snapshotsRes = await fetch('/api/admin/snapshots', { headers });
       const snapshotsData = await snapshotsRes.json().catch(() => ({ snapshots: [] }));
 
       // Load history for recent changes
-      const historyRes = await fetch('/api/admin/history?limit=10');
+      const historyRes = await fetch('/api/admin/history?limit=10', { headers });
       const historyData = await historyRes.json().catch(() => ({ changes: [] }));
 
       // Load duplicates
-      const duplicatesRes = await fetch('/api/admin/duplicates');
+      const duplicatesRes = await fetch('/api/admin/duplicates', { headers });
       const duplicatesData = await duplicatesRes.json().catch(() => ({ duplicates: [] }));
 
       // Load branch links
-      const branchLinksRes = await fetch('/api/admin/branch-links');
+      const branchLinksRes = await fetch('/api/admin/branch-links', { headers });
       const branchLinksData = await branchLinksRes.json().catch(() => ({ links: [] }));
 
       // Load pending images
-      const pendingImagesRes = await fetch('/api/images/pending');
+      const pendingImagesRes = await fetch('/api/images/pending', { headers });
       const pendingImagesData = await pendingImagesRes.json().catch(() => ({ pending: [] }));
 
       // Load access requests
-      const accessReqRes = await fetch('/api/access-requests');
+      const accessReqRes = await fetch('/api/access-requests', { headers });
       const accessReqData = await accessReqRes.json().catch(() => ({ requests: [] }));
 
       const pendingApprovals = pendingData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0;

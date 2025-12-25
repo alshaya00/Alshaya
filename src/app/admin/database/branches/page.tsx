@@ -21,8 +21,10 @@ import {
 import type { BranchEntryLink } from '@/lib/types';
 import { storageKeys } from '@/config/storage-keys';
 import { tokenConfig } from '@/config/admin-config';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function BranchLinksPage() {
+  const { session } = useAuth();
   const [links, setLinks] = useState<BranchEntryLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -33,14 +35,18 @@ export default function BranchLinksPage() {
     maxUses: '',
   });
 
+  const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+
   useEffect(() => {
-    loadLinks();
-  }, []);
+    if (session?.token) {
+      loadLinks();
+    }
+  }, [session?.token]);
 
   const loadLinks = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/branch-links');
+      const res = await fetch('/api/admin/branch-links', { headers });
       const data = await res.json();
       setLinks(data.links || []);
     } catch (error) {
@@ -89,7 +95,7 @@ export default function BranchLinksPage() {
     try {
       await fetch('/api/admin/branch-links', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(link),
       }).catch(() => {
         // Fallback to localStorage
@@ -113,7 +119,7 @@ export default function BranchLinksPage() {
     try {
       await fetch(`/api/admin/branch-links/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ isActive: !link.isActive }),
       }).catch(() => {
         // Fallback
@@ -136,7 +142,7 @@ export default function BranchLinksPage() {
     if (!confirm('هل أنت متأكد من حذف هذا الرابط؟')) return;
 
     try {
-      await fetch(`/api/admin/branch-links/${id}`, { method: 'DELETE' }).catch(() => {
+      await fetch(`/api/admin/branch-links/${id}`, { method: 'DELETE', headers }).catch(() => {
         // Fallback
         const stored = JSON.parse(localStorage.getItem(storageKeys.branchLinks) || '[]');
         localStorage.setItem(
