@@ -134,6 +134,12 @@ All pages and API routes now fetch exclusively from PostgreSQL:
 - `src/lib/postgres-db.ts` - Direct Prisma queries, no try/catch fallbacks
 - `src/lib/data.ts` - Type definitions only (no longer used for data)
 
+### Tree Editor Features (Dec 2024)
+- **Change Parent dropdown** - In edit mode, select new parent from dropdown for any member
+- **Multi-root support** - Virtual root created when multiple founders exist
+- **Parent changes** - Saved via PATCH /api/members/[id] with { fatherId: newParentId }
+- **Public fallback** - Falls back to /api/tree when not authenticated
+
 ### Updated Files
 - `src/app/tree/page.tsx` - Fetches members from API
 - `src/app/search/page.tsx` - Fetches from API with loading states

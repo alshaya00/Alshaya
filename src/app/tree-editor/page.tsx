@@ -58,7 +58,7 @@ function buildFamilyTreeFromMembers(members: FamilyMember[]): TreeNode | null {
     memberMap.set(m.id, { ...m, children: [] } as unknown as TreeNode);
   });
 
-  let root: TreeNode | null = null;
+  const roots: TreeNode[] = [];
   memberMap.forEach((node, id) => {
     const member = members.find(m => m.id === id);
     if (member?.fatherId && memberMap.has(member.fatherId)) {
@@ -68,11 +68,29 @@ function buildFamilyTreeFromMembers(members: FamilyMember[]): TreeNode | null {
         parent.children.push(node);
       }
     } else if (!member?.fatherId) {
-      root = node;
+      roots.push(node);
     }
   });
 
-  return root;
+  // If we have multiple roots, create a virtual root to contain them
+  if (roots.length === 0) return null;
+  if (roots.length === 1) return roots[0];
+  
+  // Create virtual root for multiple roots (forest)
+  const virtualRoot: TreeNode = {
+    id: 'virtual-root',
+    firstName: 'آل شايع',
+    fullNameAr: 'آل شايع',
+    fullNameEn: 'Al-Shaye Family',
+    gender: 'Male' as const,
+    generation: 0,
+    status: 'Living' as const,
+    children: roots,
+    sonsCount: roots.filter(r => r.gender === 'Male').length,
+    daughtersCount: roots.filter(r => r.gender === 'Female').length,
+  } as TreeNode;
+  
+  return virtualRoot;
 }
 
 export default function TreeEditorPage() {
@@ -86,11 +104,46 @@ export default function TreeEditorPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
-        const res = await fetch('/api/members?limit=500', { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setAllMembers(data.data || []);
+        // Try authenticated endpoint first for full data access
+        if (session?.token) {
+          const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
+          const res = await fetch('/api/members?limit=500', { headers });
+          if (res.ok) {
+            const data = await res.json();
+            setAllMembers(data.data || []);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // Fall back to public tree endpoint
+        const treeRes = await fetch('/api/tree');
+        if (treeRes.ok) {
+          const treeData = await treeRes.json();
+          // Flatten tree to array of members
+          const members: FamilyMember[] = [];
+          function extractMembers(node: any, parentId: string | null = null) {
+            if (!node) return;
+            members.push({
+              id: node.id,
+              firstName: node.firstName,
+              fullNameAr: node.fullNameAr,
+              gender: node.gender as 'Male' | 'Female',
+              generation: node.generation,
+              birthYear: node.birthYear,
+              deathYear: node.deathYear,
+              status: node.status as 'Living' | 'Deceased',
+              sonsCount: node.sonsCount || 0,
+              daughtersCount: node.daughtersCount || 0,
+              fatherId: parentId,
+              children: node.children,
+            } as FamilyMember);
+            if (node.children) {
+              node.children.forEach((child: any) => extractMembers(child, node.id));
+            }
+          }
+          extractMembers(treeData);
+          setAllMembers(members);
         }
       } catch (error) {
         console.error('Error fetching members:', error);
@@ -352,7 +405,7 @@ export default function TreeEditorPage() {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [treeData, selectedNode]);
+  }, [treeData]); // Only rebuild when data changes, not on selection
 
   // Zoom controls
   const handleZoomIn = () => {
@@ -410,22 +463,70 @@ export default function TreeEditorPage() {
     setPendingChanges(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Save all changes
+  // Save all changes to database
+  const [isSaving, setIsSaving] = useState(false);
+  
   const saveChanges = async () => {
     if (pendingChanges.length === 0) return;
-
-    // Save to localStorage
+    
+    setIsSaving(true);
+    const headers: HeadersInit = session?.token 
+      ? { 'Authorization': `Bearer ${session.token}`, 'Content-Type': 'application/json' } 
+      : { 'Content-Type': 'application/json' };
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const change of pendingChanges) {
+      if (change.type === 'PARENT_CHANGE') {
+        try {
+          const res = await fetch(`/api/members/${change.memberId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({
+              fatherId: change.newParentId,
+            }),
+          });
+          
+          if (res.ok) {
+            successCount++;
+            // Update local state
+            setAllMembers(prev => prev.map(m => 
+              m.id === change.memberId 
+                ? { ...m, fatherId: change.newParentId } 
+                : m
+            ));
+          } else {
+            errorCount++;
+            console.error('Failed to save change:', await res.text());
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('Error saving change:', error);
+        }
+      }
+    }
+    
+    // Also save to localStorage for history
     const history = JSON.parse(localStorage.getItem('alshaye_tree_changes') || '[]');
     history.push({
       timestamp: new Date().toISOString(),
-      changes: pendingChanges
+      changes: pendingChanges,
+      savedToDb: successCount,
+      errors: errorCount
     });
     localStorage.setItem('alshaye_tree_changes', JSON.stringify(history));
 
     // Clear pending
     setPendingChanges([]);
     setEditMode(false);
-    alert('تم حفظ التغييرات بنجاح');
+    setIsSaving(false);
+    
+    if (errorCount === 0) {
+      alert(`تم حفظ ${successCount} تغيير بنجاح`);
+    } else {
+      alert(`تم حفظ ${successCount} تغيير، فشل ${errorCount} تغيير`);
+    }
   };
 
   return (
@@ -463,10 +564,20 @@ export default function TreeEditorPage() {
             {pendingChanges.length > 0 && (
               <button
                 onClick={saveChanges}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" />
-                حفظ ({pendingChanges.length})
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    جاري الحفظ...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    حفظ ({pendingChanges.length})
+                  </>
+                )}
               </button>
             )}
 
@@ -510,7 +621,25 @@ export default function TreeEditorPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Tree canvas */}
         <div ref={containerRef} className="flex-1 relative">
-          <svg ref={svgRef} className="w-full h-full" />
+          {isLoading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <div className="w-16 h-16 border-4 border-[#1E3A5F] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-600">جاري تحميل بيانات الشجرة...</p>
+                <p className="text-gray-400 text-sm">Loading tree data...</p>
+              </div>
+            </div>
+          ) : !treeData ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+              <div className="text-center text-gray-500">
+                <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">لا توجد بيانات</p>
+                <p className="text-sm">No tree data available</p>
+              </div>
+            </div>
+          ) : (
+            <svg ref={svgRef} className="w-full h-full" />
+          )}
 
           {/* Instructions overlay */}
           {editMode && (
@@ -662,6 +791,60 @@ export default function TreeEditorPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Change Parent - Only in Edit Mode */}
+                  {editMode && selectedNode.id !== 'virtual-root' && (
+                    <div className="pt-4 border-t">
+                      <h4 className="font-bold text-yellow-700 mb-2 flex items-center gap-2">
+                        <Move className="w-4 h-4" />
+                        تغيير الأب
+                      </h4>
+                      <select
+                        className="w-full p-2 border rounded-lg text-sm"
+                        value={selectedNode.fatherId || ''}
+                        onChange={(e) => {
+                          const newParentId = e.target.value || null;
+                          const oldParent = allMembers.find(m => m.id === selectedNode.fatherId);
+                          const newParent = allMembers.find(m => m.id === newParentId);
+                          
+                          // Prevent setting self as parent
+                          if (newParentId === selectedNode.id) {
+                            alert('لا يمكن تعيين العضو كأب لنفسه');
+                            return;
+                          }
+                          
+                          const change: PendingChange = {
+                            type: 'PARENT_CHANGE',
+                            memberId: selectedNode.id,
+                            memberName: selectedNode.fullNameAr || selectedNode.firstName,
+                            oldParentId: selectedNode.fatherId || null,
+                            newParentId: newParentId,
+                            oldParentName: oldParent?.firstName || null,
+                            newParentName: newParent?.firstName || null
+                          };
+                          
+                          setPendingChanges(prev => [...prev, change]);
+                          
+                          // Update selected node locally for preview
+                          setSelectedNode(prev => prev ? { ...prev, fatherId: newParentId } : null);
+                        }}
+                      >
+                        <option value="">بدون أب (جذر)</option>
+                        {allMembers
+                          .filter(m => m.id !== selectedNode.id && m.id !== 'virtual-root')
+                          .sort((a, b) => (a.generation || 0) - (b.generation || 0))
+                          .map(m => (
+                            <option key={m.id} value={m.id}>
+                              {m.firstName} - الجيل {m.generation} ({m.id})
+                            </option>
+                          ))
+                        }
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        اختر الأب الجديد من القائمة
+                      </p>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="pt-4 border-t space-y-2">
