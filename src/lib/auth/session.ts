@@ -139,6 +139,10 @@ export function getStoredToken(): string | null {
  */
 export function userHasPermission(user: SessionUser | null, permission: PermissionKey): boolean {
   if (!user) return false;
+  
+  // SUPER_ADMIN has all permissions
+  if (user.role === 'SUPER_ADMIN') return true;
+  
   return user.permissions[permission] ?? false;
 }
 
