@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+// Use dedicated Prisma client to avoid mock pattern
+const prisma = new PrismaClient();
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
