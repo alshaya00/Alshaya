@@ -16,30 +16,35 @@ import {
   Phone,
 } from 'lucide-react';
 import type { PendingMember } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PendingPage() {
   const [pending, setPending] = useState<PendingMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPending, setSelectedPending] = useState<PendingMember | null>(null);
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED'>('all');
+  const { session } = useAuth();
 
   useEffect(() => {
-    loadPending();
-  }, []);
+    if (session?.token) {
+      loadPending();
+    }
+  }, [session?.token]);
 
   const loadPending = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/pending');
+      const res = await fetch('/api/admin/pending', {
+        headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+      });
+      if (!res.ok) {
+        throw new Error('Failed to fetch pending members');
+      }
       const data = await res.json();
       setPending(data.pending || []);
     } catch (error) {
       console.error('Error loading pending:', error);
-      // Load from localStorage as fallback
-      const stored = localStorage.getItem('alshaye_pending_members');
-      if (stored) {
-        setPending(JSON.parse(stored));
-      }
+      setPending([]);
     } finally {
       setIsLoading(false);
     }
@@ -47,14 +52,13 @@ export default function PendingPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      await fetch(`/api/admin/pending/${id}/approve`, { method: 'POST' }).catch(() => {
-        // Fallback
-        const stored = JSON.parse(localStorage.getItem('alshaye_pending_members') || '[]');
-        const updated = stored.map((p: PendingMember) =>
-          p.id === id ? { ...p, reviewStatus: 'APPROVED', reviewedAt: new Date().toISOString() } : p
-        );
-        localStorage.setItem('alshaye_pending_members', JSON.stringify(updated));
+      const res = await fetch(`/api/admin/pending/${id}/approve`, { 
+        method: 'POST',
+        headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
       });
+      if (!res.ok) {
+        throw new Error('Failed to approve member');
+      }
 
       setPending((prev) =>
         prev.map((p) =>
@@ -62,26 +66,27 @@ export default function PendingPage() {
         )
       );
       alert('تمت الموافقة على الطلب');
+      loadPending();
     } catch (error) {
       console.error('Error approving:', error);
+      alert('فشل في الموافقة على الطلب');
     }
   };
 
   const handleReject = async (id: string) => {
     const reason = prompt('سبب الرفض (اختياري):');
     try {
-      await fetch(`/api/admin/pending/${id}/reject`, {
+      const res = await fetch(`/api/admin/pending/${id}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+        },
         body: JSON.stringify({ reason }),
-      }).catch(() => {
-        // Fallback
-        const stored = JSON.parse(localStorage.getItem('alshaye_pending_members') || '[]');
-        const updated = stored.map((p: PendingMember) =>
-          p.id === id ? { ...p, reviewStatus: 'REJECTED', reviewNotes: reason, reviewedAt: new Date().toISOString() } : p
-        );
-        localStorage.setItem('alshaye_pending_members', JSON.stringify(updated));
       });
+      if (!res.ok) {
+        throw new Error('Failed to reject member');
+      }
 
       setPending((prev) =>
         prev.map((p) =>
@@ -89,8 +94,10 @@ export default function PendingPage() {
         )
       );
       alert('تم رفض الطلب');
+      loadPending();
     } catch (error) {
       console.error('Error rejecting:', error);
+      alert('فشل في رفض الطلب');
     }
   };
 

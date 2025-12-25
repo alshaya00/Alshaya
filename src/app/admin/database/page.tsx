@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   CheckCircle,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TableInfo {
   name: string;
@@ -30,21 +31,25 @@ export default function DatabasePage() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<'healthy' | 'warning' | 'error'>('healthy');
+  const { session } = useAuth();
 
   useEffect(() => {
-    loadTableInfo();
-  }, []);
+    if (session?.token) {
+      loadTableInfo();
+    }
+  }, [session?.token]);
 
   const loadTableInfo = async () => {
     setIsLoading(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
       // Fetch counts for each table
       const [membersRes, historyRes, snapshotsRes, pendingRes, branchLinksRes] = await Promise.all([
-        fetch('/api/members').then(r => r.json()).catch(() => ({ members: [] })),
-        fetch('/api/admin/history?limit=1000').then(r => r.json()).catch(() => ({ changes: [] })),
-        fetch('/api/admin/snapshots').then(r => r.json()).catch(() => ({ snapshots: [] })),
-        fetch('/api/admin/pending').then(r => r.json()).catch(() => ({ pending: [] })),
-        fetch('/api/admin/branch-links').then(r => r.json()).catch(() => ({ links: [] })),
+        fetch('/api/members', { headers }).then(r => r.json()).catch(() => ({ members: [] })),
+        fetch('/api/admin/history?limit=1000', { headers }).then(r => r.json()).catch(() => ({ changes: [] })),
+        fetch('/api/admin/snapshots', { headers }).then(r => r.json()).catch(() => ({ snapshots: [] })),
+        fetch('/api/admin/pending', { headers }).then(r => r.json()).catch(() => ({ pending: [] })),
+        fetch('/api/admin/branch-links', { headers }).then(r => r.json()).catch(() => ({ links: [] })),
       ]);
 
       setTables([
