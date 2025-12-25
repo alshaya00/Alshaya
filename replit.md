@@ -85,6 +85,18 @@ The `scripts/ensure-admin.ts` script runs on every startup to:
 - Ensure site settings exist
 - Ensure privacy settings exist
 - Ensure API service config exists
+- Check and run automatic backup if 24 hours have passed since last backup
+- Cleanup old backups (keeps max 10)
+
+### Backup System (Dec 2024)
+
+Database-backed backup system with automatic daily backups:
+- **Backup Types**: MANUAL (user-created), AUTO_BACKUP (daily), PRE_RESTORE (before restoring), PRE_IMPORT (before bulk import)
+- **Automatic Backups**: Created on server startup if 24 hours have passed since last backup
+- **Config**: 24-hour interval, max 10 backups, 30-day retention
+- **Storage**: Snapshots table in PostgreSQL (not localStorage)
+- **API**: `/api/admin/snapshots` for CRUD operations (requires authentication)
+- **UI**: History page (`/history`) for viewing and restoring backups
 
 ### Common Issues
 
