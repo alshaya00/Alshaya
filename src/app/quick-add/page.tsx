@@ -9,6 +9,7 @@ import AddMemberGraph from '@/components/AddMemberGraph';
 import { storageKeys } from '@/config/storage-keys';
 import { paginationSettings, dbSettings } from '@/config/constants';
 import { MatchConfirmation, MatchComparisonGraphs } from '@/components/quick-add';
+import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import {
   PlusCircle,
   Check,
@@ -86,6 +87,7 @@ export default function QuickAddPage() {
 
   const nameMatch = useNameMatch();
   const submitPending = useSubmitPendingMember();
+  const { validation } = useSystemConfig();
 
   const [formData, setFormData] = useState<NewMemberData>({
     firstName: '',
@@ -207,17 +209,25 @@ export default function QuickAddPage() {
         newErrors.birthYear = 'سنة الميلاد مطلوبة';
       } else {
         const year = parseInt(formData.birthYear);
-        if (isNaN(year) || year < 1500 || year > new Date().getFullYear()) {
-          newErrors.birthYear = 'سنة الميلاد غير صحيحة';
+        const minYear = validation?.minBirthYear || 1500;
+        const maxYear = validation?.maxBirthYear || new Date().getFullYear();
+
+        if (isNaN(year) || year < minYear || year > maxYear) {
+          newErrors.birthYear = `سنة الميلاد يجب أن تكون بين ${minYear} و ${maxYear}`;
         }
       }
-      // Phone is required
-      if (!formData.phone || !formData.phone.trim()) {
+      
+      // Phone validation
+      if (validation?.requirePhone && (!formData.phone || !formData.phone.trim())) {
         newErrors.phone = 'رقم الهاتف مطلوب';
-      } else if (!/^[0-9+\-\s()]+$/.test(formData.phone)) {
+      } else if (formData.phone && !/^[0-9+\-\s()]+$/.test(formData.phone)) {
         newErrors.phone = 'صيغة رقم الهاتف غير صحيحة';
       }
-      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+
+      // Email validation
+      if (validation?.requireEmail && (!formData.email || !formData.email.trim())) {
+        newErrors.email = 'البريد الإلكتروني مطلوب';
+      } else if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         newErrors.email = 'البريد الإلكتروني غير صحيح';
       }
     }
@@ -882,16 +892,21 @@ export default function QuickAddPage() {
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <Phone size={18} />
-                      رقم الهاتف
+                      رقم الهاتف {validation?.requirePhone && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => updateField('phone', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all"
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
+                        errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500'
+                      }`}
                       placeholder="+966..."
                       dir="ltr"
                     />
+                    {errors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                    )}
                   </div>
                 </div>
 
@@ -899,14 +914,14 @@ export default function QuickAddPage() {
                 <div>
                   <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                     <Mail size={18} />
-                    البريد الإلكتروني
+                    البريد الإلكتروني {validation?.requireEmail && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => updateField('email', e.target.value)}
                     className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
-                      errors.email ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
+                      errors.email ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500'
                     }`}
                     placeholder="email@example.com"
                     dir="ltr"

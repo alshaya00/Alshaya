@@ -7,12 +7,15 @@ import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
+import { AlertTriangle } from 'lucide-react';
 
 type SortField = 'id' | 'firstName' | 'generation' | 'birthYear';
 type SortOrder = 'asc' | 'desc';
 
 function RegistryPageContent() {
   const { getAuthHeader, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { features, loading: configLoading } = useSystemConfig();
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [gen2Branches, setGen2Branches] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,12 +127,28 @@ function RegistryPageContent() {
     return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
-  if (isLoading || authLoading) {
+  if (isLoading || authLoading || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-600">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Feature flag check - public registry disabled for unauthenticated users
+  if (features && !features.publicRegistry && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">السجل العام غير متاح</h2>
+          <p className="text-gray-600 mb-4">السجل العام غير متاح حالياً للزوار. يرجى تسجيل الدخول للوصول.</p>
+          <Link href="/login" className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+            تسجيل الدخول
+          </Link>
         </div>
       </div>
     );

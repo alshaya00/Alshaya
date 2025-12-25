@@ -29,6 +29,7 @@ import {
 import type { FamilyMember, ImportConflict, FieldConflict, ValidationError } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 
 type ImportStep = 'upload' | 'preview' | 'conflicts' | 'complete';
 
@@ -39,6 +40,7 @@ interface ConflictResolution {
 }
 
 function ImportPageContent() {
+  const { features, loading: configLoading } = useSystemConfig();
   const [currentStep, setCurrentStep] = useState<ImportStep>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -255,6 +257,22 @@ function ImportPageContent() {
     setResolutions([]);
     setExpandedConflicts([]);
   };
+
+  // Feature flag check - import disabled
+  if (!configLoading && features && !features.import) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">استيراد البيانات معطل</h2>
+          <p className="text-gray-600 mb-4">تم تعطيل ميزة استيراد البيانات من قبل المسؤول.</p>
+          <Link href="/" className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+            العودة للرئيسية
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">

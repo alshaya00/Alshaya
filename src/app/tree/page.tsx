@@ -4,13 +4,14 @@ import { useState, useEffect, useMemo } from 'react';
 import type { FamilyMember } from '@/lib/types';
 import {
   Search, ChevronDown, ChevronRight, Users, User,
-  Eye, X, TreePine, LayoutGrid, List, GitBranch
+  Eye, X, TreePine, LayoutGrid, List, GitBranch, EyeOff
 } from 'lucide-react';
 import Link from 'next/link';
 import FamilyTreeGraph from '@/components/FamilyTreeGraph';
 import { FeatureGate } from '@/components/FeatureGate';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
@@ -28,6 +29,7 @@ function TreePageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { session } = useAuth();
+  const { display } = useSystemConfig();
 
   useEffect(() => {
     async function fetchMembers() {
@@ -56,12 +58,22 @@ function TreePageContent() {
     return allMembers.find(m => m.id === id);
   };
 
+  // Filter members based on display settings
+  const displayMembers = useMemo(() => {
+    if (display?.showDeceasedMembers === false) {
+      return allMembers.filter(m => m.status !== 'Deceased');
+    }
+    return allMembers;
+  }, [allMembers, display?.showDeceasedMembers]);
+
+  const deceasedHiddenCount = allMembers.length - displayMembers.length;
+
   // Build tree structure
   const treeData = useMemo(() => {
     const memberMap = new Map<string, TreeNodeData>();
 
     // Create nodes
-    allMembers.forEach(member => {
+    displayMembers.forEach(member => {
       memberMap.set(member.id, {
         ...member,
         children: [],
@@ -92,14 +104,14 @@ function TreePageContent() {
   // Group by generation for generation view
   const generations = useMemo(() => {
     const groups: Map<number, FamilyMember[]> = new Map();
-    allMembers.forEach(member => {
+    displayMembers.forEach(member => {
       if (!groups.has(member.generation)) {
         groups.set(member.generation, []);
       }
       groups.get(member.generation)!.push(member);
     });
     return Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
-  }, [allMembers]);
+  }, [displayMembers]);
 
   // Search functionality
   const searchResults = useMemo(() => {

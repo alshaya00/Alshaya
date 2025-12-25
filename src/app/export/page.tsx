@@ -34,6 +34,8 @@ import {
 import { ExportField, ExportFormat, ExportFilters } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
+import { AlertTriangle } from 'lucide-react';
 
 type ViewMode = 'format' | 'fields' | 'filters' | 'preview';
 
@@ -41,6 +43,27 @@ function ExportPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { session } = useAuth();
+  const { features, loading: configLoading } = useSystemConfig();
+  
+  // Export configuration state
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('JSON');
+  const [fields, setFields] = useState<ExportField[]>(ALL_EXPORT_FIELDS);
+  const [includeTree, setIncludeTree] = useState(true);
+  const [groupByGeneration, setGroupByGeneration] = useState(true);
+
+  // Filter state
+  const [filters, setFilters] = useState<ExportFilters>({
+    generations: [],
+    branches: [],
+    genders: [],
+    status: [],
+  });
+
+  // UI state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['identity', 'family']);
+  const [previewMode, setPreviewMode] = useState<'list' | 'tree' | 'raw'>('list');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -65,26 +88,6 @@ function ExportPageContent() {
       fetchData();
     }
   }, [session?.token]);
-
-  // Export configuration state
-  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('JSON');
-  const [fields, setFields] = useState<ExportField[]>(ALL_EXPORT_FIELDS);
-  const [includeTree, setIncludeTree] = useState(true);
-  const [groupByGeneration, setGroupByGeneration] = useState(true);
-
-  // Filter state
-  const [filters, setFilters] = useState<ExportFilters>({
-    generations: [],
-    branches: [],
-    genders: [],
-    status: [],
-  });
-
-  // UI state
-  const [currentStep, setCurrentStep] = useState(1);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['identity', 'family']);
-  const [previewMode, setPreviewMode] = useState<'list' | 'tree' | 'raw'>('list');
-  const [isExporting, setIsExporting] = useState(false);
 
   const uniqueBranches = useMemo(() =>
     [...new Set(allMembers.map(m => m.branch).filter(Boolean))] as string[],
@@ -242,6 +245,22 @@ function ExportPageContent() {
       descriptionEn: 'Human-readable text',
     },
   ];
+
+  // Feature flag check - export disabled
+  if (!configLoading && features && !features.export) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">تصدير البيانات معطل</h2>
+          <p className="text-gray-600 mb-4">تم تعطيل ميزة تصدير البيانات من قبل المسؤول.</p>
+          <Link href="/" className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+            العودة للرئيسية
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
