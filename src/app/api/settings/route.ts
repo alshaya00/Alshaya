@@ -12,6 +12,7 @@ import {
 } from '@/lib/auth/db-store';
 import { getPermissionsForRole, validatePermissionMatrix } from '@/lib/auth/permissions';
 import { PermissionMatrix } from '@/lib/auth/types';
+import { getSystemConfig, getFeatureFlags, getValidationRules, getDisplaySettings } from '@/lib/settings';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -49,6 +50,23 @@ export async function GET(request: NextRequest) {
           allowSelfRegistration: settings.allowSelfRegistration,
           allowGuestPreview: settings.allowGuestPreview,
         },
+      });
+    }
+
+    // System config (public access for app behavior)
+    if (type === 'config') {
+      const [config, features, validation, display] = await Promise.all([
+        getSystemConfig(),
+        getFeatureFlags(),
+        getValidationRules(),
+        getDisplaySettings(),
+      ]);
+      return NextResponse.json({
+        success: true,
+        config,
+        features,
+        validation,
+        display,
       });
     }
 
