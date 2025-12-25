@@ -33,10 +33,11 @@ import {
 } from '@/lib/export-utils';
 import { ExportField, ExportFormat, ExportFilters } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 type ViewMode = 'format' | 'fields' | 'filters' | 'preview';
 
-export default function ExportPage() {
+function ExportPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { session } = useAuth();
@@ -767,5 +768,13 @@ export default function ExportPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ExportPage() {
+  return (
+    <ProtectedRoute redirectTo="/login">
+      <ExportPageContent />
+    </ProtectedRoute>
   );
 }

@@ -6,8 +6,9 @@ import type { FamilyMember } from '@/lib/types';
 import { calculateAge, getGenerationColor } from '@/lib/utils';
 import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
-export default function SearchPage() {
+function SearchPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -275,5 +276,13 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <ProtectedRoute redirectTo="/login">
+      <SearchPageContent />
+    </ProtectedRoute>
   );
 }

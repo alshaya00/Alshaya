@@ -6,11 +6,12 @@ import type { FamilyMember } from '@/lib/types';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 type SortField = 'id' | 'firstName' | 'generation' | 'birthYear';
 type SortOrder = 'asc' | 'desc';
 
-export default function RegistryPage() {
+function RegistryPageContent() {
   const { getAuthHeader, isLoading: authLoading, isAuthenticated } = useAuth();
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [gen2Branches, setGen2Branches] = useState<FamilyMember[]>([]);
@@ -390,5 +391,13 @@ export default function RegistryPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegistryPage() {
+  return (
+    <ProtectedRoute redirectTo="/login">
+      <RegistryPageContent />
+    </ProtectedRoute>
   );
 }

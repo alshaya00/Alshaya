@@ -23,6 +23,7 @@ import {
 import { findDuplicates, DuplicateMatch } from '@/lib/import-utils';
 import type { FamilyMember } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 interface DuplicatePair {
   member1: FamilyMember;
@@ -32,7 +33,7 @@ interface DuplicatePair {
   status: 'PENDING' | 'CONFIRMED' | 'NOT_DUPLICATE' | 'MERGED';
 }
 
-export default function DuplicatesPage() {
+function DuplicatesPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { session } = useAuth();
@@ -469,5 +470,13 @@ export default function DuplicatesPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DuplicatesPage() {
+  return (
+    <ProtectedRoute redirectTo="/login" requiredRole={['SUPER_ADMIN', 'ADMIN']}>
+      <DuplicatesPageContent />
+    </ProtectedRoute>
   );
 }

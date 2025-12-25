@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 interface BranchData {
   head: FamilyMember;
@@ -51,7 +52,7 @@ function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], ma
   return member.firstName + ' آل شايع';
 }
 
-export default function BranchesPage() {
+function BranchesPageContent() {
   const [branches, setBranches] = useState<BranchData[]>([]);
   const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -564,5 +565,13 @@ ${url}
         </div>
       )}
     </div>
+  );
+}
+
+export default function BranchesPage() {
+  return (
+    <ProtectedRoute redirectTo="/login">
+      <BranchesPageContent />
+    </ProtectedRoute>
   );
 }

@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import FamilyTreeGraph from '@/components/FamilyTreeGraph';
 import { FeatureGate } from '@/components/FeatureGate';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
@@ -46,6 +47,8 @@ function TreePageContent() {
     }
     if (session?.token) {
       fetchMembers();
+    } else {
+      setIsLoading(false);
     }
   }, [session?.token]);
 
@@ -685,11 +688,13 @@ function TreePageContent() {
   );
 }
 
-// Wrap with FeatureGate to check if the family tree feature is enabled
+// Wrap with ProtectedRoute to require authentication and FeatureGate to check if the family tree feature is enabled
 export default function TreePage() {
   return (
-    <FeatureGate feature="familyTree">
-      <TreePageContent />
-    </FeatureGate>
+    <ProtectedRoute redirectTo="/login">
+      <FeatureGate feature="familyTree">
+        <TreePageContent />
+      </FeatureGate>
+    </ProtectedRoute>
   );
 }

@@ -28,6 +28,7 @@ import {
 } from '@/lib/import-utils';
 import type { FamilyMember, ImportConflict, FieldConflict, ValidationError } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 type ImportStep = 'upload' | 'preview' | 'conflicts' | 'complete';
 
@@ -37,7 +38,7 @@ interface ConflictResolution {
   mergedMember?: FamilyMember;
 }
 
-export default function ImportPage() {
+function ImportPageContent() {
   const [currentStep, setCurrentStep] = useState<ImportStep>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -705,5 +706,13 @@ export default function ImportPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ImportPage() {
+  return (
+    <ProtectedRoute redirectTo="/login" requiredRole="SUPER_ADMIN">
+      <ImportPageContent />
+    </ProtectedRoute>
   );
 }
