@@ -29,6 +29,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { memberFields } from '@/config/fields';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Use centralized field definitions from config
 const MEMBER_FIELDS = memberFields;
@@ -53,6 +54,8 @@ interface ChangeRecord {
 }
 
 export default function ExcelViewPage() {
+  const { session } = useAuth();
+  
   // Data state
   const [members, setMembers] = useState<Member[]>([]);
   const [originalMembers, setOriginalMembers] = useState<Member[]>([]);
@@ -95,24 +98,25 @@ export default function ExcelViewPage() {
 
   // Load members
   useEffect(() => {
-    loadMembers();
-  }, []);
+    if (session?.token) {
+      loadMembers();
+    }
+  }, [session?.token]);
 
   const loadMembers = async () => {
     setIsLoading(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      const res = await fetch('/api/members');
+      const res = await fetch('/api/members', { headers });
       const data = await res.json();
-      const memberList = data.members || data || [];
+      const memberList = data.data || data.members || data || [];
       setMembers(memberList);
       setOriginalMembers(JSON.parse(JSON.stringify(memberList)));
       validateAllData(memberList);
     } catch (error) {
       console.error('Error loading members:', error);
-      // Load sample data for demo
-      const sampleData = generateSampleData();
-      setMembers(sampleData);
-      setOriginalMembers(JSON.parse(JSON.stringify(sampleData)));
+      setMembers([]);
+      setOriginalMembers([]);
     } finally {
       setIsLoading(false);
     }
