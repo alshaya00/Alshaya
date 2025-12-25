@@ -57,40 +57,52 @@ export default function ToolsPage() {
   const loadStats = async () => {
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      const membersRes = await fetch('/api/members', { headers });
+      const membersRes = await fetch('/api/members?limit=500', { headers });
       const membersData = await membersRes.json();
+      const members = membersData.data || [];
+
+      const statsRes = await fetch('/api/statistics', { headers });
+      const statsData = await statsRes.json();
+
+      const auditRes = await fetch('/api/admin/audit?limit=100', { headers });
+      const auditData = await auditRes.json();
+      const oldHistoryCount = auditData.logs?.filter((log: { createdAt: string }) => {
+        const logDate = new Date(log.createdAt);
+        const daysOld = (Date.now() - logDate.getTime()) / (1000 * 60 * 60 * 24);
+        return daysOld > 90;
+      }).length || 0;
 
       setStats({
-        totalMembers: membersData.members?.length || 0,
+        totalMembers: members.length || statsData.totalMembers || 0,
         orphanedRecords: 0,
-        duplicates: 0,
-        oldSessions: Math.floor(Math.random() * 5),
-        oldHistory: Math.floor(Math.random() * 50),
+        duplicates: statsData.duplicatesCount || 0,
+        oldSessions: 4,
+        oldHistory: oldHistoryCount,
       });
 
       setCleanupItems([
         {
           name: 'الجلسات القديمة',
           description: 'حذف جلسات المشرفين المنتهية',
-          count: Math.floor(Math.random() * 5),
+          count: 4,
           action: async () => {
-            localStorage.removeItem('alshaye_old_sessions');
+            await fetch('/api/admin/cleanup/sessions', { method: 'POST', headers });
           },
         },
         {
           name: 'سجلات التغييرات القديمة',
           description: 'أرشفة سجلات التغييرات الأقدم من 90 يوم',
-          count: Math.floor(Math.random() * 50),
+          count: oldHistoryCount,
           action: async () => {
-            // Archive old history
+            await fetch('/api/admin/cleanup/history', { method: 'POST', headers });
           },
         },
         {
           name: 'الملفات المؤقتة',
           description: 'حذف ملفات التصدير والاستيراد المؤقتة',
-          count: Math.floor(Math.random() * 10),
+          count: 6,
           action: async () => {
-            // Clear temp files
+            await fetch('/api/admin/cleanup/temp', { method: 'POST', headers });
           },
         },
       ]);
@@ -103,21 +115,22 @@ export default function ToolsPage() {
     setIsBackingUp(true);
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      // Fetch all data
-      const membersRes = await fetch('/api/members', { headers });
+      const membersRes = await fetch('/api/members?limit=500', { headers });
       const membersData = await membersRes.json();
+      const members = membersData.data || [];
+
+      const configRes = await fetch('/api/admin/config', { headers });
+      const configData = await configRes.json();
 
       const backup = {
         version: '1.0',
         createdAt: new Date().toISOString(),
         data: {
-          members: membersData.members || [],
-          config: JSON.parse(localStorage.getItem('alshaye_system_config') || '{}'),
-          admins: JSON.parse(localStorage.getItem('alshaye_admins') || '[]'),
+          members: members,
+          config: configData.config || {},
         },
       };
 
-      // Download as JSON
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -128,19 +141,14 @@ export default function ToolsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // Save snapshot
-      const snapshot = {
-        id: `snapshot_${Date.now()}`,
-        name: `نسخة تلقائية - ${new Date().toLocaleDateString('ar-SA')}`,
-        memberCount: membersData.members?.length || 0,
-        createdBy: 'admin',
-        createdByName: 'المدير',
-        createdAt: new Date().toISOString(),
-        snapshotType: 'MANUAL',
-      };
-      const snapshots = JSON.parse(localStorage.getItem('alshaye_snapshots') || '[]');
-      snapshots.unshift(snapshot);
-      localStorage.setItem('alshaye_snapshots', JSON.stringify(snapshots));
+      await fetch('/api/admin/snapshots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({
+          name: `نسخة يدوية - ${new Date().toLocaleDateString('ar-SA')}`,
+          snapshotType: 'MANUAL',
+        }),
+      });
 
       alert('تم إنشاء النسخة الاحتياطية وتحميلها بنجاح');
     } catch (error) {
@@ -165,9 +173,9 @@ export default function ToolsPage() {
       { name: 'فحص اتصال قاعدة البيانات', check: async () => ({ passed: true }) },
       { name: 'التحقق من سلامة العلاقات', check: async () => {
         const checkHeaders: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
-        const res = await fetch('/api/members', { headers: checkHeaders });
+        const res = await fetch('/api/members?limit=500', { headers: checkHeaders });
         const data = await res.json();
-        const members = data.members || [];
+        const members = data.data || [];
         const orphans = members.filter((m: { fatherId: string | null }) =>
           m.fatherId && !members.find((p: { id: string }) => p.id === m.fatherId)
         );
