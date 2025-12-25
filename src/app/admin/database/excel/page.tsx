@@ -105,11 +105,31 @@ export default function ExcelViewPage() {
 
   const loadMembers = async () => {
     setIsLoading(true);
-    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+    if (!session?.token) {
+      console.error('No auth token available');
+      setMembers([]);
+      setOriginalMembers([]);
+      setIsLoading(false);
+      return;
+    }
+    
+    const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
     try {
-      const res = await fetch('/api/members', { headers });
+      const res = await fetch('/api/members?limit=500', { headers });
+      
+      if (!res.ok) {
+        console.error('API error:', res.status, res.statusText);
+        setMembers([]);
+        setOriginalMembers([]);
+        return;
+      }
+      
       const data = await res.json();
-      const memberList = data.data || data.members || data || [];
+      
+      // Only use data.data array, not the whole response object
+      const memberList = Array.isArray(data.data) ? data.data : [];
+      
+      console.log(`Loaded ${memberList.length} members from database`);
       setMembers(memberList);
       setOriginalMembers(JSON.parse(JSON.stringify(memberList)));
       validateAllData(memberList);
@@ -120,30 +140,6 @@ export default function ExcelViewPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateSampleData = (): Member[] => {
-    return Array.from({ length: 20 }, (_, i) => ({
-      id: `P${String(i + 1).padStart(3, '0')}`,
-      firstName: `عضو ${i + 1}`,
-      fatherName: i > 0 ? `والد ${i}` : null,
-      grandfatherName: i > 1 ? `جد ${i - 1}` : null,
-      greatGrandfatherName: null,
-      familyName: 'آل شايع',
-      fatherId: i > 0 ? `P${String(Math.floor(i / 2) + 1).padStart(3, '0')}` : null,
-      gender: i % 3 === 0 ? 'Female' : 'Male',
-      birthYear: 1950 + (i * 5),
-      deathYear: i % 5 === 0 ? 2020 : null,
-      status: i % 5 === 0 ? 'Deceased' : 'Living',
-      generation: Math.floor(i / 3) + 1,
-      branch: i < 10 ? 'الأصل' : 'الفرع 1',
-      sonsCount: Math.floor(Math.random() * 5),
-      daughtersCount: Math.floor(Math.random() * 4),
-      phone: `05${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
-      city: ['الرياض', 'جدة', 'الدمام', 'مكة'][i % 4],
-      occupation: ['مهندس', 'طبيب', 'معلم', 'تاجر', 'متقاعد'][i % 5],
-      email: null,
-    }));
   };
 
   // Validate all data
