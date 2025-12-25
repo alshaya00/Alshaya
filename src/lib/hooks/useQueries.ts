@@ -104,7 +104,7 @@ export function useCreateMember() {
 
   return useMutation({
     mutationFn: (data: Partial<FamilyMember>) =>
-      fetchJson<{ member: FamilyMember }>('/api/members', {
+      fetchJson<{ success: boolean; data: FamilyMember; message?: string }>('/api/members', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -448,10 +448,10 @@ export function useSubmitPendingMember() {
       grandfatherName?: string;
       greatGrandfatherName?: string;
       familyName?: string;
-      proposedFatherId: string;
+      proposedFatherId?: string;
       gender: 'Male' | 'Female';
       birthYear?: number;
-      generation: number;
+      generation?: number;
       branch?: string;
       fullNameAr?: string;
       fullNameEn?: string;
@@ -459,10 +459,17 @@ export function useSubmitPendingMember() {
       city?: string;
       occupation?: string;
       email?: string;
+      status?: 'Living' | 'Deceased';
+      submittedVia?: string;
     }) =>
       fetchJson<{ success: boolean; pending: unknown }>('/api/admin/pending', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          familyName: data.familyName || 'آل شايع',
+          status: data.status || 'Living',
+          generation: data.generation || 1,
+        }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.pendingMembers });

@@ -335,7 +335,7 @@ export default function QuickAddPage() {
       grandfatherName: autoFillData?.grandfatherName || formData.grandfatherName || undefined,
       greatGrandfatherName: autoFillData?.greatGrandfatherName || formData.greatGrandfatherName || undefined,
       familyName: 'آل شايع',
-      proposedFatherId: formData.fatherId,
+      proposedFatherId: formData.fatherId || undefined,
       gender: formData.gender,
       birthYear: formData.birthYear ? parseInt(formData.birthYear) : undefined,
       generation: autoFillData?.generation || 1,
@@ -345,6 +345,8 @@ export default function QuickAddPage() {
       city: formData.city || undefined,
       occupation: formData.occupation || undefined,
       email: formData.email || undefined,
+      status: 'Living' as const,
+      submittedVia: 'quick-add',
     };
 
     try {
