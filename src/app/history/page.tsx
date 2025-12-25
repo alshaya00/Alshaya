@@ -47,7 +47,7 @@ interface Snapshot {
 }
 
 export default function HistoryPage() {
-  const { session } = useAuth();
+  const { session, isLoading: authLoading, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<'changes' | 'snapshots'>('changes');
   const [changes, setChanges] = useState<ChangeRecord[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
@@ -64,9 +64,12 @@ export default function HistoryPage() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
 
   useEffect(() => {
+    // Wait for auth to load and require authentication
+    if (authLoading || !session?.token) return;
+    
     async function fetchMembers() {
       try {
-        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const headers: HeadersInit = { Authorization: `Bearer ${session!.token}` };
         const res = await fetch('/api/members?limit=500', { headers });
         if (res.ok) {
           const data = await res.json();
@@ -77,15 +80,22 @@ export default function HistoryPage() {
       }
     }
     fetchMembers();
-  }, [session?.token]);
+  }, [authLoading, session?.token]);
 
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(true);
 
   useEffect(() => {
+    // Wait for auth to load and require authentication
+    if (authLoading) return;
+    if (!session?.token) {
+      setIsLoadingSnapshots(false);
+      return;
+    }
+
     async function fetchSnapshots() {
       try {
         setIsLoadingSnapshots(true);
-        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const headers: HeadersInit = { Authorization: `Bearer ${session!.token}` };
         const res = await fetch('/api/admin/snapshots', { headers });
         if (res.ok) {
           const data = await res.json();
@@ -100,7 +110,7 @@ export default function HistoryPage() {
 
     async function fetchChangeHistory() {
       try {
-        const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const headers: HeadersInit = { Authorization: `Bearer ${session!.token}` };
         const res = await fetch('/api/admin/change-history?limit=100', { headers });
         if (res.ok) {
           const data = await res.json();
@@ -139,11 +149,9 @@ export default function HistoryPage() {
       }
     }
 
-    if (session?.token) {
-      fetchSnapshots();
-      fetchChangeHistory();
-    }
-  }, [session?.token]);
+    fetchSnapshots();
+    fetchChangeHistory();
+  }, [authLoading, session?.token]);
 
   // Filter changes
   const filteredChanges = useMemo(() => {
@@ -350,6 +358,37 @@ export default function HistoryPage() {
     if (days < 7) return `منذ ${days} يوم`;
     return formatTimestamp(timestamp);
   };
+
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-[#1E3A5F] animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login required message if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">يجب تسجيل الدخول</h2>
+          <p className="text-gray-600 mb-6">هذه الصفحة متاحة للمشرفين فقط. يرجى تسجيل الدخول للوصول إلى سجل التغييرات والنسخ الاحتياطية.</p>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2D5A87] transition-colors"
+          >
+            تسجيل الدخول
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
