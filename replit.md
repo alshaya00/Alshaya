@@ -20,9 +20,12 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
     -   **Backup System**: Database-backed backup system supporting manual and automatic daily backups with configurable intervals and retention. Stores snapshots in PostgreSQL.
     -   **Transactional Restore System**: Enterprise-grade restore process ensuring zero data loss with dependency-ordered restoration, atomic transactions, pre-restore safety backups, and member count verification.
     -   **Pending Member Data Consistency**: All pending member operations are database-driven, ensuring consistent data across admin and public interfaces.
+    -   **Data Integrity Validation**: Comprehensive validation system (`src/lib/data-integrity.ts`) for checking generation values, parent relationships, and orphaned members. Available via admin API endpoint and runs automatically after CSV imports.
+    -   **CSV Import Script**: Robust import script (`scripts/import-csv.ts`) that handles mixed Arabic/English headers, validates data, and reports issues. Run with `npm run import:csv`.
 -   **Family Tree Features**:
     -   Interactive D3.js visualization with zoom/pan.
     -   Tree editor with "Change Parent" functionality and multi-root support.
+    -   Support for up to 12 generations with distinct color coding per generation.
 -   **Security**: Admin credentials are set via Replit Secrets.
 -   **UI/UX**: Clean, modern interface with Tailwind CSS.
 
