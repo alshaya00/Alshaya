@@ -121,9 +121,9 @@ export async function GET(
   }
 }
 
-export async function PUT(
+async function handleUpdate(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  params: { id: string }
 ) {
   try {
     const user = await getAuthUser(request);
@@ -271,6 +271,20 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return handleUpdate(request, params);
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return handleUpdate(request, params);
 }
 
 export async function DELETE(
