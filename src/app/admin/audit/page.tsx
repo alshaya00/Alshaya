@@ -186,9 +186,29 @@ export default function AuditLogPage() {
       )
     : logs;
 
+  const formatDateForExport = (dateStr: string) => {
+    const date = new Date(dateStr);
+    
+    const hijriDate = date.toLocaleDateString('ar-SA-u-ca-islamic', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Riyadh',
+    });
+    
+    const time = date.toLocaleTimeString('ar-SA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Riyadh',
+    });
+    
+    return `${hijriDate} - ${time}`;
+  };
+
   const exportLogs = () => {
     const data = filteredLogs.map((log) => ({
-      التاريخ: new Date(log.timestamp).toLocaleString('ar-SA'),
+      التاريخ: formatDateForExport(log.timestamp),
       الإجراء: ACTION_LABELS[log.action as AuditAction]?.label || log.action,
       المستخدم: log.userName || '-',
       الهدف: log.targetName || log.targetId || '-',
@@ -214,14 +234,23 @@ export default function AuditLogPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('ar-SA', {
+    const date = new Date(dateStr);
+    
+    const hijriDate = date.toLocaleDateString('ar-SA-u-ca-islamic', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      timeZone: 'Asia/Riyadh',
+    });
+    
+    const time = date.toLocaleTimeString('ar-SA', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Riyadh',
     });
+    
+    return `${hijriDate} - ${time}`;
   };
 
   const totalPages = Math.ceil(total / itemsPerPage);
