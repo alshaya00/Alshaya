@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { restoreFromBackup, BackupData, MemberBackup } from '@/lib/backup-service';
 
-// Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -19,7 +19,6 @@ async function getAuthUser(request: NextRequest) {
   return user;
 }
 
-// GET /api/admin/snapshots/[id] - Get a specific snapshot or download it
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -51,12 +50,10 @@ export async function GET(
       );
     }
 
-    // Check if download is requested
     const { searchParams } = new URL(request.url);
     const download = searchParams.get('download') === 'true';
 
     if (download) {
-      // Parse the tree data for download
       let treeData;
       try {
         treeData = JSON.parse(snapshot.treeData);
@@ -76,7 +73,7 @@ export async function GET(
         metadata: {
           exportedAt: new Date().toISOString(),
           exportedBy: user.nameArabic,
-          format: 'AlShayeFamilyTree_Backup_v1',
+          format: 'AlShayeFamilyTree_Backup_v2',
         },
       };
 
@@ -100,7 +97,6 @@ export async function GET(
   }
 }
 
-// POST /api/admin/snapshots/[id] - Restore from a snapshot
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -143,8 +139,7 @@ export async function POST(
       );
     }
 
-    // Parse the tree data
-    let membersToRestore;
+    let membersToRestore: MemberBackup[];
     try {
       membersToRestore = JSON.parse(snapshot.treeData);
     } catch {
@@ -161,49 +156,21 @@ export async function POST(
       );
     }
 
+    console.log(`Starting transactional restore of ${membersToRestore.length} members...`);
+
+    const backupData: BackupData = {
+      version: '2.0',
+      createdAt: snapshot.createdAt.toISOString(),
+      totalMembers: membersToRestore.length,
+      members: membersToRestore,
+      checksum: `snapshot_${snapshot.id}`,
+    };
+
+    const result = await restoreFromBackup(backupData, user.id, user.nameArabic);
+
     const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    // Create a pre-restore backup
-    const currentMembers = await prisma.familyMember.findMany();
-    const preRestoreSnapshot = await prisma.snapshot.create({
-      data: {
-        name: `Pre-Restore Backup (before restoring ${snapshot.name || snapshot.id})`,
-        description: `Automatic backup created before restoring snapshot ${snapshot.id}`,
-        treeData: JSON.stringify(currentMembers),
-        memberCount: currentMembers.length,
-        createdBy: user.id,
-        createdByName: user.nameArabic,
-        snapshotType: 'PRE_RESTORE',
-      },
-    });
-
-    // Delete all current members
-    await prisma.familyMember.deleteMany({});
-
-    // Restore members from snapshot
-    let restoredCount = 0;
-    const errors: string[] = [];
-
-    for (const member of membersToRestore) {
-      try {
-        // Remove any fields that might cause issues
-        const { createdAt, updatedAt, ...memberData } = member;
-
-        await prisma.familyMember.create({
-          data: {
-            ...memberData,
-            sonsCount: memberData.sonsCount || 0,
-            daughtersCount: memberData.daughtersCount || 0,
-          },
-        });
-        restoredCount++;
-      } catch (err) {
-        errors.push(`Failed to restore member ${member.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    }
-
-    // Log activity
     await logActivity({
       userId: user.id,
       userEmail: user.email,
@@ -215,35 +182,58 @@ export async function POST(
       targetName: snapshot.name || params.id,
       details: {
         snapshotId: params.id,
-        preRestoreSnapshotId: preRestoreSnapshot.id,
-        membersRestored: restoredCount,
-        errors: errors.length,
+        preRestoreSnapshotId: result.preRestoreSnapshotId,
+        membersExpected: result.expectedCount,
+        membersRestored: result.restoredCount,
+        success: result.success,
+        errors: result.errors.length > 0 ? result.errors : undefined,
       },
       ipAddress,
       userAgent,
-      success: errors.length === 0,
+      success: result.success,
     });
+
+    if (!result.success) {
+      console.error('Restore failed:', result.errors);
+      return NextResponse.json({
+        success: false,
+        message: `Restore failed: ${result.errors.join(', ')}`,
+        messageAr: `فشلت الاستعادة: ${result.errors.length} أخطاء`,
+        details: {
+          expectedCount: result.expectedCount,
+          restoredCount: result.restoredCount,
+          preRestoreSnapshotId: result.preRestoreSnapshotId,
+          errors: result.errors,
+        },
+      }, { status: 500 });
+    }
+
+    console.log(`Successfully restored ${result.restoredCount} members`);
 
     return NextResponse.json({
       success: true,
-      message: `Restored ${restoredCount} members from snapshot`,
-      messageAr: `تم استعادة ${restoredCount} عضو من النسخة الاحتياطية`,
+      message: `Successfully restored ${result.restoredCount} members (verified)`,
+      messageAr: `تم استعادة ${result.restoredCount} عضو بنجاح (تم التحقق)`,
       details: {
-        restoredCount,
-        preRestoreSnapshotId: preRestoreSnapshot.id,
-        errors: errors.length > 0 ? errors : undefined,
+        restoredCount: result.restoredCount,
+        expectedCount: result.expectedCount,
+        preRestoreSnapshotId: result.preRestoreSnapshotId,
+        verified: true,
       },
     });
   } catch (error) {
-    console.error('Error restoring snapshot:', error);
+    console.error('Error in restore endpoint:', error);
     return NextResponse.json(
-      { success: false, message: 'Failed to restore snapshot' },
+      { 
+        success: false, 
+        message: 'Failed to restore snapshot',
+        messageAr: 'فشلت استعادة النسخة الاحتياطية',
+      },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/admin/snapshots/[id] - Delete a snapshot
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -286,7 +276,7 @@ export async function DELETE(
       userId: user.id,
       userEmail: user.email,
       userName: user.nameArabic,
-      action: 'CREATE_SNAPSHOT', // Using existing action type
+      action: 'CREATE_SNAPSHOT',
       category: 'DATA',
       targetType: 'SNAPSHOT',
       targetId: params.id,

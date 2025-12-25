@@ -272,6 +272,26 @@ async function ensureAdmin() {
 
         console.log(`✅ Auto backup created: ${snapshot.id} (${members.length} members)`);
 
+        // Try Google Drive export
+        try {
+          console.log('☁️  Attempting Google Drive export...');
+          const { exportCSVToGoogleDrive, isGoogleDriveConnected } = await import('../src/lib/google-drive-export');
+          const connected = await isGoogleDriveConnected();
+          
+          if (connected) {
+            const result = await exportCSVToGoogleDrive();
+            if (result.success) {
+              console.log(`✅ Google Drive CSV export: ${result.fileName} (${result.memberCount} members)`);
+            } else {
+              console.warn(`⚠️  Google Drive export failed: ${result.error}`);
+            }
+          } else {
+            console.log('ℹ️  Google Drive not connected - skipping cloud backup');
+          }
+        } catch (driveError) {
+          console.warn('⚠️  Google Drive export skipped:', driveError instanceof Error ? driveError.message : 'Unknown error');
+        }
+
         // Cleanup old backups
         const maxBackups = backupConfigData?.maxBackups || 10;
         const allAutoBackups = await prisma.snapshot.findMany({
