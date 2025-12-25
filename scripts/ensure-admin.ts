@@ -33,6 +33,15 @@ async function ensureAdmin() {
       console.log(`   Email: ${adminEmail}`);
       console.log(`   Role: ${existingAdmin.role}`);
       console.log(`   Status: ${existingAdmin.status}`);
+      
+      // Always sync password with environment variable
+      console.log('🔄 Syncing admin password with environment...');
+      const newPasswordHash = await bcrypt.hash(adminPassword, SALT_ROUNDS);
+      await prisma.user.update({
+        where: { email: adminEmail },
+        data: { passwordHash: newPasswordHash },
+      });
+      console.log('✅ Admin password synced');
     } else {
       console.log('📝 Creating admin user...');
 
