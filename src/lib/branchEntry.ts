@@ -2,6 +2,7 @@
 
 import { storageKeys } from '@/config/storage-keys';
 import { randomBytes } from 'crypto';
+import { safeStorage } from '@/lib/storage';
 
 export interface BranchEntryLink {
   id: string;
@@ -52,17 +53,14 @@ export function generateTempId(): string {
   return 'TEMP_' + Date.now() + '_' + randomBytes(4).toString('hex');
 }
 
-// Get all branch links
+// Get all branch links (using safe storage with error handling)
 export function getBranchLinks(): BranchEntryLink[] {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(LINKS_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  return safeStorage.getItem<BranchEntryLink[]>(LINKS_STORAGE_KEY, []);
 }
 
-// Save branch links
+// Save branch links (using safe storage with error handling)
 export function saveBranchLinks(links: BranchEntryLink[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
+  safeStorage.setItem(LINKS_STORAGE_KEY, links);
 }
 
 // Create a new branch link
@@ -105,17 +103,14 @@ export function deactivateLink(token: string): void {
   }
 }
 
-// Get all pending members
+// Get all pending members (using safe storage with error handling)
 export function getPendingMembers(): PendingMember[] {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(PENDING_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  return safeStorage.getItem<PendingMember[]>(PENDING_STORAGE_KEY, []);
 }
 
-// Save pending members
+// Save pending members (using safe storage with error handling)
 export function savePendingMembers(members: PendingMember[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(members));
+  safeStorage.setItem(PENDING_STORAGE_KEY, members);
 }
 
 // Add a pending member

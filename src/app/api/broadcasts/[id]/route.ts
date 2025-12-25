@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService } from '@/lib/services/broadcast';
+import { findSessionByToken, findUserById } from '@/lib/auth/store';
+import { hasPermission } from '@/lib/auth/permissions';
+import { updateBroadcastSchema, formatZodErrors } from '@/lib/validations';
+import { logger } from '@/lib/logging';
+import { UserRole } from '@/lib/auth/types';
+
+// Helper to get authenticated user from request
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 // GET /api/broadcasts/[id] - Get a specific broadcast
 export async function GET(
@@ -7,6 +28,23 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Authentication required for broadcast details
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission to view broadcasts
+    if (!hasPermission(user.role as UserRole, 'view_members')) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     const broadcast = await broadcastService.getBroadcast(id);
 
@@ -22,7 +60,7 @@ export async function GET(
       data: broadcast,
     });
   } catch (error) {
-    console.error('Error fetching broadcast:', error);
+    logger.error('Error fetching broadcast:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch broadcast' },
       { status: 500 }
@@ -36,16 +74,43 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Authentication required
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Only ADMIN and SUPER_ADMIN can update broadcasts
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions to update broadcasts' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     const body = await request.json();
 
-    // Parse dates if provided
-    const updateData: Record<string, unknown> = { ...body };
-    if (body.meetingDate) updateData.meetingDate = new Date(body.meetingDate);
-    if (body.rsvpDeadline) updateData.rsvpDeadline = new Date(body.rsvpDeadline);
-    if (body.scheduledAt) updateData.scheduledAt = new Date(body.scheduledAt);
+    // Validate input
+    const validation = updateBroadcastSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          details: formatZodErrors(validation.error),
+        },
+        { status: 400 }
+      );
+    }
 
+    const updateData = validation.data;
     const broadcast = await broadcastService.updateBroadcast(id, updateData);
+
+    logger.info('Broadcast updated', { broadcastId: id, userId: user.id });
 
     return NextResponse.json({
       success: true,
@@ -53,7 +118,7 @@ export async function PUT(
       message: 'Broadcast updated successfully',
     });
   } catch (error) {
-    console.error('Error updating broadcast:', error);
+    logger.error('Error updating broadcast:', error);
     const errorMsg = error instanceof Error ? error.message : 'Failed to update broadcast';
     return NextResponse.json(
       { success: false, error: errorMsg },
@@ -68,15 +133,34 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Authentication required
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Only ADMIN and SUPER_ADMIN can delete broadcasts
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions to delete broadcasts' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     await broadcastService.deleteBroadcast(id);
+
+    logger.info('Broadcast deleted', { broadcastId: id, userId: user.id });
 
     return NextResponse.json({
       success: true,
       message: 'Broadcast deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting broadcast:', error);
+    logger.error('Error deleting broadcast:', error);
     const errorMsg = error instanceof Error ? error.message : 'Failed to delete broadcast';
     return NextResponse.json(
       { success: false, error: errorMsg },
