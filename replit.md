@@ -98,6 +98,27 @@ Database-backed backup system with automatic daily backups:
 - **API**: `/api/admin/snapshots` for CRUD operations (requires authentication)
 - **UI**: History page (`/history`) for viewing and restoring backups
 
+### Transactional Restore System (Dec 2024)
+
+Enterprise-grade restore with zero data loss guarantee:
+- **Dependency-Ordered Restore**: Topological sort ensures parents inserted before children (FK constraint safe)
+- **Atomic Transactions**: Full restore wrapped in Prisma transaction with 60-second timeout
+- **Pre-Restore Safety Backup**: Automatic snapshot created before any restore operation
+- **Member Count Verification**: Transaction rolls back if final count doesn't match expected
+- **Soft-Delete Preservation**: `deletedAt`, `deletedBy`, `deletedReason` fields maintained during backup/restore
+- **Shared Prisma Instance**: All backup operations use shared client to prevent connection exhaustion
+
+### Google Drive Integration (Dec 2024)
+
+Automated cloud backup to Google Drive:
+- **Daily CSV Export**: `Alshaya family.csv` with all members including soft-deleted
+- **JSON Backup**: Full `Alshaya_family_backup_YYYY-MM-DD.json` with metadata
+- **Auto Folder Creation**: Creates "AlShaye Family Backups" folder if not exists
+- **Upsert Logic**: Updates existing files instead of creating duplicates
+- **API Endpoints**:
+  - GET `/api/admin/backup/google-drive` - Check connection status, list files
+  - POST `/api/admin/backup/google-drive` - Trigger manual export
+
 ### Common Issues
 
 | Problem | Solution |
