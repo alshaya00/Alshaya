@@ -46,6 +46,43 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Check if an error is a transient database error that should be retried
+ */
+function isTransientError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  
+  const err = error as { message?: string; code?: string };
+  const errorMessage = err.message || '';
+  const errorCode = err.code || '';
+  
+  // Prisma error codes for transient issues
+  // P1001: Can't reach database server
+  // P1002: Database server timeout
+  // P1008: Operations timed out
+  // P1017: Server closed connection
+  const transientPrismaCodes = ['P1001', 'P1002', 'P1008', 'P1017'];
+  
+  if (transientPrismaCodes.includes(errorCode)) {
+    return true;
+  }
+  
+  // Also check message for common transient error patterns
+  const transientPatterns = [
+    'connection',
+    'timeout',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'socket hang up',
+    'closed',
+  ];
+  
+  return transientPatterns.some(pattern => 
+    errorMessage.toLowerCase().includes(pattern.toLowerCase())
+  );
+}
+
+/**
  * Retry wrapper for database operations that may fail due to transient errors
  */
 async function withRetry<T>(
@@ -59,18 +96,14 @@ async function withRetry<T>(
       return await operation();
     } catch (error) {
       lastError = error as Error;
-      const errorMessage = (error as Error).message || '';
 
       // Check if it's a transient error that we should retry
-      if (
-        errorMessage.includes('connection') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('ECONNRESET')
-      ) {
+      if (isTransientError(error)) {
         if (attempt < MAX_RETRIES) {
           const delayMs = RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
           console.warn(
-            `${operationName}: Database error, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_RETRIES})`
+            `${operationName}: Database error (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delayMs}ms...`,
+            { code: (error as { code?: string }).code, message: (error as Error).message }
           );
           await sleep(delayMs);
           continue;
@@ -128,18 +161,25 @@ export async function isDatabaseAvailable(): Promise<boolean> {
 }
 
 export async function getAllMembers(): Promise<FamilyMember[]> {
-  const rows = await prisma.familyMember.findMany({
-    where: { deletedAt: null },
-    orderBy: { id: 'asc' },
-  });
-  return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+  return withRetry(async () => {
+    const rows = await prisma.familyMember.findMany({
+      where: { deletedAt: null },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+  }, 'getAllMembers');
 }
 
 export async function getMemberById(id: string): Promise<FamilyMember | null> {
-  const row = await prisma.familyMember.findUnique({
-    where: { id },
-  });
-  return row ? rowToMember(row as unknown as Record<string, unknown>) : null;
+  return withRetry(async () => {
+    const row = await prisma.familyMember.findFirst({
+      where: { 
+        id,
+        deletedAt: null 
+      },
+    });
+    return row ? rowToMember(row as unknown as Record<string, unknown>) : null;
+  }, 'getMemberById');
 }
 
 export async function getMaleMembers(): Promise<FamilyMember[]> {
@@ -151,11 +191,13 @@ export async function getMaleMembers(): Promise<FamilyMember[]> {
 }
 
 export async function getChildren(parentId: string): Promise<FamilyMember[]> {
-  const rows = await prisma.familyMember.findMany({
-    where: { fatherId: parentId, deletedAt: null },
-    orderBy: { id: 'asc' },
-  });
-  return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+  return withRetry(async () => {
+    const rows = await prisma.familyMember.findMany({
+      where: { fatherId: parentId, deletedAt: null },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map(row => rowToMember(row as unknown as Record<string, unknown>));
+  }, 'getChildren');
 }
 
 export async function getGen2Branches(): Promise<FamilyMember[]> {
