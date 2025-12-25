@@ -47,6 +47,7 @@ import {
   featureList,
   categoryLabels,
   getFeaturesByCategory,
+  useFeatureFlags,
 } from '@/contexts/FeatureFlagsContext';
 
 // Icon mapping for features
@@ -111,6 +112,7 @@ const defaultFlags: FeatureFlags = {
 
 export default function FeaturesPage() {
   const { getAuthHeader } = useAuth();
+  const { refreshFlags: refreshGlobalFlags } = useFeatureFlags();
   const [flags, setFlags] = useState<FeatureFlags>(defaultFlags);
   const [originalFlags, setOriginalFlags] = useState<FeatureFlags>(defaultFlags);
   const [isLoading, setIsLoading] = useState(true);
@@ -177,6 +179,8 @@ export default function FeaturesPage() {
         setSaveMessage({ type: 'success', text: 'تم حفظ الإعدادات بنجاح' });
         // Also save to localStorage as backup
         localStorage.setItem('alshaye_feature_flags', JSON.stringify(flags));
+        // Refresh the global FeatureFlagsContext so navigation updates immediately
+        await refreshGlobalFlags();
       } else {
         setSaveMessage({ type: 'error', text: data.messageAr || 'حدث خطأ أثناء الحفظ' });
       }
@@ -186,6 +190,8 @@ export default function FeaturesPage() {
       localStorage.setItem('alshaye_feature_flags', JSON.stringify(flags));
       setSaveMessage({ type: 'success', text: 'تم الحفظ محلياً' });
       setOriginalFlags(flags);
+      // Refresh the global FeatureFlagsContext so navigation updates immediately
+      await refreshGlobalFlags();
     } finally {
       setIsSaving(false);
       // Clear message after 3 seconds
