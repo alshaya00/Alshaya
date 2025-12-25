@@ -108,6 +108,15 @@ Enterprise-grade restore with zero data loss guarantee:
 - **Soft-Delete Preservation**: `deletedAt`, `deletedBy`, `deletedReason` fields maintained during backup/restore
 - **Shared Prisma Instance**: All backup operations use shared client to prevent connection exhaustion
 
+### Resend Email Integration (Dec 2024)
+
+Transactional email sending via Resend API:
+- **Replit Connector**: Uses Replit's Resend connector for automatic API key management
+- **Client File**: `src/lib/services/resend-client.ts` - Gets credentials from Replit connector
+- **Email Service**: `src/lib/services/email.ts` - Prioritizes connector, falls back to direct API
+- **Templates**: Arabic bilingual templates for welcome, password reset, invitations, etc.
+- **Fallback**: If connector unavailable, uses `EMAIL_PROVIDER` + `RESEND_API_KEY` env vars
+
 ### Google Drive Integration (Dec 2024)
 
 Automated cloud backup to Google Drive:
