@@ -32,6 +32,8 @@ export interface NameMatchInput {
   fatherName: string;
   grandfatherName?: string;
   greatGrandfatherName?: string;
+  great2GrandfatherName?: string;
+  great3GrandfatherName?: string;
 }
 
 // ============================================

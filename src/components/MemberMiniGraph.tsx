@@ -128,13 +128,13 @@ export default function MemberMiniGraph({
       member: person,
     });
 
-    // Siblings - show all
+    // Siblings - show all, distributed on both sides of the main person
     const siblingsToShow = siblings;
-    const siblingStartX = centerX - ((siblingsToShow.length) * horizontalGap) / 2;
     siblingsToShow.forEach((sibling, index) => {
-      const sibX = siblingStartX + index * horizontalGap;
-      // Skip if too close to main person
-      if (Math.abs(sibX - centerX) < nodeWidth) return;
+      // Distribute siblings on alternating sides of the main person
+      const side = index % 2 === 0 ? -1 : 1;
+      const offset = Math.floor((index + 2) / 2);
+      const sibX = centerX + (side * horizontalGap * offset);
 
       nodesList.push({
         id: sibling.id,
