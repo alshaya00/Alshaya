@@ -3,6 +3,19 @@ import { prisma } from '@/lib/prisma';
 import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 
+function normalizeArabic(text: string): string {
+  return text
+    .replace(/[أإآا]/g, 'ا')
+    .replace(/[ىي]/g, 'ي')
+    .replace(/[ةه]/g, 'ه')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '')
+    .replace(/[\u064B-\u0652]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -42,10 +55,11 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     const members = await getAllMembersFromDb();
+    const normalizedQuery = normalizeArabic(query);
     const matchingMembers = members
       .filter(m =>
-        m.firstName.toLowerCase().includes(query) ||
-        m.fullNameAr?.toLowerCase().includes(query) ||
+        normalizeArabic(m.firstName).includes(normalizedQuery) ||
+        normalizeArabic(m.fullNameAr || '').includes(normalizedQuery) ||
         m.id.toLowerCase().includes(query)
       )
       .slice(0, limit);
@@ -62,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     const branches = [...new Set(members.map(m => m.branch).filter(Boolean))];
     const matchingBranches = branches
-      .filter(b => b?.toLowerCase().includes(query))
+      .filter(b => normalizeArabic(b || '').includes(normalizedQuery))
       .slice(0, 3);
 
     for (const branch of matchingBranches) {
@@ -76,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     const cities = [...new Set(members.map(m => m.city).filter(Boolean))];
     const matchingCities = cities
-      .filter(c => c?.toLowerCase().includes(query))
+      .filter(c => normalizeArabic(c || '').includes(normalizedQuery))
       .slice(0, 3);
 
     for (const city of matchingCities) {
