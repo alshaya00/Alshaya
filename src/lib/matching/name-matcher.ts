@@ -153,7 +153,8 @@ function getFullLineage(
 }
 
 /**
- * Generate full Arabic name string from lineage (to Gen 1)
+ * Generate full Arabic name string from lineage (father first, then grandfather, etc.)
+ * Lineage array is [oldest, ..., father], so we iterate in reverse
  */
 function generateFullName(
   firstName: string,
@@ -164,9 +165,10 @@ function generateFullName(
   const connector = gender === 'Male' ? 'بن' : 'بنت';
   const parts = [firstName];
 
-  for (const ancestor of lineage) {
+  // Iterate in reverse: father first, then grandfather, then great-grandfather, etc.
+  for (let i = lineage.length - 1; i >= 0; i--) {
     parts.push(connector);
-    parts.push(ancestor.firstName);
+    parts.push(lineage[i].firstName);
   }
 
   parts.push(familyName);
@@ -174,7 +176,8 @@ function generateFullName(
 }
 
 /**
- * Generate full English name string from lineage
+ * Generate full English name string from lineage (father first, then grandfather, etc.)
+ * Lineage array is [oldest, ..., father], so we iterate in reverse
  */
 function generateFullNameEn(
   firstName: string,
@@ -185,10 +188,11 @@ function generateFullNameEn(
   const connector = gender === 'Male' ? 'bin' : 'bint';
   const parts = [firstName];
 
-  for (const ancestor of lineage) {
+  // Iterate in reverse: father first, then grandfather, then great-grandfather, etc.
+  for (let i = lineage.length - 1; i >= 0; i--) {
     parts.push(connector);
     // Use English name if available, otherwise transliterate
-    parts.push(ancestor.fullNameEn?.split(' ')[0] || ancestor.firstName);
+    parts.push(lineage[i].fullNameEn?.split(' ')[0] || lineage[i].firstName);
   }
 
   parts.push(familyName);

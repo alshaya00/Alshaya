@@ -55,12 +55,28 @@ export default function LineageGraphPreview({
     const verticalGap = compact ? 60 : 70;
     const horizontalGap = compact ? 70 : 90;
 
-    // Start from the top (oldest ancestor)
+    // Start from the top with the NEW PERSON
     let currentY = topY;
-    let lastAncestorId: string | null = null;
+    
+    // Add new person FIRST at the top
+    const newPersonId = 'NEW_PERSON';
+    nodesList.push({
+      id: newPersonId,
+      name: newPersonName || '?',
+      generation: candidate.generation,
+      gender: newPersonGender,
+      type: 'new_person',
+      isNewPerson: true,
+      x: centerX,
+      y: currentY,
+    });
+    
+    currentY += verticalGap;
+    let lastAncestorId: string | null = newPersonId;
 
-    // Add ancestors from lineage (reversed, so oldest first)
-    const lineageToShow = candidate.fullLineage.slice(-4); // Show up to 4 ancestors
+    // Add ancestors from lineage in REVERSE order (father first, then grandfather, etc.)
+    // fullLineage is [oldest, ..., father], so we reverse to get [father, ..., oldest]
+    const lineageToShow = candidate.fullLineage.slice(-4).reverse(); // Show up to 4 ancestors, reversed
     lineageToShow.forEach((ancestor, index) => {
       nodesList.push({
         id: ancestor.id,
@@ -80,9 +96,9 @@ export default function LineageGraphPreview({
       currentY += verticalGap;
     });
 
-    // Add uncles/aunts (siblings of the father) - at the father's level
+    // Add uncles/aunts (siblings of the father) - at the father's level (first ancestor after new person)
     if (showUncles && candidate.unclesAunts.length > 0) {
-      const fatherY = currentY - verticalGap; // Father is at previous level
+      const fatherY = topY + verticalGap; // Father is right below new person
       const unclesToShow = candidate.unclesAunts.slice(0, 2);
 
       unclesToShow.forEach((uncle, index) => {
@@ -97,29 +113,11 @@ export default function LineageGraphPreview({
           y: fatherY,
         });
 
-        // Link to grandfather
+        // Link to grandfather (which is now the second ancestor in reversed list)
         if (candidate.grandfather) {
           linksList.push({ source: candidate.grandfather.id, target: uncle.id });
         }
       });
-    }
-
-    // Add new person
-    const newPersonY = currentY;
-    const newPersonId = 'NEW_PERSON';
-    nodesList.push({
-      id: newPersonId,
-      name: newPersonName || '?',
-      generation: candidate.generation,
-      gender: newPersonGender,
-      type: 'new_person',
-      isNewPerson: true,
-      x: centerX,
-      y: newPersonY,
-    });
-
-    if (lastAncestorId) {
-      linksList.push({ source: lastAncestorId, target: newPersonId });
     }
 
     // Add siblings (other children of the father)
