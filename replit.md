@@ -168,6 +168,29 @@ All pending member operations now use the database API instead of localStorage:
 - **Parent changes** - Saved via PATCH /api/members/[id] with { fatherId: newParentId }
 - **Public fallback** - Falls back to /api/tree when not authenticated
 
+### Dynamic System Configuration (Dec 2024)
+Database-persisted system configuration that controls application behavior in real-time:
+- **SystemConfig table** - PostgreSQL table with display, validation, security, and feature toggle fields
+- **Server-side caching** - 60-second TTL cache for performance, invalidated on updates
+- **Client-side hook** - `useSystemConfig()` hook for consuming settings in React components
+- **Feature Flags**:
+  - `enableExport` - Controls access to export page
+  - `enableImport` - Controls access to import page
+  - `enablePublicRegistry` - Controls public access to registry page
+  - `enableBranchEntries` - Controls branch entry submissions
+  - `autoBackup` - Controls automatic backup system
+- **Validation Rules**:
+  - `minBirthYear` / `maxBirthYear` - Birth year validation range (1400-2025)
+  - `requirePhone` / `requireEmail` - Field requirement validation
+  - `allowDuplicateNames` - Duplicate name checking
+- **Display Settings**:
+  - `defaultLanguage` - Application language (ar/en)
+  - `dateFormat` - Date display format
+  - `showDeceasedMembers` - Filter deceased in tree view
+- **API Endpoints**:
+  - GET/PUT `/api/admin/config` - Admin config management (requires SUPER_ADMIN)
+  - GET `/api/settings?type=config` - Public read access for settings
+
 ### Updated Files
 - `src/app/tree/page.tsx` - Fetches members from API
 - `src/app/search/page.tsx` - Fetches from API with loading states
