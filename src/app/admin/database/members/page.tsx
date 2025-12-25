@@ -61,9 +61,9 @@ export default function MembersTablePage() {
   const loadMembers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/members', { headers });
+      const res = await fetch('/api/members?limit=500', { headers });
       const data = await res.json();
-      setMembers(data.members || []);
+      setMembers(data.data || []);
     } catch (error) {
       console.error('Error loading members:', error);
     } finally {
