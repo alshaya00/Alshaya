@@ -123,9 +123,9 @@ export function getClientIp(request: Request): string {
 
 // Pre-configured rate limiters for common use cases
 export const rateLimiters = {
-  /** Login: 5 attempts per 15 minutes per IP */
+  /** Login: 20 attempts per 15 minutes per IP */
   login: {
-    maxRequests: 5,
+    maxRequests: 20,
     windowMs: 15 * 60 * 1000,
     keyPrefix: 'login',
   } as RateLimitConfig,

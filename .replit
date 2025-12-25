@@ -36,8 +36,8 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["next", "start", "-H", "0.0.0.0", "-p", "5000"]
-build = ["bash", "-c", "prisma generate && prisma db push && npx tsx prisma/seed-production.ts && npx tsx scripts/ensure-admin.ts && next build"]
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
 
 [agent]
 expertMode = true
