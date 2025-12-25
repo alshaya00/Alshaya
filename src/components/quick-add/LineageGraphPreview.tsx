@@ -120,7 +120,7 @@ export default function LineageGraphPreview({
       });
     }
 
-    // Add siblings (other children of the father)
+    // Add siblings (other children of the father) - at the same level as new person
     if (showSiblings && candidate.siblings.length > 0) {
       const siblingsToShow = candidate.siblings.slice(0, 3);
       const siblingStartX = centerX - ((siblingsToShow.length) * horizontalGap) / 2 - horizontalGap;
@@ -137,11 +137,12 @@ export default function LineageGraphPreview({
           gender: sibling.gender as 'Male' | 'Female',
           type: 'sibling',
           x: sibX,
-          y: newPersonY,
+          y: topY, // Same level as new person (at the top)
         });
 
-        if (lastAncestorId) {
-          linksList.push({ source: lastAncestorId, target: sibling.id });
+        // Link siblings to their father (first ancestor in the reversed list)
+        if (candidate.father) {
+          linksList.push({ source: candidate.father.id, target: sibling.id });
         }
       });
     }
