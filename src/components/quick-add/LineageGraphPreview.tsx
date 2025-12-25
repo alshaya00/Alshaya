@@ -99,17 +99,20 @@ export default function LineageGraphPreview({
     // Add uncles/aunts (siblings of the father) - at the father's level (first ancestor after new person)
     if (showUncles && candidate.unclesAunts.length > 0) {
       const fatherY = topY + verticalGap; // Father is right below new person
-      const unclesToShow = candidate.unclesAunts.slice(0, 2);
+      const unclesToShow = candidate.unclesAunts.slice(0, 4); // Show up to 4 uncles/aunts
+      const uncleSpacing = Math.min(horizontalGap, width / (unclesToShow.length + 3));
 
       unclesToShow.forEach((uncle, index) => {
-        const side = index === 0 ? -1 : 1;
+        // Distribute uncles on both sides of the father
+        const side = index % 2 === 0 ? -1 : 1;
+        const offset = Math.floor((index + 2) / 2);
         nodesList.push({
           id: uncle.id,
           name: uncle.firstName,
           generation: uncle.generation,
           gender: uncle.gender as 'Male' | 'Female',
           type: 'uncle',
-          x: centerX + (side * horizontalGap * 1.5),
+          x: centerX + (side * uncleSpacing * offset),
           y: fatherY,
         });
 
@@ -122,13 +125,14 @@ export default function LineageGraphPreview({
 
     // Add siblings (other children of the father) - at the same level as new person
     if (showSiblings && candidate.siblings.length > 0) {
-      const siblingsToShow = candidate.siblings.slice(0, 3);
-      const siblingStartX = centerX - ((siblingsToShow.length) * horizontalGap) / 2 - horizontalGap;
+      const siblingsToShow = candidate.siblings.slice(0, 6); // Show up to 6 siblings
+      const siblingSpacing = Math.min(horizontalGap * 0.8, (width - 100) / (siblingsToShow.length + 1));
 
       siblingsToShow.forEach((sibling, index) => {
-        const sibX = siblingStartX + (index < Math.floor(siblingsToShow.length / 2) ? index : index + 1) * horizontalGap;
-        // Skip if too close to new person
-        if (Math.abs(sibX - centerX) < horizontalGap * 0.8) return;
+        // Distribute siblings on both sides of the new person
+        const side = index % 2 === 0 ? -1 : 1;
+        const offset = Math.floor((index + 2) / 2);
+        const sibX = centerX + (side * siblingSpacing * offset);
 
         nodesList.push({
           id: sibling.id,
