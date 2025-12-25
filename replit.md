@@ -146,6 +146,14 @@ All pages and API routes now fetch exclusively from PostgreSQL:
 - `src/lib/postgres-db.ts` - Direct Prisma queries, no try/catch fallbacks
 - `src/lib/data.ts` - Type definitions only (no longer used for data)
 
+### Pending Member Data Consistency (Dec 2024)
+All pending member operations now use the database API instead of localStorage:
+- **Admin Pending Page** - Fetches from `/api/admin/pending` using `reviewStatus` field
+- **Branches Page** - Pending counts calculated from database API data
+- **Add-Branch Page** - Submits new entries via POST to `/api/admin/pending`
+- **Public Access** - Branch entry forms can submit/delete via `submittedVia` token parameter
+- **Unified Source** - All dashboards and pages show consistent pending counts
+
 ### Tree Editor Features (Dec 2024)
 - **Change Parent dropdown** - In edit mode, select new parent from dropdown for any member
 - **Multi-root support** - Virtual root created when multiple founders exist
