@@ -288,3 +288,33 @@ export function getLineageBranchStats(
 
   return stats;
 }
+
+/**
+ * Get the full lineage string for a member, showing complete ancestry back to generation 1
+ * Returns a formatted Arabic string like "سعد بن ناصر بن ابراهيم بن ناصر بن شايع"
+ * Uses "بن" (bin) for males and "بنت" (bint) for females
+ */
+export function getFullLineageString(
+  memberId: string,
+  allMembers: FamilyMember[]
+): string {
+  const member = allMembers.find((m) => m.id === memberId);
+  if (!member) return '';
+
+  const names: string[] = [member.firstName];
+  let currentMember = member;
+
+  while (currentMember?.fatherId) {
+    const father = allMembers.find((m) => m.id === currentMember.fatherId);
+    if (father) {
+      const connector = currentMember.gender === 'Female' ? 'بنت' : 'بن';
+      names.push(connector);
+      names.push(father.firstName);
+      currentMember = father;
+    } else {
+      break;
+    }
+  }
+
+  return names.join(' ');
+}

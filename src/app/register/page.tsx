@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
 import type { FamilyMember } from '@/lib/types';
+import { getFullLineageString } from '@/lib/lineage-utils';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
   Users, Lock, ArrowRight, Loader2, X, Search
@@ -461,46 +462,44 @@ export default function RegisterPage() {
                   </div>
                   {showMemberDropdown && filteredMembers.length > 0 && (
                     <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto">
-                      {filteredMembers.map((member) => (
-                        <button
-                          key={member.id}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMemberSelect(member.id);
-                            setFormData({
-                              ...formData,
-                              relatedMemberId: member.id,
-                              nameArabic: member.fullNameAr || member.firstName,
-                              nameEnglish: member.fullNameEn || '',
-                              claimedRelation: `أنا ${member.fullNameAr || member.firstName}`,
-                              relationshipType: 'self',
-                            });
-                          }}
-                          className="w-full px-4 py-4 text-right hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="font-semibold text-gray-900">
-                                {member.fullNameAr || member.firstName}
-                              </span>
-                              {member.fullNameEn && (
-                                <span className="text-sm text-gray-500 mr-2" dir="ltr">
-                                  ({member.fullNameEn})
+                      {filteredMembers.map((member) => {
+                        const fullLineage = getFullLineageString(member.id, allMembers);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMemberSelect(member.id);
+                              setFormData({
+                                ...formData,
+                                relatedMemberId: member.id,
+                                nameArabic: member.fullNameAr || member.firstName,
+                                nameEnglish: member.fullNameEn || '',
+                                claimedRelation: `أنا ${fullLineage || member.fullNameAr || member.firstName}`,
+                                relationshipType: 'self',
+                              });
+                            }}
+                            className="w-full px-4 py-4 text-right hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <span className="font-semibold text-gray-900 block">
+                                  {fullLineage || member.fullNameAr || member.firstName}
                                 </span>
-                              )}
+                                {member.fullNameEn && (
+                                  <span className="text-sm text-gray-500 block mt-1" dir="ltr">
+                                    {member.fullNameEn}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-400">
-                              الجيل {member.generation}
-                            </div>
-                          </div>
-                          {member.branch && (
                             <p className="text-sm text-gray-500 mt-1">
-                              فرع: {member.branch}
+                              الجيل {member.generation}{member.branch ? ` - فرع: ${member.branch}` : ''}
                             </p>
-                          )}
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   {searchQuery && filteredMembers.length === 0 && showMemberDropdown && (
@@ -520,7 +519,7 @@ export default function RegisterPage() {
                         </div>
                         <div>
                           <p className="font-bold text-green-900 text-lg">
-                            {selectedMember.fullNameAr || selectedMember.firstName}
+                            {getFullLineageString(selectedMember.id, allMembers) || selectedMember.fullNameAr || selectedMember.firstName}
                           </p>
                           <p className="text-sm text-green-700">
                             الجيل {selectedMember.generation} {selectedMember.branch ? `- فرع ${selectedMember.branch}` : ''}

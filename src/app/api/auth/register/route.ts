@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import {
   findUserByEmail,
   createAccessRequest,
@@ -8,6 +9,7 @@ import {
 } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
 
 // Sanitize string input
 function sanitizeString(input: string | null | undefined): string {
@@ -125,7 +127,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create access request
+    // Hash the password to store with the access request
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create access request with password hash
     const accessRequest = await createAccessRequest({
       email: sanitizeString(email).toLowerCase(),
       nameArabic: sanitizeString(nameArabic),
@@ -135,11 +140,8 @@ export async function POST(request: NextRequest) {
       relatedMemberId: sanitizeString(relatedMemberId),
       relationshipType: sanitizeString(relationshipType),
       message: sanitizeString(message),
+      passwordHash,
     });
-
-    // Store password hash temporarily in the request (in real implementation,
-    // this would be stored securely or the user would set password after approval)
-    // For now, we'll create the user account when approved
 
     // Log the registration
     await logActivity({
@@ -158,6 +160,19 @@ export async function POST(request: NextRequest) {
       userAgent,
       success: true,
     });
+
+    // Send confirmation email
+    try {
+      await emailService.sendEmail({
+        to: email,
+        templateName: EMAIL_TEMPLATES.ACCESS_REQUEST_SUBMITTED,
+        templateData: {
+          name: nameArabic,
+        },
+      });
+    } catch (emailError) {
+      console.error('Failed to send access request confirmation email:', emailError);
+    }
 
     return NextResponse.json({
       success: true,

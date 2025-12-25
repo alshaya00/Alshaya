@@ -300,6 +300,9 @@ model AccessRequest {
   // Their message
   message         String?
 
+  // Store password hash for use when approved
+  passwordHash    String?  // Hashed password from registration
+
   // Review status
   status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, MORE_INFO
   reviewedById    String?
@@ -1536,6 +1539,66 @@ model FeatureFlag {
   // Metadata
   updatedAt       DateTime @updatedAt
   updatedBy       String?
+}
+
+// ============================================
+// INVITATION CODE SYSTEM
+// ============================================
+
+model InvitationCode {
+  id              String   @id @default(cuid())
+  
+  // The code itself (store hashed for security)
+  code            String   @unique  // Plain code for lookup (or hash if you prefer)
+  
+  // Link to specific family member (optional)
+  linkedMemberId  String?  // ID of FamilyMember this code is for
+  linkedMemberName String? // Name for display
+  
+  // Usage limits
+  maxUses         Int      @default(1)  // How many times can be used
+  usedCount       Int      @default(0)  // How many times used
+  
+  // Expiration
+  expiresAt       DateTime // When code expires
+  
+  // Who created it
+  createdById     String   // Admin who created
+  createdByName   String   // Admin name for display
+  createdAt       DateTime @default(now())
+  
+  // Optional message/note
+  note            String?  // Admin note about this code
+  
+  // Status
+  status          String   @default("ACTIVE") // ACTIVE, USED, EXPIRED, REVOKED
+  
+  // Redemption tracking
+  redemptions     InvitationRedemption[]
+  
+  @@index([code])
+  @@index([status])
+  @@index([linkedMemberId])
+  @@index([expiresAt])
+}
+
+model InvitationRedemption {
+  id              String   @id @default(cuid())
+  
+  // Link to invitation
+  invitationId    String
+  invitation      InvitationCode @relation(fields: [invitationId], references: [id])
+  
+  // Who used it
+  userId          String   // User who redeemed
+  userEmail       String   // Email for audit
+  userName        String   // Name for audit
+  
+  // When
+  redeemedAt      DateTime @default(now())
+  
+  @@index([invitationId])
+  @@index([userId])
 }
 
 // ============================================

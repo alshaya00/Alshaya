@@ -214,6 +214,36 @@ export async function createUser(data: {
   return user as unknown as StoredUser;
 }
 
+export async function createUserWithHash(data: {
+  email: string;
+  passwordHash: string;
+  nameArabic: string;
+  nameEnglish?: string;
+  phone?: string;
+  role?: UserRole;
+  status?: UserStatus;
+  linkedMemberId?: string;
+  assignedBranch?: string;
+}): Promise<StoredUser> {
+  await initializeStore();
+
+  const user = await prisma.user.create({
+    data: {
+      email: data.email.toLowerCase(),
+      passwordHash: data.passwordHash,
+      nameArabic: data.nameArabic,
+      nameEnglish: data.nameEnglish || null,
+      phone: data.phone || null,
+      role: data.role || 'MEMBER',
+      status: data.status || 'PENDING',
+      linkedMemberId: data.linkedMemberId || null,
+      assignedBranch: data.assignedBranch || null,
+    }
+  });
+
+  return user as unknown as StoredUser;
+}
+
 export async function findUserByEmail(email: string): Promise<StoredUser | null> {
   await initializeStore();
 
@@ -586,6 +616,7 @@ export async function createAccessRequest(data: {
   relatedMemberId?: string;
   relationshipType?: string;
   message?: string;
+  passwordHash?: string;
 }): Promise<StoredAccessRequest> {
   await initializeStore();
 
@@ -610,6 +641,7 @@ export async function createAccessRequest(data: {
       relatedMemberId: data.relatedMemberId || null,
       relationshipType: data.relationshipType || null,
       message: data.message || null,
+      passwordHash: data.passwordHash || null,
       status: 'PENDING',
     }
   });

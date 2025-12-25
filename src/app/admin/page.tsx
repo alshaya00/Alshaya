@@ -204,8 +204,8 @@ export default function AdminDashboardPage() {
           title: 'طلبات انضمام',
           description: `${accessRequests} طلب انضمام جديد`,
           count: accessRequests,
-          href: '/admin/settings',
-          icon: <Users className="w-5 h-5" />,
+          href: '/admin/access-requests',
+          icon: <UserPlus className="w-5 h-5" />,
           color: 'bg-blue-500',
           priority: 'high',
         });

@@ -27,6 +27,8 @@ import {
   Image,
   Mail,
   Layers,
+  UserPlus,
+  Key,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
@@ -70,6 +72,18 @@ const adminNavItems: NavItem[] = [
       { href: '/admin/database/pending', label: 'الطلبات المعلقة', labelEn: 'Pending', icon: UserCheck },
       { href: '/admin/database/branches', label: 'روابط الفروع', labelEn: 'Branch Links', icon: Link2 },
     ],
+  },
+  {
+    href: '/admin/access-requests',
+    label: 'طلبات الانضمام',
+    labelEn: 'Access Requests',
+    icon: UserPlus,
+  },
+  {
+    href: '/admin/invitations',
+    label: 'رموز الدعوات',
+    labelEn: 'Invitation Codes',
+    icon: Key,
   },
   {
     href: '/admin/images',
