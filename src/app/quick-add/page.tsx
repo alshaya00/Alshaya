@@ -198,10 +198,23 @@ export default function QuickAddPage() {
     }
 
     if (stepNum === 4) {
-      if (formData.birthYear) {
+      // Birth year is required
+      if (!formData.birthYear.trim()) {
+        newErrors.birthYear = 'سنة الميلاد مطلوبة';
+      } else {
         const year = parseInt(formData.birthYear);
-        if (isNaN(year) || year < 1500 || year > new Date().getFullYear()) {
-          newErrors.birthYear = 'سنة الميلاد غير صحيحة';
+        if (isNaN(year) || year < 1400 || year > new Date().getFullYear()) {
+          newErrors.birthYear = 'سنة الميلاد غير صحيحة (يجب أن تكون بين 1400 والسنة الحالية)';
+        }
+      }
+      // Phone is required
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'رقم الجوال مطلوب';
+      } else {
+        // Validate phone format (Saudi format or international)
+        const phoneClean = formData.phone.replace(/[\s\-\(\)]/g, '');
+        if (!/^\+?\d{8,15}$/.test(phoneClean)) {
+          newErrors.phone = 'رقم الجوال غير صحيح';
         }
       }
       if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -776,15 +789,16 @@ export default function QuickAddPage() {
             {step === 4 && (
               <div className="space-y-5">
                 <p className="text-gray-500 text-center mb-4">
-                  جميع الحقول اختيارية - يمكنك تخطي هذه الخطوة
+                  الحقول المميزة بـ <span className="text-red-500">*</span> مطلوبة
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Birth Year */}
+                  {/* Birth Year - Required */}
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <Calendar size={18} />
                       سنة الميلاد
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -794,6 +808,7 @@ export default function QuickAddPage() {
                         errors.birthYear ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
                       }`}
                       placeholder="مثال: 1990"
+                      required
                     />
                     {errors.birthYear && (
                       <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>
@@ -830,20 +845,27 @@ export default function QuickAddPage() {
                     />
                   </div>
 
-                  {/* Phone */}
+                  {/* Phone - Required */}
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <Phone size={18} />
-                      رقم الهاتف
+                      رقم الجوال
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => updateField('phone', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all"
-                      placeholder="+966..."
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
+                        errors.phone ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
+                      }`}
+                      placeholder="+966 أو 05xxxxxxxx"
                       dir="ltr"
+                      required
                     />
+                    {errors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                    )}
                   </div>
                 </div>
 
