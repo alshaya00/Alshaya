@@ -97,10 +97,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+async function handleRestore(request: NextRequest, id: string) {
   try {
     const user = await getAuthUser(request);
     if (!user) {
@@ -129,7 +126,7 @@ export async function POST(
     }
 
     const snapshot = await prisma.snapshot.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!snapshot) {
@@ -178,10 +175,10 @@ export async function POST(
       action: 'RESTORE_SNAPSHOT',
       category: 'DATA',
       targetType: 'SNAPSHOT',
-      targetId: params.id,
-      targetName: snapshot.name || params.id,
+      targetId: id,
+      targetName: snapshot.name || id,
       details: {
-        snapshotId: params.id,
+        snapshotId: id,
         preRestoreSnapshotId: result.preRestoreSnapshotId,
         membersExpected: result.expectedCount,
         membersRestored: result.restoredCount,
@@ -212,6 +209,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      snapshotName: snapshot.name,
       message: `Successfully restored ${result.restoredCount} members (verified)`,
       messageAr: `تم استعادة ${result.restoredCount} عضو بنجاح (تم التحقق)`,
       details: {
@@ -233,6 +231,21 @@ export async function POST(
     );
   }
 }
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return handleRestore(request, params.id);
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return handleRestore(request, params.id);
+}
+
 
 export async function DELETE(
   request: NextRequest,
