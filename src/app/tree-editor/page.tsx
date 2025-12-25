@@ -176,10 +176,11 @@ export default function TreeEditorPage() {
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
 
-  // Colors
+  // Colors - 12 generations support
   const generationColors = [
     '#DC2626', '#EA580C', '#D97706', '#CA8A04',
     '#65A30D', '#16A34A', '#0D9488', '#0284C7',
+    '#9333EA', '#DB2777', '#0891B2', '#BE185D',
   ];
 
   // Initialize D3 tree

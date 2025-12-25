@@ -111,7 +111,7 @@ export default function HistoryPage() {
     async function fetchChangeHistory() {
       try {
         const headers: HeadersInit = { Authorization: `Bearer ${session!.token}` };
-        const res = await fetch('/api/admin/change-history?limit=100', { headers });
+        const res = await fetch('/api/admin/history?limit=100', { headers });
         if (res.ok) {
           const data = await res.json();
           const formattedChanges: ChangeRecord[] = (data.changes || []).map((ch: any) => ({

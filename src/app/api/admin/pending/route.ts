@@ -80,6 +80,40 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    if (!body.firstName || !body.firstName.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'First name is required', messageAr: 'الاسم الأول مطلوب' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.gender || !['Male', 'Female', 'male', 'female', 'ذكر', 'أنثى'].includes(body.gender)) {
+      return NextResponse.json(
+        { success: false, message: 'Valid gender is required', messageAr: 'الجنس مطلوب' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedGender = ['Male', 'male', 'ذكر'].includes(body.gender) ? 'Male' : 'Female';
+
+    if (body.proposedFatherId) {
+      const fatherExists = await prisma.familyMember.findUnique({
+        where: { id: body.proposedFatherId }
+      });
+      if (!fatherExists) {
+        return NextResponse.json(
+          { success: false, message: 'Father not found', messageAr: 'الأب غير موجود' },
+          { status: 400 }
+        );
+      }
+      if (fatherExists.gender !== 'Male') {
+        return NextResponse.json(
+          { success: false, message: 'Father must be male', messageAr: 'يجب أن يكون الأب ذكراً' },
+          { status: 400 }
+        );
+      }
+    }
+
     const pending = await prisma.pendingMember.create({
       data: {
         firstName: body.firstName,
@@ -88,7 +122,7 @@ export async function POST(request: NextRequest) {
         greatGrandfatherName: body.greatGrandfatherName,
         familyName: body.familyName || 'آل شايع',
         proposedFatherId: body.proposedFatherId,
-        gender: body.gender,
+        gender: normalizedGender,
         birthYear: body.birthYear,
         generation: body.generation || 1,
         branch: body.branch,

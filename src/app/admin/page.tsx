@@ -435,7 +435,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="mt-3 text-sm text-gray-500">
-            <span>SQLite Database</span>
+            <span>PostgreSQL Database</span>
           </div>
         </div>
       </div>
