@@ -52,12 +52,17 @@ export default function PendingPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      const res = await fetch(`/api/admin/pending/${id}/approve`, { 
+      const res = await fetch(`/api/admin/pending/${id}`, { 
         method: 'POST',
-        headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'approve' }),
       });
       if (!res.ok) {
-        throw new Error('Failed to approve member');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.messageAr || errorData.message || 'Failed to approve member');
       }
 
       setPending((prev) =>
@@ -69,23 +74,24 @@ export default function PendingPage() {
       loadPending();
     } catch (error) {
       console.error('Error approving:', error);
-      alert('فشل في الموافقة على الطلب');
+      alert('فشل في الموافقة على الطلب: ' + (error instanceof Error ? error.message : 'خطأ غير معروف'));
     }
   };
 
   const handleReject = async (id: string) => {
     const reason = prompt('سبب الرفض (اختياري):');
     try {
-      const res = await fetch(`/api/admin/pending/${id}/reject`, {
+      const res = await fetch(`/api/admin/pending/${id}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
         },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ action: 'reject', reviewNote: reason }),
       });
       if (!res.ok) {
-        throw new Error('Failed to reject member');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.messageAr || errorData.message || 'Failed to reject member');
       }
 
       setPending((prev) =>
@@ -97,7 +103,7 @@ export default function PendingPage() {
       loadPending();
     } catch (error) {
       console.error('Error rejecting:', error);
-      alert('فشل في رفض الطلب');
+      alert('فشل في رفض الطلب: ' + (error instanceof Error ? error.message : 'خطأ غير معروف'));
     }
   };
 

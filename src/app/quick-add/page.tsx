@@ -198,11 +198,20 @@ export default function QuickAddPage() {
     }
 
     if (stepNum === 4) {
-      if (formData.birthYear) {
+      // Birth year is required
+      if (!formData.birthYear || !formData.birthYear.trim()) {
+        newErrors.birthYear = 'سنة الميلاد مطلوبة';
+      } else {
         const year = parseInt(formData.birthYear);
         if (isNaN(year) || year < 1500 || year > new Date().getFullYear()) {
           newErrors.birthYear = 'سنة الميلاد غير صحيحة';
         }
+      }
+      // Phone is required
+      if (!formData.phone || !formData.phone.trim()) {
+        newErrors.phone = 'رقم الهاتف مطلوب';
+      } else if (!/^[0-9+\-\s()]+$/.test(formData.phone)) {
+        newErrors.phone = 'صيغة رقم الهاتف غير صحيحة';
       }
       if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         newErrors.email = 'البريد الإلكتروني غير صحيح';

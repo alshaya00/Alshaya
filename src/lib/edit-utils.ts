@@ -304,11 +304,8 @@ export function generateFullName(
     ? parts[0] + ' ' + connector + ' ' + parts.slice(1, -1).join(' ' + connector + ' ') + ' ' + parts[parts.length - 1]
     : parts.join(' ');
 
-  // English full name
-  const connectorEn = member.gender === 'Female' ? 'bint' : 'bin';
-  const fullNameEn = parts.length > 2
-    ? transliterate(parts[0]) + ' ' + connectorEn + ' ' + parts.slice(1, -1).map(transliterate).join(' ' + connectorEn + ' ') + ' ' + transliterate(parts[parts.length - 1])
-    : parts.map(transliterate).join(' ');
+  // English full name - use spaces only (no bin/bint)
+  const fullNameEn = parts.map(transliterate).join(' ');
 
   return { fullNameAr, fullNameEn };
 }

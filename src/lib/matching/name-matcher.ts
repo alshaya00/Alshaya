@@ -178,6 +178,7 @@ function generateFullName(
 /**
  * Generate full English name string from lineage (father first, then grandfather, etc.)
  * Lineage array is [oldest, ..., father], so we iterate in reverse
+ * Uses space separator only (no bin/bint)
  */
 function generateFullNameEn(
   firstName: string,
@@ -185,13 +186,11 @@ function generateFullNameEn(
   lineage: FamilyMember[],
   familyName: string = 'Al-Shaye'
 ): string {
-  const connector = gender === 'Male' ? 'bin' : 'bint';
   const parts = [firstName];
 
   // Iterate in reverse: father first, then grandfather, then great-grandfather, etc.
   for (let i = lineage.length - 1; i >= 0; i--) {
-    parts.push(connector);
-    // Use English name if available, otherwise transliterate
+    // Use English name if available, otherwise use Arabic firstName
     parts.push(lineage[i].fullNameEn?.split(' ')[0] || lineage[i].firstName);
   }
 
