@@ -6,9 +6,6 @@ import {
   getBranchLinks,
   createBranchLink,
   buildEntryUrl,
-  getPendingCountByBranch,
-  getTotalPendingCount,
-  getPendingMembers,
   BranchEntryLink,
 } from '@/lib/branchEntry';
 import {
@@ -52,6 +49,13 @@ function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], ma
   return member.firstName + ' آل شايع';
 }
 
+interface PendingMemberApi {
+  id: string;
+  proposedFatherId: string | null;
+  branch: string | null;
+  reviewStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
 function BranchesPageContent() {
   const [branches, setBranches] = useState<BranchData[]>([]);
   const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
@@ -59,6 +63,7 @@ function BranchesPageContent() {
   const [totalPending, setTotalPending] = useState(0);
   const [showLinkModal, setShowLinkModal] = useState<BranchData | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<PendingMemberApi[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { session } = useAuth();
 
@@ -83,6 +88,24 @@ function BranchesPageContent() {
     }
   }, [session?.token]);
 
+  useEffect(() => {
+    async function fetchPendingMembers() {
+      if (!session?.token) return;
+      try {
+        const res = await fetch('/api/admin/pending', {
+          headers: { Authorization: `Bearer ${session.token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPendingMembers(data.pending || []);
+        }
+      } catch (error) {
+        console.error('Error fetching pending members:', error);
+      }
+    }
+    fetchPendingMembers();
+  }, [session?.token]);
+
   const getMemberById = (id: string): FamilyMember | undefined => {
     return allMembers.find(m => m.id === id);
   };
@@ -103,13 +126,19 @@ function BranchesPageContent() {
 
     const links = getBranchLinks();
 
+    // Filter pending members with PENDING status
+    const activePending = pendingMembers.filter(p => p.reviewStatus === 'PENDING');
+
     const branchData: BranchData[] = allBranchHeads.map(head => {
       // Count all descendants
       const descendants = getDescendants(head.id, allMembers);
+      const descendantIds = new Set([head.id, ...descendants.map(d => d.id)]);
       const generations = [...new Set(descendants.map(d => d.generation))];
       const directChildren = allMembers.filter(m => m.fatherId === head.id);
       const link = links.find(l => l.branchHeadId === head.id && l.isActive);
-      const pendingCount = getPendingCountByBranch(head.id);
+      const pendingCount = activePending.filter(p => 
+        p.proposedFatherId && descendantIds.has(p.proposedFatherId)
+      ).length;
       const fullName = getFullLineageName(head, allMembers, 3);
 
       return {
@@ -132,8 +161,8 @@ function BranchesPageContent() {
     });
 
     setBranches(branchData);
-    setTotalPending(getTotalPendingCount());
-  }, [allMembers]);
+    setTotalPending(activePending.length);
+  }, [allMembers, pendingMembers]);
 
   // Get all descendants of a member
   function getDescendants(memberId: string, members: FamilyMember[]): FamilyMember[] {

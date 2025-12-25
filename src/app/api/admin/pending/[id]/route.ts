@@ -236,6 +236,50 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { searchParams } = new URL(request.url);
+    const submittedVia = searchParams.get('submittedVia');
+
+    // Allow public deletion if submittedVia token is provided and matches the pending member
+    if (submittedVia) {
+      const pending = await prisma.pendingMember.findUnique({
+        where: { id: params.id },
+      });
+
+      if (!pending) {
+        return NextResponse.json(
+          { success: false, message: 'Pending member not found', messageAr: 'العضو المعلق غير موجود' },
+          { status: 404 }
+        );
+      }
+
+      // Verify the token matches
+      if (pending.submittedVia !== submittedVia) {
+        return NextResponse.json(
+          { success: false, message: 'Token mismatch', messageAr: 'رمز غير صحيح' },
+          { status: 403 }
+        );
+      }
+
+      // Only allow deletion of pending (not yet reviewed) members
+      if (pending.reviewStatus !== 'PENDING') {
+        return NextResponse.json(
+          { success: false, message: 'Cannot delete reviewed member', messageAr: 'لا يمكن حذف عضو تمت مراجعته' },
+          { status: 400 }
+        );
+      }
+
+      await prisma.pendingMember.delete({
+        where: { id: params.id },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Pending member deleted',
+        messageAr: 'تم حذف العضو المعلق',
+      });
+    }
+
+    // Admin authentication required for deletion without token
     const user = await getAuthUser(request);
     if (!user) {
       return NextResponse.json(

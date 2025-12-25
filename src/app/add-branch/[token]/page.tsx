@@ -5,11 +5,9 @@ import { useParams } from 'next/navigation';
 import type { FamilyMember } from '@/lib/types';
 import {
   getLinkByToken,
-  addPendingMember,
-  getPendingMembers,
-  savePendingMembers,
   BranchEntryLink,
   PendingMember,
+  generateTempId,
 } from '@/lib/branchEntry';
 import BranchAddMemberGraph from '@/components/BranchAddMemberGraph';
 import BranchTreeViewer from '@/components/BranchTreeViewer';
@@ -259,9 +257,39 @@ export default function BranchEntryPage() {
     setFatherId(head.id);
     setLoading(false);
 
-    const pending = getPendingMembers();
-    const fromThisLink = pending.filter(p => p.submittedVia === token && p.status === 'pending');
-    setSessionMembers(fromThisLink);
+    // Fetch pending members from database API
+    async function fetchPendingMembers() {
+      try {
+        const res = await fetch(`/api/admin/pending?submittedVia=${token}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Map database format to local PendingMember format
+          const mappedMembers: PendingMember[] = (data.pending || []).map((p: any) => ({
+            id: p.id,
+            tempId: p.id, // Use database id as tempId for consistency
+            firstName: p.firstName,
+            fatherId: p.proposedFatherId || '',
+            fatherName: p.fatherName || '',
+            gender: p.gender as 'Male' | 'Female',
+            birthYear: p.birthYear,
+            city: p.city,
+            occupation: p.occupation,
+            phone: p.phone,
+            generation: p.generation,
+            branch: p.branch,
+            fullNameAr: p.fullNameAr || p.firstName,
+            submittedAt: p.submittedAt,
+            submittedVia: p.submittedVia,
+            branchHeadId: foundLink.branchHeadId,
+            status: 'pending' as const,
+          }));
+          setSessionMembers(mappedMembers);
+        }
+      } catch (err) {
+        console.error('Error fetching pending members:', err);
+      }
+    }
+    fetchPendingMembers();
   }, [token, allMembers]);
 
   // Get branch members for father selection
@@ -366,7 +394,9 @@ export default function BranchEntryPage() {
     return ids;
   }, [sessionMembers, allMembers]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!firstName.trim()) {
@@ -374,43 +404,99 @@ export default function BranchEntryPage() {
       return;
     }
 
-    if (!fatherId || !autoFill || !link) return;
+    if (!fatherId || !autoFill || !link || isSubmitting) return;
 
-    const newMember = addPendingMember({
-      firstName: firstName.trim(),
-      fatherId,
-      fatherName: autoFill.fatherName,
-      gender,
-      birthYear: birthYear ? parseInt(birthYear) : undefined,
-      phone: phone.trim() || undefined,
-      city: city.trim() || undefined,
-      generation: autoFill.generation,
-      branch: autoFill.branch,
-      fullNameAr: autoFill.fullNameAr,
-      submittedVia: token,
-      branchHeadId: link.branchHeadId,
-    });
+    setIsSubmitting(true);
 
-    setSessionMembers(prev => [...prev, newMember]);
-    setJustAdded(true);
+    try {
+      // POST to database API
+      const response = await fetch('/api/admin/pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          fatherName: autoFill.fatherName,
+          familyName: 'آل شايع',
+          proposedFatherId: fatherId,
+          gender,
+          birthYear: birthYear ? parseInt(birthYear) : undefined,
+          generation: autoFill.generation,
+          branch: autoFill.branch,
+          fullNameAr: autoFill.fullNameAr,
+          phone: phone.trim() || undefined,
+          city: city.trim() || undefined,
+          status: 'Living',
+          submittedVia: token,
+        }),
+      });
 
-    // Reset form
-    setFirstName('');
-    setBirthYear('');
-    setPhone('');
-    setCity('');
+      if (!response.ok) {
+        throw new Error('Failed to add pending member');
+      }
 
-    setTimeout(() => {
-      setJustAdded(false);
-      nameInputRef.current?.focus();
-    }, 800);
+      const data = await response.json();
+      const pending = data.pending;
+
+      // Map to local PendingMember format
+      const newMember: PendingMember = {
+        id: pending.id,
+        tempId: pending.id,
+        firstName: pending.firstName,
+        fatherId: pending.proposedFatherId || fatherId,
+        fatherName: autoFill.fatherName,
+        gender,
+        birthYear: birthYear ? parseInt(birthYear) : undefined,
+        phone: phone.trim() || undefined,
+        city: city.trim() || undefined,
+        generation: autoFill.generation,
+        branch: autoFill.branch,
+        fullNameAr: autoFill.fullNameAr,
+        submittedAt: pending.submittedAt || new Date().toISOString(),
+        submittedVia: token,
+        branchHeadId: link.branchHeadId,
+        status: 'pending',
+      };
+
+      setSessionMembers(prev => [...prev, newMember]);
+      setJustAdded(true);
+
+      // Reset form
+      setFirstName('');
+      setBirthYear('');
+      setPhone('');
+      setCity('');
+
+      setTimeout(() => {
+        setJustAdded(false);
+        nameInputRef.current?.focus();
+      }, 800);
+    } catch (error) {
+      console.error('Error adding pending member:', error);
+      alert('حدث خطأ أثناء إضافة العضو. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleRemoveMember = (id: string) => {
-    const allPending = getPendingMembers();
-    const filtered = allPending.filter(m => m.id !== id);
-    savePendingMembers(filtered);
-    setSessionMembers(prev => prev.filter(m => m.id !== id));
+  const handleRemoveMember = async (id: string) => {
+    try {
+      // DELETE from database API with token verification
+      const response = await fetch(`/api/admin/pending/${id}?submittedVia=${token}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Failed to delete pending member:', data);
+        // Still remove from local state if it fails (member might already be deleted)
+      }
+
+      setSessionMembers(prev => prev.filter(m => m.id !== id));
+    } catch (error) {
+      console.error('Error deleting pending member:', error);
+      // Remove from local state anyway
+      setSessionMembers(prev => prev.filter(m => m.id !== id));
+    }
   };
 
   const handleEditMember = (member: PendingMember) => {
@@ -423,33 +509,82 @@ export default function BranchEntryPage() {
     setCity(member.city || '');
   };
 
-  const handleUpdateMember = () => {
-    if (!editingMember || !firstName.trim() || !autoFill) return;
+  const handleUpdateMember = async () => {
+    if (!editingMember || !firstName.trim() || !autoFill || !link || isSubmitting) return;
 
-    const allPending = getPendingMembers();
-    const idx = allPending.findIndex(m => m.id === editingMember.id);
-    if (idx >= 0) {
-      allPending[idx] = {
-        ...allPending[idx],
-        firstName: firstName.trim(),
-        fatherId,
+    setIsSubmitting(true);
+
+    try {
+      // Delete the old pending member and create a new one with updated data
+      await fetch(`/api/admin/pending/${editingMember.id}?submittedVia=${token}`, {
+        method: 'DELETE',
+      });
+
+      // Create new pending member with updated data
+      const response = await fetch('/api/admin/pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          fatherName: autoFill.fatherName,
+          familyName: 'آل شايع',
+          proposedFatherId: fatherId,
+          gender,
+          birthYear: birthYear ? parseInt(birthYear) : undefined,
+          generation: autoFill.generation,
+          branch: autoFill.branch,
+          fullNameAr: autoFill.fullNameAr,
+          phone: phone.trim() || undefined,
+          city: city.trim() || undefined,
+          status: 'Living',
+          submittedVia: token,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update pending member');
+      }
+
+      const data = await response.json();
+      const pending = data.pending;
+
+      // Map to local PendingMember format
+      const updatedMember: PendingMember = {
+        id: pending.id,
+        tempId: pending.id,
+        firstName: pending.firstName,
+        fatherId: pending.proposedFatherId || fatherId,
         fatherName: autoFill.fatherName,
         gender,
         birthYear: birthYear ? parseInt(birthYear) : undefined,
         phone: phone.trim() || undefined,
         city: city.trim() || undefined,
         generation: autoFill.generation,
+        branch: autoFill.branch,
         fullNameAr: autoFill.fullNameAr,
+        submittedAt: pending.submittedAt || new Date().toISOString(),
+        submittedVia: token,
+        branchHeadId: link.branchHeadId,
+        status: 'pending',
       };
-      savePendingMembers(allPending);
-      setSessionMembers(allPending.filter(p => p.submittedVia === token && p.status === 'pending'));
-    }
 
-    setEditingMember(null);
-    setFirstName('');
-    setBirthYear('');
-    setPhone('');
-    setCity('');
+      // Update local state: remove old, add new
+      setSessionMembers(prev => {
+        const filtered = prev.filter(m => m.id !== editingMember.id);
+        return [...filtered, updatedMember];
+      });
+
+      setEditingMember(null);
+      setFirstName('');
+      setBirthYear('');
+      setPhone('');
+      setCity('');
+    } catch (error) {
+      console.error('Error updating pending member:', error);
+      alert('حدث خطأ أثناء تحديث العضو. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFinalSubmit = () => {

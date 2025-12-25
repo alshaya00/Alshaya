@@ -1,15 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { FamilyMember } from '@/lib/types';
-import {
-  getPendingMembers,
-  updatePendingStatus,
-  removePendingMember,
-  savePendingMembers,
-  PendingMember,
-  getBranchLinks,
-} from '@/lib/branchEntry';
 import {
   Check, X, Edit2, Clock, User, Filter, Trash2,
   ChevronDown, ChevronRight, AlertCircle, CheckCircle, XCircle,
@@ -18,7 +10,34 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 
-type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
+type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
+interface DbPendingMember {
+  id: string;
+  firstName: string;
+  fatherName: string | null;
+  grandfatherName: string | null;
+  greatGrandfatherName: string | null;
+  familyName: string;
+  proposedFatherId: string | null;
+  gender: string;
+  birthYear: number | null;
+  generation: number;
+  branch: string | null;
+  fullNameAr: string | null;
+  fullNameEn: string | null;
+  phone: string | null;
+  city: string | null;
+  status: string;
+  occupation: string | null;
+  email: string | null;
+  submittedVia: string | null;
+  submittedAt: string;
+  reviewStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+}
 
 function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], maxDepth: number = 4): string {
   const names: string[] = [member.firstName];
@@ -47,14 +66,14 @@ interface BranchGroup {
   branchHeadName: string;
   branchFullName: string;
   generation: number;
-  members: PendingMember[];
+  members: DbPendingMember[];
 }
 
 export default function AdminPendingPage() {
-  const [members, setMembers] = useState<PendingMember[]>([]);
-  const [filter, setFilter] = useState<FilterStatus>('pending');
+  const [members, setMembers] = useState<DbPendingMember[]>([]);
+  const [filter, setFilter] = useState<FilterStatus>('PENDING');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<PendingMember>>({});
+  const [editData, setEditData] = useState<Partial<DbPendingMember>>({});
   const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -64,88 +83,97 @@ export default function AdminPendingPage() {
   } | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { session } = useAuth();
 
+  const fetchPendingMembers = useCallback(async () => {
+    if (!session?.token) return;
+    try {
+      const res = await fetch('/api/admin/pending', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMembers(data.pending || []);
+      }
+    } catch (error) {
+      console.error('Error fetching pending members:', error);
+    }
+  }, [session?.token]);
+
   useEffect(() => {
-    async function fetchMembers() {
+    async function fetchData() {
+      if (!session?.token) return;
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/members?limit=500', {
-          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const [membersRes] = await Promise.all([
+          fetch('/api/members?limit=500', {
+            headers: { Authorization: `Bearer ${session.token}` },
+          }),
+        ]);
+        if (membersRes.ok) {
+          const data = await membersRes.json();
           setAllMembers(data.data || []);
         }
+        await fetchPendingMembers();
       } catch (error) {
-        console.error('Error fetching members:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
     }
-    if (session?.token) {
-      fetchMembers();
-    }
-  }, [session?.token]);
+    fetchData();
+  }, [session?.token, fetchPendingMembers]);
 
   const getMemberById = (id: string): FamilyMember | undefined => {
     return allMembers.find(m => m.id === id);
   };
 
-  // Load pending members
-  useEffect(() => {
-    const pending = getPendingMembers();
-    setMembers(pending);
-  }, []);
-
-  // Filter members
   const filteredMembers = useMemo(() => {
     let result = members;
 
-    // Status filter
     if (filter !== 'all') {
-      result = result.filter(m => m.status === filter);
+      result = result.filter(m => m.reviewStatus === filter);
     }
 
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(m =>
         m.firstName.toLowerCase().includes(query) ||
-        m.fullNameAr.toLowerCase().includes(query) ||
-        m.fatherName.toLowerCase().includes(query)
+        (m.fullNameAr && m.fullNameAr.toLowerCase().includes(query)) ||
+        (m.fatherName && m.fatherName.toLowerCase().includes(query))
       );
     }
 
     return result;
   }, [members, filter, searchQuery]);
 
-  // Group by branch with full names
   const branchGroups = useMemo(() => {
     const groups: Record<string, BranchGroup> = {};
 
     filteredMembers.forEach(member => {
-      if (!groups[member.branchHeadId]) {
-        const branchHead = getMemberById(member.branchHeadId);
-        groups[member.branchHeadId] = {
-          branchHeadId: member.branchHeadId,
+      const branchId = member.proposedFatherId || member.branch || 'unknown';
+      if (!groups[branchId]) {
+        const branchHead = getMemberById(branchId);
+        groups[branchId] = {
+          branchHeadId: branchId,
           branchHeadName: branchHead?.firstName || 'غير معروف',
           branchFullName: branchHead ? getFullLineageName(branchHead, allMembers, 3) : 'غير معروف',
           generation: branchHead?.generation || 0,
           members: [],
         };
       }
-      groups[member.branchHeadId].members.push(member);
+      groups[branchId].members.push(member);
     });
 
     return Object.values(groups).sort((a, b) => a.generation - b.generation);
   }, [filteredMembers, allMembers]);
 
-  // Stats
   const stats = useMemo(() => ({
     total: members.length,
-    pending: members.filter(m => m.status === 'pending').length,
-    approved: members.filter(m => m.status === 'approved').length,
-    rejected: members.filter(m => m.status === 'rejected').length,
+    pending: members.filter(m => m.reviewStatus === 'PENDING').length,
+    approved: members.filter(m => m.reviewStatus === 'APPROVED').length,
+    rejected: members.filter(m => m.reviewStatus === 'REJECTED').length,
   }), [members]);
 
   const handleSelectMember = (id: string) => {
@@ -164,7 +192,7 @@ export default function AdminPendingPage() {
     const group = branchGroups.find(g => g.branchHeadId === branchHeadId);
     if (!group) return;
 
-    const pendingInGroup = group.members.filter(m => m.status === 'pending');
+    const pendingInGroup = group.members.filter(m => m.reviewStatus === 'PENDING');
     const allSelected = pendingInGroup.every(m => selectedIds.has(m.id));
 
     setSelectedIds(prev => {
@@ -180,45 +208,75 @@ export default function AdminPendingPage() {
     });
   };
 
-  const handleApprove = (ids: string[]) => {
-    ids.forEach(id => {
-      updatePendingStatus(id, 'approved');
-    });
-    setMembers(getPendingMembers());
-    setSelectedIds(new Set());
-    setShowConfirmModal(null);
-  };
-
-  const handleReject = (ids: string[]) => {
-    ids.forEach(id => {
-      updatePendingStatus(id, 'rejected');
-    });
-    setMembers(getPendingMembers());
-    setSelectedIds(new Set());
-    setShowConfirmModal(null);
-  };
-
-  const handleDelete = (ids: string[]) => {
-    ids.forEach(id => {
-      removePendingMember(id);
-    });
-    setMembers(getPendingMembers());
-    setSelectedIds(new Set());
-    setShowConfirmModal(null);
-  };
-
-  const handleResetStatus = (id: string) => {
-    const allPending = getPendingMembers();
-    const member = allPending.find(m => m.id === id);
-    if (member) {
-      member.status = 'pending';
-      member.reviewNote = undefined;
-      savePendingMembers(allPending);
-      setMembers(allPending);
+  const handleApprove = async (ids: string[]) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+    try {
+      await Promise.all(ids.map(id =>
+        fetch(`/api/admin/pending/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.token}`,
+          },
+          body: JSON.stringify({ action: 'approve' }),
+        })
+      ));
+      await fetchPendingMembers();
+      setSelectedIds(new Set());
+      setShowConfirmModal(null);
+    } catch (error) {
+      console.error('Error approving members:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleEdit = (member: PendingMember) => {
+  const handleReject = async (ids: string[]) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+    try {
+      await Promise.all(ids.map(id =>
+        fetch(`/api/admin/pending/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.token}`,
+          },
+          body: JSON.stringify({ action: 'reject' }),
+        })
+      ));
+      await fetchPendingMembers();
+      setSelectedIds(new Set());
+      setShowConfirmModal(null);
+    } catch (error) {
+      console.error('Error rejecting members:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async (ids: string[]) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+    try {
+      await Promise.all(ids.map(id =>
+        fetch(`/api/admin/pending/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${session.token}` },
+        })
+      ));
+      await fetchPendingMembers();
+      setSelectedIds(new Set());
+      setShowConfirmModal(null);
+    } catch (error) {
+      console.error('Error deleting members:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleEdit = (member: DbPendingMember) => {
     setEditingId(member.id);
     setEditData({
       firstName: member.firstName,
@@ -229,46 +287,43 @@ export default function AdminPendingPage() {
     });
   };
 
-  const handleSaveEdit = (id: string) => {
-    const updatedMembers = members.map(m => {
-      if (m.id === id) {
-        const connector = m.gender === 'Male' ? 'بن' : 'بنت';
-        return {
-          ...m,
-          ...editData,
-          fullNameAr: `${editData.firstName || m.firstName} ${connector} ${m.fatherName} آل شايع`,
-        };
-      }
-      return m;
-    });
-    setMembers(updatedMembers);
-    savePendingMembers(updatedMembers);
+  const handleSaveEdit = async (id: string) => {
     setEditingId(null);
     setEditData({});
   };
 
   const statusColors = {
-    pending: 'bg-orange-100 text-orange-700 border-orange-300',
-    approved: 'bg-green-100 text-green-700 border-green-300',
-    rejected: 'bg-red-100 text-red-700 border-red-300',
+    PENDING: 'bg-orange-100 text-orange-700 border-orange-300',
+    APPROVED: 'bg-green-100 text-green-700 border-green-300',
+    REJECTED: 'bg-red-100 text-red-700 border-red-300',
   };
 
   const statusIcons = {
-    pending: <Clock size={14} />,
-    approved: <CheckCircle size={14} />,
-    rejected: <XCircle size={14} />,
+    PENDING: <Clock size={14} />,
+    APPROVED: <CheckCircle size={14} />,
+    REJECTED: <XCircle size={14} />,
   };
 
   const statusLabels = {
-    pending: 'بانتظار المراجعة',
-    approved: 'تمت الموافقة',
-    rejected: 'مرفوض',
+    PENDING: 'بانتظار المراجعة',
+    APPROVED: 'تمت الموافقة',
+    REJECTED: 'مرفوض',
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-8 w-8 text-green-500 mx-auto mb-4" />
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 py-6">
       <div className="container mx-auto px-4 max-w-5xl">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -286,30 +341,29 @@ export default function AdminPendingPage() {
           </Link>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <button
-            onClick={() => setFilter('pending')}
+            onClick={() => setFilter('PENDING')}
             className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'pending' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white border hover:border-orange-300'
+              filter === 'PENDING' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white border hover:border-orange-300'
             }`}
           >
             <p className="text-2xl font-bold">{stats.pending}</p>
             <p className="text-sm opacity-80">بانتظار</p>
           </button>
           <button
-            onClick={() => setFilter('approved')}
+            onClick={() => setFilter('APPROVED')}
             className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'approved' ? 'bg-green-500 text-white shadow-lg' : 'bg-white border hover:border-green-300'
+              filter === 'APPROVED' ? 'bg-green-500 text-white shadow-lg' : 'bg-white border hover:border-green-300'
             }`}
           >
             <p className="text-2xl font-bold">{stats.approved}</p>
             <p className="text-sm opacity-80">موافق عليه</p>
           </button>
           <button
-            onClick={() => setFilter('rejected')}
+            onClick={() => setFilter('REJECTED')}
             className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'rejected' ? 'bg-red-500 text-white shadow-lg' : 'bg-white border hover:border-red-300'
+              filter === 'REJECTED' ? 'bg-red-500 text-white shadow-lg' : 'bg-white border hover:border-red-300'
             }`}
           >
             <p className="text-2xl font-bold">{stats.rejected}</p>
@@ -326,10 +380,8 @@ export default function AdminPendingPage() {
           </button>
         </div>
 
-        {/* Search and Bulk Actions */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
@@ -341,7 +393,6 @@ export default function AdminPendingPage() {
               />
             </div>
 
-            {/* Bulk Actions */}
             {selectedIds.size > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">
@@ -350,6 +401,7 @@ export default function AdminPendingPage() {
                 <button
                   onClick={() => setShowConfirmModal({ type: 'approve', ids: Array.from(selectedIds) })}
                   className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center gap-1 text-sm transition-colors"
+                  disabled={isProcessing}
                 >
                   <Check size={16} />
                   موافقة
@@ -357,6 +409,7 @@ export default function AdminPendingPage() {
                 <button
                   onClick={() => setShowConfirmModal({ type: 'reject', ids: Array.from(selectedIds) })}
                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-1 text-sm transition-colors"
+                  disabled={isProcessing}
                 >
                   <X size={16} />
                   رفض
@@ -364,6 +417,7 @@ export default function AdminPendingPage() {
                 <button
                   onClick={() => setShowConfirmModal({ type: 'delete', ids: Array.from(selectedIds) })}
                   className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg flex items-center gap-1 text-sm transition-colors"
+                  disabled={isProcessing}
                 >
                   <Trash2 size={16} />
                   حذف
@@ -373,7 +427,6 @@ export default function AdminPendingPage() {
           </div>
         </div>
 
-        {/* Empty State */}
         {branchGroups.length === 0 && (
           <div className="bg-white rounded-xl p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -381,29 +434,26 @@ export default function AdminPendingPage() {
             </div>
             <h3 className="text-lg font-medium text-gray-700">لا يوجد أعضاء</h3>
             <p className="text-gray-500 mt-1">
-              {filter === 'pending' ? 'لا يوجد أعضاء بانتظار المراجعة' : 'لا يوجد أعضاء في هذه الفئة'}
+              {filter === 'PENDING' ? 'لا يوجد أعضاء بانتظار المراجعة' : 'لا يوجد أعضاء في هذه الفئة'}
             </p>
           </div>
         )}
 
-        {/* Branch Groups */}
         <div className="space-y-4">
           {branchGroups.map(group => {
-            const pendingInGroup = group.members.filter(m => m.status === 'pending');
+            const pendingInGroup = group.members.filter(m => m.reviewStatus === 'PENDING');
             const allPendingSelected = pendingInGroup.length > 0 && pendingInGroup.every(m => selectedIds.has(m.id));
             const somePendingSelected = pendingInGroup.some(m => selectedIds.has(m.id));
             const isExpanded = expandedBranch === group.branchHeadId || branchGroups.length === 1;
 
             return (
               <div key={group.branchHeadId} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                {/* Group Header */}
                 <div
                   className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b"
                   onClick={() => setExpandedBranch(isExpanded && branchGroups.length > 1 ? null : group.branchHeadId)}
                 >
                   <div className="flex items-center gap-4">
-                    {/* Checkbox for pending */}
-                    {filter === 'pending' && pendingInGroup.length > 0 && (
+                    {filter === 'PENDING' && pendingInGroup.length > 0 && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -422,17 +472,14 @@ export default function AdminPendingPage() {
                       </button>
                     )}
 
-                    {/* Expand Icon */}
                     <div className="text-gray-400">
                       {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                     </div>
 
-                    {/* Branch Avatar */}
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl border-2 border-blue-300 flex-shrink-0">
                       👨
                     </div>
 
-                    {/* Branch Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-800 truncate">
                         فرع {group.branchFullName}
@@ -442,23 +489,21 @@ export default function AdminPendingPage() {
                       </p>
                     </div>
 
-                    {/* Quick Stats */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {group.members.filter(m => m.status === 'pending').length > 0 && (
+                      {group.members.filter(m => m.reviewStatus === 'PENDING').length > 0 && (
                         <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
-                          {group.members.filter(m => m.status === 'pending').length} بانتظار
+                          {group.members.filter(m => m.reviewStatus === 'PENDING').length} بانتظار
                         </span>
                       )}
-                      {group.members.filter(m => m.status === 'approved').length > 0 && (
+                      {group.members.filter(m => m.reviewStatus === 'APPROVED').length > 0 && (
                         <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          {group.members.filter(m => m.status === 'approved').length} موافق
+                          {group.members.filter(m => m.reviewStatus === 'APPROVED').length} موافق
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Members List */}
                 {isExpanded && (
                   <div className="divide-y">
                     {group.members.map(member => (
@@ -469,8 +514,7 @@ export default function AdminPendingPage() {
                         }`}
                       >
                         <div className="flex items-start gap-4">
-                          {/* Checkbox */}
-                          {member.status === 'pending' && (
+                          {member.reviewStatus === 'PENDING' && (
                             <button
                               onClick={() => handleSelectMember(member.id)}
                               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors mt-1 ${
@@ -482,16 +526,14 @@ export default function AdminPendingPage() {
                               {selectedIds.has(member.id) && <Check size={12} />}
                             </button>
                           )}
-                          {member.status !== 'pending' && <div className="w-5" />}
+                          {member.reviewStatus !== 'PENDING' && <div className="w-5" />}
 
-                          {/* Avatar */}
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${
                             member.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
                           }`}>
                             {member.gender === 'Male' ? '👨' : '👩'}
                           </div>
 
-                          {/* Info */}
                           <div className="flex-1 min-w-0">
                             {editingId === member.id ? (
                               <input
@@ -503,16 +545,16 @@ export default function AdminPendingPage() {
                             ) : (
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-gray-800">
-                                  {member.fullNameAr}
+                                  {member.fullNameAr || member.firstName}
                                 </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusColors[member.status]}`}>
-                                  {statusIcons[member.status]}
-                                  {statusLabels[member.status]}
+                                <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusColors[member.reviewStatus]}`}>
+                                  {statusIcons[member.reviewStatus]}
+                                  {statusLabels[member.reviewStatus]}
                                 </span>
                               </div>
                             )}
                             <div className="text-sm text-gray-500 mt-1 space-y-0.5">
-                              <p>الجيل: {member.generation} • الأب: {member.fatherName}</p>
+                              <p>الجيل: {member.generation} • الأب: {member.fatherName || 'غير محدد'}</p>
                               {member.birthYear && <p>سنة الميلاد: {member.birthYear}</p>}
                               {member.phone && <p>الجوال: {member.phone}</p>}
                               <p className="text-xs text-gray-400">
@@ -520,7 +562,6 @@ export default function AdminPendingPage() {
                               </p>
                             </div>
 
-                            {/* Edit Form */}
                             {editingId === member.id && (
                               <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-3">
                                 <div>
@@ -548,7 +589,6 @@ export default function AdminPendingPage() {
                             )}
                           </div>
 
-                          {/* Actions */}
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {editingId === member.id ? (
                               <>
@@ -569,12 +609,13 @@ export default function AdminPendingPage() {
                               </>
                             ) : (
                               <>
-                                {member.status === 'pending' ? (
+                                {member.reviewStatus === 'PENDING' ? (
                                   <>
                                     <button
                                       onClick={() => handleApprove([member.id])}
                                       className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200"
                                       title="موافقة"
+                                      disabled={isProcessing}
                                     >
                                       <Check size={18} />
                                     </button>
@@ -582,19 +623,12 @@ export default function AdminPendingPage() {
                                       onClick={() => handleReject([member.id])}
                                       className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
                                       title="رفض"
+                                      disabled={isProcessing}
                                     >
                                       <X size={18} />
                                     </button>
                                   </>
-                                ) : (
-                                  <button
-                                    onClick={() => handleResetStatus(member.id)}
-                                    className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                                    title="إعادة للمراجعة"
-                                  >
-                                    <RotateCcw size={18} />
-                                  </button>
-                                )}
+                                ) : null}
                                 <button
                                   onClick={() => handleEdit(member)}
                                   className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
@@ -606,6 +640,7 @@ export default function AdminPendingPage() {
                                   onClick={() => setShowConfirmModal({ type: 'delete', ids: [member.id] })}
                                   className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
                                   title="حذف"
+                                  disabled={isProcessing}
                                 >
                                   <Trash2 size={18} />
                                 </button>
@@ -622,7 +657,6 @@ export default function AdminPendingPage() {
           })}
         </div>
 
-        {/* Instructions */}
         <div className="mt-8 bg-blue-50 rounded-xl p-6 border border-blue-200">
           <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
             <AlertCircle size={20} />
@@ -637,7 +671,6 @@ export default function AdminPendingPage() {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
@@ -671,6 +704,7 @@ export default function AdminPendingPage() {
                 <button
                   onClick={() => setShowConfirmModal(null)}
                   className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50"
+                  disabled={isProcessing}
                 >
                   إلغاء
                 </button>
@@ -684,14 +718,16 @@ export default function AdminPendingPage() {
                       handleDelete(showConfirmModal.ids);
                     }
                   }}
-                  className={`flex-1 py-3 text-white font-bold rounded-xl ${
+                  disabled={isProcessing}
+                  className={`flex-1 py-3 text-white font-bold rounded-xl flex items-center justify-center gap-2 ${
                     showConfirmModal.type === 'approve'
                       ? 'bg-green-500 hover:bg-green-600'
                       : showConfirmModal.type === 'reject'
                       ? 'bg-red-500 hover:bg-red-600'
                       : 'bg-gray-500 hover:bg-gray-600'
-                  }`}
+                  } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
+                  {isProcessing && <Loader2 className="animate-spin" size={18} />}
                   تأكيد
                 </button>
               </div>

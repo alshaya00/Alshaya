@@ -21,7 +21,24 @@ async function getAuthUser(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const submittedVia = searchParams.get('submittedVia');
+
+    // Public access allowed when filtering by submittedVia token
+    // This allows the public branch entry page to fetch its own pending members
+    if (submittedVia) {
+      const pending = await prisma.pendingMember.findMany({
+        where: {
+          submittedVia,
+          reviewStatus: 'PENDING',
+        },
+        orderBy: { submittedAt: 'desc' },
+      });
+      return NextResponse.json({ pending });
+    }
+
+    // Check authentication for admin access
     const user = await getAuthUser(request);
     if (!user) {
       return NextResponse.json(
@@ -38,9 +55,6 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
-
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
 
     const where: Record<string, unknown> = {};
     if (status) where.reviewStatus = status;
