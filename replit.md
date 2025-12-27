@@ -26,6 +26,14 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
     -   Interactive D3.js visualization with zoom/pan.
     -   Tree editor with "Change Parent" functionality and multi-root support.
     -   Support for up to 12 generations with distinct color coding per generation.
+    -   Saudi cultural avatar images (male with shemagh, female with hijab) for all member displays.
+-   **Photo Management**:
+    -   **Album Folder System**: Organize photos into folders (Profile Photos, Memories, Documents, Historical, Events).
+    -   **Profile Pictures**: Camera icon overlay on avatars, "Set as Profile" button in galleries.
+    -   **Gallery Filtering**: Filter photos by folder and category with color-coded tabs.
+-   **Localization Enhancements**:
+    -   **Arabic Transliteration**: 80+ common Arabic name mappings for proper fullNameEn generation.
+    -   **Branch Identification**: Recursive lookup with fuzzy Arabic name matching for pending member approvals.
 -   **Security**: Admin credentials are set via Replit Secrets.
 -   **UI/UX**: Clean, modern interface with Tailwind CSS.
 
@@ -42,6 +50,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   Invitation Signup (`/invite`) - Code-based registration with auto-approval
 -   Admin Access Requests (`/admin/access-requests`) - Approve/reject signup requests
 -   Admin Invitations (`/admin/invitations`) - Generate and manage invitation codes
+-   Admin Album Folders (`/admin/album-folders`) - Manage photo album folders
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database for all application data.
