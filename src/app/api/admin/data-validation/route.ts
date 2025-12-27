@@ -6,7 +6,14 @@ import {
   validateGenerations,
   validateParentRelationships,
   validateOrphanedMembers,
-  type DataConsistencyReport
+  validateCircularAncestry,
+  validateDeletedReferences,
+  validateDuplicateMembers,
+  validateChildrenCounts,
+  validateLineageConsistency,
+  validatePendingMembers,
+  type DataConsistencyReport,
+  type ValidationResult
 } from '@/lib/data-integrity';
 
 async function getAuthUser(request: NextRequest) {
@@ -45,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const checkType = searchParams.get('type') || 'full';
 
-    let report: DataConsistencyReport | { validation: ReturnType<typeof validateGenerations> extends Promise<infer T> ? T : never };
+    let report: DataConsistencyReport | { validation: ValidationResult };
 
     switch (checkType) {
       case 'generations':
@@ -56,6 +63,24 @@ export async function GET(request: NextRequest) {
         break;
       case 'orphans':
         report = { validation: await validateOrphanedMembers() };
+        break;
+      case 'circular':
+        report = { validation: await validateCircularAncestry() };
+        break;
+      case 'deleted-refs':
+        report = { validation: await validateDeletedReferences() };
+        break;
+      case 'duplicates':
+        report = { validation: await validateDuplicateMembers() };
+        break;
+      case 'children-counts':
+        report = { validation: await validateChildrenCounts() };
+        break;
+      case 'lineage':
+        report = { validation: await validateLineageConsistency() };
+        break;
+      case 'pending':
+        report = { validation: await validatePendingMembers() };
         break;
       case 'full':
       default:

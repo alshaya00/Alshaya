@@ -2,7 +2,15 @@ import { prisma } from './prisma';
 import { Prisma } from '@prisma/client';
 import { checkDataConsistency, ValidationIssue } from './data-integrity';
 import { logAuditToDb } from './db-audit';
-import { transliterateName } from './utils/transliteration';
+import {
+  generateNextMemberId,
+  calculateGeneration,
+  buildLineageInfo,
+  validateParent,
+  updateParentChildrenCount,
+  generateFullNames,
+  checkForDuplicates,
+} from './member-registry';
 import type { FamilyMember as PrismaFamilyMember } from '@prisma/client';
 
 export interface ApprovalResult {
@@ -24,70 +32,6 @@ export interface ApprovalContext {
 
 type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
-async function getNextIdFromTransaction(tx: TransactionClient): Promise<string> {
-  const lastMember = await tx.familyMember.findFirst({
-    orderBy: { id: 'desc' },
-    select: { id: true },
-  });
-
-  if (!lastMember) return '1';
-
-  const lastIdNum = parseInt(lastMember.id, 10);
-  if (isNaN(lastIdNum)) {
-    const count = await tx.familyMember.count();
-    return String(count + 1);
-  }
-
-  return String(lastIdNum + 1);
-}
-
-async function calculateGenerationInTx(tx: TransactionClient, fatherId: string | null): Promise<number> {
-  if (!fatherId) return 1;
-
-  const father = await tx.familyMember.findUnique({
-    where: { id: fatherId },
-    select: { generation: true },
-  });
-
-  return father ? father.generation + 1 : 1;
-}
-
-async function buildLineagePathInTx(tx: TransactionClient, fatherId: string | null): Promise<string> {
-  if (!fatherId) return '';
-
-  const ancestors: string[] = [];
-  let currentId: string | null = fatherId;
-
-  for (let i = 0; i < 20 && currentId; i++) {
-    const ancestor: { id: string; firstName: string; fatherId: string | null } | null = 
-      await tx.familyMember.findUnique({
-        where: { id: currentId },
-        select: { id: true, firstName: true, fatherId: true },
-      });
-
-    if (!ancestor) break;
-    ancestors.unshift(ancestor.firstName);
-    currentId = ancestor.fatherId;
-  }
-
-  return ancestors.join(' > ');
-}
-
-async function updateParentChildrenCountInTx(tx: TransactionClient, fatherId: string): Promise<void> {
-  const children = await tx.familyMember.findMany({
-    where: { fatherId, deletedAt: null },
-    select: { gender: true },
-  });
-
-  const sonsCount = children.filter(c => c.gender === 'Male').length;
-  const daughtersCount = children.filter(c => c.gender === 'Female').length;
-
-  await tx.familyMember.update({
-    where: { id: fatherId },
-    data: { sonsCount, daughtersCount },
-  });
-}
-
 export async function approvePendingMemberTransactional(
   context: ApprovalContext
 ): Promise<ApprovalResult> {
@@ -108,28 +52,46 @@ export async function approvePendingMemberTransactional(
       }
 
       if (pending.proposedFatherId) {
-        const father = await tx.familyMember.findUnique({
-          where: { id: pending.proposedFatherId },
-          select: { id: true, gender: true, firstName: true },
-        });
-
-        if (!father) {
-          throw new Error('FATHER_NOT_FOUND');
-        }
-
-        if (father.gender !== 'Male') {
-          throw new Error('FATHER_NOT_MALE');
+        const parentValidation = await validateParent(pending.proposedFatherId, tx);
+        
+        if (!parentValidation.valid) {
+          if (parentValidation.error?.includes('does not exist')) {
+            throw new Error('FATHER_NOT_FOUND');
+          }
+          if (parentValidation.error?.includes('must be male')) {
+            throw new Error('FATHER_NOT_MALE');
+          }
+          throw new Error(`PARENT_INVALID: ${parentValidation.error}`);
         }
       }
 
-      const newId = await getNextIdFromTransaction(tx);
-      const calculatedGeneration = await calculateGenerationInTx(tx, pending.proposedFatherId);
-      const lineagePath = await buildLineagePathInTx(tx, pending.proposedFatherId);
+      const duplicates = await checkForDuplicates({
+        firstName: pending.firstName,
+        fatherId: pending.proposedFatherId || undefined,
+        fatherName: pending.fatherName || undefined,
+      }, tx);
 
-      let fullNameEn = pending.fullNameEn;
-      if (!fullNameEn && pending.fullNameAr) {
-        fullNameEn = transliterateName(pending.fullNameAr);
+      if (duplicates.isDuplicate) {
+        throw new Error(`DUPLICATE_FOUND: ${duplicates.existingMembers.map(m => m.id).join(', ')}`);
       }
+
+      const newId = await generateNextMemberId(tx);
+      const generationResult = await calculateGeneration(pending.proposedFatherId, tx);
+      
+      if (!generationResult.valid) {
+        throw new Error(`INVALID_GENERATION: ${generationResult.error}`);
+      }
+      
+      const calculatedGeneration = generationResult.generation;
+      const lineageInfo = await buildLineageInfo(pending.proposedFatherId, tx);
+
+      const fullNames = generateFullNames({
+        firstName: pending.firstName,
+        fatherName: pending.fatherName,
+        grandfatherName: pending.grandfatherName,
+        familyName: pending.familyName || 'آل شايع',
+        gender: pending.gender as 'Male' | 'Female',
+      });
 
       const newMember = await tx.familyMember.create({
         data: {
@@ -144,9 +106,13 @@ export async function approvePendingMemberTransactional(
           birthYear: pending.birthYear,
           generation: calculatedGeneration,
           branch: pending.branch,
-          fullNameAr: pending.fullNameAr,
-          fullNameEn: fullNameEn,
-          lineagePath: lineagePath,
+          fullNameAr: fullNames.fullNameAr,
+          fullNameEn: fullNames.fullNameEn,
+          lineagePath: lineageInfo.lineagePath,
+          lineageBranchId: lineageInfo.lineageBranchId,
+          lineageBranchName: lineageInfo.lineageBranchName,
+          subBranchId: lineageInfo.subBranchId,
+          subBranchName: lineageInfo.subBranchName,
           phone: pending.phone,
           city: pending.city,
           status: pending.status || 'Living',
@@ -171,7 +137,7 @@ export async function approvePendingMemberTransactional(
       });
 
       if (pending.proposedFatherId) {
-        await updateParentChildrenCountInTx(tx, pending.proposedFatherId);
+        await updateParentChildrenCount(pending.proposedFatherId, tx);
       }
 
       const createdMember = await tx.familyMember.findUnique({
@@ -306,6 +272,14 @@ export async function approvePendingMemberTransactional(
       userMessage = 'Children count verification failed';
       userMessageAr = 'فشل التحقق من عدد الأبناء';
       rollbackReason = errorMessage;
+    } else if (errorMessage.startsWith('PARENT_INVALID:')) {
+      userMessage = 'Parent validation failed';
+      userMessageAr = 'فشل التحقق من الوالد';
+      rollbackReason = errorMessage;
+    } else if (errorMessage.startsWith('DUPLICATE_FOUND:')) {
+      userMessage = 'A member with this name already exists under this parent';
+      userMessageAr = 'يوجد عضو بنفس الاسم تحت هذا الأب';
+      rollbackReason = errorMessage;
     }
 
     try {
@@ -352,19 +326,7 @@ export async function recalculateAllChildrenCounts(): Promise<{
 
   for (const father of fathers) {
     try {
-      const children = await prisma.familyMember.findMany({
-        where: { fatherId: father.id, deletedAt: null },
-        select: { gender: true },
-      });
-
-      const sonsCount = children.filter(c => c.gender === 'Male').length;
-      const daughtersCount = children.filter(c => c.gender === 'Female').length;
-
-      await prisma.familyMember.update({
-        where: { id: father.id },
-        data: { sonsCount, daughtersCount },
-      });
-
+      await updateParentChildrenCount(father.id);
       updated++;
     } catch (error) {
       errors.push(`Failed to update ${father.firstName} (${father.id}): ${error}`);
@@ -389,27 +351,24 @@ export async function validateAndFixGenerations(): Promise<{
   for (const member of members) {
     if (!member.fatherId) continue;
 
-    const father = await prisma.familyMember.findUnique({
-      where: { id: member.fatherId },
-      select: { generation: true },
-    });
+    const generationResult = await calculateGeneration(member.fatherId);
 
-    if (father && member.generation !== father.generation + 1) {
+    if (member.generation !== generationResult.generation) {
       issues.push({
         memberId: member.id,
         memberName: member.firstName,
-        issue: `Generation mismatch: was ${member.generation}, should be ${father.generation + 1}`,
-        issueAr: `عدم تطابق الجيل: كان ${member.generation}، يجب أن يكون ${father.generation + 1}`,
+        issue: `Generation mismatch: was ${member.generation}, should be ${generationResult.generation}`,
+        issueAr: `عدم تطابق الجيل: كان ${member.generation}، يجب أن يكون ${generationResult.generation}`,
         severity: 'warning',
         details: {
           oldGeneration: member.generation,
-          expectedGeneration: father.generation + 1,
+          expectedGeneration: generationResult.generation,
         },
       });
 
       await prisma.familyMember.update({
         where: { id: member.id },
-        data: { generation: father.generation + 1 },
+        data: { generation: generationResult.generation },
       });
 
       fixed++;
