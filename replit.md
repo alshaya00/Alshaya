@@ -57,4 +57,5 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   **PostgreSQL**: Primary database for all application data.
 -   **Resend**: For transactional email sending (welcome, password reset, invitations) via Replit's Resend connector.
 -   **Google Drive API**: For automated cloud backups (CSV export, JSON backup) to Google Drive.
+-   **Google Sheets API**: For living registry export to shareable spreadsheet with rolling snapshots (30-day retention, Current + dated tabs).
 -   **D3.js**: JavaScript library for data-driven documents, specifically used for the interactive family tree visualization.

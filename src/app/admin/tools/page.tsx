@@ -20,6 +20,9 @@ import {
   Users,
   FileJson,
   Loader2,
+  Cloud,
+  FileSpreadsheet,
+  ExternalLink,
 } from 'lucide-react';
 
 interface IntegrityCheck {
@@ -39,6 +42,10 @@ export default function ToolsPage() {
   const { session } = useAuth();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [isExportingSheets, setIsExportingSheets] = useState(false);
+  const [isExportingDrive, setIsExportingDrive] = useState(false);
+  const [sheetsInfo, setSheetsInfo] = useState<{ connected: boolean; spreadsheetUrl?: string; lastSnapshot?: string; totalSnapshots?: number } | null>(null);
+  const [driveInfo, setDriveInfo] = useState<{ connected: boolean; files?: { id: string; name: string; modifiedTime: string }[] } | null>(null);
   const [integrityChecks, setIntegrityChecks] = useState<IntegrityCheck[]>([]);
   const [cleanupItems, setCleanupItems] = useState<CleanupItem[]>([]);
   const [stats, setStats] = useState({
@@ -52,8 +59,70 @@ export default function ToolsPage() {
   useEffect(() => {
     if (session?.token) {
       loadStats();
+      loadCloudBackupStatus();
     }
   }, [session?.token]);
+
+  const loadCloudBackupStatus = async () => {
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+    try {
+      const [sheetsRes, driveRes] = await Promise.all([
+        fetch('/api/admin/backup/google-sheets', { headers }).then(r => r.json()).catch(() => ({ connected: false })),
+        fetch('/api/admin/backup/google-drive', { headers }).then(r => r.json()).catch(() => ({ connected: false })),
+      ]);
+      setSheetsInfo(sheetsRes);
+      setDriveInfo(driveRes);
+    } catch (error) {
+      console.error('Error loading cloud backup status:', error);
+    }
+  };
+
+  const exportToGoogleSheets = async () => {
+    setIsExportingSheets(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' } : {};
+    try {
+      const res = await fetch('/api/admin/backup/google-sheets', {
+        method: 'POST',
+        headers,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`تم تصدير ${data.memberCount} عضو إلى Google Sheets بنجاح`);
+        loadCloudBackupStatus();
+      } else {
+        alert(`فشل التصدير: ${data.message || data.error}`);
+      }
+    } catch (error) {
+      console.error('Error exporting to Google Sheets:', error);
+      alert('حدث خطأ أثناء التصدير إلى Google Sheets');
+    } finally {
+      setIsExportingSheets(false);
+    }
+  };
+
+  const exportToGoogleDrive = async () => {
+    setIsExportingDrive(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' } : {};
+    try {
+      const res = await fetch('/api/admin/backup/google-drive', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ type: 'csv' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`تم تصدير ${data.data?.memberCount || 0} عضو إلى Google Drive بنجاح`);
+        loadCloudBackupStatus();
+      } else {
+        alert(`فشل التصدير: ${data.message || data.error}`);
+      }
+    } catch (error) {
+      console.error('Error exporting to Google Drive:', error);
+      alert('حدث خطأ أثناء التصدير إلى Google Drive');
+    } finally {
+      setIsExportingDrive(false);
+    }
+  };
 
   const loadStats = async () => {
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
@@ -336,6 +405,106 @@ export default function ToolsPage() {
               <Database className="w-5 h-5" />
               عرض جميع النسخ الاحتياطية
             </Link>
+          </div>
+        </div>
+
+        {/* Cloud Backups */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Cloud className="w-5 h-5 text-blue-500" />
+            النسخ الاحتياطي السحابي
+          </h2>
+
+          <div className="space-y-4">
+            {/* Google Sheets Export */}
+            <div className="p-4 bg-emerald-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                  <span className="font-medium text-emerald-800">Google Sheets</span>
+                </div>
+                {sheetsInfo?.connected && sheetsInfo?.spreadsheetUrl && (
+                  <a
+                    href={sheetsInfo.spreadsheetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  >
+                    فتح <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+              <p className="text-sm text-emerald-700 mb-3">
+                تصدير سجل الأحياء إلى جدول بيانات قابل للمشاركة
+              </p>
+              {sheetsInfo?.lastSnapshot && (
+                <p className="text-xs text-emerald-600 mb-2">
+                  آخر تصدير: {sheetsInfo.lastSnapshot} ({sheetsInfo.totalSnapshots} نسخة)
+                </p>
+              )}
+              <button
+                onClick={exportToGoogleSheets}
+                disabled={isExportingSheets || !sheetsInfo?.connected}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isExportingSheets ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    جاري التصدير...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="w-4 h-4" />
+                    تصدير إلى Google Sheets
+                  </>
+                )}
+              </button>
+              {!sheetsInfo?.connected && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  يرجى توصيل Google Sheets من الإعدادات
+                </p>
+              )}
+            </div>
+
+            {/* Google Drive Export */}
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Cloud className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-blue-800">Google Drive</span>
+                </div>
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                تصدير نسخة CSV كاملة إلى Google Drive
+              </p>
+              {driveInfo?.files && driveInfo.files.length > 0 && (
+                <p className="text-xs text-blue-600 mb-2">
+                  آخر ملف: {driveInfo.files[0].name}
+                </p>
+              )}
+              <button
+                onClick={exportToGoogleDrive}
+                disabled={isExportingDrive || !driveInfo?.connected}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isExportingDrive ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    جاري التصدير...
+                  </>
+                ) : (
+                  <>
+                    <Cloud className="w-4 h-4" />
+                    تصدير إلى Google Drive
+                  </>
+                )}
+              </button>
+              {!driveInfo?.connected && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  يرجى توصيل Google Drive من الإعدادات
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

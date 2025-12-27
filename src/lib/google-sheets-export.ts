@@ -277,16 +277,23 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
       });
     }
 
-    const snapshotSheets = sheetTitles
-      .filter(title => title !== 'Current' && /^\d{4}-\d{2}-\d{2}$/.test(title || ''))
+    const updatedSpreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties',
+    });
+
+    const updatedSheets = updatedSpreadsheet.data.sheets || [];
+    const allSnapshotTitles = updatedSheets
+      .map(s => s.properties?.title)
+      .filter(title => title && title !== 'Current' && /^\d{4}-\d{2}-\d{2}$/.test(title))
       .sort()
       .reverse();
 
-    if (snapshotSheets.length > MAX_SNAPSHOTS) {
-      const sheetsToDelete = snapshotSheets.slice(MAX_SNAPSHOTS);
+    if (allSnapshotTitles.length > MAX_SNAPSHOTS) {
+      const sheetsToDelete = allSnapshotTitles.slice(MAX_SNAPSHOTS);
       
       for (const sheetTitle of sheetsToDelete) {
-        const sheetToDelete = existingSheets.find(s => s.properties?.title === sheetTitle);
+        const sheetToDelete = updatedSheets.find(s => s.properties?.title === sheetTitle);
         if (sheetToDelete?.properties?.sheetId) {
           try {
             await sheets.spreadsheets.batchUpdate({
@@ -301,6 +308,7 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
                 ],
               },
             });
+            console.log(`Deleted old snapshot sheet: ${sheetTitle}`);
           } catch (error) {
             console.error(`Failed to delete old snapshot sheet ${sheetTitle}:`, error);
           }
