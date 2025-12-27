@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission } from '@/lib/auth/permissions';
 import {
   History,
   ChevronDown,

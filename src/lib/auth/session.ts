@@ -143,6 +143,9 @@ export function userHasPermission(user: SessionUser | null, permission: Permissi
   // SUPER_ADMIN has all permissions
   if (user.role === 'SUPER_ADMIN') return true;
   
+  // Safety check: ensure permissions is an object
+  if (!user.permissions || typeof user.permissions !== 'object') return false;
+  
   return user.permissions[permission] ?? false;
 }
 

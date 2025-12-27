@@ -131,6 +131,9 @@ export function hasPermission(admin: Admin | null, permission: string): boolean 
   // Super admin has all permissions
   if (admin.role === 'SUPER_ADMIN') return true;
 
+  // Safety check: ensure permissions is an array
+  if (!Array.isArray(admin.permissions)) return false;
+
   return admin.permissions.includes(permission);
 }
 
@@ -143,6 +146,9 @@ export function hasAnyPermission(admin: Admin | null, permissions: string[]): bo
   // Super admin has all permissions
   if (admin.role === 'SUPER_ADMIN') return true;
 
+  // Safety check: ensure permissions is an array
+  if (!Array.isArray(admin.permissions)) return false;
+
   return permissions.some(p => admin.permissions.includes(p));
 }
 
@@ -154,6 +160,9 @@ export function hasAllPermissions(admin: Admin | null, permissions: string[]): b
 
   // Super admin has all permissions
   if (admin.role === 'SUPER_ADMIN') return true;
+
+  // Safety check: ensure permissions is an array
+  if (!Array.isArray(admin.permissions)) return false;
 
   return permissions.every(p => admin.permissions.includes(p));
 }

@@ -8,7 +8,6 @@ import {
   Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, Search, BarChart3
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { hasPermission as checkPermission } from '@/lib/permissions';
 import { useFeatureFlags, routeToFeature, FeatureKey } from '@/contexts/FeatureFlagsContext';
 import { ROLE_LABELS } from '@/lib/auth/types';
 import { mainNavItems, mobileNavItems, moreNavItems as configMoreNavItems, NavItem } from '@/config/navigation';
@@ -112,7 +111,7 @@ export function Navigation() {
     if (!isNavItemEnabled(item)) return false;
     // Then check permissions
     if (!item.permission) return true;
-    return checkPermission(user as any, item.permission);
+    return hasPermission(item.permission);
   });
 
   return (
