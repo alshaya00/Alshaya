@@ -612,9 +612,11 @@ export async function createAccessRequest(data: {
   nameArabic: string;
   nameEnglish?: string;
   phone?: string;
+  gender?: string;
   claimedRelation: string;
   relatedMemberId?: string;
   relationshipType?: string;
+  parentMemberId?: string;
   message?: string;
   passwordHash?: string;
 }): Promise<StoredAccessRequest> {
@@ -637,9 +639,11 @@ export async function createAccessRequest(data: {
       nameArabic: data.nameArabic,
       nameEnglish: data.nameEnglish || null,
       phone: data.phone || null,
+      gender: data.gender || null,
       claimedRelation: data.claimedRelation,
       relatedMemberId: data.relatedMemberId || null,
       relationshipType: data.relationshipType || null,
+      parentMemberId: data.parentMemberId || null,
       message: data.message || null,
       passwordHash: data.passwordHash || null,
       status: 'PENDING',

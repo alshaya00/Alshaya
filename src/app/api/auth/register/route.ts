@@ -37,9 +37,11 @@ export async function POST(request: NextRequest) {
       nameArabic,
       nameEnglish,
       phone,
+      gender,
       claimedRelation,
       relatedMemberId,
       relationshipType,
+      parentMemberId,
       message,
     } = body;
 
@@ -136,9 +138,11 @@ export async function POST(request: NextRequest) {
       nameArabic: sanitizeString(nameArabic),
       nameEnglish: sanitizeString(nameEnglish),
       phone: sanitizeString(phone),
+      gender: sanitizeString(gender),
       claimedRelation: sanitizeString(claimedRelation),
       relatedMemberId: sanitizeString(relatedMemberId),
       relationshipType: sanitizeString(relationshipType),
+      parentMemberId: sanitizeString(parentMemberId),
       message: sanitizeString(message),
       passwordHash,
     });
@@ -155,6 +159,8 @@ export async function POST(request: NextRequest) {
         claimedRelation,
         relatedMemberId,
         relationshipType,
+        parentMemberId,
+        gender,
       },
       ipAddress,
       userAgent,

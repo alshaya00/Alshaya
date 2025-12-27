@@ -291,11 +291,13 @@ model AccessRequest {
   nameArabic      String
   nameEnglish     String?
   phone           String?
+  gender          String?  // Male or Female
 
   // How they claim to be related
   claimedRelation String   // "Son of محمد", "Daughter of أحمد", etc.
   relatedMemberId String?  // ID of the family member they claim relation to
   relationshipType String? // CHILD, SPOUSE, SIBLING, etc.
+  parentMemberId  String?  // ID of parent for tree placement (from "Claim Your Place" wizard)
 
   // Their message
   message         String?

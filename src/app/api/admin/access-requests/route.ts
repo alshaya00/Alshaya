@@ -52,6 +52,8 @@ export async function GET(request: NextRequest) {
     const requestsWithMember = await Promise.all(
       accessRequests.map(async (req) => {
         let relatedMember = null;
+        let parentMember = null;
+        
         if (req.relatedMemberId) {
           relatedMember = await prisma.familyMember.findUnique({
             where: { id: req.relatedMemberId },
@@ -66,9 +68,26 @@ export async function GET(request: NextRequest) {
             },
           });
         }
+        
+        if (req.parentMemberId) {
+          parentMember = await prisma.familyMember.findUnique({
+            where: { id: req.parentMemberId },
+            select: {
+              id: true,
+              firstName: true,
+              fatherName: true,
+              fullNameAr: true,
+              fullNameEn: true,
+              generation: true,
+              branch: true,
+            },
+          });
+        }
+        
         return {
           ...req,
           relatedMember,
+          parentMember,
         };
       })
     );

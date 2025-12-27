@@ -23,6 +23,8 @@ interface FormData {
   claimedRelation: string;
   relatedMemberId: string;
   relationshipType: string;
+  parentMemberId: string;
+  gender: string;
   message: string;
 }
 
@@ -45,8 +47,12 @@ export default function RegisterPage() {
     claimedRelation: '',
     relatedMemberId: '',
     relationshipType: '',
+    parentMemberId: '',
+    gender: '',
     message: '',
   });
+  const [parentSearchQuery, setParentSearchQuery] = useState('');
+  const [showParentDropdown, setShowParentDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -100,6 +106,27 @@ export default function RegisterPage() {
     );
   }).slice(0, 15);
 
+  const filteredParents = allMembers.filter((m) => {
+    if (!parentSearchQuery || parentSearchQuery.length < 2) return false;
+    const normalizedQuery = normalizeArabic(parentSearchQuery);
+    const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
+    
+    const normalizedFirstName = normalizeArabic(m.firstName || '');
+    const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
+    const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
+    
+    return queryParts.every(part => 
+      normalizedFirstName.includes(part) ||
+      normalizedFullNameAr.includes(part) ||
+      normalizedFullNameEn.includes(part) ||
+      m.id.toLowerCase().includes(part)
+    );
+  }).slice(0, 15);
+
+  const selectedParent = formData.parentMemberId
+    ? allMembers.find((m) => m.id === formData.parentMemberId)
+    : null;
+
   const selectedMember = formData.relatedMemberId
     ? allMembers.find((m) => m.id === formData.relatedMemberId)
     : null;
@@ -123,6 +150,21 @@ export default function RegisterPage() {
     setShowMemberDropdown(false);
   };
 
+  const handleParentSelect = (memberId: string) => {
+    const parent = allMembers.find((m) => m.id === memberId);
+    if (parent) {
+      const parentName = parent.fullNameAr || parent.firstName;
+      setFormData({
+        ...formData,
+        parentMemberId: memberId,
+        relationshipType: 'CHILD',
+        claimedRelation: `${formData.gender === 'Female' ? 'ابنة' : 'ابن'} ${parentName}`,
+      });
+    }
+    setParentSearchQuery('');
+    setShowParentDropdown(false);
+  };
+
   const validateForm = (): string | null => {
     if (!formData.email) return 'البريد الإلكتروني مطلوب';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -134,13 +176,16 @@ export default function RegisterPage() {
     if (!/[a-z]/.test(formData.password)) return 'كلمة المرور يجب أن تحتوي على حرف صغير';
     if (!/[0-9]/.test(formData.password)) return 'كلمة المرور يجب أن تحتوي على رقم';
     if (formData.password !== formData.confirmPassword) return 'كلمتا المرور غير متطابقتين';
-    if (!formData.nameArabic) return 'الاسم بالعربي مطلوب';
+    if (!selectedMember && !formData.nameArabic) return 'الاسم بالعربي مطلوب';
     if (!formData.phone) return 'رقم الاتصال مطلوب';
     if (!/^[\d\s+()-]{9,15}$/.test(formData.phone.replace(/\s/g, ''))) {
       return 'صيغة رقم الاتصال غير صحيحة';
     }
-    if (!formData.claimedRelation && !formData.relatedMemberId) {
-      return 'يرجى تحديد صلة القرابة أو اختيار أحد أفراد العائلة';
+    if (!selectedMember && formData.parentMemberId && !formData.gender) {
+      return 'يرجى تحديد الجنس';
+    }
+    if (!formData.claimedRelation && !formData.relatedMemberId && !formData.parentMemberId) {
+      return 'يرجى تحديد صلة القرابة أو اختيار أحد أفراد العائلة أو تحديد الوالد';
     }
     return null;
   };
@@ -180,12 +225,33 @@ export default function RegisterPage() {
     }
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setShowMemberDropdown(false);
+    const handleClickOutside = () => {
+      setShowMemberDropdown(false);
+      setShowParentDropdown(false);
+    };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  // Update claimedRelation when gender changes and parent is selected
+  useEffect(() => {
+    if (formData.parentMemberId && formData.gender) {
+      const parent = allMembers.find((m) => m.id === formData.parentMemberId);
+      if (parent) {
+        const parentName = parent.fullNameAr || parent.firstName;
+        const prefix = formData.gender === 'Female' ? 'ابنة' : 'ابن';
+        const newRelation = `${prefix} ${parentName}`;
+        if (formData.claimedRelation !== newRelation) {
+          setFormData(prev => ({
+            ...prev,
+            claimedRelation: newRelation,
+          }));
+        }
+      }
+    }
+  }, [formData.gender, formData.parentMemberId, allMembers]);
 
   // ============================================
   // SUCCESS STATE
@@ -551,10 +617,14 @@ export default function RegisterPage() {
               {!selectedMember && (
                 <div className="border-b pb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center text-sm font-bold text-gray-600">أو</span>
+                    <span className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-sm font-bold text-blue-600">أو</span>
                     أدخل معلوماتك يدوياً
                   </h3>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <p className="text-sm text-gray-600 mb-4">
+                    لم تجد اسمك في الشجرة؟ أدخل بياناتك وابحث عن والدك لتحديد موقعك في الشجرة
+                  </p>
+                  
+                  <div className="grid gap-4 md:grid-cols-2 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         الاسم بالعربي <span className="text-red-500">*</span>
@@ -583,6 +653,124 @@ export default function RegisterPage() {
                         dir="ltr"
                       />
                     </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      الجنس <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-4">
+                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${formData.gender === 'Male' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="Male"
+                          checked={formData.gender === 'Male'}
+                          onChange={handleChange}
+                          className="sr-only"
+                        />
+                        <span className="text-2xl">👨</span>
+                        <span className="font-medium text-gray-800">ذكر</span>
+                      </label>
+                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${formData.gender === 'Female' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="Female"
+                          checked={formData.gender === 'Female'}
+                          onChange={handleChange}
+                          className="sr-only"
+                        />
+                        <span className="text-2xl">👩</span>
+                        <span className="font-medium text-gray-800">أنثى</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-l from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4">
+                    <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                      <span className="text-lg">🔍</span>
+                      ابحث عن والدك في الشجرة
+                    </h4>
+                    <p className="text-sm text-amber-700 mb-3">
+                      ابحث عن اسم والدك لتسهيل تحديد موقعك الصحيح في شجرة العائلة
+                    </p>
+                    
+                    <div className="relative">
+                      <div className="relative">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
+                        <input
+                          type="text"
+                          value={parentSearchQuery}
+                          onChange={(e) => {
+                            setParentSearchQuery(e.target.value);
+                            setShowParentDropdown(true);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowParentDropdown(true);
+                          }}
+                          className="w-full pr-11 pl-4 py-3 border-2 border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+                          placeholder="ابحث عن اسم الوالد..."
+                        />
+                      </div>
+                      {showParentDropdown && filteredParents.length > 0 && (
+                        <div className="absolute z-20 w-full mt-2 bg-white border-2 border-amber-200 rounded-xl shadow-xl max-h-60 overflow-auto">
+                          {filteredParents.map((parent) => {
+                            const fullLineage = getFullLineageString(parent.id, allMembers);
+                            return (
+                              <button
+                                key={parent.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleParentSelect(parent.id);
+                                }}
+                                className="w-full px-4 py-3 text-right hover:bg-amber-50 border-b border-amber-100 last:border-0 transition-colors"
+                              >
+                                <span className="font-semibold text-gray-900 block">
+                                  {fullLineage || parent.fullNameAr || parent.firstName}
+                                </span>
+                                <p className="text-sm text-gray-500 mt-1">
+                                  الجيل {parent.generation}{parent.branch ? ` - فرع: ${parent.branch}` : ''}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedParent && (
+                      <div className="mt-3 p-3 bg-white rounded-xl border-2 border-green-300">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                              <Users className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-green-600 font-medium">الوالد المحدد</p>
+                              <p className="font-bold text-green-900">
+                                {getFullLineageString(selectedParent.id, allMembers) || selectedParent.fullNameAr || selectedParent.firstName}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                parentMemberId: '',
+                                claimedRelation: '',
+                              });
+                            }}
+                            className="text-green-600 hover:text-green-800 p-1 hover:bg-green-100 rounded-lg transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
