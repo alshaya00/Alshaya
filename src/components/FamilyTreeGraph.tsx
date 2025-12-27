@@ -374,7 +374,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             </feMerge>
           </filter>
           <clipPath id="avatar-clip">
-            <circle cx="0" cy="0" r="13" />
+            <circle cx="0" cy="-22" r="13" />
           </clipPath>
         </defs>
 
@@ -538,7 +538,6 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     width={26}
                     height={26}
                     clipPath="url(#avatar-clip)"
-                    style={{ transform: 'translate(0, 13px)' }}
                   />
 
                   {/* Name - positioned clearly below avatar */}
