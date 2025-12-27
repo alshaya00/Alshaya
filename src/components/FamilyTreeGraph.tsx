@@ -374,7 +374,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             </feMerge>
           </filter>
           <clipPath id="avatar-clip">
-            <circle cx="0" cy="0" r="18" />
+            <circle cx="0" cy="0" r="16" />
           </clipPath>
         </defs>
 
@@ -520,33 +520,33 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     style={{ clipPath: 'inset(0 0 0 0 round 14px 14px 0 0)' }}
                   />
 
-                  {/* Avatar circle */}
+                  {/* Avatar circle - moved up to give more room for name */}
                   <circle
                     cx={0}
-                    cy={-12}
-                    r={20}
+                    cy={-18}
+                    r={18}
                     fill={isMale ? 'url(#male-gradient)' : 'url(#female-gradient)'}
                     stroke="white"
                     strokeWidth={3}
                   />
 
-                  {/* Avatar image */}
+                  {/* Avatar image - adjusted position */}
                   <image
                     href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
-                    x={-18}
-                    y={-30}
-                    width={36}
-                    height={36}
+                    x={-16}
+                    y={-34}
+                    width={32}
+                    height={32}
                     clipPath="url(#avatar-clip)"
-                    style={{ transform: 'translate(0, 18px)' }}
+                    style={{ transform: 'translate(0, 16px)' }}
                   />
 
-                  {/* Name */}
+                  {/* Name - positioned clearly below avatar with more space */}
                   <text
                     x={0}
-                    y={18}
+                    y={12}
                     textAnchor="middle"
-                    fontSize={12}
+                    fontSize={11}
                     fontWeight="600"
                     fill="#1f2937"
                     style={{ pointerEvents: 'none' }}
