@@ -30,7 +30,9 @@ model FamilyMember {
   // Personal info
   gender                String   // Male or Female
   birthYear             Int?     // سنة الميلاد
+  birthCalendar         String   @default("GREGORIAN") // GREGORIAN or HIJRI
   deathYear             Int?     // سنة الوفاة
+  deathCalendar         String   @default("GREGORIAN") // GREGORIAN or HIJRI
   sonsCount             Int      @default(0) // عدد الأبناء
   daughtersCount        Int      @default(0) // عدد البنات
 
@@ -721,6 +723,7 @@ model PendingMember {
   proposedFatherId      String?
   gender                String
   birthYear             Int?
+  birthCalendar         String   @default("GREGORIAN") // GREGORIAN or HIJRI
   generation            Int      @default(1)
   branch                String?
   fullNameAr            String?
