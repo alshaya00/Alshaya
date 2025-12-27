@@ -1,0 +1,104 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { setProfilePhoto, getProfilePhoto } from '@/lib/db/images';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const memberId = params.id;
+    const profilePhoto = await getProfilePhoto(memberId);
+
+    if (!profilePhoto) {
+      return NextResponse.json({ success: true, photo: null });
+    }
+
+    return NextResponse.json({
+      success: true,
+      photo: {
+        id: profilePhoto.id,
+        thumbnailData: profilePhoto.thumbnailData || profilePhoto.imageData,
+        imageData: profilePhoto.imageData,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching profile photo:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch profile photo' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    const isAdmin = permissions.manage_all_members || permissions.edit_any_member;
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
+    }
+
+    const { photoId } = await request.json();
+    const memberId = params.id;
+
+    if (!photoId) {
+      return NextResponse.json(
+        { success: false, message: 'Photo ID required', messageAr: 'معرف الصورة مطلوب' },
+        { status: 400 }
+      );
+    }
+
+    const result = await setProfilePhoto(memberId, photoId);
+
+    if (!result) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to set profile photo', messageAr: 'فشل تعيين صورة الملف الشخصي' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile photo updated successfully',
+      messageAr: 'تم تحديث صورة الملف الشخصي بنجاح',
+    });
+  } catch (error) {
+    console.error('Error setting profile photo:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to set profile photo' },
+      { status: 500 }
+    );
+  }
+}

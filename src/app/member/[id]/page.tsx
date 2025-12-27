@@ -6,6 +6,7 @@ import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
 import MemberStoriesSection from '@/components/MemberStoriesSection';
 import GenderAvatar from '@/components/GenderAvatar';
+import MemberProfileAvatar from '@/components/MemberProfileAvatar';
 import {
   User,
   Calendar,
@@ -70,7 +71,12 @@ export default async function MemberPage({ params }: PageProps) {
             } text-white`}
           >
             <div className="flex items-center gap-6">
-              <GenderAvatar gender={member.gender} size="2xl" />
+              <MemberProfileAvatar 
+                memberId={member.id} 
+                memberName={member.firstName} 
+                gender={member.gender} 
+                size="2xl" 
+              />
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold">{member.firstName}</h1>

@@ -452,6 +452,9 @@ export default function MemberMiniGraph({
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            <clipPath id="mini-avatar-clip">
+              <circle cx="0" cy="0" r="14" />
+            </clipPath>
           </defs>
 
           <g ref={gRef}>
@@ -579,16 +582,20 @@ export default function MemberMiniGraph({
                       strokeWidth={2}
                     />
 
-                    {/* Avatar icon */}
-                    <text
-                      x={0}
-                      y={-6}
-                      textAnchor="middle"
-                      fontSize={12}
-                      fill="white"
-                    >
-                      {node.type === 'milk_mother' ? '🤱' : (isMale ? '♂' : '♀')}
-                    </text>
+                    {/* Avatar image */}
+                    {node.type === 'milk_mother' ? (
+                      <text x={0} y={-6} textAnchor="middle" fontSize={12} fill="white">🤱</text>
+                    ) : (
+                      <image
+                        href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                        x={-14}
+                        y={-24}
+                        width={28}
+                        height={28}
+                        clipPath="url(#mini-avatar-clip)"
+                        style={{ transform: 'translate(0, 14px)' }}
+                      />
+                    )}
 
                     {/* Star for main person */}
                     {isMain && (

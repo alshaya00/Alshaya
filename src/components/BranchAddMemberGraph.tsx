@@ -408,6 +408,9 @@ export default function BranchAddMemberGraph({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <clipPath id="branch-avatar-clip">
+            <circle cx="0" cy="0" r="14" />
+          </clipPath>
         </defs>
 
         {/* Transform Group - controlled by D3 zoom */}
@@ -527,16 +530,22 @@ export default function BranchAddMemberGraph({
                     strokeWidth={2}
                   />
 
-                  {/* Avatar icon */}
-                  <text
-                    x={0}
-                    y={-6}
-                    textAnchor="middle"
-                    fontSize={isNewMember ? 12 : 13}
-                    fill="white"
-                  >
-                    {isNewMember ? '+' : isPending ? '⏳' : isMale ? '♂' : '♀'}
-                  </text>
+                  {/* Avatar image */}
+                  {isNewMember ? (
+                    <text x={0} y={-6} textAnchor="middle" fontSize={12} fill="white">+</text>
+                  ) : isPending ? (
+                    <text x={0} y={-6} textAnchor="middle" fontSize={13} fill="white">⏳</text>
+                  ) : (
+                    <image
+                      href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      x={-14}
+                      y={-24}
+                      width={28}
+                      height={28}
+                      clipPath="url(#branch-avatar-clip)"
+                      style={{ transform: 'translate(0, 14px)' }}
+                    />
+                  )}
 
                   {/* Name */}
                   <text

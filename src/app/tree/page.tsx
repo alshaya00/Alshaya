@@ -244,13 +244,17 @@ function TreePageContent() {
 
           {/* Avatar */}
           <div className={`
-            w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2
+            w-10 h-10 rounded-full overflow-hidden border-2
             ${node.gender === 'Male'
-              ? 'bg-blue-50 border-blue-400 text-blue-600'
-              : 'bg-pink-50 border-pink-400 text-pink-600'
+              ? 'border-blue-400'
+              : 'border-pink-400'
             }
           `}>
-            {node.gender === 'Male' ? '♂' : '♀'}
+            <img
+              src={node.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+              alt=""
+              className="w-full h-full object-cover"
+            />
           </div>
 
           {/* Info */}
@@ -325,13 +329,17 @@ function TreePageContent() {
                 `}
               >
                 <div className={`
-                  w-12 h-12 mx-auto rounded-full flex items-center justify-center text-2xl mb-2 border-2
+                  w-12 h-12 mx-auto rounded-full overflow-hidden mb-2 border-2
                   ${member.gender === 'Male'
-                    ? 'bg-blue-100 border-blue-300'
-                    : 'bg-pink-100 border-pink-300'
+                    ? 'border-blue-300'
+                    : 'border-pink-300'
                   }
                 `}>
-                  {member.gender === 'Male' ? '👨' : '👩'}
+                  <img
+                    src={member.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <p className="font-bold text-sm text-gray-800 truncate">{member.firstName}</p>
                 <p className="text-[10px] text-gray-500">{member.id}</p>
@@ -366,10 +374,14 @@ function TreePageContent() {
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className={`
-                    w-8 h-8 rounded-full flex items-center justify-center text-sm
-                    ${member.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}
+                    w-8 h-8 rounded-full overflow-hidden
+                    ${member.gender === 'Male' ? 'ring-1 ring-blue-200' : 'ring-1 ring-pink-200'}
                   `}>
-                    {member.gender === 'Male' ? '♂' : '♀'}
+                    <img
+                      src={member.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800">{member.firstName}</p>
@@ -443,10 +455,14 @@ function TreePageContent() {
                       onClick={() => highlightMember(m.id)}
                       className="w-full px-4 py-2.5 text-right hover:bg-green-50 flex items-center gap-3 border-b last:border-0"
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        m.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
+                      <div className={`w-8 h-8 rounded-full overflow-hidden ${
+                        m.gender === 'Male' ? 'ring-1 ring-blue-200' : 'ring-1 ring-pink-200'
                       }`}>
-                        {m.gender === 'Male' ? '👨' : '👩'}
+                        <img
+                          src={m.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-gray-800">{m.firstName}</p>
@@ -553,13 +569,17 @@ function TreePageContent() {
               {/* Avatar */}
               <div className="text-center mb-5">
                 <div className={`
-                  w-20 h-20 mx-auto rounded-full flex items-center justify-center text-4xl border-4
+                  w-20 h-20 mx-auto rounded-full overflow-hidden border-4
                   ${selectedMember.gender === 'Male'
-                    ? 'bg-blue-50 border-blue-400'
-                    : 'bg-pink-50 border-pink-400'
+                    ? 'border-blue-400'
+                    : 'border-pink-400'
                   }
                 `}>
-                  {selectedMember.gender === 'Male' ? '👨' : '👩'}
+                  <img
+                    src={selectedMember.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <h3 className="text-xl font-bold mt-3 text-gray-800">{selectedMember.firstName}</h3>
                 <p className="text-sm text-gray-500">{selectedMember.id}</p>
@@ -642,13 +662,17 @@ function TreePageContent() {
                 {/* Avatar */}
                 <div className="text-center mb-4">
                   <div className={`
-                    w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl border-4
+                    w-16 h-16 mx-auto rounded-full overflow-hidden border-4
                     ${selectedMember.gender === 'Male'
-                      ? 'bg-blue-50 border-blue-400'
-                      : 'bg-pink-50 border-pink-400'
+                      ? 'border-blue-400'
+                      : 'border-pink-400'
                     }
                   `}>
-                    {selectedMember.gender === 'Male' ? '👨' : '👩'}
+                    <img
+                      src={selectedMember.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <p className="text-sm text-gray-500 mt-2">{selectedMember.id}</p>
                 </div>

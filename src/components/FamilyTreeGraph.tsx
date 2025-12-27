@@ -373,6 +373,9 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <clipPath id="avatar-clip">
+            <circle cx="0" cy="0" r="18" />
+          </clipPath>
         </defs>
 
         {/* Transform Group - controlled by D3 zoom */}
@@ -527,16 +530,16 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     strokeWidth={3}
                   />
 
-                  {/* Avatar icon */}
-                  <text
-                    x={0}
-                    y={-7}
-                    textAnchor="middle"
-                    fontSize={16}
-                    fill="white"
-                  >
-                    {isMale ? '♂' : '♀'}
-                  </text>
+                  {/* Avatar image */}
+                  <image
+                    href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                    x={-18}
+                    y={-30}
+                    width={36}
+                    height={36}
+                    clipPath="url(#avatar-clip)"
+                    style={{ transform: 'translate(0, 18px)' }}
+                  />
 
                   {/* Name */}
                   <text

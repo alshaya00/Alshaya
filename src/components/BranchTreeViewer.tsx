@@ -350,6 +350,9 @@ export default function BranchTreeViewer({
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              <clipPath id="viewer-avatar-clip">
+                <circle cx="0" cy="0" r="18" />
+              </clipPath>
             </defs>
 
             <g ref={gRef}>
@@ -478,10 +481,20 @@ export default function BranchTreeViewer({
                         strokeWidth={3}
                       />
 
-                      {/* Icon */}
-                      <text x={0} y={-7} textAnchor="middle" fontSize={16} fill="white">
-                        {isPending ? '⏳' : isMale ? '♂' : '♀'}
-                      </text>
+                      {/* Avatar image */}
+                      {isPending ? (
+                        <text x={0} y={-7} textAnchor="middle" fontSize={16} fill="white">⏳</text>
+                      ) : (
+                        <image
+                          href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                          x={-18}
+                          y={-30}
+                          width={36}
+                          height={36}
+                          clipPath="url(#viewer-avatar-clip)"
+                          style={{ transform: 'translate(0, 18px)' }}
+                        />
+                      )}
 
                       {/* Name */}
                       <text
@@ -553,14 +566,20 @@ export default function BranchTreeViewer({
               }}
             >
               <div className="flex items-center gap-3 mb-2 pb-2 border-b">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 ${
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 overflow-hidden ${
                   hoveredNode.isPending
                     ? 'bg-yellow-50 border-yellow-300'
                     : hoveredNode.gender === 'Male'
                     ? 'bg-blue-50 border-blue-300'
                     : 'bg-pink-50 border-pink-300'
                 }`}>
-                  {hoveredNode.isPending ? '⏳' : hoveredNode.gender === 'Male' ? '👨' : '👩'}
+                  {hoveredNode.isPending ? '⏳' : (
+                    <img 
+                      src={hoveredNode.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 <div>
                   <p className="font-bold text-gray-800">{hoveredNode.firstName}</p>
