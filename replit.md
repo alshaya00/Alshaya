@@ -47,7 +47,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   Advanced Search (`/search`)
 -   Admin Audit Log (`/admin/audit`)
 -   History (Backup Management) (`/history`)
--   Registration (`/register`) - Dual-path signup system
+-   Registration (`/register`) - Dual-path signup with "Claim Your Place" wizard (parent selection + gender)
 -   Invitation Signup (`/invite`) - Code-based registration with auto-approval
 -   Admin Access Requests (`/admin/access-requests`) - Approve/reject signup requests
 -   Admin Invitations (`/admin/invitations`) - Generate and manage invitation codes
