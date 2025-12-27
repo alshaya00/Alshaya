@@ -103,8 +103,8 @@ const arabicNameMappings: Record<string, string> = {
   'أمل': 'Amal',
   'موضي': 'Moudhi',
   'حصة': 'Hessa',
-  'بن': 'bin',
-  'ابن': 'bin',
+  'بن': '',
+  'ابن': '',
   'آل': 'Al',
   'ال': 'Al',
   'الشايع': 'Al-Shaye',
@@ -116,6 +116,7 @@ interface FamilyMember {
   fatherId: string | null;
   familyName: string | null;
   gender: string;
+  fullNameEn?: string | null;
 }
 
 function transliterateName(arabicName: string): string {
@@ -129,8 +130,8 @@ function transliterateName(arabicName: string): string {
   
   result = result
     .replace(/\s+/g, ' ')
-    .replace(/\s+bin\s+/gi, ' bin ')
-    .replace(/^bin\s+/gi, 'bin ')
+    .replace(/\bbin\b/gi, '')
+    .replace(/\s+/g, ' ')
     .trim();
   
   return result;
@@ -167,25 +168,29 @@ function generateFullNameEn(
   member: FamilyMember,
   allMembers: FamilyMember[]
 ): string {
+  // New format: FirstName Father Grandfather... FamilyName (no "bin")
   const parts: string[] = [transliterateName(member.firstName)];
   let currentMember: FamilyMember | undefined = member;
 
   while (currentMember?.fatherId) {
     const father = allMembers.find(m => m.id === currentMember!.fatherId);
     if (father) {
-      parts.push('bin ' + transliterateName(father.firstName));
+      const fatherName = transliterateName(father.firstName);
+      if (fatherName) parts.push(fatherName);
       currentMember = father;
     } else {
       break;
     }
   }
 
-  parts.push(transliterateName(member.familyName || 'آل شايع'));
-  return parts.join(' ');
+  const familyName = transliterateName(member.familyName || 'آل شايع');
+  if (familyName) parts.push(familyName);
+  
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 async function regenerateFullNames() {
-  console.log('🔄 Regenerating full names for all family members...\n');
+  console.log('🔄 Regenerating English full names (removing "bin")...\n');
 
   const members = await prisma.familyMember.findMany({
     where: { deletedAt: null },
@@ -196,6 +201,7 @@ async function regenerateFullNames() {
       familyName: true,
       gender: true,
       fullNameAr: true,
+      fullNameEn: true,
     },
   });
 
@@ -205,21 +211,20 @@ async function regenerateFullNames() {
   let unchanged = 0;
 
   for (const member of members) {
-    const newFullNameAr = generateFullNameAr(member, members);
     const newFullNameEn = generateFullNameEn(member, members);
 
-    if (member.fullNameAr !== newFullNameAr) {
+    // Update if English name contains "bin" or differs from new format
+    if (member.fullNameEn !== newFullNameEn) {
       await prisma.familyMember.update({
         where: { id: member.id },
         data: {
-          fullNameAr: newFullNameAr,
           fullNameEn: newFullNameEn,
         },
       });
       
       console.log(`✅ ${member.id}: ${member.firstName}`);
-      console.log(`   Old: ${member.fullNameAr}`);
-      console.log(`   New: ${newFullNameAr}\n`);
+      console.log(`   Old: ${member.fullNameEn}`);
+      console.log(`   New: ${newFullNameEn}\n`);
       updated++;
     } else {
       unchanged++;

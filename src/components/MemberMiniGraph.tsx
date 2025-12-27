@@ -453,7 +453,7 @@ export default function MemberMiniGraph({
               </feMerge>
             </filter>
             <clipPath id="mini-avatar-clip">
-              <circle cx="0" cy="0" r="14" />
+              <circle cx="0" cy="-14" r="12" />
             </clipPath>
           </defs>
 
@@ -575,8 +575,8 @@ export default function MemberMiniGraph({
                     {/* Avatar */}
                     <circle
                       cx={0}
-                      cy={-10}
-                      r={16}
+                      cy={-14}
+                      r={14}
                       fill={`url(#mini-${isMale ? 'male' : 'female'}-gradient)`}
                       stroke="white"
                       strokeWidth={2}
@@ -584,16 +584,15 @@ export default function MemberMiniGraph({
 
                     {/* Avatar image */}
                     {node.type === 'milk_mother' ? (
-                      <text x={0} y={-6} textAnchor="middle" fontSize={12} fill="white">🤱</text>
+                      <text x={0} y={-10} textAnchor="middle" fontSize={12} fill="white">🤱</text>
                     ) : (
                       <image
                         href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
-                        x={-14}
-                        y={-24}
-                        width={28}
-                        height={28}
+                        x={-12}
+                        y={-26}
+                        width={24}
+                        height={24}
                         clipPath="url(#mini-avatar-clip)"
-                        style={{ transform: 'translate(0, 14px)' }}
                       />
                     )}
 

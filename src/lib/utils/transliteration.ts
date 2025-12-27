@@ -100,8 +100,8 @@ const arabicNameMappings: Record<string, string> = {
   'أمل': 'Amal',
   'موضي': 'Moudhi',
   'حصة': 'Hessa',
-  'بن': 'bin',
-  'ابن': 'bin',
+  'بن': '',
+  'ابن': '',
   'آل': 'Al',
   'ال': 'Al',
   'شايع': 'Shaye',
@@ -117,10 +117,11 @@ export function transliterateName(arabicName: string): string {
     result = result.replace(new RegExp(arabic, 'g'), english);
   }
   
+  // Clean up whitespace and remove any lingering "bin" references
   result = result
     .replace(/\s+/g, ' ')
-    .replace(/\s+bin\s+/gi, ' bin ')
-    .replace(/^bin\s+/gi, 'bin ')
+    .replace(/\bbin\b/gi, '')
+    .replace(/\s+/g, ' ')
     .trim();
   
   return result;
@@ -132,36 +133,36 @@ export function generateFullNameEn(
   grandfatherName?: string | null,
   familyName?: string | null
 ): string {
-  const parts: string[] = [];
+  // Format: FirstName Father Grandfather... FamilyName (no "bin")
+  const nameParts: string[] = [];
   
+  // Add first name
   if (firstName) {
-    parts.push(transliterateName(firstName));
+    const transliterated = transliterateName(firstName);
+    if (transliterated) nameParts.push(transliterated);
   }
   
+  // Add father's name (without "bin")
   if (fatherName) {
     const transliterated = transliterateName(fatherName);
-    if (!transliterated.toLowerCase().startsWith('bin ')) {
-      parts.push('bin');
-    }
-    parts.push(transliterated);
+    if (transliterated) nameParts.push(transliterated);
   }
   
+  // Add grandfather's name (without "bin")
   if (grandfatherName) {
     const transliterated = transliterateName(grandfatherName);
-    if (!transliterated.toLowerCase().startsWith('bin ')) {
-      parts.push('bin');
-    }
-    parts.push(transliterated);
+    if (transliterated) nameParts.push(transliterated);
   }
   
+  // Add family name at the end
   if (familyName) {
-    parts.push(transliterateName(familyName));
+    const transliterated = transliterateName(familyName);
+    if (transliterated) nameParts.push(transliterated);
   }
   
-  return parts
+  return nameParts
     .join(' ')
     .replace(/\s+/g, ' ')
-    .replace(/bin\s+bin/gi, 'bin')
     .trim();
 }
 
