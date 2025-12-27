@@ -239,6 +239,148 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
   };
 }
 
+export async function validateSingleMember(memberId: string): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+
+  const member = await prisma.familyMember.findUnique({
+    where: { id: memberId },
+    select: {
+      id: true,
+      firstName: true,
+      generation: true,
+      fatherId: true,
+    },
+  });
+
+  if (!member) {
+    return {
+      valid: false,
+      issues: [{
+        memberId,
+        issue: 'Member not found',
+        issueAr: 'العضو غير موجود',
+        severity: 'error',
+      }],
+      checkedAt: new Date(),
+    };
+  }
+
+  if (member.generation < MIN_GENERATION || member.generation > MAX_GENERATION) {
+    issues.push({
+      memberId: member.id,
+      memberName: member.firstName,
+      issue: `Invalid generation: ${member.generation}`,
+      issueAr: `جيل غير صالح: ${member.generation}`,
+      severity: 'error',
+      details: { generation: member.generation },
+    });
+  }
+
+  if (member.fatherId) {
+    const father = await prisma.familyMember.findUnique({
+      where: { id: member.fatherId },
+      select: { id: true, generation: true, firstName: true },
+    });
+
+    if (!father) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Father ${member.fatherId} not found`,
+        issueAr: `الأب ${member.fatherId} غير موجود`,
+        severity: 'error',
+        details: { fatherId: member.fatherId },
+      });
+    } else if (member.generation !== father.generation + 1) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Generation mismatch: expected ${father.generation + 1}, got ${member.generation}`,
+        issueAr: `عدم تطابق الجيل: متوقع ${father.generation + 1}، وجد ${member.generation}`,
+        severity: 'warning',
+        details: {
+          expectedGeneration: father.generation + 1,
+          actualGeneration: member.generation,
+          fatherName: father.firstName,
+        },
+      });
+    }
+  } else if (member.generation > 2) {
+    issues.push({
+      memberId: member.id,
+      memberName: member.firstName,
+      issue: `Root member in generation ${member.generation} (expected 1-2)`,
+      issueAr: `عضو جذر في الجيل ${member.generation} (متوقع 1-2)`,
+      severity: 'warning',
+      details: { generation: member.generation },
+    });
+  }
+
+  return {
+    valid: issues.filter(i => i.severity === 'error').length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
+export async function validateMemberChildrenCounts(memberId: string): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+
+  const member = await prisma.familyMember.findUnique({
+    where: { id: memberId },
+    select: { id: true, firstName: true, sonsCount: true, daughtersCount: true },
+  });
+
+  if (!member) {
+    return {
+      valid: false,
+      issues: [{
+        memberId,
+        issue: 'Member not found',
+        issueAr: 'العضو غير موجود',
+        severity: 'error',
+      }],
+      checkedAt: new Date(),
+    };
+  }
+
+  const children = await prisma.familyMember.findMany({
+    where: { fatherId: memberId, deletedAt: null },
+    select: { gender: true },
+  });
+
+  const actualSons = children.filter(c => c.gender === 'Male').length;
+  const actualDaughters = children.filter(c => c.gender === 'Female').length;
+
+  if (member.sonsCount !== actualSons) {
+    issues.push({
+      memberId: member.id,
+      memberName: member.firstName,
+      issue: `Sons count mismatch: stored ${member.sonsCount}, actual ${actualSons}`,
+      issueAr: `عدم تطابق عدد الأبناء: المخزن ${member.sonsCount}، الفعلي ${actualSons}`,
+      severity: 'warning',
+      details: { stored: member.sonsCount, actual: actualSons },
+    });
+  }
+
+  if (member.daughtersCount !== actualDaughters) {
+    issues.push({
+      memberId: member.id,
+      memberName: member.firstName,
+      issue: `Daughters count mismatch: stored ${member.daughtersCount}, actual ${actualDaughters}`,
+      issueAr: `عدم تطابق عدد البنات: المخزن ${member.daughtersCount}، الفعلي ${actualDaughters}`,
+      severity: 'warning',
+      details: { stored: member.daughtersCount, actual: actualDaughters },
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
 export function formatValidationReport(report: DataConsistencyReport): string {
   const lines: string[] = [];
 

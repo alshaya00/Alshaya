@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { checkDataConsistency, ValidationIssue } from './data-integrity';
 import { logAuditToDb } from './db-audit';
 import { transliterateName } from './utils/transliteration';
-import type { FamilyMember as PrismaFamilyMember, PendingMember } from '@prisma/client';
+import type { FamilyMember as PrismaFamilyMember } from '@prisma/client';
 
 export interface ApprovalResult {
   success: boolean;
@@ -174,24 +174,49 @@ export async function approvePendingMemberTransactional(
         await updateParentChildrenCountInTx(tx, pending.proposedFatherId);
       }
 
-      const memberWithFather = await tx.familyMember.findUnique({
+      const createdMember = await tx.familyMember.findUnique({
         where: { id: newId },
         select: {
           id: true,
           firstName: true,
           generation: true,
           fatherId: true,
+          sonsCount: true,
+          daughtersCount: true,
         },
       });
 
-      if (memberWithFather?.fatherId) {
+      if (!createdMember) {
+        throw new Error('MEMBER_CREATE_FAILED');
+      }
+
+      if (createdMember.generation < 1 || createdMember.generation > 20) {
+        throw new Error(`INVALID_GENERATION: ${createdMember.generation}`);
+      }
+
+      if (createdMember.fatherId) {
         const father = await tx.familyMember.findUnique({
-          where: { id: memberWithFather.fatherId },
-          select: { generation: true },
+          where: { id: createdMember.fatherId },
+          select: { id: true, generation: true, sonsCount: true, daughtersCount: true },
         });
 
-        if (father && memberWithFather.generation !== father.generation + 1) {
-          throw new Error(`GENERATION_MISMATCH: Expected ${father.generation + 1}, got ${memberWithFather.generation}`);
+        if (!father) {
+          throw new Error('FATHER_DISAPPEARED');
+        }
+
+        if (createdMember.generation !== father.generation + 1) {
+          throw new Error(`GENERATION_MISMATCH: Expected ${father.generation + 1}, got ${createdMember.generation}`);
+        }
+
+        const actualChildren = await tx.familyMember.findMany({
+          where: { fatherId: father.id, deletedAt: null },
+          select: { gender: true },
+        });
+        const actualSons = actualChildren.filter(c => c.gender === 'Male').length;
+        const actualDaughters = actualChildren.filter(c => c.gender === 'Female').length;
+
+        if (father.sonsCount !== actualSons || father.daughtersCount !== actualDaughters) {
+          throw new Error(`CHILDREN_COUNT_MISMATCH: sons=${father.sonsCount}/${actualSons}, daughters=${father.daughtersCount}/${actualDaughters}`);
         }
       }
 
@@ -221,6 +246,7 @@ export async function approvePendingMemberTransactional(
           reviewNote,
           parentChildrenUpdated: !!result.pending.proposedFatherId,
           transactionType: 'SERIALIZABLE',
+          integrityValidated: true,
         },
         newState: result.newMember as unknown as Record<string, unknown>,
         success: true,
@@ -242,22 +268,44 @@ export async function approvePendingMemberTransactional(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     let userMessage = 'Failed to approve member. Transaction rolled back.';
     let userMessageAr = 'فشل في الموافقة على العضو. تم التراجع عن جميع التغييرات.';
+    let rollbackReason = errorMessage;
 
     if (errorMessage === 'PENDING_NOT_FOUND') {
       userMessage = 'Pending member not found';
       userMessageAr = 'العضو المعلق غير موجود';
+      rollbackReason = 'Pending member record does not exist';
     } else if (errorMessage === 'ALREADY_PROCESSED') {
       userMessage = 'This member has already been processed';
       userMessageAr = 'تمت معالجة هذا العضو مسبقاً';
+      rollbackReason = 'Review status is not PENDING';
     } else if (errorMessage === 'FATHER_NOT_FOUND') {
       userMessage = 'Proposed father does not exist in family tree';
       userMessageAr = 'الأب المقترح غير موجود في شجرة العائلة';
+      rollbackReason = 'Father ID references non-existent member';
     } else if (errorMessage === 'FATHER_NOT_MALE') {
       userMessage = 'Proposed father must be male';
       userMessageAr = 'يجب أن يكون الأب المقترح ذكراً';
+      rollbackReason = 'Father record has gender !== Male';
+    } else if (errorMessage === 'FATHER_DISAPPEARED') {
+      userMessage = 'Father record disappeared during transaction';
+      userMessageAr = 'اختفى سجل الأب أثناء المعاملة';
+      rollbackReason = 'Race condition: father deleted mid-transaction';
+    } else if (errorMessage === 'MEMBER_CREATE_FAILED') {
+      userMessage = 'Failed to create member record';
+      userMessageAr = 'فشل في إنشاء سجل العضو';
+      rollbackReason = 'FamilyMember.create returned null/undefined';
     } else if (errorMessage.startsWith('GENERATION_MISMATCH')) {
       userMessage = 'Generation calculation error detected';
       userMessageAr = 'تم اكتشاف خطأ في حساب الجيل';
+      rollbackReason = errorMessage;
+    } else if (errorMessage.startsWith('INVALID_GENERATION')) {
+      userMessage = 'Invalid generation value';
+      userMessageAr = 'قيمة جيل غير صالحة';
+      rollbackReason = errorMessage;
+    } else if (errorMessage.startsWith('CHILDREN_COUNT_MISMATCH')) {
+      userMessage = 'Children count verification failed';
+      userMessageAr = 'فشل التحقق من عدد الأبناء';
+      rollbackReason = errorMessage;
     }
 
     try {
@@ -269,9 +317,10 @@ export async function approvePendingMemberTransactional(
         userRole: userRole,
         targetType: 'PENDING_MEMBER',
         targetId: pendingId,
-        description: `فشل في الموافقة على العضو المعلق: ${errorMessage}`,
+        description: `فشل في الموافقة على العضو المعلق: ${rollbackReason}`,
         details: {
-          error: errorMessage,
+          errorCode: errorMessage,
+          rollbackReason,
           rolledBack: true,
         },
         success: false,
@@ -284,7 +333,7 @@ export async function approvePendingMemberTransactional(
       success: false,
       message: userMessage,
       messageAr: userMessageAr,
-      rollbackReason: errorMessage,
+      rollbackReason,
     };
   }
 }
