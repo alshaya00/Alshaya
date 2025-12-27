@@ -2,12 +2,138 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const arabicNameMappings: Record<string, string> = {
+  'محمد': 'Mohammed',
+  'أحمد': 'Ahmed',
+  'احمد': 'Ahmed',
+  'حياة': 'Hayat',
+  'مساعد': 'Musaed',
+  'فوزان': 'Fawzan',
+  'عثمان': 'Othman',
+  'شايع': 'Shaye',
+  'البراء': 'Al-Bara',
+  'يزيد': 'Yazid',
+  'عبدالله': 'Abdullah',
+  'عبد الله': 'Abdullah',
+  'عبدالرحمن': 'Abdulrahman',
+  'عبد الرحمن': 'Abdulrahman',
+  'عبدالعزيز': 'Abdulaziz',
+  'عبد العزيز': 'Abdulaziz',
+  'عبدالملك': 'Abdulmalik',
+  'عبد الملك': 'Abdulmalik',
+  'عبدالكريم': 'Abdulkareem',
+  'عبد الكريم': 'Abdulkareem',
+  'عبدالرزاق': 'Abdulrazzaq',
+  'عبد الرزاق': 'Abdulrazzaq',
+  'عبداللطيف': 'Abdullatif',
+  'عبد اللطيف': 'Abdullatif',
+  'عبدالمحسن': 'Abdulmohsen',
+  'عبد المحسن': 'Abdulmohsen',
+  'عبدالإله': 'Abdulilah',
+  'عبد الإله': 'Abdulilah',
+  'عبدالاله': 'Abdulilah',
+  'خالد': 'Khaled',
+  'سعود': 'Saud',
+  'فيصل': 'Faisal',
+  'سلمان': 'Salman',
+  'ناصر': 'Nasser',
+  'سلطان': 'Sultan',
+  'فهد': 'Fahd',
+  'تركي': 'Turki',
+  'بندر': 'Bandar',
+  'نايف': 'Nayef',
+  'متعب': 'Muteb',
+  'مشعل': 'Mishal',
+  'عمر': 'Omar',
+  'علي': 'Ali',
+  'حسن': 'Hassan',
+  'حسين': 'Hussein',
+  'إبراهيم': 'Ibrahim',
+  'ابراهيم': 'Ibrahim',
+  'يوسف': 'Youssef',
+  'صالح': 'Saleh',
+  'سعد': 'Saad',
+  'زيد': 'Zaid',
+  'خلف': 'Khalaf',
+  'مبارك': 'Mubarak',
+  'راشد': 'Rashed',
+  'ماجد': 'Majed',
+  'وليد': 'Waleed',
+  'طلال': 'Talal',
+  'عبدالواحد': 'Abdulwahed',
+  'عبد الواحد': 'Abdulwahed',
+  'حمد': 'Hamad',
+  'منصور': 'Mansour',
+  'عامر': 'Amer',
+  'سامي': 'Sami',
+  'ياسر': 'Yasser',
+  'بدر': 'Badr',
+  'نواف': 'Nawaf',
+  'عادل': 'Adel',
+  'فارس': 'Fares',
+  'هاني': 'Hani',
+  'كريم': 'Kareem',
+  'جاسم': 'Jasim',
+  'جابر': 'Jaber',
+  'ثامر': 'Thamer',
+  'غازي': 'Ghazi',
+  'ماهر': 'Maher',
+  'عيسى': 'Essa',
+  'موسى': 'Musa',
+  'داود': 'Dawood',
+  'سليمان': 'Sulaiman',
+  'يحيى': 'Yahya',
+  'زكريا': 'Zakaria',
+  'عزيز': 'Aziz',
+  'مهند': 'Muhannad',
+  'نورة': 'Noura',
+  'فاطمة': 'Fatima',
+  'عائشة': 'Aisha',
+  'مريم': 'Maryam',
+  'سارة': 'Sara',
+  'هند': 'Hind',
+  'ريم': 'Reem',
+  'لطيفة': 'Latifa',
+  'منيرة': 'Munira',
+  'نوف': 'Nouf',
+  'العنود': 'Alanoud',
+  'الجوهرة': 'Aljawharah',
+  'هيا': 'Haya',
+  'دلال': 'Dalal',
+  'أمل': 'Amal',
+  'موضي': 'Moudhi',
+  'حصة': 'Hessa',
+  'بن': 'bin',
+  'ابن': 'bin',
+  'آل': 'Al',
+  'ال': 'Al',
+  'الشايع': 'Al-Shaye',
+};
+
 interface FamilyMember {
   id: string;
   firstName: string;
   fatherId: string | null;
   familyName: string | null;
   gender: string;
+}
+
+function transliterateName(arabicName: string): string {
+  if (!arabicName) return '';
+  
+  let result = arabicName.trim();
+  
+  for (const [arabic, english] of Object.entries(arabicNameMappings)) {
+    result = result.replace(new RegExp(arabic, 'g'), english);
+  }
+  
+  result = result
+    .replace(/\s+/g, ' ')
+    .replace(/\s+bin\s+/gi, ' bin ')
+    .replace(/^bin\s+/gi, 'bin ')
+    .trim();
+  
+  return result;
 }
 
 function generateFullNameAr(
@@ -37,58 +163,25 @@ function generateFullNameAr(
   return parts.join(' ');
 }
 
-function transliterate(arabic: string): string {
-  const map: Record<string, string> = {
-    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa',
-    'ب': 'b', 'ت': 't', 'ث': 'th',
-    'ج': 'j', 'ح': 'h', 'خ': 'kh',
-    'د': 'd', 'ذ': 'dh',
-    'ر': 'r', 'ز': 'z',
-    'س': 's', 'ش': 'sh',
-    'ص': 's', 'ض': 'd',
-    'ط': 't', 'ظ': 'dh',
-    'ع': 'a', 'غ': 'gh',
-    'ف': 'f', 'ق': 'q',
-    'ك': 'k', 'ل': 'l',
-    'م': 'm', 'ن': 'n',
-    'ه': 'h', 'و': 'w',
-    'ي': 'y', 'ى': 'a',
-    'ة': 'h', 'ء': "'",
-    ' ': ' ',
-  };
-
-  if (arabic.includes('آل')) {
-    arabic = arabic.replace('آل', 'AAL_PLACEHOLDER');
-  }
-
-  let result = '';
-  for (const char of arabic) {
-    result += map[char] || char;
-  }
-
-  result = result.replace('AAL_PLACEHOLDER', 'Al-');
-  return result.replace(/\b\w/g, c => c.toUpperCase());
-}
-
 function generateFullNameEn(
   member: FamilyMember,
   allMembers: FamilyMember[]
 ): string {
-  const parts: string[] = [member.firstName];
+  const parts: string[] = [transliterateName(member.firstName)];
   let currentMember: FamilyMember | undefined = member;
 
   while (currentMember?.fatherId) {
     const father = allMembers.find(m => m.id === currentMember!.fatherId);
     if (father) {
-      parts.push(father.firstName);
+      parts.push('bin ' + transliterateName(father.firstName));
       currentMember = father;
     } else {
       break;
     }
   }
 
-  parts.push(member.familyName || 'آل شايع');
-  return parts.map(transliterate).join(' ');
+  parts.push(transliterateName(member.familyName || 'آل شايع'));
+  return parts.join(' ');
 }
 
 async function regenerateFullNames() {

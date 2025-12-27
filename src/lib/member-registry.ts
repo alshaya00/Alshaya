@@ -89,20 +89,26 @@ export class DuplicateError extends Error {
 export async function generateNextMemberId(tx?: TransactionClient): Promise<string> {
   const client = tx || prisma;
   
-  const lastMember = await client.familyMember.findFirst({
-    select: { id: true },
-    orderBy: { id: 'desc' },
-  });
+  const result = await client.$queryRaw<{ max_prefixed: number | null; max_numeric: number | null; has_prefixed: boolean }[]>`
+    SELECT 
+      MAX(CASE WHEN id ~ '^P[0-9]+$' THEN CAST(SUBSTRING(id FROM 2) AS INTEGER) ELSE NULL END) as max_prefixed,
+      MAX(CASE WHEN id ~ '^[0-9]+$' THEN CAST(id AS INTEGER) ELSE NULL END) as max_numeric,
+      EXISTS(SELECT 1 FROM "FamilyMember" WHERE id ~ '^P[0-9]+$') as has_prefixed
+    FROM "FamilyMember"
+  `;
 
-  if (!lastMember) return '1';
+  const { max_prefixed, max_numeric, has_prefixed } = result[0] || {};
 
-  const lastIdNum = parseInt(lastMember.id, 10);
-  if (isNaN(lastIdNum)) {
-    const count = await client.familyMember.count();
-    return String(count + 1);
+  if (max_prefixed === null && max_numeric === null) {
+    return 'P001';
   }
 
-  return String(lastIdNum + 1);
+  if (has_prefixed) {
+    const nextNum = Math.max(max_prefixed || 0, max_numeric || 0) + 1;
+    return `P${String(nextNum).padStart(3, '0')}`;
+  }
+
+  return String((max_numeric || 0) + 1);
 }
 
 export async function calculateGeneration(
