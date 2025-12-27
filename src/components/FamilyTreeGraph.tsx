@@ -374,7 +374,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             </feMerge>
           </filter>
           <clipPath id="avatar-clip">
-            <circle cx="0" cy="0" r="16" />
+            <circle cx="0" cy="0" r="13" />
           </clipPath>
         </defs>
 
@@ -520,31 +520,31 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                     style={{ clipPath: 'inset(0 0 0 0 round 14px 14px 0 0)' }}
                   />
 
-                  {/* Avatar circle - moved up to give more room for name */}
+                  {/* Avatar circle - smaller and positioned higher */}
                   <circle
                     cx={0}
-                    cy={-18}
-                    r={18}
+                    cy={-22}
+                    r={15}
                     fill={isMale ? 'url(#male-gradient)' : 'url(#female-gradient)'}
                     stroke="white"
-                    strokeWidth={3}
+                    strokeWidth={2}
                   />
 
-                  {/* Avatar image - adjusted position */}
+                  {/* Avatar image - adjusted to fit smaller circle */}
                   <image
                     href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
-                    x={-16}
-                    y={-34}
-                    width={32}
-                    height={32}
+                    x={-13}
+                    y={-35}
+                    width={26}
+                    height={26}
                     clipPath="url(#avatar-clip)"
-                    style={{ transform: 'translate(0, 16px)' }}
+                    style={{ transform: 'translate(0, 13px)' }}
                   />
 
-                  {/* Name - positioned clearly below avatar with more space */}
+                  {/* Name - positioned clearly below avatar */}
                   <text
                     x={0}
-                    y={12}
+                    y={6}
                     textAnchor="middle"
                     fontSize={11}
                     fontWeight="600"
