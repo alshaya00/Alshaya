@@ -19,8 +19,9 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   **Data Management & Integrity**:
     -   **Backup System**: Database-backed backup system supporting manual and automatic daily backups with configurable intervals and retention. Stores snapshots in PostgreSQL.
     -   **Transactional Restore System**: Enterprise-grade restore process ensuring zero data loss with dependency-ordered restoration, atomic transactions, pre-restore safety backups, and member count verification.
+    -   **Transactional Approval Pipeline**: Atomic member approval using Prisma SERIALIZABLE transactions (`src/lib/transactional-approval.ts`). All operations (member creation, pending status update, parent count updates, integrity validation) happen within a single transaction with automatic rollback on any failure. Includes generation verification, children count reconciliation, and descriptive rollback reasons for operational debugging.
     -   **Pending Member Data Consistency**: All pending member operations are database-driven, ensuring consistent data across admin and public interfaces.
-    -   **Data Integrity Validation**: Comprehensive validation system (`src/lib/data-integrity.ts`) for checking generation values, parent relationships, and orphaned members. Available via admin API endpoint and runs automatically after CSV imports.
+    -   **Data Integrity Validation**: Comprehensive validation system (`src/lib/data-integrity.ts`) for checking generation values, parent relationships, and orphaned members. Includes single-member validation for fast post-approval checks. Available via admin API endpoint and runs automatically after CSV imports.
     -   **CSV Import Script**: Robust import script (`scripts/import-csv.ts`) that handles mixed Arabic/English headers, validates data, and reports issues. Run with `npm run import:csv`.
 -   **Family Tree Features**:
     -   Interactive D3.js visualization with zoom/pan.
