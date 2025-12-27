@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
+import { getYearRange, CalendarType } from '@/lib/utils/hijri-calendar';
 
 // Step definitions
 type Step = 'info' | 'add' | 'review' | 'submitted';
@@ -195,6 +196,7 @@ export default function BranchEntryPage() {
   const [fatherId, setFatherId] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [birthYear, setBirthYear] = useState('');
+  const [birthCalendar, setBirthCalendar] = useState<CalendarType>('GREGORIAN');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
 
@@ -413,6 +415,7 @@ export default function BranchEntryPage() {
           proposedFatherId: fatherId,
           gender,
           birthYear: birthYear ? parseInt(birthYear) : undefined,
+          birthCalendar,
           generation: autoFill.generation,
           branch: autoFill.branch,
           fullNameAr: autoFill.fullNameAr,
@@ -456,6 +459,7 @@ export default function BranchEntryPage() {
       // Reset form
       setFirstName('');
       setBirthYear('');
+      setBirthCalendar('GREGORIAN');
       setPhone('');
       setCity('');
 
@@ -498,6 +502,7 @@ export default function BranchEntryPage() {
     setFatherId(member.fatherId);
     setGender(member.gender);
     setBirthYear(member.birthYear?.toString() || '');
+    setBirthCalendar((member as any).birthCalendar || 'GREGORIAN');
     setPhone(member.phone || '');
     setCity(member.city || '');
   };
@@ -524,6 +529,7 @@ export default function BranchEntryPage() {
           proposedFatherId: fatherId,
           gender,
           birthYear: birthYear ? parseInt(birthYear) : undefined,
+          birthCalendar,
           generation: autoFill.generation,
           branch: autoFill.branch,
           fullNameAr: autoFill.fullNameAr,
@@ -570,6 +576,7 @@ export default function BranchEntryPage() {
       setEditingMember(null);
       setFirstName('');
       setBirthYear('');
+      setBirthCalendar('GREGORIAN');
       setPhone('');
       setCity('');
     } catch (error) {
@@ -1077,15 +1084,26 @@ export default function BranchEntryPage() {
                   <label className="text-sm font-medium text-gray-600 mb-1 block">
                     سنة الميلاد <span className="text-gray-400">(اختياري)</span>
                   </label>
-                  <input
-                    type="number"
-                    value={birthYear}
-                    onChange={(e) => setBirthYear(e.target.value)}
-                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
-                    placeholder="1990"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={birthYear}
+                      onChange={(e) => setBirthYear(e.target.value)}
+                      className="flex-1 px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
+                      placeholder={birthCalendar === 'HIJRI' ? '1410' : '1990'}
+                      min={getYearRange(birthCalendar).min}
+                      max={getYearRange(birthCalendar).max}
+                    />
+                    <select
+                      value={birthCalendar}
+                      onChange={(e) => setBirthCalendar(e.target.value as CalendarType)}
+                      className="px-2 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white"
+                      title="نوع التقويم"
+                    >
+                      <option value="GREGORIAN">ميلادي</option>
+                      <option value="HIJRI">هجري</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600 mb-1 block">

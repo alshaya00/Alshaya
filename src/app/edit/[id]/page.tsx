@@ -34,6 +34,7 @@ import {
 import type { FamilyMember, ValidationError } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
+import { getYearRange, CalendarType } from '@/lib/utils/hijri-calendar';
 
 type EditSection = 'identity' | 'family' | 'personal' | 'contact';
 
@@ -661,14 +662,29 @@ export default function EditMemberPage() {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 سنة الميلاد
                               </label>
-                              <input
-                                type="number"
-                                value={formData.birthYear || ''}
-                                onChange={(e) => updateField('birthYear', e.target.value ? parseInt(e.target.value) : null)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('birthYear') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
+                              <div className="flex gap-2">
+                                <input
+                                  type="number"
+                                  value={formData.birthYear || ''}
+                                  onChange={(e) => updateField('birthYear', e.target.value ? parseInt(e.target.value) : null)}
+                                  min={getYearRange((formData.birthCalendar as CalendarType) || 'GREGORIAN').min}
+                                  max={getYearRange((formData.birthCalendar as CalendarType) || 'GREGORIAN').max}
+                                  className={`flex-1 px-4 py-2 border rounded-lg ${
+                                    changedFields.includes('birthYear') ? 'border-yellow-400 bg-yellow-50' : ''
+                                  }`}
+                                />
+                                <select
+                                  value={(formData.birthCalendar as string) || 'GREGORIAN'}
+                                  onChange={(e) => updateField('birthCalendar', e.target.value)}
+                                  className={`px-2 py-2 border rounded-lg bg-white ${
+                                    changedFields.includes('birthCalendar') ? 'border-yellow-400 bg-yellow-50' : ''
+                                  }`}
+                                  title="نوع التقويم"
+                                >
+                                  <option value="GREGORIAN">ميلادي</option>
+                                  <option value="HIJRI">هجري</option>
+                                </select>
+                              </div>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">

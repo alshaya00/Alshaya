@@ -35,6 +35,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useNameMatch, useSubmitPendingMember } from '@/lib/hooks/useQueries';
+import { getYearRange, validateBirthYear, CalendarType } from '@/lib/utils/hijri-calendar';
 
 interface NewMemberData {
   firstName: string;
@@ -46,6 +47,7 @@ interface NewMemberData {
   fatherId: string;
   gender: 'Male' | 'Female';
   birthYear: string;
+  birthCalendar: CalendarType;
   city: string;
   occupation: string;
   phone: string;
@@ -100,6 +102,7 @@ export default function QuickAddPage() {
     fatherId: '',
     gender: 'Male',
     birthYear: '',
+    birthCalendar: 'GREGORIAN',
     city: '',
     occupation: '',
     phone: '',
@@ -210,11 +213,10 @@ export default function QuickAddPage() {
         newErrors.birthYear = 'سنة الميلاد مطلوبة';
       } else {
         const year = parseInt(formData.birthYear);
-        const minYear = validation?.minBirthYear || 1500;
-        const maxYear = validation?.maxBirthYear || new Date().getFullYear();
+        const yearRange = getYearRange(formData.birthCalendar);
 
-        if (isNaN(year) || year < minYear || year > maxYear) {
-          newErrors.birthYear = `سنة الميلاد يجب أن تكون بين ${minYear} و ${maxYear}`;
+        if (isNaN(year) || year < yearRange.min || year > yearRange.max) {
+          newErrors.birthYear = `سنة الميلاد يجب أن تكون بين ${yearRange.min} و ${yearRange.max}`;
         }
       }
       
@@ -353,6 +355,7 @@ export default function QuickAddPage() {
       proposedFatherId: formData.fatherId,
       gender: formData.gender,
       birthYear: formData.birthYear ? parseInt(formData.birthYear) : undefined,
+      birthCalendar: formData.birthCalendar,
       generation: autoFillData?.generation || 1,
       branch: autoFillData?.branch || undefined,
       fullNameAr: autoFillData?.fullNamePreview || `${formData.firstName} آل شايع`,
@@ -380,6 +383,7 @@ export default function QuickAddPage() {
           fatherId: '',
           gender: 'Male',
           birthYear: '',
+          birthCalendar: 'GREGORIAN',
           city: '',
           occupation: '',
           phone: '',
@@ -411,6 +415,7 @@ export default function QuickAddPage() {
       fatherId: '',
       gender: 'Male',
       birthYear: '',
+      birthCalendar: 'GREGORIAN',
       city: '',
       occupation: '',
       phone: '',
@@ -839,21 +844,34 @@ export default function QuickAddPage() {
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Birth Year */}
+                  {/* Birth Year with Calendar Type */}
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <Calendar size={18} />
                       سنة الميلاد
                     </label>
-                    <input
-                      type="number"
-                      value={formData.birthYear}
-                      onChange={(e) => updateField('birthYear', e.target.value)}
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
-                        errors.birthYear ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
-                      }`}
-                      placeholder="مثال: 1990"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={formData.birthYear}
+                        onChange={(e) => updateField('birthYear', e.target.value)}
+                        min={getYearRange(formData.birthCalendar).min}
+                        max={getYearRange(formData.birthCalendar).max}
+                        className={`flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
+                          errors.birthYear ? 'border-red-400' : 'border-gray-200 focus:border-indigo-500'
+                        }`}
+                        placeholder={formData.birthCalendar === 'HIJRI' ? 'مثال: 1410' : 'مثال: 1990'}
+                      />
+                      <select
+                        value={formData.birthCalendar}
+                        onChange={(e) => updateField('birthCalendar', e.target.value as CalendarType)}
+                        className="px-3 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all bg-white"
+                        title="نوع التقويم"
+                      >
+                        <option value="GREGORIAN">ميلادي</option>
+                        <option value="HIJRI">هجري</option>
+                      </select>
+                    </div>
                     {errors.birthYear && (
                       <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>
                     )}
