@@ -57,6 +57,7 @@ export const EMAIL_TEMPLATES = {
   NEW_MEMBER_ADDED: 'new_member_added',
   MEMBER_UPDATED: 'member_updated',
   BACKUP_COMPLETE: 'backup_complete',
+  BACKUP_FAILED: 'backup_failed',
   SECURITY_ALERT: 'security_alert',
 } as const;
 
@@ -269,13 +270,38 @@ function renderTemplate(templateName: string, data: Record<string, unknown>): { 
             </p>
             <ul style="color: #666;">
               <li>عدد الأعضاء: ${data.memberCount || 0}</li>
-              <li>اسم النسخة: ${data.snapshotName || 'N/A'}</li>
+              <li>الموقع: ${data.destination || 'غير محدد'}</li>
               <li>التاريخ: ${data.date || new Date().toLocaleDateString('ar-SA')}</li>
             </ul>
+            ${data.url ? `<p style="margin-top: 20px;"><a href="${data.url}" style="color: #27ae60;">عرض النسخة الاحتياطية</a></p>` : ''}
           </div>
         </div>
       `,
-      text: `اكتمل النسخ الاحتياطي\n\nعدد الأعضاء: ${data.memberCount || 0}\nاسم النسخة: ${data.snapshotName || 'N/A'}`,
+      text: `اكتمل النسخ الاحتياطي\n\nعدد الأعضاء: ${data.memberCount || 0}\nالموقع: ${data.destination || 'غير محدد'}`,
+    },
+    backup_failed: {
+      subject: 'فشل النسخ الاحتياطي - Backup Failed',
+      html: `
+        <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">❌ فشل النسخ الاحتياطي</h1>
+          </div>
+          <div style="background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+            <p style="color: #666; line-height: 1.8;">
+              فشلت عملية النسخ الاحتياطي. يرجى التحقق من الإعدادات.
+            </p>
+            <ul style="color: #666;">
+              <li>الموقع: ${data.destination || 'غير محدد'}</li>
+              <li>السبب: ${data.error || 'خطأ غير معروف'}</li>
+              <li>التاريخ: ${data.date || new Date().toLocaleDateString('ar-SA')}</li>
+            </ul>
+            <p style="color: #e74c3c; margin-top: 20px;">
+              يرجى التحقق من اتصال الخدمة والمحاولة مرة أخرى.
+            </p>
+          </div>
+        </div>
+      `,
+      text: `فشل النسخ الاحتياطي\n\nالموقع: ${data.destination || 'غير محدد'}\nالسبب: ${data.error || 'خطأ غير معروف'}`,
     },
     security_alert: {
       subject: '🔔 تنبيه أمني - Security Alert',

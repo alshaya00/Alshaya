@@ -23,6 +23,7 @@ import {
   Cloud,
   FileSpreadsheet,
   ExternalLink,
+  Github,
 } from 'lucide-react';
 
 interface IntegrityCheck {
@@ -44,8 +45,10 @@ export default function ToolsPage() {
   const [isChecking, setIsChecking] = useState(false);
   const [isExportingSheets, setIsExportingSheets] = useState(false);
   const [isExportingDrive, setIsExportingDrive] = useState(false);
+  const [isExportingGitHub, setIsExportingGitHub] = useState(false);
   const [sheetsInfo, setSheetsInfo] = useState<{ connected: boolean; spreadsheetUrl?: string; lastSnapshot?: string; totalSnapshots?: number } | null>(null);
   const [driveInfo, setDriveInfo] = useState<{ connected: boolean; files?: { id: string; name: string; modifiedTime: string }[] } | null>(null);
+  const [githubInfo, setGithubInfo] = useState<{ connected: boolean; repoUrl?: string; lastBackup?: string; backupCount?: number } | null>(null);
   const [integrityChecks, setIntegrityChecks] = useState<IntegrityCheck[]>([]);
   const [cleanupItems, setCleanupItems] = useState<CleanupItem[]>([]);
   const [stats, setStats] = useState({
@@ -66,12 +69,14 @@ export default function ToolsPage() {
   const loadCloudBackupStatus = async () => {
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      const [sheetsRes, driveRes] = await Promise.all([
+      const [sheetsRes, driveRes, githubRes] = await Promise.all([
         fetch('/api/admin/backup/google-sheets', { headers }).then(r => r.json()).catch(() => ({ connected: false })),
         fetch('/api/admin/backup/google-drive', { headers }).then(r => r.json()).catch(() => ({ connected: false })),
+        fetch('/api/admin/backup/github', { headers }).then(r => r.json()).catch(() => ({ connected: false })),
       ]);
       setSheetsInfo(sheetsRes);
       setDriveInfo(driveRes);
+      setGithubInfo(githubRes);
     } catch (error) {
       console.error('Error loading cloud backup status:', error);
     }
@@ -121,6 +126,29 @@ export default function ToolsPage() {
       alert('حدث خطأ أثناء التصدير إلى Google Drive');
     } finally {
       setIsExportingDrive(false);
+    }
+  };
+
+  const exportToGitHub = async () => {
+    setIsExportingGitHub(true);
+    const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' } : {};
+    try {
+      const res = await fetch('/api/admin/backup/github', {
+        method: 'POST',
+        headers,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`تم نسخ ${data.data?.memberCount || 0} عضو إلى GitHub بنجاح`);
+        loadCloudBackupStatus();
+      } else {
+        alert(`فشل النسخ الاحتياطي: ${data.message || data.error}`);
+      }
+    } catch (error) {
+      console.error('Error exporting to GitHub:', error);
+      alert('حدث خطأ أثناء النسخ الاحتياطي إلى GitHub');
+    } finally {
+      setIsExportingGitHub(false);
     }
   };
 
@@ -502,6 +530,56 @@ export default function ToolsPage() {
               {!driveInfo?.connected && (
                 <p className="text-xs text-gray-500 mt-2 text-center">
                   يرجى توصيل Google Drive من الإعدادات
+                </p>
+              )}
+            </div>
+
+            {/* GitHub Backup */}
+            <div className="p-4 bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Github className="w-5 h-5 text-white" />
+                  <span className="font-medium text-white">GitHub</span>
+                </div>
+                {githubInfo?.connected && githubInfo?.repoUrl && (
+                  <a
+                    href={githubInfo.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-gray-300 hover:text-white flex items-center gap-1"
+                  >
+                    فتح <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+              <p className="text-sm text-gray-300 mb-3">
+                نسخ احتياطي مشفر إلى مستودع GitHub خاص
+              </p>
+              {githubInfo?.lastBackup && (
+                <p className="text-xs text-gray-400 mb-2">
+                  آخر نسخة: {githubInfo.lastBackup} ({githubInfo.backupCount} نسخة)
+                </p>
+              )}
+              <button
+                onClick={exportToGitHub}
+                disabled={isExportingGitHub || !githubInfo?.connected}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isExportingGitHub ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    جاري النسخ الاحتياطي...
+                  </>
+                ) : (
+                  <>
+                    <Github className="w-4 h-4" />
+                    نسخ احتياطي إلى GitHub
+                  </>
+                )}
+              </button>
+              {!githubInfo?.connected && (
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  يرجى توصيل GitHub من الإعدادات
                 </p>
               )}
             </div>

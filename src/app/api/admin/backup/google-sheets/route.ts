@@ -3,6 +3,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { exportLivingRegistryToSheets, isGoogleSheetsConnected, getSpreadsheetInfo } from '@/lib/google-sheets-export';
 import { logAuditToDb } from '@/lib/db-audit';
+import { sendBackupNotification } from '@/lib/backup-notifications';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -116,6 +117,13 @@ export async function POST(request: NextRequest) {
         console.error('Audit logging failed:', auditError);
       }
 
+      sendBackupNotification({
+        success: true,
+        destination: 'Google Sheets',
+        memberCount: result.memberCount,
+        url: result.spreadsheetUrl,
+      }).catch(console.error);
+
       return NextResponse.json({
         success: true,
         message: 'Living registry exported to Google Sheets successfully',
@@ -143,6 +151,12 @@ export async function POST(request: NextRequest) {
       } catch (auditError) {
         console.error('Audit logging failed:', auditError);
       }
+
+      sendBackupNotification({
+        success: false,
+        destination: 'Google Sheets',
+        error: result.error,
+      }).catch(console.error);
 
       return NextResponse.json(
         { success: false, message: result.error, messageAr: 'فشل التصدير' },
