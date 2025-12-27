@@ -1684,6 +1684,10 @@ model AuditLog {
   success         Boolean  @default(true)
   errorMessage    String?
   
+  // Impact tracking (for member changes affecting descendants)
+  impactedIds     String?  // JSON array of affected entity IDs (descendants, etc.)
+  impactSummary   Json?    // Summary object with counts like { descendantsAffected: 15, lineagePathsUpdated: 10 }
+  
   @@index([timestamp])
   @@index([action])
   @@index([userId])

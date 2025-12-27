@@ -27,6 +27,8 @@ export async function logAuditToDb(params: {
   errorMessage?: string;
   ipAddress?: string;
   userAgent?: string;
+  impactedIds?: string[];
+  impactSummary?: Record<string, unknown>;
 }): Promise<boolean> {
   if (!process.env.DATABASE_URL) {
     console.error('[AUDIT] DATABASE_URL not set - audit log not persisted');
@@ -52,6 +54,8 @@ export async function logAuditToDb(params: {
         errorMessage: params.errorMessage || null,
         ipAddress: params.ipAddress || null,
         userAgent: params.userAgent || null,
+        impactedIds: params.impactedIds ? JSON.stringify(params.impactedIds) : null,
+        impactSummary: params.impactSummary || null,
       },
     });
     return true;
@@ -59,6 +63,40 @@ export async function logAuditToDb(params: {
     console.error('[AUDIT] Failed to write audit log to database:', error);
     return false;
   }
+}
+
+export async function logMemberChangeWithImpact(params: {
+  action: string;
+  memberId: string;
+  memberName: string;
+  previousState?: Record<string, unknown>;
+  newState?: Record<string, unknown>;
+  userId?: string;
+  userName?: string;
+  userRole?: string;
+  description: string;
+  impactedIds?: string[];
+  impactSummary?: { descendantsAffected?: number; lineagePathsUpdated?: number; generationChanges?: number };
+}): Promise<boolean> {
+  return logAuditToDb({
+    action: params.action,
+    severity: 'INFO',
+    userId: params.userId,
+    userName: params.userName,
+    userRole: params.userRole,
+    targetType: 'MEMBER',
+    targetId: params.memberId,
+    targetName: params.memberName,
+    description: params.description,
+    previousState: params.previousState,
+    newState: params.newState,
+    impactedIds: params.impactedIds,
+    impactSummary: params.impactSummary,
+    details: {
+      impactedIds: params.impactedIds,
+      impactSummary: params.impactSummary,
+    },
+  });
 }
 
 export async function getAuditLogsFromDb(params: {

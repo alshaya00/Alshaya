@@ -5,6 +5,7 @@ import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
 import MemberStoriesSection from '@/components/MemberStoriesSection';
+import MemberVersionHistory from '@/components/MemberVersionHistory';
 import GenderAvatar from '@/components/GenderAvatar';
 import MemberProfileAvatar from '@/components/MemberProfileAvatar';
 import {
@@ -324,6 +325,7 @@ export default async function MemberPage({ params }: PageProps) {
               grandchildren={grandchildren} 
             />
             <MemberStoriesSection memberId={member.id} memberName={member.firstName} />
+            <MemberVersionHistory memberId={member.id} />
 
             <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t">
               <Link
