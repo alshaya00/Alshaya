@@ -69,12 +69,24 @@ export async function POST(request: NextRequest) {
     const fs = await import('fs');
     const path = await import('path');
     
-    const exportPath = path.join(process.cwd(), 'data', 'family-members-export.json');
+    // Try multiple locations for the export file
+    const possiblePaths = [
+      path.join(process.cwd(), 'data', 'family-members-export.json'),
+      path.join(process.cwd(), 'public', 'data', 'family-members-export.json'),
+    ];
     
-    if (!fs.existsSync(exportPath)) {
+    let exportPath = '';
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        exportPath = p;
+        break;
+      }
+    }
+    
+    if (!exportPath) {
       return NextResponse.json({ 
-        error: 'Export file not found',
-        path: exportPath
+        error: 'Export file not found in any location',
+        checkedPaths: possiblePaths
       }, { status: 404 });
     }
 
