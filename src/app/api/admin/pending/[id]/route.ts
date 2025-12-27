@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { getNextIdFromDb, createMemberInDb } from '@/lib/db';
-import type { FamilyMember } from '@/lib/types';
 import { logAuditToDb } from '@/lib/db-audit';
+import { approvePendingMemberTransactional } from '@/lib/transactional-approval';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -116,52 +115,25 @@ export async function POST(
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     if (action === 'approve') {
-      const newId = await getNextIdFromDb();
+      const result = await approvePendingMemberTransactional({
+        pendingId: params.id,
+        userId: user.id,
+        userEmail: user.email,
+        userRole: user.role,
+        reviewNote,
+      });
 
-      const memberData: Omit<FamilyMember, 'createdAt' | 'updatedAt'> = {
-        id: newId,
-        firstName: pending.firstName,
-        fatherName: pending.fatherName,
-        grandfatherName: pending.grandfatherName,
-        greatGrandfatherName: pending.greatGrandfatherName,
-        familyName: pending.familyName,
-        fatherId: pending.proposedFatherId,
-        gender: pending.gender as 'Male' | 'Female',
-        birthYear: pending.birthYear,
-        generation: pending.generation,
-        branch: pending.branch,
-        fullNameAr: pending.fullNameAr,
-        fullNameEn: pending.fullNameEn,
-        phone: pending.phone,
-        city: pending.city,
-        status: pending.status || 'Living',
-        occupation: pending.occupation,
-        email: pending.email,
-        sonsCount: 0,
-        daughtersCount: 0,
-        photoUrl: null,
-        biography: null,
-      };
-
-      const newMember = await createMemberInDb(memberData);
-
-      if (!newMember) {
+      if (!result.success) {
         return NextResponse.json(
-          { success: false, message: 'Failed to create member' },
-          { status: 500 }
+          { 
+            success: false, 
+            message: result.message, 
+            messageAr: result.messageAr,
+            rollbackReason: result.rollbackReason,
+          },
+          { status: 400 }
         );
       }
-
-      await prisma.pendingMember.update({
-        where: { id: params.id },
-        data: {
-          reviewStatus: 'APPROVED',
-          reviewedBy: user.id,
-          reviewedAt: new Date(),
-          reviewNotes: reviewNote,
-          approvedMemberId: newId,
-        },
-      });
 
       await logActivity({
         userId: user.id,
@@ -171,37 +143,23 @@ export async function POST(
         category: 'MEMBER',
         targetType: 'PENDING_MEMBER',
         targetId: params.id,
-        targetName: pending.fullNameAr || pending.firstName,
-        details: { newMemberId: newId },
+        targetName: result.member?.fullNameAr || pending.firstName,
+        details: { 
+          newMemberId: result.member?.id,
+          transactional: true,
+          validationIssues: result.validationIssues?.length || 0,
+        },
         ipAddress,
         userAgent,
         success: true,
       });
 
-      try {
-        await logAuditToDb({
-          action: 'PENDING_APPROVE',
-          severity: 'INFO',
-          userId: user.id,
-          userName: user.email,
-          userRole: user.role,
-          targetType: 'PENDING_MEMBER',
-          targetId: params.id,
-          targetName: pending.fullNameAr || pending.firstName,
-          description: `تمت الموافقة على العضو المعلق: ${pending.firstName}`,
-          details: { newMemberId: newId, reviewNote },
-          newState: newMember as unknown as Record<string, unknown>,
-          success: true,
-        });
-      } catch (auditError) {
-        console.error('Audit logging failed:', auditError);
-      }
-
       return NextResponse.json({
         success: true,
-        message: 'Pending member approved and added to family tree',
-        messageAr: 'تمت الموافقة على العضو المعلق وإضافته لشجرة العائلة',
-        member: newMember,
+        message: result.message,
+        messageAr: result.messageAr,
+        member: result.member,
+        validationIssues: result.validationIssues,
       });
     }
 

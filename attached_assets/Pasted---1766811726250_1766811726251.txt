@@ -1,0 +1,35 @@
+ابي اسالهم كيف الووقن يعرف اني مسجل بالفعل او رافع طلب هل بالقرم او الايميل او وش بالضبط لان جربت ارفع يقول في لك طلب مسبقا بانتظار الموافقة, دخلت من الادمن ماحصلته ! ولكن حلصت غيره. وابي اذا احد جاه رفض اوتم رفع طلبه يطلع له مع رقم الطلب رقم التواصل حق الواتساب عشان اذا جاه رفض او يبي يدخل بسرعه يصير يرسل لنا فالواتس
+
+بناءً على المشاكل التي واجهتها في تتبع الطلبات المفقودة ورغبتك في ربط النظام بالواتساب، إليك تحليل تقني دقيق لكيفية عمل "التحقق" (Validation) وصياغة احترافية للفريق التقني:
+
+أولاً: كيف يعرف النظام أنك سجلت بالفعل؟
+عادةً ما تعتمد الأنظمة على إحدى هاتين الطريقتين، وبناءً على صورك، إليك الاحتمالات:
+
+رقم الهوية/التعريف (Member ID): بما أن لكل شخص Member_ID فريد (مثل P001)، فغالباً النظام يمنع تكرار طلب لنفس الاسم الكامل المرتبط بهذا الرقم.
+
+رقم الجوال أو الإيميل: النظام يتحقق من وجود سجل "قيد الانتظار" مرتبط ببيانات التواصل التي أدخلتها.
+
+الكوكيز (Cookies): قد يعتمد المتصفح على جلسة سابقة، لكن الأرجح هو الربط بـ قاعدة البيانات.
+
+ثانياً: مشكلة "الطلب موجود ولكن لا يظهر في الإدارة"
+هذه فجوة تقنية خطيرة تعني أن البيانات تُحفظ في "جدول مؤقت" لا يراه الأدمن، أو أن هناك خلل في الفلترة (Filter) داخل لوحة التحكم.
+
+ثالثاً: الرسالة الفنية الموجهة للفريق التقني :
+Subject: Backend Integrity Check: Missing Pending Requests & WhatsApp Integration
+
+1. Inquiry on Registration Validation: Please clarify what unique identifier the system uses to block duplicate requests (Is it the Full Name string, Phone Number, or Email?). A user is getting "Duplicate Request" errors, but the record is not visible in the Admin Dashboard.
+
+2. Bug Report: Invisible Pending Requests: Some requests are being "captured" by the system but fail to appear in the "Pending" (بانتظار الموافقة) list. Please audit the Requests table to ensure no data is being "orphaned" or hidden due to incorrect status flags.
+
+3. Feature Request: WhatsApp Support Integration: We need to update the status notification messages (Success / Pending / Rejected) to include:
+
+Request ID: To help the admin find the specific entry.
+
+WhatsApp Contact Link: A direct link or button (e.g., wa.me/966XXXXXXXXX) that appears on the status screen so the user can contact us immediately if they face issues or get a rejection.
+
+بالعامية (لكي تشرحها لهم في النقاش):
+"يا شباب، النظام يقول للمستخدم (عندك طلب مسبق)، بس أنا كأدمن ما أشوفه في لوحة التحكم. شيكوا لي الداتا بيس وين قاعدة تروح الطلبات 'الضايعة'؟ وهل النظام يربط الطلب بالإيميل ولا بالاسم؟" ( حطيت نفس معلوماتي لكن بتغير الاسم الاول من تجربة الى فيصل ) ولكن نفس باقي المعلومات
+
+"أيضاً، نحتاج أي شخص يرفع طلب أو يجيه رفض، تطلع له رسالة فيها رقم طلبه ومعها رابط واتساب العائلة، عشان يقدر يتواصل معنا بسرعة ويفهم سبب الرفض."
+
+هل تريدني أن أصمم لك شكل "رسالة الرفض" الجديدة التي تحتوي على زر الواتساب ليرى المبرمج كيف سيكون شكلها؟
