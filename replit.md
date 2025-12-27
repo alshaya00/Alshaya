@@ -15,7 +15,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   **Admin & System Management**:
     -   **Startup Script**: An `ensure-admin.ts` script runs on startup to provision the admin user, site settings, privacy settings, and API service configurations, as well as manage automatic backups.
     -   **Dynamic System Configuration**: Database-persisted configuration (`SystemConfig` table) controls application behavior with server-side caching and client-side access via `useSystemConfig()` hook. Includes feature flags, validation rules, and display settings.
-    -   **Audit Log System**: Tracks all significant actions in a dedicated `AuditLog` table, accessible via an admin API and UI.
+    -   **Audit Log System**: Tracks all significant actions in a dedicated `AuditLog` table with dependency graph and change impact tracking (`impactedIds`, `impactSummary`), accessible via an admin API and UI.
 -   **Data Management & Integrity**:
     -   **Backup System**: Database-backed backup system supporting manual and automatic daily backups with configurable intervals and retention. Stores snapshots in PostgreSQL.
     -   **Transactional Restore System**: Enterprise-grade restore process ensuring zero data loss with dependency-ordered restoration, atomic transactions, pre-restore safety backups, and member count verification.
@@ -32,6 +32,10 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
     -   **Album Folder System**: Organize photos into folders (Profile Photos, Memories, Documents, Historical, Events).
     -   **Profile Pictures**: Camera icon overlay on avatars, "Set as Profile" button in galleries.
     -   **Gallery Filtering**: Filter photos by folder and category with color-coded tabs.
+    -   **Self-Service Photo Upload**: Logged-in members can upload photos directly to their linked family member profile (bypasses pending approval, 5/day quota).
+-   **Version History**:
+    -   **Member Version History**: Admin-only timeline view showing all changes to a member with before/after snapshots and diff comparison.
+    -   **Change Impact Tracking**: Audit logs track impacted descendant IDs and impact summaries for cascading changes.
 -   **Localization Enhancements**:
     -   **Arabic Transliteration**: 80+ common Arabic name mappings for proper fullNameEn generation.
     -   **Branch Identification**: Recursive lookup with fuzzy Arabic name matching for pending member approvals.
