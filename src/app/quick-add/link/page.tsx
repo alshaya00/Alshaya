@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ExternalLink,
 } from 'lucide-react';
+import GenderAvatar from '@/components/GenderAvatar';
 
 export default function QuickAddLinkGenerator() {
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -209,9 +210,7 @@ export default function QuickAddLinkGenerator() {
           {selectedFather && (
             <div className="p-4 bg-emerald-50 border-b">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">{selectedFather.gender === 'Male' ? '👨' : '👩'}</span>
-                </div>
+                <GenderAvatar gender={selectedFather.gender} size="lg" />
                 <div>
                   <p className="font-bold text-emerald-800">{selectedFather.firstName}</p>
                   <p className="text-sm text-emerald-600">

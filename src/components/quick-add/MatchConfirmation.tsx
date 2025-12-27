@@ -14,6 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useState } from 'react';
+import GenderAvatar from '@/components/GenderAvatar';
 
 interface MatchConfirmationProps {
   candidate: MatchCandidate;
@@ -184,9 +185,7 @@ export default function MatchConfirmation({
             <div>
               <h5 className="text-sm font-medium text-gray-500 mb-2">الأب</h5>
               <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600">👨</span>
-                </div>
+                <GenderAvatar gender="Male" size="md" />
                 <div>
                   <p className="font-bold text-gray-900">{candidate.father.firstName}</p>
                   <p className="text-sm text-gray-500">
@@ -208,9 +207,7 @@ export default function MatchConfirmation({
                       key={sibling.id}
                       className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"
                     >
-                      <span className={sibling.gender === 'Male' ? 'text-blue-500' : 'text-pink-500'}>
-                        {sibling.gender === 'Male' ? '👦' : '👧'}
-                      </span>
+                      <GenderAvatar gender={sibling.gender} size="xs" />
                       <span className="text-sm text-gray-700">{sibling.firstName}</span>
                     </div>
                   ))}
@@ -235,9 +232,7 @@ export default function MatchConfirmation({
                       key={relative.id}
                       className="flex items-center gap-2 p-2 bg-green-50 rounded-lg"
                     >
-                      <span className={relative.gender === 'Male' ? 'text-green-600' : 'text-green-500'}>
-                        {relative.gender === 'Male' ? '👨' : '👩'}
-                      </span>
+                      <GenderAvatar gender={relative.gender} size="xs" />
                       <span className="text-sm text-gray-700">{relative.firstName}</span>
                     </div>
                   ))}

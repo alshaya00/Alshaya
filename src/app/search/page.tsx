@@ -7,6 +7,7 @@ import { calculateAge, getGenerationColor } from '@/lib/utils';
 import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import GenderAvatar from '@/components/GenderAvatar';
 
 function SearchPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
@@ -315,13 +316,7 @@ function SearchPageContent() {
                   href={`/member/${member.id}`}
                   className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
                 >
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl ${
-                      member.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
-                    }`}
-                  >
-                    {member.gender === 'Male' ? '👨' : '👩'}
-                  </div>
+                  <GenderAvatar gender={member.gender} size="lg" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-gray-800">{member.ancestorChain}</span>

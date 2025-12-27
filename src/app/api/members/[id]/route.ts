@@ -192,7 +192,14 @@ async function handleUpdate(
       }
     }
 
-    const updateData = {
+    // Helper to convert numeric fields (empty strings become null)
+    const toIntOrNull = (value: unknown): number | null => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = typeof value === 'number' ? value : parseInt(String(value), 10);
+      return isNaN(num) ? null : num;
+    };
+
+    const updateData: Record<string, unknown> = {
       firstName: body.firstName,
       fatherName: body.fatherName,
       grandfatherName: body.grandfatherName,
@@ -200,9 +207,9 @@ async function handleUpdate(
       familyName: body.familyName,
       fatherId: body.fatherId,
       gender: body.gender,
-      birthYear: body.birthYear,
-      deathYear: body.deathYear,
-      generation: body.generation,
+      birthYear: body.birthYear !== undefined ? toIntOrNull(body.birthYear) : undefined,
+      deathYear: body.deathYear !== undefined ? toIntOrNull(body.deathYear) : undefined,
+      generation: body.generation !== undefined ? toIntOrNull(body.generation) : undefined,
       branch: body.branch,
       fullNameAr: body.fullNameAr,
       fullNameEn: body.fullNameEn,
@@ -215,9 +222,10 @@ async function handleUpdate(
       email: body.email,
     };
 
+    // Remove undefined fields (fields not being updated)
     Object.keys(updateData).forEach(key => {
-      if (updateData[key as keyof typeof updateData] === undefined) {
-        delete updateData[key as keyof typeof updateData];
+      if (updateData[key] === undefined) {
+        delete updateData[key];
       }
     });
 
@@ -266,8 +274,14 @@ async function handleUpdate(
     });
   } catch (error) {
     console.error('Error updating member:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update member';
     return NextResponse.json(
-      { success: false, error: 'Failed to update member' },
+      { 
+        success: false, 
+        error: errorMessage,
+        message: errorMessage,
+        messageAr: 'فشل في تحديث بيانات العضو'
+      },
       { status: 500 }
     );
   }

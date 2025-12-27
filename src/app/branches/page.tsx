@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import GenderAvatar from '@/components/GenderAvatar';
 
 interface BranchData {
   head: FamilyMember;
@@ -323,9 +324,7 @@ ${url}
                   </div>
 
                   {/* Avatar */}
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl border-2 border-blue-300 flex-shrink-0">
-                    👨
-                  </div>
+                  <GenderAvatar gender="Male" size="lg" className="flex-shrink-0" />
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">

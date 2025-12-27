@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, GitBranch, Calendar, MapPin } from 'lucide-react';
 import ExportPDF from '@/components/ExportPDF';
 import { useAuth } from '@/contexts/AuthContext';
+import GenderAvatar from '@/components/GenderAvatar';
 
 interface Statistics {
   totalMembers: number;
@@ -149,13 +150,13 @@ export default function DashboardPage() {
           </div>
 
           <div className="stat-card bg-gradient-to-br from-blue-400 to-blue-500 text-white p-5 rounded-2xl shadow-lg">
-            <div className="text-3xl mb-2">👨</div>
+            <div className="mb-2"><GenderAvatar gender="Male" size="lg" /></div>
             <div className="text-3xl font-bold">{stats.males}</div>
             <div className="text-blue-100 text-sm mt-1">الذكور</div>
           </div>
 
           <div className="stat-card bg-gradient-to-br from-pink-400 to-pink-500 text-white p-5 rounded-2xl shadow-lg">
-            <div className="text-3xl mb-2">👩</div>
+            <div className="mb-2"><GenderAvatar gender="Female" size="lg" /></div>
             <div className="text-3xl font-bold">{stats.females}</div>
             <div className="text-pink-100 text-sm mt-1">الإناث</div>
           </div>
@@ -210,9 +211,9 @@ export default function DashboardPage() {
                         />
                       </div>
                     </div>
-                    <div className="flex gap-2 text-xs w-24 justify-end">
-                      <span className="text-blue-600">👨{gen.males}</span>
-                      <span className="text-pink-600">👩{gen.females}</span>
+                    <div className="flex gap-2 text-xs w-24 justify-end items-center">
+                      <span className="text-blue-600 flex items-center gap-0.5"><GenderAvatar gender="Male" size="xs" />{gen.males}</span>
+                      <span className="text-pink-600 flex items-center gap-0.5"><GenderAvatar gender="Female" size="xs" />{gen.females}</span>
                     </div>
                   </div>
                 </div>

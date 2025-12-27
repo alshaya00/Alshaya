@@ -246,8 +246,18 @@ export default function EditMemberPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'فشل في حفظ التغييرات');
+        let errorMessage = 'فشل في حفظ التغييرات';
+        try {
+          const text = await res.text();
+          if (text) {
+            const err = JSON.parse(text);
+            errorMessage = err.messageAr || err.message || err.error || errorMessage;
+          }
+        } catch {
+          // If response body is empty or not valid JSON, use status text
+          errorMessage = `خطأ في الخادم: ${res.status} ${res.statusText || ''}`.trim();
+        }
+        throw new Error(errorMessage);
       }
 
       setSaveSuccess(true);

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { PendingMember } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import GenderAvatar from '@/components/GenderAvatar';
 
 export default function PendingPage() {
   const [pending, setPending] = useState<PendingMember[]>([]);
@@ -207,13 +208,7 @@ export default function PendingPage() {
               <div key={item.id} className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      item.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
-                    }`}>
-                      <span className="text-xl">
-                        {item.gender === 'Male' ? '👨' : '👩'}
-                      </span>
-                    </div>
+                    <GenderAvatar gender={item.gender} size="lg" />
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-800">{item.firstName}</h3>

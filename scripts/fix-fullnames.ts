@@ -153,8 +153,10 @@ interface Member {
   gender: string;
 }
 
-async function updateFullNames() {
+async function fixFullNames() {
+  console.log('=== Fix FullNames Script ===\n');
   console.log('Fetching all family members...');
+  
   const members = await prisma.familyMember.findMany({
     select: {
       id: true,
@@ -162,15 +164,16 @@ async function updateFullNames() {
       fatherId: true,
       familyName: true,
       gender: true,
+      fullNameEn: true,
     },
   });
 
-  console.log(`Found ${members.length} members. Updating full names...`);
+  console.log(`Found ${members.length} members.\n`);
 
   const memberMap = new Map<string, Member>();
   members.forEach(m => memberMap.set(m.id, m));
 
-  function generateFullName(member: Member): { fullNameAr: string; fullNameEn: string } {
+  function generateFullNameEn(member: Member): string {
     const parts: string[] = [member.firstName || ''];
     let currentMember: Member | undefined = member;
 
@@ -186,46 +189,76 @@ async function updateFullNames() {
 
     parts.push(member.familyName || 'آل شايع');
 
-    const connector = member.gender === 'Female' ? 'بنت' : 'بن';
-    const fullNameAr = parts.length > 2
-      ? parts[0] + ' ' + connector + ' ' + parts.slice(1, -1).join(' ' + connector + ' ') + ' ' + parts[parts.length - 1]
-      : parts.join(' ');
-
-    const fullNameEn = parts.map(transliterate).join(' ');
-
-    return { fullNameAr, fullNameEn };
+    const connector = member.gender === 'Female' ? 'bint' : 'bin';
+    
+    const transliteratedParts = parts.map(transliterate);
+    
+    if (transliteratedParts.length > 2) {
+      return transliteratedParts[0] + ' ' + connector + ' ' + 
+             transliteratedParts.slice(1, -1).join(' ' + connector + ' ') + ' ' + 
+             transliteratedParts[transliteratedParts.length - 1];
+    }
+    
+    return transliteratedParts.join(' ');
   }
 
   let updated = 0;
+  let hasArabicBefore = 0;
+  let hasArabicAfter = 0;
+
+  const arabicPattern = /[\u0600-\u06FF]/;
+
+  console.log('Updating fullNameEn for all members...\n');
+
   for (const member of members) {
-    const { fullNameAr, fullNameEn } = generateFullName(member);
+    const oldFullNameEn = member.fullNameEn || '';
+    const newFullNameEn = generateFullNameEn(member);
+    
+    if (arabicPattern.test(oldFullNameEn)) {
+      hasArabicBefore++;
+    }
+    
+    if (arabicPattern.test(newFullNameEn)) {
+      hasArabicAfter++;
+      console.log(`Warning: Arabic still present in: ${newFullNameEn} (firstName: ${member.firstName})`);
+    }
     
     await prisma.familyMember.update({
       where: { id: member.id },
-      data: { fullNameAr, fullNameEn },
+      data: { fullNameEn: newFullNameEn },
     });
     updated++;
     
-    if (updated % 50 === 0) {
+    if (updated % 100 === 0) {
       console.log(`Updated ${updated}/${members.length} members...`);
     }
   }
 
-  console.log(`\nDone! Updated ${updated} members with full lineage names.`);
-  
-  const sample = await prisma.familyMember.findFirst({
-    where: { generation: 7 },
-    select: { firstName: true, fullNameAr: true, fullNameEn: true, generation: true },
+  console.log(`\n=== Summary ===`);
+  console.log(`Total members updated: ${updated}`);
+  console.log(`Records with Arabic in fullNameEn before: ${hasArabicBefore}`);
+  console.log(`Records with Arabic in fullNameEn after: ${hasArabicAfter}`);
+
+  const samples = await prisma.familyMember.findMany({
+    take: 5,
+    orderBy: { generation: 'desc' },
+    select: { 
+      id: true,
+      firstName: true, 
+      fullNameAr: true, 
+      fullNameEn: true, 
+      generation: true 
+    },
   });
-  
-  if (sample) {
-    console.log('\nSample (Generation 7):');
-    console.log(`  Name: ${sample.firstName}`);
-    console.log(`  Full Arabic: ${sample.fullNameAr}`);
-    console.log(`  Full English: ${sample.fullNameEn}`);
+
+  console.log('\n=== Sample Results ===');
+  for (const sample of samples) {
+    console.log(`\n[${sample.id}] ${sample.firstName} (Gen ${sample.generation}):`);
+    console.log(`  Arabic: ${sample.fullNameAr}`);
+    console.log(`  English: ${sample.fullNameEn}`);
   }
 }
 
-updateFullNames()
+fixFullNames()
   .catch(console.error)
   .finally(() => prisma.$disconnect());

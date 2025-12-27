@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FamilyMember, MilkFamily } from '@/lib/types';
 import MemberMiniGraph from './MemberMiniGraph';
 import { ChevronLeft, Baby, Heart, Users, Plus, Loader2 } from 'lucide-react';
+import GenderAvatar from '@/components/GenderAvatar';
 
 interface MemberBreastfeedingSectionProps {
   member: FamilyMember;
@@ -106,9 +107,7 @@ export default function MemberBreastfeedingSection({
                   >
                     {/* Milk Mother */}
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-xl">
-                        🤱
-                      </span>
+                      <GenderAvatar gender="Female" size="md" />
                       <div className="flex-1">
                         <p className="text-xs text-teal-600 mb-0.5">أم الرضاعة</p>
                         {milkFamily.milkMother && 'isExternal' in milkFamily.milkMother ? (
@@ -138,9 +137,7 @@ export default function MemberBreastfeedingSection({
                     {/* Milk Father */}
                     {milkFamily.milkFather && (
                       <div className="flex items-center gap-3 mb-3 pr-4 border-r-2 border-teal-100">
-                        <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-lg">
-                          👨
-                        </span>
+                        <GenderAvatar gender="Male" size="sm" />
                         <div className="flex-1">
                           <p className="text-xs text-blue-600 mb-0.5">أب الرضاعة</p>
                           {'isExternal' in milkFamily.milkFather ? (
@@ -172,13 +169,13 @@ export default function MemberBreastfeedingSection({
                             <Link
                               key={sibling.id}
                               href={`/member/${sibling.id}`}
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
                                 sibling.gender === 'Male'
                                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                                   : 'bg-pink-100 text-pink-700 hover:bg-pink-200'
                               }`}
                             >
-                              {sibling.gender === 'Male' ? '👨' : '👩'} {sibling.firstName}
+                              <GenderAvatar gender={sibling.gender} size="xs" /> {sibling.firstName}
                               <span className="text-xs opacity-75 mr-1">
                                 ({sibling.gender === 'Male' ? 'أخ رضاعة' : 'أخت رضاعة'})
                               </span>
@@ -222,13 +219,13 @@ export default function MemberBreastfeedingSection({
                     <Link
                       key={record.relationshipId}
                       href={`/member/${record.child.id}`}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
                         record.child.gender === 'Male'
                           ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                           : 'bg-pink-100 text-pink-700 hover:bg-pink-200'
                       }`}
                     >
-                      {record.child.gender === 'Male' ? '👨' : '👩'} {record.child.firstName}
+                      <GenderAvatar gender={record.child.gender} size="xs" /> {record.child.firstName}
                       <span className="text-xs opacity-75 mr-1">
                         ({record.child.gender === 'Male' ? 'ابن رضاعة' : 'بنت رضاعة'})
                       </span>

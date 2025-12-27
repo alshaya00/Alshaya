@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import { AlertTriangle } from 'lucide-react';
+import GenderAvatar from '@/components/GenderAvatar';
 
 type SortField = 'id' | 'firstName' | 'generation' | 'birthYear';
 type SortOrder = 'asc' | 'desc';
@@ -320,15 +321,7 @@ function RegistryPageContent() {
                       <td className="p-4 font-mono text-gray-600">{member.id}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                              member.gender === 'Male'
-                                ? 'bg-blue-100 text-blue-600'
-                                : 'bg-pink-100 text-pink-600'
-                            }`}
-                          >
-                            {member.gender === 'Male' ? '👨' : '👩'}
-                          </span>
+                          <GenderAvatar gender={member.gender} size="sm" />
                           <span className="font-semibold">{member.firstName}</span>
                         </div>
                       </td>

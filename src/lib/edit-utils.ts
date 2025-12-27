@@ -309,8 +309,101 @@ export function generateFullName(
 }
 
 function transliterate(arabic: string): string {
-  const map: Record<string, string> = {
-    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa',
+  if (!arabic) return '';
+  
+  const commonNames: Record<string, string> = {
+    'عبدالله': 'Abdullah',
+    'عبد الله': 'Abdullah',
+    'عبدالعزيز': 'Abdulaziz',
+    'عبد العزيز': 'Abdulaziz',
+    'عبدالرحمن': 'Abdulrahman',
+    'عبد الرحمن': 'Abdulrahman',
+    'عبدالكريم': 'Abdulkarim',
+    'عبد الكريم': 'Abdulkarim',
+    'عبدالملك': 'Abdulmalik',
+    'عبد الملك': 'Abdulmalik',
+    'عبدالمجيد': 'Abdulmajid',
+    'عبد المجيد': 'Abdulmajid',
+    'عبداللطيف': 'Abdullatif',
+    'عبد اللطيف': 'Abdullatif',
+    'عبدالمحسن': 'Abdulmohsen',
+    'عبد المحسن': 'Abdulmohsen',
+    'عبدالهادي': 'Abdulhadi',
+    'عبد الهادي': 'Abdulhadi',
+    'عبدالواحد': 'Abdulwahid',
+    'عبد الواحد': 'Abdulwahid',
+    'محمد': 'Mohammed',
+    'أحمد': 'Ahmed',
+    'احمد': 'Ahmed',
+    'إبراهيم': 'Ibrahim',
+    'ابراهيم': 'Ibrahim',
+    'سليمان': 'Sulaiman',
+    'سلمان': 'Salman',
+    'ناصر': 'Nasser',
+    'خالد': 'Khalid',
+    'فهد': 'Fahd',
+    'سعود': 'Saud',
+    'سعد': 'Saad',
+    'فيصل': 'Faisal',
+    'تركي': 'Turki',
+    'بندر': 'Bandar',
+    'سلطان': 'Sultan',
+    'نايف': 'Naif',
+    'مشعل': 'Mishal',
+    'متعب': 'Mutaib',
+    'عمر': 'Omar',
+    'علي': 'Ali',
+    'حسن': 'Hassan',
+    'حسين': 'Hussein',
+    'يوسف': 'Youssef',
+    'يعقوب': 'Yaqoub',
+    'صالح': 'Saleh',
+    'عثمان': 'Othman',
+    'حمد': 'Hamad',
+    'راشد': 'Rashid',
+    'ماجد': 'Majid',
+    'منصور': 'Mansour',
+    'نواف': 'Nawaf',
+    'فوزان': 'Fawzan',
+    'مساعد': 'Musaad',
+    'زيد': 'Zaid',
+    'فهاد': 'Fahad',
+    'بدر': 'Badr',
+    'جمال': 'Jamal',
+    'كمال': 'Kamal',
+    'طلال': 'Talal',
+    'نوره': 'Noura',
+    'نورة': 'Noura',
+    'سارة': 'Sarah',
+    'فاطمة': 'Fatima',
+    'عائشة': 'Aisha',
+    'مريم': 'Mariam',
+    'خديجة': 'Khadija',
+    'زينب': 'Zainab',
+    'هند': 'Hind',
+    'ريم': 'Reem',
+    'دانة': 'Dana',
+    'لمى': 'Lama',
+    'منيرة': 'Munira',
+    'لطيفة': 'Latifa',
+    'موضي': 'Moudhi',
+    'جواهر': 'Jawahir',
+    'العنود': 'Al-Anoud',
+    'الجوهرة': 'Al-Jawhara',
+    'خلود': 'Khulud',
+    'هيا': 'Haya',
+    'آل شايع': 'Al-Shaye',
+    'ال شايع': 'Al-Shaye',
+    'شايع': 'Shaye',
+  };
+
+  const trimmed = arabic.trim();
+  if (commonNames[trimmed]) {
+    return commonNames[trimmed];
+  }
+
+  const charMap: Record<string, string> = {
+    'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a',
     'ب': 'b', 'ت': 't', 'ث': 'th',
     'ج': 'j', 'ح': 'h', 'خ': 'kh',
     'د': 'd', 'ذ': 'dh',
@@ -324,24 +417,38 @@ function transliterate(arabic: string): string {
     'م': 'm', 'ن': 'n',
     'ه': 'h', 'و': 'w',
     'ي': 'y', 'ى': 'a',
-    'ة': 'h', 'ء': "'",
-    ' ': ' ', 'آل': 'Al-',
+    'ة': 'a', 'ء': '',
+    'ؤ': 'o', 'ئ': 'e',
+    'ً': '', 'ٌ': '', 'ٍ': '',
+    'َ': '', 'ُ': '', 'ِ': '',
+    'ّ': '', 'ْ': '',
+    ' ': ' ', '-': '-',
   };
 
-  // Handle "آل" specially
-  if (arabic.includes('آل')) {
-    arabic = arabic.replace('آل', 'AAL_PLACEHOLDER');
+  let text = trimmed;
+  
+  if (text.startsWith('آل ') || text.startsWith('ال ')) {
+    text = 'AL_PREFIX_PLACEHOLDER' + text.substring(3);
+  } else if (text.startsWith('آل') || text.startsWith('ال')) {
+    text = 'AL_PREFIX_PLACEHOLDER' + text.substring(2);
   }
 
   let result = '';
-  for (const char of arabic) {
-    result += map[char] || char;
+  for (const char of text) {
+    if (charMap.hasOwnProperty(char)) {
+      result += charMap[char];
+    } else if (/[a-zA-Z0-9\s\-_.]/.test(char)) {
+      result += char;
+    }
   }
 
-  result = result.replace('AAL_PLACEHOLDER', 'Al-');
-
-  // Capitalize first letter of each word
-  return result.replace(/\b\w/g, c => c.toUpperCase());
+  result = result.replace('AL_PREFIX_PLACEHOLDER', 'Al-');
+  
+  result = result.replace(/\s+/g, ' ').trim();
+  
+  return result.split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(' ');
 }
 
 // ============================================

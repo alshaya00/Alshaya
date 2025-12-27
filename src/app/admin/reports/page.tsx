@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Filter,
 } from 'lucide-react';
+import GenderAvatar from '@/components/GenderAvatar';
 
 interface ReportStats {
   totalMembers: number;
@@ -274,14 +275,14 @@ export default function ReportsPage() {
               <div className="flex items-center justify-center gap-8">
                 <div className="text-center">
                   <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center mb-2">
-                    <span className="text-4xl">👨</span>
+                    <GenderAvatar gender="Male" size="2xl" />
                   </div>
                   <p className="text-2xl font-bold text-blue-600">{stats.males}</p>
                   <p className="text-sm text-gray-500">ذكور ({Math.round((stats.males / stats.totalMembers) * 100)}%)</p>
                 </div>
                 <div className="text-center">
                   <div className="w-32 h-32 rounded-full bg-pink-100 flex items-center justify-center mb-2">
-                    <span className="text-4xl">👩</span>
+                    <GenderAvatar gender="Female" size="2xl" />
                   </div>
                   <p className="text-2xl font-bold text-pink-600">{stats.females}</p>
                   <p className="text-sm text-gray-500">إناث ({Math.round((stats.females / stats.totalMembers) * 100)}%)</p>

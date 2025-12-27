@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import GenderAvatar from '@/components/GenderAvatar';
 
 type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -476,9 +477,7 @@ export default function AdminPendingPage() {
                       {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                     </div>
 
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl border-2 border-blue-300 flex-shrink-0">
-                      👨
-                    </div>
+                    <GenderAvatar gender="Male" size="lg" className="flex-shrink-0" />
 
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-800 truncate">
@@ -528,11 +527,7 @@ export default function AdminPendingPage() {
                           )}
                           {member.reviewStatus !== 'PENDING' && <div className="w-5" />}
 
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${
-                            member.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
-                          }`}>
-                            {member.gender === 'Male' ? '👨' : '👩'}
-                          </div>
+                          <GenderAvatar gender={member.gender} size="lg" className="flex-shrink-0" />
 
                           <div className="flex-1 min-w-0">
                             {editingId === member.id ? (

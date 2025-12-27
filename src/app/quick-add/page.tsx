@@ -10,6 +10,7 @@ import { storageKeys } from '@/config/storage-keys';
 import { paginationSettings, dbSettings } from '@/config/constants';
 import { MatchConfirmation, MatchComparisonGraphs } from '@/components/quick-add';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
+import GenderAvatar from '@/components/GenderAvatar';
 import {
   PlusCircle,
   Check,
@@ -808,7 +809,7 @@ export default function QuickAddPage() {
                           : 'border-gray-200 hover:border-blue-300'
                       }`}
                     >
-                      <span className="text-5xl">👨</span>
+                      <GenderAvatar gender="Male" size="2xl" />
                       <span className="font-bold text-lg">ذكر</span>
                       <span className="text-sm text-gray-500">Male</span>
                     </button>
@@ -821,7 +822,7 @@ export default function QuickAddPage() {
                           : 'border-gray-200 hover:border-pink-300'
                       }`}
                     >
-                      <span className="text-5xl">👩</span>
+                      <GenderAvatar gender="Female" size="2xl" />
                       <span className="font-bold text-lg">أنثى</span>
                       <span className="text-sm text-gray-500">Female</span>
                     </button>
@@ -965,11 +966,7 @@ export default function QuickAddPage() {
                 {/* Preview Card */}
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border-2 border-gray-200">
                   <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl ${
-                      formData.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
-                    }`}>
-                      {formData.gender === 'Male' ? '👨' : '👩'}
-                    </div>
+                    <GenderAvatar gender={formData.gender} size="xl" />
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">
                         {autoFillData?.fullNamePreview || formData.firstName + ' آل شايع'}

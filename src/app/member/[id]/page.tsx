@@ -5,6 +5,7 @@ import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
 import MemberStoriesSection from '@/components/MemberStoriesSection';
+import GenderAvatar from '@/components/GenderAvatar';
 import {
   User,
   Calendar,
@@ -69,9 +70,7 @@ export default async function MemberPage({ params }: PageProps) {
             } text-white`}
           >
             <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-5xl">
-                {member.gender === 'Male' ? '👨' : '👩'}
-              </div>
+              <GenderAvatar gender={member.gender} size="2xl" />
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold">{member.firstName}</h1>
@@ -233,9 +232,7 @@ export default async function MemberPage({ params }: PageProps) {
                   href={`/member/${father.id}`}
                   className="inline-flex items-center gap-3 bg-purple-50 hover:bg-purple-100 rounded-xl p-4 transition-colors"
                 >
-                  <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white text-xl">
-                    👨
-                  </div>
+                  <GenderAvatar gender="Male" size="lg" />
                   <div>
                     <p className="font-bold text-gray-800">{father.firstName}</p>
                     <p className="text-sm text-gray-500">{father.fullNameAr}</p>
@@ -258,13 +255,7 @@ export default async function MemberPage({ params }: PageProps) {
                       href={`/member/${sibling.id}`}
                       className="flex items-center gap-3 bg-orange-50 hover:bg-orange-100 rounded-xl p-3 transition-colors"
                     >
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
-                          sibling.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
-                        }`}
-                      >
-                        {sibling.gender === 'Male' ? '👨' : '👩'}
-                      </div>
+                      <GenderAvatar gender={sibling.gender} size="md" />
                       <span className="font-medium text-gray-800">{sibling.firstName}</span>
                     </Link>
                   ))}
@@ -285,13 +276,7 @@ export default async function MemberPage({ params }: PageProps) {
                       href={`/member/${child.id}`}
                       className="flex items-center gap-3 bg-green-50 hover:bg-green-100 rounded-xl p-3 transition-colors"
                     >
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
-                          child.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
-                        }`}
-                      >
-                        {child.gender === 'Male' ? '👨' : '👩'}
-                      </div>
+                      <GenderAvatar gender={child.gender} size="md" />
                       <span className="font-medium text-gray-800">{child.firstName}</span>
                     </Link>
                   ))}
@@ -312,13 +297,7 @@ export default async function MemberPage({ params }: PageProps) {
                       href={`/member/${gc.id}`}
                       className="flex items-center gap-2 bg-teal-50 hover:bg-teal-100 rounded-lg p-2 transition-colors"
                     >
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
-                          gc.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'
-                        }`}
-                      >
-                        {gc.gender === 'Male' ? '👦' : '👧'}
-                      </div>
+                      <GenderAvatar gender={gc.gender} size="sm" />
                       <span className="text-sm text-gray-700">{gc.firstName}</span>
                     </Link>
                   ))}

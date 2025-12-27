@@ -17,6 +17,7 @@ import {
   CheckCircle, Users, GitBranch, Info, List, Maximize2, Loader2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import GenderAvatar from '@/components/GenderAvatar';
 
 // Step definitions
 type Step = 'info' | 'add' | 'review' | 'submitted';
@@ -88,11 +89,7 @@ function TreeNode({
           ? 'bg-green-100 border-2 border-green-500'
           : 'bg-gray-50 border border-gray-200'
       }`}>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-          member.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
-        }`}>
-          {member.gender === 'Male' ? '👨' : '👩'}
-        </div>
+        <GenderAvatar gender={member.gender} size="sm" />
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-medium truncate ${isNodeHighlighted ? 'text-green-700' : 'text-gray-700'}`}>
             {member.firstName}
@@ -153,11 +150,7 @@ function PendingTreeNode({
     <div className="relative">
       {/* Pending Node */}
       <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-yellow-50 border-2 border-yellow-400 border-dashed">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-          pending.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
-        }`}>
-          {pending.gender === 'Male' ? '👨' : '👩'}
-        </div>
+        <GenderAvatar gender={pending.gender} size="sm" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate text-yellow-700">
             {pending.firstName}
@@ -946,9 +939,7 @@ export default function BranchEntryPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
-                          👨
-                        </div>
+                        <GenderAvatar gender="Male" size="md" className="flex-shrink-0" />
                         <div className="flex-1 min-w-0 text-right">
                           {selectedFather ? (
                             <>
@@ -1004,8 +995,8 @@ export default function BranchEntryPage() {
                                 fatherId === member.id ? 'bg-green-100' : ''
                               }`}
                             >
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
-                                {isPending ? '⏳' : '👨'}
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0">
+                                {isPending ? '⏳' : <GenderAvatar gender="Male" size="md" />}
                               </div>
                               <div className="flex-1 min-w-0 text-right">
                                 <p className="font-medium text-gray-800">
@@ -1062,7 +1053,7 @@ export default function BranchEntryPage() {
                         : 'border-gray-200 hover:border-blue-300'
                     }`}
                   >
-                    <span className="text-2xl">👨</span>
+                    <GenderAvatar gender="Male" size="lg" />
                     <span className="font-medium">ذكر</span>
                   </button>
                   <button
@@ -1074,7 +1065,7 @@ export default function BranchEntryPage() {
                         : 'border-gray-200 hover:border-pink-300'
                     }`}
                   >
-                    <span className="text-2xl">👩</span>
+                    <GenderAvatar gender="Female" size="lg" />
                     <span className="font-medium">أنثى</span>
                   </button>
                 </div>
@@ -1175,11 +1166,7 @@ export default function BranchEntryPage() {
               <div className="divide-y max-h-48 overflow-y-auto">
                 {sessionMembers.slice(-5).reverse().map(member => (
                   <div key={member.id} className="px-5 py-3 flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                      member.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
-                    }`}>
-                      {member.gender === 'Male' ? '👨' : '👩'}
-                    </div>
+                    <GenderAvatar gender={member.gender} size="md" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-800">{member.fullNameAr}</p>
                       <p className="text-xs text-gray-400">
