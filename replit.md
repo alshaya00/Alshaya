@@ -23,6 +23,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
     -   **Pending Member Data Consistency**: All pending member operations are database-driven, ensuring consistent data across admin and public interfaces.
     -   **Data Integrity Validation**: Comprehensive validation system (`src/lib/data-integrity.ts`) for checking generation values, parent relationships, and orphaned members. Includes single-member validation for fast post-approval checks. Available via admin API endpoint and runs automatically after CSV imports.
     -   **CSV Import Script**: Robust import script (`scripts/import-csv.ts`) that handles mixed Arabic/English headers, validates data, and reports issues. Run with `npm run import:csv`.
+    -   **Production Data Sync**: Export development data with `npm run export:members` and sync to production with `npm run sync:prod --confirm`. Essential after CSV imports to ensure production matches development.
 -   **Family Tree Features**:
     -   Interactive D3.js visualization with zoom/pan.
     -   Tree editor with "Change Parent" functionality and multi-root support.
