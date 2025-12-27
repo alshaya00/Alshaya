@@ -118,6 +118,28 @@ export async function POST(
       },
     });
 
+    // Sync user contact info to the linked FamilyMember
+    const linkedMemberId = accessRequest.relatedMemberId || accessRequest.parentMemberId;
+    if (linkedMemberId) {
+      try {
+        const updateData: Record<string, string | null> = {};
+        
+        if (accessRequest.email) updateData.email = accessRequest.email.toLowerCase();
+        if (accessRequest.phone) updateData.phone = accessRequest.phone;
+        
+        if (Object.keys(updateData).length > 0) {
+          await prisma.familyMember.update({
+            where: { id: linkedMemberId },
+            data: updateData,
+          });
+          console.log(`Synced contact info to FamilyMember ${linkedMemberId}:`, updateData);
+        }
+      } catch (syncError) {
+        console.error('Failed to sync contact info to FamilyMember:', syncError);
+        // Don't fail approval if sync fails
+      }
+    }
+
     const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 

@@ -164,6 +164,29 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Sync user contact info to the linked FamilyMember
+    if (invitation.linkedMemberId) {
+      try {
+        const updateData: Record<string, string | null> = {};
+        const sanitizedEmail = sanitizeString(email).toLowerCase();
+        const sanitizedPhone = sanitizeString(phone);
+        
+        if (sanitizedEmail) updateData.email = sanitizedEmail;
+        if (sanitizedPhone) updateData.phone = sanitizedPhone;
+        
+        if (Object.keys(updateData).length > 0) {
+          await prisma.familyMember.update({
+            where: { id: invitation.linkedMemberId },
+            data: updateData,
+          });
+          console.log(`Synced contact info to FamilyMember ${invitation.linkedMemberId}:`, updateData);
+        }
+      } catch (syncError) {
+        console.error('Failed to sync contact info to FamilyMember:', syncError);
+        // Don't fail registration if sync fails - user account is still created
+      }
+    }
+
     await prisma.invitationRedemption.create({
       data: {
         invitationId: invitation.id,
