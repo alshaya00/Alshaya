@@ -20,7 +20,9 @@
     "db:studio": "prisma studio",
     "migrate:deploy": "prisma migrate deploy",
     "seed:prod": "tsx prisma/seed.ts",
-    "import:csv": "npx tsx scripts/import-csv.ts"
+    "import:csv": "npx tsx scripts/import-csv.ts",
+    "export:members": "npx tsx scripts/export-members-json.ts",
+    "sync:prod": "npx tsx scripts/sync-to-production.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
