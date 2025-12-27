@@ -992,6 +992,36 @@ model ScheduledJob {
 // IMAGE MANAGEMENT (Upload & Approval System)
 // ============================================
 
+// Album folders for organizing photos
+model AlbumFolder {
+  id              String   @id @default(cuid())
+  
+  // Names (bilingual)
+  name            String   // English name
+  nameAr          String   // Arabic name (required)
+  description     String?  // English description
+  descriptionAr   String?  // Arabic description
+  
+  // Display settings
+  color           String   @default("#6366f1") // Hex color for UI
+  icon            String?  // Optional icon name (lucide icon)
+  isSystem        Boolean  @default(false) // System folders can't be deleted
+  displayOrder    Int      @default(0)
+  
+  // Metadata
+  createdBy       String?  // User ID who created
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  photos          MemberPhoto[]
+  pendingPhotos   PendingImage[]
+  
+  @@index([isSystem])
+  @@index([displayOrder])
+}
+
 model PendingImage {
   id              String   @id @default(cuid())
 
@@ -1028,12 +1058,17 @@ model PendingImage {
 
   // If approved, link to created MemberPhoto
   approvedPhotoId String?
+  
+  // Album folder (optional)
+  folderId        String?
+  folder          AlbumFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([reviewStatus])
   @@index([category])
   @@index([memberId])
   @@index([uploadedBy])
   @@index([uploadedAt])
+  @@index([folderId])
 }
 
 model MemberPhoto {
@@ -1070,6 +1105,10 @@ model MemberPhoto {
   isProfilePhoto  Boolean  @default(false) // Primary profile photo for member
   displayOrder    Int      @default(0) // For gallery ordering
   isPublic        Boolean  @default(true) // Visible to all roles
+  
+  // Album folder (optional)
+  folderId        String?
+  folder          AlbumFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   // Metadata
   createdAt       DateTime @default(now())
@@ -1081,6 +1120,7 @@ model MemberPhoto {
   @@index([year])
   @@index([uploadedBy])
   @@index([isProfilePhoto])
+  @@index([folderId])
 }
 
 // ============================================

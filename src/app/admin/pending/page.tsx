@@ -10,6 +10,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
+import { identifyBranchForPendingMember, getFullLineageString } from '@/lib/lineage-utils';
 
 type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -153,13 +154,26 @@ export default function AdminPendingPage() {
     const groups: Record<string, BranchGroup> = {};
 
     filteredMembers.forEach(member => {
-      const branchId = member.proposedFatherId || member.branch || 'unknown';
+      // Use the enhanced branch identification with recursive lookup and fuzzy matching
+      const branchResult = identifyBranchForPendingMember(
+        {
+          proposedFatherId: member.proposedFatherId,
+          fullNameAr: member.fullNameAr,
+          branch: member.branch,
+          fatherName: member.fatherName,
+          grandfatherName: member.grandfatherName,
+        },
+        allMembers
+      );
+      
+      const branchId = branchResult?.branchId || 'unknown';
+      const branchHead = branchResult?.branchHead;
+      
       if (!groups[branchId]) {
-        const branchHead = getMemberById(branchId);
         groups[branchId] = {
           branchHeadId: branchId,
           branchHeadName: branchHead?.firstName || 'غير معروف',
-          branchFullName: branchHead ? getFullLineageName(branchHead, allMembers, 3) : 'غير معروف',
+          branchFullName: branchHead ? getFullLineageString(branchHead.id, allMembers) : 'فرع غير معروف',
           generation: branchHead?.generation || 0,
           members: [],
         };

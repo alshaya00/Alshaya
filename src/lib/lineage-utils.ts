@@ -3,6 +3,25 @@
 
 import { FamilyMember } from './types';
 
+// Common Arabic name variations for fuzzy matching
+const nameVariations: Record<string, string[]> = {
+  'عبدالله': ['عبد الله', 'عبدلله'],
+  'عبدالعزيز': ['عبد العزيز', 'عبدلعزيز'],
+  'عبدالرحمن': ['عبد الرحمن', 'عبدلرحمن'],
+  'عبدالكريم': ['عبد الكريم', 'عبدلكريم'],
+  'إبراهيم': ['ابراهيم', 'ابراهم'],
+  'محمد': ['محمّد', 'مُحمد'],
+  'ناصر': ['ناصِر'],
+  'سليمان': ['سلمان', 'سليمن'],
+  'أحمد': ['احمد', 'أحمَد'],
+  'حمد': ['حمَد'],
+  'خالد': ['خالِد'],
+  'صالح': ['صالِح'],
+  'سعد': ['سعَد'],
+  'فهد': ['فهَد'],
+  'شايع': ['الشايع', 'آل شايع'],
+};
+
 /**
  * Get the full ancestor path from root to the member's parent
  * Returns array of ancestor IDs starting from root (Gen 1)
@@ -317,4 +336,262 @@ export function getFullLineageString(
   }
 
   return names.join(' ');
+}
+
+/**
+ * Normalize an Arabic name for fuzzy matching
+ * Removes diacritics, normalizes spaces, and handles common variations
+ */
+export function normalizeArabicName(name: string): string {
+  if (!name) return '';
+  
+  // Remove diacritical marks (tashkeel)
+  let normalized = name.replace(/[\u064B-\u065F\u0670]/g, '');
+  
+  // Normalize alef variations to plain alef
+  normalized = normalized.replace(/[أإآا]/g, 'ا');
+  
+  // Normalize taa marbuta to haa
+  normalized = normalized.replace(/ة/g, 'ه');
+  
+  // Normalize alef maksura to yaa
+  normalized = normalized.replace(/ى/g, 'ي');
+  
+  // Remove extra spaces and trim
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+  
+  // Remove "آل" or "ال" prefix
+  normalized = normalized.replace(/^(آل|ال)\s*/g, '');
+  
+  return normalized;
+}
+
+/**
+ * Check if two Arabic names are fuzzy matches
+ * Considers common spelling variations
+ */
+export function fuzzyMatchArabicNames(name1: string, name2: string): boolean {
+  if (!name1 || !name2) return false;
+  
+  const norm1 = normalizeArabicName(name1);
+  const norm2 = normalizeArabicName(name2);
+  
+  // Direct match after normalization
+  if (norm1 === norm2) return true;
+  
+  // Check against known variations
+  for (const [canonical, variations] of Object.entries(nameVariations)) {
+    const allForms = [canonical, ...variations].map(normalizeArabicName);
+    const norm1Match = allForms.includes(norm1);
+    const norm2Match = allForms.includes(norm2);
+    if (norm1Match && norm2Match) return true;
+  }
+  
+  // Check if one contains the other (for partial matches like "عبدالله" in "عبد الله")
+  const norm1NoSpaces = norm1.replace(/\s/g, '');
+  const norm2NoSpaces = norm2.replace(/\s/g, '');
+  if (norm1NoSpaces === norm2NoSpaces) return true;
+  
+  return false;
+}
+
+/**
+ * Extract names from a full lineage string like "سعد بن ناصر بن ابراهيم آل شايع"
+ * Returns array of individual names
+ */
+export function extractNamesFromLineage(lineageString: string): string[] {
+  if (!lineageString) return [];
+  
+  // Remove family name
+  let cleaned = lineageString.replace(/آل\s*شايع/g, '').trim();
+  
+  // Split by "بن" or "بنت"
+  const parts = cleaned.split(/\s*(?:بن|بنت)\s*/);
+  
+  // Filter out empty strings and trim
+  return parts.map(p => p.trim()).filter(p => p.length > 0);
+}
+
+/**
+ * Find a member by fuzzy name matching
+ */
+export function findMemberByFuzzyName(
+  name: string,
+  allMembers: FamilyMember[]
+): FamilyMember | null {
+  if (!name) return null;
+  
+  const normalizedName = normalizeArabicName(name);
+  
+  // First try exact match
+  for (const member of allMembers) {
+    if (normalizeArabicName(member.firstName) === normalizedName) {
+      return member;
+    }
+  }
+  
+  // Then try fuzzy match
+  for (const member of allMembers) {
+    if (fuzzyMatchArabicNames(member.firstName, name)) {
+      return member;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Get the Gen 2 branch (main branch) for a given father ID
+ * Traverses up the parent chain to find the Gen 2 ancestor
+ */
+export function getBranchFromFatherId(
+  fatherId: string,
+  allMembers: FamilyMember[]
+): { branchId: string; branchHead: FamilyMember } | null {
+  const father = allMembers.find(m => m.id === fatherId);
+  if (!father) return null;
+  
+  // Get the Gen 2 ancestor of this father
+  const gen2Ancestor = getGen2Ancestor(father.id, allMembers);
+  
+  if (gen2Ancestor) {
+    return {
+      branchId: gen2Ancestor.id,
+      branchHead: gen2Ancestor,
+    };
+  }
+  
+  // If the father IS Gen 2, return them
+  if (father.generation === 2) {
+    return {
+      branchId: father.id,
+      branchHead: father,
+    };
+  }
+  
+  // If the father is Gen 1, no branch assignment
+  if (father.generation === 1) {
+    return null;
+  }
+  
+  return null;
+}
+
+/**
+ * Find a branch by matching names in a lineage string
+ * Useful when we don't have a direct fatherId but have the full name
+ */
+export function findBranchByLineageString(
+  lineageString: string,
+  allMembers: FamilyMember[]
+): { branchId: string; branchHead: FamilyMember } | null {
+  if (!lineageString) return null;
+  
+  const names = extractNamesFromLineage(lineageString);
+  if (names.length === 0) return null;
+  
+  // Get all Gen 2 branch heads
+  const gen2Branches = getAllGen2Branches(allMembers);
+  
+  // Search through the names in the lineage (from child to ancestor)
+  // Find the first name that matches a Gen 2 branch head
+  for (let i = 0; i < names.length; i++) {
+    const name = names[i];
+    
+    for (const branchHead of gen2Branches) {
+      if (fuzzyMatchArabicNames(branchHead.firstName, name)) {
+        return {
+          branchId: branchHead.id,
+          branchHead: branchHead,
+        };
+      }
+    }
+  }
+  
+  // If no Gen 2 match, try to find any matching ancestor and trace to their Gen 2
+  for (const name of names) {
+    const matchedMember = findMemberByFuzzyName(name, allMembers);
+    if (matchedMember) {
+      const gen2 = getGen2Ancestor(matchedMember.id, allMembers);
+      if (gen2) {
+        return {
+          branchId: gen2.id,
+          branchHead: gen2,
+        };
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Identify the branch for a pending member
+ * Uses multiple strategies: proposedFatherId, fullNameAr lineage parsing, branch field
+ */
+export function identifyBranchForPendingMember(
+  pendingMember: {
+    proposedFatherId?: string | null;
+    fullNameAr?: string | null;
+    branch?: string | null;
+    fatherName?: string | null;
+    grandfatherName?: string | null;
+  },
+  allMembers: FamilyMember[]
+): { branchId: string; branchHead: FamilyMember; method: string } | null {
+  
+  // Strategy 1: Use proposedFatherId to find branch
+  if (pendingMember.proposedFatherId) {
+    const result = getBranchFromFatherId(pendingMember.proposedFatherId, allMembers);
+    if (result) {
+      return { ...result, method: 'proposedFatherId' };
+    }
+  }
+  
+  // Strategy 2: Parse fullNameAr to find branch
+  if (pendingMember.fullNameAr) {
+    const result = findBranchByLineageString(pendingMember.fullNameAr, allMembers);
+    if (result) {
+      return { ...result, method: 'fullNameAr' };
+    }
+  }
+  
+  // Strategy 3: Use branch field as a name to search
+  if (pendingMember.branch) {
+    const gen2Branches = getAllGen2Branches(allMembers);
+    for (const branchHead of gen2Branches) {
+      if (fuzzyMatchArabicNames(branchHead.firstName, pendingMember.branch) ||
+          pendingMember.branch.includes(branchHead.firstName) ||
+          branchHead.firstName.includes(pendingMember.branch)) {
+        return {
+          branchId: branchHead.id,
+          branchHead: branchHead,
+          method: 'branch',
+        };
+      }
+    }
+  }
+  
+  // Strategy 4: Try matching fatherName or grandfatherName directly
+  if (pendingMember.fatherName) {
+    const father = findMemberByFuzzyName(pendingMember.fatherName, allMembers);
+    if (father) {
+      const result = getBranchFromFatherId(father.id, allMembers);
+      if (result) {
+        return { ...result, method: 'fatherName' };
+      }
+    }
+  }
+  
+  if (pendingMember.grandfatherName) {
+    const grandfather = findMemberByFuzzyName(pendingMember.grandfatherName, allMembers);
+    if (grandfather) {
+      const result = getBranchFromFatherId(grandfather.id, allMembers);
+      if (result) {
+        return { ...result, method: 'grandfatherName' };
+      }
+    }
+  }
+  
+  return null;
 }
