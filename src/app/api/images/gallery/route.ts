@@ -5,18 +5,48 @@ import {
   getPhotoTimeline,
   getImageStats,
 } from '@/lib/db/images';
+import { prisma } from '@/lib/prisma';
 
 // GET - Get family gallery or all photos
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const view = searchParams.get('view'); // 'family', 'all', 'timeline', 'stats'
+    const view = searchParams.get('view'); // 'family', 'all', 'timeline', 'stats', 'folders'
     const category = searchParams.get('category');
+    const folderId = searchParams.get('folderId');
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined;
     const uploadedBy = searchParams.get('uploadedBy');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0;
+
+    // Folders list view (public, no auth required)
+    if (view === 'folders') {
+      const folders = await prisma.albumFolder.findMany({
+        orderBy: { displayOrder: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          nameAr: true,
+          description: true,
+          descriptionAr: true,
+          color: true,
+          icon: true,
+          isSystem: true,
+          displayOrder: true,
+          _count: {
+            select: { photos: true },
+          },
+        },
+      });
+
+      return NextResponse.json({
+        folders: folders.map((f: typeof folders[number]) => ({
+          ...f,
+          photoCount: f._count.photos,
+        })),
+      });
+    }
 
     // Stats view
     if (view === 'stats') {
@@ -35,6 +65,7 @@ export async function GET(request: NextRequest) {
       const result = await getFamilyAlbumPhotos({
         category: category || undefined,
         year,
+        folderId: folderId || undefined,
         limit,
         offset,
       });
@@ -48,6 +79,7 @@ export async function GET(request: NextRequest) {
         caption: photo.caption,
         captionAr: photo.captionAr,
         year: photo.year,
+        folderId: photo.folderId,
         uploadedByName: photo.uploadedByName,
         createdAt: photo.createdAt,
       }));
@@ -64,6 +96,7 @@ export async function GET(request: NextRequest) {
       category: category || undefined,
       year,
       uploadedBy: uploadedBy || undefined,
+      folderId: folderId || undefined,
       limit,
       offset,
     });
@@ -78,6 +111,7 @@ export async function GET(request: NextRequest) {
       captionAr: photo.captionAr,
       year: photo.year,
       memberId: photo.memberId,
+      folderId: photo.folderId,
       isFamilyAlbum: photo.isFamilyAlbum,
       uploadedByName: photo.uploadedByName,
       createdAt: photo.createdAt,

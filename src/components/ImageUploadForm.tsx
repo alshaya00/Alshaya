@@ -12,6 +12,7 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Folder as FolderIcon,
 } from 'lucide-react';
 import { imageCategories as configImageCategories } from '@/config/constants';
 
@@ -19,6 +20,13 @@ interface Member {
   id: string;
   firstName: string;
   fullNameAr?: string;
+}
+
+interface Folder {
+  id: string;
+  name: string;
+  nameAr: string;
+  color: string;
 }
 
 interface ImageUploadFormProps {
@@ -40,6 +48,7 @@ interface FormData {
   year: string;
   memberId: string;
   memberName: string;
+  folderId: string;
   uploaderName: string;
   uploaderEmail: string;
 }
@@ -66,6 +75,7 @@ export default function ImageUploadForm({
     year: '',
     memberId: memberId || '',
     memberName: memberName || '',
+    folderId: '',
     uploaderName: '',
     uploaderEmail: '',
   });
@@ -76,10 +86,16 @@ export default function ImageUploadForm({
   const [errorMessage, setErrorMessage] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load folders
+  useEffect(() => {
+    loadFolders();
+  }, []);
 
   // Load members for selection
   useEffect(() => {
@@ -87,6 +103,23 @@ export default function ImageUploadForm({
       loadMembers();
     }
   }, [memberId]);
+
+  const loadFolders = async () => {
+    try {
+      const res = await fetch('/api/images/gallery?view=folders');
+      const data = await res.json();
+      if (data.folders) {
+        setFolders(data.folders);
+        // Default to "Memories" folder if available
+        const memoriesFolder = data.folders.find((f: Folder) => f.name === 'Memories');
+        if (memoriesFolder && !formData.folderId) {
+          setFormData(prev => ({ ...prev, folderId: memoriesFolder.id }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading folders:', error);
+    }
+  };
 
   const loadMembers = async () => {
     try {
@@ -249,6 +282,7 @@ export default function ImageUploadForm({
           year: formData.year ? parseInt(formData.year) : undefined,
           memberId: formData.memberId || undefined,
           memberName: formData.memberName || undefined,
+          folderId: formData.folderId || undefined,
           uploaderName: formData.uploaderName,
           uploaderEmail: formData.uploaderEmail || undefined,
         }),
@@ -370,6 +404,39 @@ export default function ImageUploadForm({
             </div>
           )}
         </div>
+
+        {/* Folder Selection */}
+        {folders.length > 0 && (
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <FolderIcon className="w-4 h-4" />
+              المجلد
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, folderId: folder.id }))}
+                  className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
+                    formData.folderId === folder.id
+                      ? 'text-white border-transparent'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  style={{
+                    backgroundColor: formData.folderId === folder.id ? folder.color : undefined,
+                  }}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: folder.color }}
+                  />
+                  {folder.nameAr}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Category Selection */}
         <div>

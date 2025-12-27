@@ -15,6 +15,7 @@ import {
   User,
   Loader2,
   ArrowRight,
+  Folder as FolderIcon,
 } from 'lucide-react';
 import ImageUploadForm from '@/components/ImageUploadForm';
 
@@ -29,9 +30,18 @@ interface Photo {
   captionAr?: string;
   year?: number;
   memberId?: string;
+  folderId?: string;
   isFamilyAlbum?: boolean;
   uploadedByName: string;
   createdAt: string;
+}
+
+interface Folder {
+  id: string;
+  name: string;
+  nameAr: string;
+  color: string;
+  photoCount: number;
 }
 
 interface TimelineItem {
@@ -56,9 +66,11 @@ export default function GalleryPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('gallery');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
+  const [folderFilter, setFolderFilter] = useState<string>('all');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [fullImageData, setFullImageData] = useState<string | null>(null);
@@ -66,8 +78,12 @@ export default function GalleryPage() {
   const [showUploadForm, setShowUploadForm] = useState(false);
 
   useEffect(() => {
+    loadFolders();
+  }, []);
+
+  useEffect(() => {
     loadGallery();
-  }, [viewMode, categoryFilter]);
+  }, [viewMode, categoryFilter, folderFilter]);
 
   useEffect(() => {
     loadStats();
@@ -83,12 +99,23 @@ export default function GalleryPage() {
     }
   };
 
+  const loadFolders = async () => {
+    try {
+      const res = await fetch('/api/images/gallery?view=folders');
+      const data = await res.json();
+      if (data.folders) setFolders(data.folders);
+    } catch (error) {
+      console.error('Error loading folders:', error);
+    }
+  };
+
   const loadGallery = async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       params.set('view', viewMode === 'timeline' ? 'timeline' : 'family');
       if (categoryFilter !== 'all') params.set('category', categoryFilter);
+      if (folderFilter !== 'all') params.set('folderId', folderFilter);
       params.set('limit', '50');
 
       const res = await fetch(`/api/images/gallery?${params}`);
@@ -262,6 +289,23 @@ export default function GalleryPage() {
               </button>
             </div>
 
+            {/* Folder Filter */}
+            <div className="flex items-center gap-2">
+              <FolderIcon size={18} className="text-gray-400" />
+              <select
+                value={folderFilter}
+                onChange={(e) => setFolderFilter(e.target.value)}
+                className="px-4 py-2 border rounded-lg bg-white"
+              >
+                <option value="all">كل المجلدات</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.nameAr} ({folder.photoCount})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Category Filter */}
             <div className="flex items-center gap-2">
               <Filter size={18} className="text-gray-400" />
@@ -279,6 +323,46 @@ export default function GalleryPage() {
             </div>
           </div>
         </div>
+
+        {/* Folder Tabs */}
+        {folders.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setFolderFilter('all')}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  folderFilter === 'all'
+                    ? 'bg-[#1E3A5F] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <FolderIcon size={16} />
+                الكل
+              </button>
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  onClick={() => setFolderFilter(folder.id)}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                    folderFilter === folder.id
+                      ? 'text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  style={{
+                    backgroundColor: folderFilter === folder.id ? folder.color : undefined,
+                  }}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: folder.color }}
+                  />
+                  {folder.nameAr}
+                  <span className="text-xs opacity-75">({folder.photoCount})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {isLoading ? (

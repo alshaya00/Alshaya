@@ -34,6 +34,7 @@ interface UploadRequest {
   memberId?: string;
   memberName?: string;
   taggedMemberIds?: string[];
+  folderId?: string;
   uploaderName: string;
   uploaderEmail?: string;
 }
@@ -210,6 +211,7 @@ export async function POST(request: NextRequest) {
       memberId: body.memberId,
       memberName: sanitizeString(body.memberName),
       taggedMemberIds: body.taggedMemberIds,
+      folderId: body.folderId,
       uploadedBy,
       uploadedByName: sanitizeString(body.uploaderName)!,
       uploadedByEmail: body.uploaderEmail,

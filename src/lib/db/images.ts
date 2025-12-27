@@ -16,6 +16,7 @@ export interface PendingImage {
   memberId: string | null;
   memberName: string | null;
   taggedMemberIds: string | null; // JSON array
+  folderId: string | null;
   uploadedBy: string | null;
   uploadedByName: string;
   uploadedByEmail: string | null;
@@ -41,6 +42,7 @@ export interface MemberPhoto {
   year: number | null;
   memberId: string | null;
   taggedMemberIds: string | null;
+  folderId: string | null;
   isFamilyAlbum: boolean;
   uploadedBy: string | null;
   uploadedByName: string;
@@ -64,6 +66,7 @@ export interface CreatePendingImageInput {
   memberId?: string;
   memberName?: string;
   taggedMemberIds?: string[];
+  folderId?: string;
   uploadedBy?: string;
   uploadedByName: string;
   uploadedByEmail?: string;
@@ -81,6 +84,7 @@ export interface CreateMemberPhotoInput {
   year?: number;
   memberId?: string;
   taggedMemberIds?: string[];
+  folderId?: string;
   isFamilyAlbum?: boolean;
   uploadedBy?: string;
   uploadedByName: string;
@@ -110,6 +114,7 @@ function toPendingImage(row: Record<string, unknown>): PendingImage {
     memberId: row.memberId as string | null,
     memberName: row.memberName as string | null,
     taggedMemberIds: row.taggedMemberIds as string | null,
+    folderId: row.folderId as string | null,
     uploadedBy: row.uploadedBy as string | null,
     uploadedByName: row.uploadedByName as string,
     uploadedByEmail: row.uploadedByEmail as string | null,
@@ -138,6 +143,7 @@ function toMemberPhoto(row: Record<string, unknown>): MemberPhoto {
     year: row.year as number | null,
     memberId: row.memberId as string | null,
     taggedMemberIds: row.taggedMemberIds as string | null,
+    folderId: row.folderId as string | null,
     isFamilyAlbum: row.isFamilyAlbum as boolean,
     uploadedBy: row.uploadedBy as string | null,
     uploadedByName: row.uploadedByName as string,
@@ -171,6 +177,7 @@ export async function createPendingImage(input: CreatePendingImageInput): Promis
       memberId: input.memberId || null,
       memberName: input.memberName || null,
       taggedMemberIds: input.taggedMemberIds ? JSON.stringify(input.taggedMemberIds) : null,
+      folderId: input.folderId || null,
       uploadedBy: input.uploadedBy || null,
       uploadedByName: input.uploadedByName,
       uploadedByEmail: input.uploadedByEmail || null,
@@ -256,6 +263,7 @@ export async function approvePendingImage(
         year: pending.year,
         memberId: pending.memberId,
         taggedMemberIds: pending.taggedMemberIds,
+        folderId: pending.folderId,
         isFamilyAlbum: !pending.memberId,
         uploadedBy: pending.uploadedBy,
         uploadedByName: pending.uploadedByName,
@@ -334,6 +342,7 @@ export async function createMemberPhoto(input: CreateMemberPhotoInput): Promise<
       year: input.year || null,
       memberId: input.memberId || null,
       taggedMemberIds: input.taggedMemberIds ? JSON.stringify(input.taggedMemberIds) : null,
+      folderId: input.folderId || null,
       isFamilyAlbum: input.isFamilyAlbum || false,
       uploadedBy: input.uploadedBy || null,
       uploadedByName: input.uploadedByName,
@@ -384,6 +393,7 @@ export async function getMemberPhotos(memberId: string, options?: {
 export async function getFamilyAlbumPhotos(options?: {
   category?: string;
   year?: number;
+  folderId?: string;
   limit?: number;
   offset?: number;
 }): Promise<{ photos: MemberPhoto[]; total: number }> {
@@ -395,6 +405,9 @@ export async function getFamilyAlbumPhotos(options?: {
   if (options?.year) {
     where.year = options.year;
   }
+  if (options?.folderId) {
+    where.folderId = options.folderId;
+  }
 
   const [total, rows] = await Promise.all([
     prisma.memberPhoto.count({ where }),
@@ -403,6 +416,9 @@ export async function getFamilyAlbumPhotos(options?: {
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
       take: options?.limit,
       skip: options?.offset,
+      include: {
+        folder: true,
+      },
     }),
   ]);
 
@@ -415,6 +431,7 @@ export async function getAllPhotos(options?: {
   category?: string;
   year?: number;
   uploadedBy?: string;
+  folderId?: string;
   limit?: number;
   offset?: number;
 }): Promise<{ photos: MemberPhoto[]; total: number }> {
@@ -429,6 +446,9 @@ export async function getAllPhotos(options?: {
   if (options?.uploadedBy) {
     where.uploadedBy = options.uploadedBy;
   }
+  if (options?.folderId) {
+    where.folderId = options.folderId;
+  }
 
   const [total, rows] = await Promise.all([
     prisma.memberPhoto.count({ where }),
@@ -437,6 +457,9 @@ export async function getAllPhotos(options?: {
       orderBy: { createdAt: 'desc' },
       take: options?.limit,
       skip: options?.offset,
+      include: {
+        folder: true,
+      },
     }),
   ]);
 
