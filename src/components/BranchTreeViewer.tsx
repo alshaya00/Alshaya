@@ -582,7 +582,11 @@ export default function BranchTreeViewer({
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800">{hoveredNode.firstName}</p>
+                  <p className="font-bold text-gray-800">
+                    {hoveredNode.fatherName 
+                      ? `${hoveredNode.firstName} بن ${hoveredNode.fatherName}`
+                      : hoveredNode.firstName}
+                  </p>
                   <p className="text-xs text-gray-400">
                     {hoveredNode.isPending ? 'مضاف هذه الجلسة' : hoveredNode.id}
                   </p>

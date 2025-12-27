@@ -80,7 +80,11 @@ export default async function MemberPage({ params }: PageProps) {
               />
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold">{member.firstName}</h1>
+                  <h1 className="text-3xl font-bold">
+                    {member.fatherName 
+                      ? `${member.firstName} بن ${member.fatherName}`
+                      : member.firstName}
+                  </h1>
                   <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
                     {member.id}
                   </span>

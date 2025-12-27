@@ -322,7 +322,11 @@ function RegistryPageContent() {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <GenderAvatar gender={member.gender} size="sm" />
-                          <span className="font-semibold">{member.firstName}</span>
+                          <span className="font-semibold">
+                            {member.fatherName 
+                              ? `${member.firstName} بن ${member.fatherName}`
+                              : member.firstName}
+                          </span>
                         </div>
                       </td>
                       <td className="p-4 text-sm text-gray-600 max-w-xs truncate">
