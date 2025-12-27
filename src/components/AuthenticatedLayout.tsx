@@ -21,9 +21,10 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const pathname = usePathname();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Check if current page is public
-  const isPublicPage = publicPages.some((page) => pathname.startsWith(page));
-  const isNoNavPage = noNavPages.some((page) => pathname.startsWith(page));
+  // Check if current page is public (with null safety)
+  const currentPath = pathname || '/';
+  const isPublicPage = publicPages.some((page) => currentPath.startsWith(page));
+  const isNoNavPage = noNavPages.some((page) => currentPath.startsWith(page));
 
   // Show loading state
   if (isLoading) {
@@ -45,7 +46,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   // Not authenticated and not on a public page - show landing or redirect
   if (!isAuthenticated) {
     // For the home page, show the landing page
-    if (pathname === '/') {
+    if (currentPath === '/') {
       return <LandingPage />;
     }
     // For other pages, they will handle their own redirect via ProtectedRoute

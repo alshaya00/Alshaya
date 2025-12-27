@@ -179,10 +179,11 @@ export function AdminSidebar() {
   };
 
   const isActive = (href: string) => {
+    const currentPath = pathname || '/admin';
     if (href === '/admin') {
-      return pathname === '/admin';
+      return currentPath === '/admin';
     }
-    return pathname.startsWith(href);
+    return currentPath.startsWith(href);
   };
 
   const renderNavItem = (item: NavItem, depth = 0) => {

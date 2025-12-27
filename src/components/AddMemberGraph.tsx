@@ -277,8 +277,31 @@ export default function AddMemberGraph({
     return GENERATION_COLORS[gen as keyof typeof GENERATION_COLORS] || GENERATION_COLORS[8];
   };
 
+  // Check if we should show empty state
+  const showEmptyState = !treeData || nodes.length === 0;
+
   return (
     <div ref={containerRef} className="relative w-full h-[550px] bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-lg">
+      {/* Empty state overlay */}
+      {showEmptyState && (
+        <div className="absolute inset-0 flex items-center justify-center z-30 bg-gradient-to-br from-slate-50/95 via-gray-50/95 to-slate-100/95">
+          <div className="text-center p-8">
+            <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <Home size={40} className="text-amber-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">لا توجد بيانات للعرض</h3>
+            <p className="text-gray-600 mb-4">
+              {members.length === 0 
+                ? 'جاري تحميل بيانات العائلة...' 
+                : 'تعذر بناء الشجرة. تأكد من وجود الجذر الأساسي.'}
+            </p>
+            <p className="text-sm text-gray-400">
+              عدد الأعضاء المحملين: {members.length}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border p-2">
         <button

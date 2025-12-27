@@ -42,19 +42,20 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ className, showHome = true }: BreadcrumbProps) {
   const pathname = usePathname();
+  const safePath = pathname || '/';
 
   // Don't show breadcrumb on homepage
-  if (pathname === '/') {
+  if (safePath === '/') {
     return null;
   }
 
   // Build breadcrumb items from pathname
-  const pathSegments = pathname.split('/').filter(Boolean);
+  const pathSegments = safePath.split('/').filter(Boolean);
   const breadcrumbItems: Array<{ href: string; label: string; labelEn: string; isLast: boolean }> = [];
 
-  let currentPath = '';
+  let buildPath = '';
   pathSegments.forEach((segment, index) => {
-    currentPath += `/${segment}`;
+    buildPath += `/${segment}`;
     const isLast = index === pathSegments.length - 1;
 
     // Check if this is a dynamic segment (like [id])
@@ -63,18 +64,18 @@ export function Breadcrumb({ className, showHome = true }: BreadcrumbProps) {
     if (isDynamic) {
       // For dynamic segments, show a generic label or the ID
       breadcrumbItems.push({
-        href: currentPath,
+        href: buildPath,
         label: segment.length > 10 ? `#${segment.slice(0, 8)}...` : `#${segment}`,
         labelEn: 'Details',
         isLast,
       });
     } else {
-      const config = routeConfig[currentPath] || {
+      const config = routeConfig[buildPath] || {
         label: segment,
         labelEn: segment,
       };
       breadcrumbItems.push({
-        href: currentPath,
+        href: buildPath,
         ...config,
         isLast,
       });
