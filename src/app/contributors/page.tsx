@@ -305,10 +305,6 @@ export default function ContributorsPage() {
               وتركوا لنا إرثاً نفخر به
             </p>
 
-            <p className="text-xl text-amber-400 mb-4">
-              رحمهم الله وغفر لهم
-            </p>
-
             {/* Decorative Element */}
             <div className="mt-12">
               <span className="text-6xl">🕊️</span>
