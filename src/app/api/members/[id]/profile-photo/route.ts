@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setProfilePhoto, getProfilePhoto } from '@/lib/db/images';
+import { setProfilePhoto, getProfilePhoto, getMemberPhotoById } from '@/lib/db/images';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 
@@ -60,10 +60,12 @@ export async function PUT(
       );
     }
 
+    const memberId = params.id;
     const permissions = getPermissionsForRole(user.role);
     const isAdmin = permissions.manage_all_members || permissions.edit_any_member;
+    const isOwner = user.linkedMemberId === memberId;
 
-    if (!isAdmin) {
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
         { status: 403 }
@@ -71,12 +73,26 @@ export async function PUT(
     }
 
     const { photoId } = await request.json();
-    const memberId = params.id;
 
     if (!photoId) {
       return NextResponse.json(
         { success: false, message: 'Photo ID required', messageAr: 'معرف الصورة مطلوب' },
         { status: 400 }
+      );
+    }
+
+    const photo = await getMemberPhotoById(photoId);
+    if (!photo) {
+      return NextResponse.json(
+        { success: false, message: 'Photo not found', messageAr: 'الصورة غير موجودة' },
+        { status: 404 }
+      );
+    }
+
+    if (photo.memberId !== memberId) {
+      return NextResponse.json(
+        { success: false, message: 'Photo does not belong to this member', messageAr: 'هذه الصورة لا تخص هذا العضو' },
+        { status: 403 }
       );
     }
 
