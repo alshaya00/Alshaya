@@ -23,7 +23,16 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
     -   **Transactional Approval Pipeline**: Atomic member approval using Prisma SERIALIZABLE transactions (`src/lib/transactional-approval.ts`). Uses MemberRegistry functions for ID generation, generation calculation, lineage building, and parent validation. Includes duplicate detection, generation verification, children count reconciliation, and descriptive rollback reasons.
     -   **Pending Member Data Consistency**: All pending member operations are database-driven, ensuring consistent data across admin and public interfaces.
     -   **Data Integrity Validation**: Comprehensive validation system (`src/lib/data-integrity.ts`) with 9 validation checks: generations, parent relationships, orphaned members, circular ancestry, deleted references, duplicate members, children counts, lineage consistency, and pending members. Available via admin API endpoint (`/api/admin/data-validation`) with type parameter for specific checks.
-    -   **Duplicate Detection**: Built into MemberRegistry - prevents adding members with same firstName + fatherId combination. Uses DuplicateError class for structured error handling.
+    -   **Duplicate Detection & Prevention System**:
+        -   **Fuzzy Matching Service** (`src/lib/fuzzy-matcher.ts`): Uses Levenshtein distance for 80%+ similarity matching on Arabic/English names with weighted scoring (firstName 40%, fatherName 25%, fatherId 20%, birthYear 15%).
+        -   **Real-time Quick-Add Validation**: Non-blocking duplicate warnings with "Link to existing member" suggestions when firstName + fatherId match potential duplicates.
+        -   **Access Requests Duplicate Warning**: Shows ⚠️ warning icon on pending access requests with potential duplicates, including similarity scores and match reasons in Arabic.
+        -   **Public Duplicate Check API** (`/api/duplicate-check`): Allows unauthenticated duplicate checking for quick-add form.
+    -   **Member Merge System**:
+        -   **Merge Service** (`src/lib/merge-service.ts`): Safely merges duplicate member profiles with SERIALIZABLE transactions, transferring children, photos, and journal references.
+        -   **Merge Tool UI** (`/admin/merge`): Admin interface for selecting source/target members, previewing impact (children, photos, journals), resolving field conflicts, and executing merges with required reason tracking.
+        -   **Merge API** (`/api/admin/merge`): Preview and execute member merges with full audit logging and impacted IDs tracking.
+    -   **MemberRegistry Duplicate Prevention**: Built-in prevention using DuplicateError class for structured error handling.
     -   **CSV Import Script**: Robust import script (`scripts/import-csv.ts`) that handles mixed Arabic/English headers, validates data, and reports issues. Run with `npm run import:csv`.
     -   **Production Data Sync**: Export development data with `npm run export:members` and sync to production with `npm run sync:prod --confirm`. Essential after CSV imports to ensure production matches development.
 -   **Family Tree Features**:
@@ -59,6 +68,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   Admin Access Requests (`/admin/access-requests`) - Approve/reject signup requests
 -   Admin Invitations (`/admin/invitations`) - Generate and manage invitation codes
 -   Admin Album Folders (`/admin/album-folders`) - Manage photo album folders
+-   Admin Merge Tool (`/admin/merge`) - Merge duplicate member profiles
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database for all application data.
