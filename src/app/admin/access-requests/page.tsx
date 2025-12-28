@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Check, X, Clock, Mail, Phone, Users, AlertCircle,
-  UserPlus, CheckCircle, XCircle, Loader2, MessageSquare, Search, Info
+  UserPlus, CheckCircle, XCircle, Loader2, MessageSquare, Search, Info,
+  AlertTriangle, Copy
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,23 @@ interface RelatedMember {
   fullNameEn: string | null;
   generation: number;
   branch: string | null;
+}
+
+interface DuplicateCandidate {
+  id: string;
+  firstName: string;
+  fullNameAr: string | null;
+  fullNameEn: string | null;
+  similarityScore: number;
+  matchReasons: string[];
+  matchReasonsAr: string[];
+}
+
+interface DuplicateWarning {
+  hasPotentialDuplicates: boolean;
+  highestScore: number;
+  isDuplicate: boolean;
+  candidates: DuplicateCandidate[];
 }
 
 interface AccessRequest {
@@ -35,6 +53,7 @@ interface AccessRequest {
   reviewedAt: string | null;
   reviewedById: string | null;
   reviewNote: string | null;
+  duplicateWarning?: DuplicateWarning | null;
 }
 
 export default function AdminAccessRequestsPage() {
@@ -418,6 +437,69 @@ export default function AdminAccessRequestsPage() {
                       <span>ملاحظة المراجعة:</span>
                     </div>
                     <p className="text-yellow-800">{request.reviewNote}</p>
+                  </div>
+                )}
+
+                {request.duplicateWarning?.hasPotentialDuplicates && (
+                  <div className={`mt-4 p-4 rounded-lg border-2 ${
+                    request.duplicateWarning.isDuplicate 
+                      ? 'bg-red-50 border-red-300' 
+                      : 'bg-orange-50 border-orange-300'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle className={`${
+                        request.duplicateWarning.isDuplicate ? 'text-red-500' : 'text-orange-500'
+                      }`} size={20} />
+                      <span className={`font-bold ${
+                        request.duplicateWarning.isDuplicate ? 'text-red-700' : 'text-orange-700'
+                      }`}>
+                        {request.duplicateWarning.isDuplicate 
+                          ? '⚠️ تحذير: تكرار محتمل مؤكد!' 
+                          : '⚠️ تنبيه: تشابه محتمل مع أعضاء موجودين'}
+                      </span>
+                      <span className={`text-sm px-2 py-0.5 rounded-full ${
+                        request.duplicateWarning.isDuplicate 
+                          ? 'bg-red-200 text-red-700' 
+                          : 'bg-orange-200 text-orange-700'
+                      }`}>
+                        {request.duplicateWarning.highestScore}% تطابق
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {request.duplicateWarning.candidates.map((candidate) => (
+                        <div key={candidate.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <Copy size={16} className="text-gray-400" />
+                            <div>
+                              <Link 
+                                href={`/member/${candidate.id}`}
+                                className="font-medium text-blue-600 hover:underline"
+                              >
+                                {candidate.fullNameAr || candidate.firstName}
+                              </Link>
+                              {candidate.fullNameEn && (
+                                <p className="text-xs text-gray-500">{candidate.fullNameEn}</p>
+                              )}
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {candidate.matchReasonsAr.map((reason, idx) => (
+                                  <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                    {reason}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className={`text-lg font-bold ${
+                            candidate.similarityScore >= 80 ? 'text-red-600' : 'text-orange-600'
+                          }`}>
+                            {candidate.similarityScore}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm text-gray-600">
+                      يرجى التحقق من العضو الموجود قبل الموافقة على هذا الطلب لتجنب التكرار.
+                    </p>
                   </div>
                 )}
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { findPotentialDuplicates } from '@/lib/fuzzy-matcher';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
       accessRequests.map(async (req) => {
         let relatedMember = null;
         let parentMember = null;
+        let duplicateWarning = null;
         
         if (req.relatedMemberId) {
           relatedMember = await prisma.familyMember.findUnique({
@@ -84,10 +86,48 @@ export async function GET(request: NextRequest) {
           });
         }
         
+        if (req.status === 'PENDING' && req.fullName) {
+          try {
+            const nameParts = req.fullName.split(' ');
+            const firstName = nameParts[0] || '';
+            const fatherName = nameParts[1] || '';
+            
+            const duplicateCheck = await findPotentialDuplicates({
+              firstName,
+              fatherName,
+              fatherId: req.parentMemberId || undefined,
+              gender: req.gender || undefined,
+            }, {
+              threshold: 70,
+              limit: 3,
+            });
+            
+            if (duplicateCheck.hasMatches) {
+              duplicateWarning = {
+                hasPotentialDuplicates: true,
+                highestScore: duplicateCheck.highestScore,
+                isDuplicate: duplicateCheck.isDuplicate,
+                candidates: duplicateCheck.candidates.map(c => ({
+                  id: c.member.id,
+                  firstName: c.member.firstName,
+                  fullNameAr: c.member.fullNameAr,
+                  fullNameEn: c.member.fullNameEn,
+                  similarityScore: c.similarityScore,
+                  matchReasons: c.matchReasons,
+                  matchReasonsAr: c.matchReasonsAr,
+                })),
+              };
+            }
+          } catch (err) {
+            console.error('Error checking duplicates for access request:', err);
+          }
+        }
+        
         return {
           ...req,
           relatedMember,
           parentMember,
+          duplicateWarning,
         };
       })
     );

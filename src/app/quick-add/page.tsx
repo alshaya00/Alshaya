@@ -30,10 +30,12 @@ import {
   List,
   Search,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   TreeDeciduous,
   Clock,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useNameMatch, useSubmitPendingMember } from '@/lib/hooks/useQueries';
 import { getYearRange, validateBirthYear, CalendarType } from '@/lib/utils/hijri-calendar';
 
@@ -69,6 +71,23 @@ interface AutoFillData {
 
 type MatchingState = 'idle' | 'searching' | 'found' | 'multiple' | 'no_match' | 'manual';
 
+interface DuplicateCandidate {
+  id: string;
+  firstName: string;
+  fullNameAr: string | null;
+  fullNameEn: string | null;
+  similarityScore: number;
+  matchReasons: string[];
+  matchReasonsAr: string[];
+}
+
+interface DuplicateWarning {
+  hasPotentialDuplicates: boolean;
+  highestScore: number;
+  isDuplicate: boolean;
+  candidates: DuplicateCandidate[];
+}
+
 const STORAGE_KEY = storageKeys.newMembers;
 
 export default function QuickAddPage() {
@@ -87,6 +106,10 @@ export default function QuickAddPage() {
   const [matchingState, setMatchingState] = useState<MatchingState>('idle');
   const [matchResults, setMatchResults] = useState<MatchCandidate[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<MatchCandidate | null>(null);
+
+  // Duplicate detection state
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
   const nameMatch = useNameMatch();
   const submitPending = useSubmitPendingMember();
@@ -187,6 +210,54 @@ export default function QuickAddPage() {
       setFormData(prev => ({ ...prev, fatherId: selectedMatch.fatherId }));
     }
   }, [selectedMatch, formData.firstName, formData.gender]);
+
+  // Check for duplicates when firstName and fatherId are both set
+  useEffect(() => {
+    const checkDuplicates = async () => {
+      // Only check when both firstName and fatherId are set
+      if (!formData.firstName.trim() || !formData.fatherId) {
+        setDuplicateWarning(null);
+        return;
+      }
+
+      setIsCheckingDuplicate(true);
+      try {
+        const response = await fetch('/api/duplicate-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            fatherId: formData.fatherId,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.hasMatches) {
+            setDuplicateWarning({
+              hasPotentialDuplicates: data.hasMatches,
+              highestScore: data.highestScore,
+              isDuplicate: data.isDuplicate,
+              candidates: data.candidates || [],
+            });
+          } else {
+            setDuplicateWarning(null);
+          }
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch (error) {
+        console.error('Error checking duplicates:', error);
+        setDuplicateWarning(null);
+      } finally {
+        setIsCheckingDuplicate(false);
+      }
+    };
+
+    // Debounce the check
+    const timeoutId = setTimeout(checkDuplicates, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.firstName, formData.fatherId]);
 
   const updateField = (field: keyof NewMemberData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -980,6 +1051,71 @@ export default function QuickAddPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Duplicate Warning */}
+                {duplicateWarning?.hasPotentialDuplicates && (
+                  <div className={`p-4 rounded-xl border-2 ${
+                    duplicateWarning.isDuplicate 
+                      ? 'bg-red-50 border-red-300' 
+                      : 'bg-orange-50 border-orange-300'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle className={`${
+                        duplicateWarning.isDuplicate ? 'text-red-500' : 'text-orange-500'
+                      }`} size={20} />
+                      <span className={`font-bold ${
+                        duplicateWarning.isDuplicate ? 'text-red-700' : 'text-orange-700'
+                      }`}>
+                        {duplicateWarning.isDuplicate 
+                          ? '⚠️ تحذير: تكرار محتمل مؤكد!' 
+                          : 'تنبيه: يوجد عضو مشابه تحت نفس الأب'}
+                      </span>
+                      <span className={`text-sm px-2 py-0.5 rounded-full ${
+                        duplicateWarning.isDuplicate 
+                          ? 'bg-red-200 text-red-700' 
+                          : 'bg-orange-200 text-orange-700'
+                      }`}>
+                        {duplicateWarning.highestScore}% تطابق
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {duplicateWarning.candidates.map((candidate) => (
+                        <div key={candidate.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <User size={16} className="text-gray-400" />
+                            <div>
+                              <Link 
+                                href={`/member/${candidate.id}`}
+                                target="_blank"
+                                className="font-medium text-blue-600 hover:underline"
+                              >
+                                {candidate.fullNameAr || candidate.firstName}
+                              </Link>
+                              {candidate.fullNameEn && (
+                                <p className="text-xs text-gray-500">{candidate.fullNameEn}</p>
+                              )}
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {candidate.matchReasonsAr.map((reason, idx) => (
+                                  <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                    {reason}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className={`text-lg font-bold ${
+                            candidate.similarityScore >= 80 ? 'text-red-600' : 'text-orange-600'
+                          }`}>
+                            {candidate.similarityScore}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm text-gray-600">
+                      يمكنك المتابعة بالإرسال، لكن يُرجى التحقق من أن هذا ليس عضواً مكرراً.
+                    </p>
+                  </div>
+                )}
 
                 {/* Preview Card */}
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border-2 border-gray-200">

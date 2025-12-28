@@ -188,9 +188,9 @@ export default function AdminDashboardPage() {
           id: 'duplicates',
           type: 'duplicate',
           title: 'تكرارات محتملة',
-          description: `${duplicatesCount} تكرار محتمل يحتاج مراجعة`,
+          description: `${duplicatesCount} تكرار محتمل يحتاج مراجعة - استخدم أداة الدمج`,
           count: duplicatesCount,
-          href: '/duplicates',
+          href: '/admin/merge',
           icon: <AlertTriangle className="w-5 h-5" />,
           color: 'bg-yellow-500',
           priority: 'medium',
@@ -270,8 +270,8 @@ export default function AdminDashboardPage() {
 
   const quickActions = [
     { href: '/quick-add', label: 'إضافة عضو', icon: Plus, color: 'bg-green-500' },
+    { href: '/admin/merge', label: 'دمج التكرارات', icon: GitBranch, color: 'bg-yellow-500' },
     { href: '/export', label: 'تصدير البيانات', icon: Download, color: 'bg-blue-500' },
-    { href: '/import', label: 'استيراد البيانات', icon: Upload, color: 'bg-purple-500' },
     { href: '/admin/tools', label: 'نسخ احتياطي', icon: Camera, color: 'bg-orange-500' },
   ];
 
