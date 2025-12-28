@@ -397,6 +397,7 @@ export default function AuditLogPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
               <input
                 type="date"
+                dir="ltr"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
@@ -406,6 +407,7 @@ export default function AuditLogPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
               <input
                 type="date"
+                dir="ltr"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"

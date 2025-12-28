@@ -456,17 +456,19 @@ export default function HistoryPage() {
 
                 <input
                   type="date"
+                  dir="ltr"
                   value={filterDateFrom}
                   onChange={(e) => setFilterDateFrom(e.target.value)}
-                  className="px-4 py-2 border rounded-lg"
+                  className="px-4 py-2 border rounded-lg text-right"
                   placeholder="من تاريخ"
                 />
 
                 <input
                   type="date"
+                  dir="ltr"
                   value={filterDateTo}
                   onChange={(e) => setFilterDateTo(e.target.value)}
-                  className="px-4 py-2 border rounded-lg"
+                  className="px-4 py-2 border rounded-lg text-right"
                   placeholder="إلى تاريخ"
                 />
 

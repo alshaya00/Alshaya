@@ -236,6 +236,7 @@ export default function HistoryPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
               <input
                 type="date"
+                dir="ltr"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
                 className="w-full border rounded-lg px-3 py-2"
@@ -245,6 +246,7 @@ export default function HistoryPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
               <input
                 type="date"
+                dir="ltr"
                 value={filters.dateTo}
                 onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
                 className="w-full border rounded-lg px-3 py-2"

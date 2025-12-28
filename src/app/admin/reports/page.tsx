@@ -359,6 +359,7 @@ export default function ReportsPage() {
               <label className="text-sm text-gray-600">من:</label>
               <input
                 type="date"
+                dir="ltr"
                 value={dateRange.from}
                 onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
                 className="border rounded px-2 py-1"
@@ -368,6 +369,7 @@ export default function ReportsPage() {
               <label className="text-sm text-gray-600">إلى:</label>
               <input
                 type="date"
+                dir="ltr"
                 value={dateRange.to}
                 onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
                 className="border rounded px-2 py-1"
