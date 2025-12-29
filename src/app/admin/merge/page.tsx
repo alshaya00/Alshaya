@@ -431,28 +431,49 @@ export default function MergeToolPage() {
 
             {preview.conflicts.length > 0 && (
               <div className="mb-6">
-                <h3 className="font-medium mb-3">حل التعارضات:</h3>
+                <h3 className="font-medium mb-3">حل التعارضات - اختر القيمة التي تريد الاحتفاظ بها:</h3>
                 <div className="space-y-3">
-                  {preview.conflicts.map((conflict) => (
-                    <div key={conflict.field} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <span className="font-medium">{conflict.fieldAr}</span>
-                        <div className="text-sm text-gray-500">
-                          المصدر: {conflict.sourceValue || '-'} | الهدف: {conflict.targetValue || '-'}
+                  {preview.conflicts.map((conflict) => {
+                    const isNameField = ['firstName', 'fatherName', 'grandfatherName', 'greatGrandfatherName', 'fullNameAr', 'fullNameEn'].includes(conflict.field);
+                    const useSource = keepSourceFields.includes(conflict.field);
+                    
+                    return (
+                      <div key={conflict.field} className={`p-4 rounded-lg border ${isNameField ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className={`font-bold ${isNameField ? 'text-blue-800' : 'text-gray-800'}`}>
+                            {conflict.fieldAr}
+                            {isNameField && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded mr-2">حقل اسم</span>}
+                          </span>
+                          <button
+                            onClick={() => toggleKeepSourceField(conflict.field)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              useSource
+                                ? 'bg-red-500 text-white hover:bg-red-600'
+                                : 'bg-green-500 text-white hover:bg-green-600'
+                            }`}
+                          >
+                            {useSource ? 'استخدام المصدر (الجديد)' : 'استخدام الهدف (الأصلي)'}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className={`p-3 rounded-lg ${useSource ? 'bg-red-100 border-2 border-red-400' : 'bg-gray-100'}`}>
+                            <div className="text-xs text-gray-500 mb-1">المصدر (سيُحذف):</div>
+                            <div className={`font-medium ${isNameField ? 'text-lg' : ''} ${useSource ? 'text-red-700' : 'text-gray-700'}`}>
+                              {conflict.sourceValue || <span className="text-gray-400 italic">فارغ</span>}
+                            </div>
+                            {useSource && <div className="text-xs text-red-600 mt-1">✓ سيتم استخدام هذه القيمة</div>}
+                          </div>
+                          <div className={`p-3 rounded-lg ${!useSource ? 'bg-green-100 border-2 border-green-400' : 'bg-gray-100'}`}>
+                            <div className="text-xs text-gray-500 mb-1">الهدف (سيُحتفظ به):</div>
+                            <div className={`font-medium ${isNameField ? 'text-lg' : ''} ${!useSource ? 'text-green-700' : 'text-gray-700'}`}>
+                              {conflict.targetValue || <span className="text-gray-400 italic">فارغ</span>}
+                            </div>
+                            {!useSource && <div className="text-xs text-green-600 mt-1">✓ سيتم استخدام هذه القيمة</div>}
+                          </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => toggleKeepSourceField(conflict.field)}
-                        className={`px-3 py-1 rounded-lg text-sm ${
-                          keepSourceFields.includes(conflict.field)
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {keepSourceFields.includes(conflict.field) ? 'استخدام المصدر' : 'استخدام الهدف'}
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
