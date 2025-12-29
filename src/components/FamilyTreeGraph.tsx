@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 import type { FamilyMember } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Users, Home, GitBranch, Layers, Star } from 'lucide-react';
 import { generationColors, lineageColors, rootColor } from '@/config/theme';
+import GenderAvatar from './GenderAvatar';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -630,13 +631,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
           }}
         >
           <div className="flex items-center gap-3 mb-3 pb-3 border-b">
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xl border-2 shadow-sm ${
-              hoveredNode.gender === 'Male'
-                ? 'bg-blue-50 border-blue-300'
-                : 'bg-pink-50 border-pink-300'
-            }`}>
-              {hoveredNode.gender === 'Male' ? '👨' : '👩'}
-            </div>
+            <GenderAvatar gender={hoveredNode.gender} size="lg" className="border-2 shadow-sm" />
             <div>
               <p className="font-bold text-gray-800">
                 {hoveredNode.fatherName 

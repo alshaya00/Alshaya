@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
 import { identifyBranchForPendingMember, getFullLineageString } from '@/lib/lineage-utils';
+import { formatPhoneDisplay } from '@/lib/phone-utils';
 
 type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -565,7 +566,7 @@ export default function AdminPendingPage() {
                             <div className="text-sm text-gray-500 mt-1 space-y-0.5">
                               <p>الجيل: {member.generation} • الأب: {member.fatherName || 'غير محدد'}</p>
                               {member.birthYear && <p>سنة الميلاد: {member.birthYear}</p>}
-                              {member.phone && <p>الجوال: {member.phone}</p>}
+                              {member.phone && <p>الجوال: <span dir="ltr">{formatPhoneDisplay(member.phone)}</span></p>}
                               <p className="text-xs text-gray-400">
                                 أُضيف: {new Date(member.submittedAt).toLocaleDateString('ar-SA')}
                               </p>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
+import SaudiPhoneInput from '@/components/SaudiPhoneInput';
 
 interface FormData {
   email: string;
@@ -785,14 +786,9 @@ export default function RegisterPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     رقم الاتصال <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="tel"
-                    name="phone"
+                  <SaudiPhoneInput
                     value={formData.phone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="+966 5XX XXX XXXX"
-                    dir="ltr"
+                    onChange={(value) => setFormData({ ...formData, phone: value })}
                     required
                   />
                 </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatPhoneDisplay } from '@/lib/phone-utils';
 
 type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'MORE_INFO';
 
@@ -376,9 +377,9 @@ export default function AdminAccessRequestsPage() {
                           {request.email}
                         </span>
                         {request.phone && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1" dir="ltr">
                             <Phone size={14} />
-                            {request.phone}
+                            {formatPhoneDisplay(request.phone)}
                           </span>
                         )}
                       </div>

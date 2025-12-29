@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
+import { formatPhoneDisplay } from '@/lib/phone-utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -190,7 +191,7 @@ export default async function MemberPage({ params }: PageProps) {
                     <div className="flex items-center gap-3">
                       <Phone className="text-gray-400" size={18} />
                       <span className="text-gray-600" dir="ltr">
-                        {member.phone}
+                        {formatPhoneDisplay(member.phone)}
                       </span>
                     </div>
                   )}

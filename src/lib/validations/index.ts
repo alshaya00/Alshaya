@@ -11,7 +11,21 @@ export const idSchema = z.string().min(1, 'ID is required');
 
 export const emailSchema = z.string().email('Invalid email address');
 
-export const phoneSchema = z.string().regex(/^[+]?[\d\s-()]{7,}$/, 'Invalid phone number').optional().or(z.literal(''));
+// Saudi phone validation: accepts various formats, will be normalized to +9665XXXXXXXX
+export const phoneSchema = z.string()
+  .transform((val) => val?.replace(/[\s\-()]/g, '') || '')
+  .refine((val) => {
+    if (!val || val === '') return true; // Optional field
+    // Accept: +9665XXXXXXXX, 9665XXXXXXXX, 05XXXXXXXX, 5XXXXXXXX, 009665XXXXXXXX
+    const cleaned = val.replace(/^\+/, '');
+    if (cleaned.startsWith('00966') && cleaned.length === 14) return cleaned.substring(5).startsWith('5');
+    if (cleaned.startsWith('966') && cleaned.length === 12) return cleaned.substring(3).startsWith('5');
+    if (cleaned.startsWith('05') && cleaned.length === 10) return true;
+    if (cleaned.startsWith('5') && cleaned.length === 9) return true;
+    return false;
+  }, 'رقم الهاتف يجب أن يبدأ بـ 5 ويتكون من 9 أرقام')
+  .optional()
+  .or(z.literal(''));
 
 export const passwordSchema = z.string()
   .min(8, 'Password must be at least 8 characters')
