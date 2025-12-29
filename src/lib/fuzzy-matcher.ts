@@ -274,6 +274,24 @@ export async function checkBranchDuplicate(
   
   const siblings = await prisma.familyMember.findMany({
     where: whereClause,
+    select: {
+      id: true,
+      firstName: true,
+      fatherName: true,
+      grandfatherName: true,
+      greatGrandfatherName: true,
+      familyName: true,
+      fatherId: true,
+      gender: true,
+      birthYear: true,
+      generation: true,
+      branch: true,
+      fullNameAr: true,
+      fullNameEn: true,
+      phone: true,
+      city: true,
+      status: true,
+    },
   });
   
   const candidates: MatchCandidate[] = [];
@@ -283,7 +301,7 @@ export async function checkBranchDuplicate(
     
     if (nameScore >= 70) {
       candidates.push({
-        member: sibling,
+        member: sibling as unknown as FamilyMember,
         similarityScore: nameScore,
         matchReasons: [`Name similarity: ${nameScore}%`, 'Same parent'],
         matchReasonsAr: [`تشابه الاسم: ${nameScore}%`, 'نفس الوالد'],

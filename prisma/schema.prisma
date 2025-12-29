@@ -90,6 +90,7 @@ model FamilyMember {
   @@index([lineageBranchId])
   @@index([subBranchId])
   @@index([deletedAt])
+  @@index([fatherId, deletedAt])
 }
 
 // ============================================

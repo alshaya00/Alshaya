@@ -41,6 +41,8 @@ export interface MergeOptions {
 }
 
 const MERGEABLE_FIELDS = [
+  'firstName', 'fatherName', 'grandfatherName', 'greatGrandfatherName',
+  'fullNameAr', 'fullNameEn',
   'birthYear', 'birthCalendar', 'deathYear', 'deathCalendar',
   'phone', 'email', 'city', 'occupation', 'biography', 'photoUrl', 'status'
 ];
@@ -267,6 +269,12 @@ export async function mergeMemberProfiles(
 
 function getFieldNameAr(field: string): string {
   const fieldNames: Record<string, string> = {
+    firstName: 'الاسم الأول',
+    fatherName: 'اسم الأب',
+    grandfatherName: 'اسم الجد',
+    greatGrandfatherName: 'اسم الجد الأعلى',
+    fullNameAr: 'الاسم الكامل (عربي)',
+    fullNameEn: 'الاسم الكامل (إنجليزي)',
     birthYear: 'سنة الميلاد',
     birthCalendar: 'نوع التقويم',
     deathYear: 'سنة الوفاة',
