@@ -2,6 +2,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
 import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
 import MemberStoriesSection from '@/components/MemberStoriesSection';
