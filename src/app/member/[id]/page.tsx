@@ -115,7 +115,7 @@ export default async function MemberPage({ params }: PageProps) {
                 <p className="text-sm text-gray-500">سنة الميلاد</p>
                 {member.birthYear && (
                   <p className="text-xs text-gray-400">
-                    ({calculateAge(member.birthYear)} سنة)
+                    ({calculateAge(member.birthYear, member.birthCalendar)} سنة)
                   </p>
                 )}
               </div>

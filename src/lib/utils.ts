@@ -5,8 +5,38 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function calculateAge(birthYear: number | null): number | null {
+export function getCurrentHijriYear(): number {
+  const now = new Date();
+  const gregorianYear = now.getFullYear();
+  const gregorianMonth = now.getMonth() + 1;
+  const gregorianDay = now.getDate();
+  
+  const jd = Math.floor((1461 * (gregorianYear + 4800 + Math.floor((gregorianMonth - 14) / 12))) / 4) +
+             Math.floor((367 * (gregorianMonth - 2 - 12 * Math.floor((gregorianMonth - 14) / 12))) / 12) -
+             Math.floor((3 * Math.floor((gregorianYear + 4900 + Math.floor((gregorianMonth - 14) / 12)) / 100)) / 4) +
+             gregorianDay - 32075;
+  
+  const l = jd - 1948440 + 10632;
+  const n = Math.floor((l - 1) / 10631);
+  const lPrime = l - 10631 * n + 354;
+  const j = Math.floor((10985 - lPrime) / 5316) * Math.floor((50 * lPrime) / 17719) +
+            Math.floor(lPrime / 5670) * Math.floor((43 * lPrime) / 15238);
+  const lDoublePrime = lPrime - Math.floor((30 - j) / 15) * Math.floor((17719 * j + 15) / 50) -
+                        Math.floor(j / 16) * Math.floor((15238 * j - 15) / 43) + 29;
+  const hijriYear = 30 * n + j - 30 + Math.floor((24 * lDoublePrime) / 709);
+  
+  return hijriYear;
+}
+
+export function calculateAge(birthYear: number | null, birthCalendar?: string | null): number | null {
   if (!birthYear) return null;
+  
+  const calendarUpper = birthCalendar?.toUpperCase();
+  if (calendarUpper === 'HIJRI') {
+    const currentHijriYear = getCurrentHijriYear();
+    return currentHijriYear - birthYear;
+  }
+  
   return new Date().getFullYear() - birthYear;
 }
 

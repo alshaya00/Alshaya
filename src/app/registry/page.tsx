@@ -354,7 +354,7 @@ function RegistryPageContent() {
                         {member.birthYear || '-'}
                         {member.birthYear && (
                           <span className="text-xs text-gray-400 block">
-                            ({calculateAge(member.birthYear)} سنة)
+                            ({calculateAge(member.birthYear, member.birthCalendar)} سنة)
                           </span>
                         )}
                       </td>
