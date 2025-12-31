@@ -30,6 +30,7 @@ export interface DataConsistencyReport {
     childrenCounts: ValidationResult;
     lineageConsistency: ValidationResult;
     pendingMembers: ValidationResult;
+    ageGeneration: ValidationResult;
   };
 }
 
@@ -761,6 +762,109 @@ export async function validatePendingMembers(): Promise<ValidationResult> {
   };
 }
 
+function getCurrentHijriYear(): number {
+  const now = new Date();
+  const gregorianYear = now.getFullYear();
+  const gregorianMonth = now.getMonth() + 1;
+  const gregorianDay = now.getDate();
+  
+  const jd = Math.floor((1461 * (gregorianYear + 4800 + Math.floor((gregorianMonth - 14) / 12))) / 4) +
+             Math.floor((367 * (gregorianMonth - 2 - 12 * Math.floor((gregorianMonth - 14) / 12))) / 12) -
+             Math.floor((3 * Math.floor((gregorianYear + 4900 + Math.floor((gregorianMonth - 14) / 12)) / 100)) / 4) +
+             gregorianDay - 32075;
+  
+  const l = jd - 1948440 + 10632;
+  const n = Math.floor((l - 1) / 10631);
+  const lPrime = l - 10631 * n + 354;
+  const j = Math.floor((10985 - lPrime) / 5316) * Math.floor((50 * lPrime) / 17719) +
+            Math.floor(lPrime / 5670) * Math.floor((43 * lPrime) / 15238);
+  const lDoublePrime = lPrime - Math.floor((30 - j) / 15) * Math.floor((17719 * j + 15) / 16213) -
+                        Math.floor(j / 16) * Math.floor((15238 * j - 15) / 43) + 29;
+  const hijriYear = 30 * n + j - Math.floor((3 * Math.floor((11 * j + 3) / 325)) / 100) + Math.floor(lDoublePrime / 354);
+  
+  return hijriYear;
+}
+
+export async function validateAgeGeneration(): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+  const currentGregorianYear = new Date().getFullYear();
+  const currentHijriYear = getCurrentHijriYear();
+
+  const members = await prisma.familyMember.findMany({
+    where: { deletedAt: null },
+    select: {
+      id: true,
+      firstName: true,
+      birthYear: true,
+      birthCalendar: true,
+      generation: true,
+    },
+  });
+
+  const MAX_AGE_BY_GENERATION: Record<number, number> = {
+    1: 500, 2: 400, 3: 300, 4: 250, 5: 200, 
+    6: 150, 7: 120, 8: 100, 9: 90, 10: 80,
+    11: 70, 12: 60, 13: 50, 14: 45, 15: 40
+  };
+
+  for (const member of members) {
+    if (!member.birthYear) continue;
+
+    let calculatedAge: number;
+    const calendar = member.birthCalendar?.toUpperCase();
+    
+    if (calendar === 'HIJRI') {
+      calculatedAge = currentHijriYear - member.birthYear;
+    } else {
+      calculatedAge = currentGregorianYear - member.birthYear;
+    }
+
+    if (calculatedAge < 0) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Negative age calculated: ${calculatedAge} years (birthYear: ${member.birthYear}, calendar: ${calendar || 'GREGORIAN'})`,
+        issueAr: `عمر سالب محسوب: ${calculatedAge} سنة (سنة الميلاد: ${member.birthYear}، التقويم: ${calendar === 'HIJRI' ? 'هجري' : 'ميلادي'})`,
+        severity: 'error',
+        details: { birthYear: member.birthYear, calendar: calendar || 'GREGORIAN', calculatedAge },
+      });
+      continue;
+    }
+
+    if (calculatedAge > 500) {
+      const detectedCalendar = member.birthYear < 1500 ? 'HIJRI' : 'GREGORIAN';
+      if (detectedCalendar !== calendar) {
+        issues.push({
+          memberId: member.id,
+          memberName: member.firstName,
+          issue: `Unrealistic age ${calculatedAge} years. Birth year ${member.birthYear} appears to be ${detectedCalendar} but calendar is set to ${calendar || 'GREGORIAN'}`,
+          issueAr: `عمر غير منطقي ${calculatedAge} سنة. سنة الميلاد ${member.birthYear} تبدو ${detectedCalendar === 'HIJRI' ? 'هجرية' : 'ميلادية'} لكن التقويم مضبوط على ${calendar === 'HIJRI' ? 'هجري' : 'ميلادي'}`,
+          severity: 'error',
+          details: { birthYear: member.birthYear, currentCalendar: calendar || 'GREGORIAN', suggestedCalendar: detectedCalendar, calculatedAge },
+        });
+      }
+    }
+
+    const maxAge = MAX_AGE_BY_GENERATION[member.generation] || 200;
+    if (calculatedAge > maxAge) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Age ${calculatedAge} exceeds maximum ${maxAge} for generation ${member.generation}`,
+        issueAr: `العمر ${calculatedAge} يتجاوز الحد الأقصى ${maxAge} للجيل ${member.generation}`,
+        severity: 'warning',
+        details: { birthYear: member.birthYear, generation: member.generation, calculatedAge, maxAge },
+      });
+    }
+  }
+
+  return {
+    valid: issues.filter(i => i.severity === 'error').length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
 export async function checkDataConsistency(): Promise<DataConsistencyReport> {
   const totalMembers = await prisma.familyMember.count({
     where: { deletedAt: null },
@@ -776,6 +880,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     childrenCounts,
     lineageConsistency,
     pendingMembers,
+    ageGeneration,
   ] = await Promise.all([
     validateGenerations(),
     validateParentRelationships(),
@@ -786,6 +891,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     validateChildrenCounts(),
     validateLineageConsistency(),
     validatePendingMembers(),
+    validateAgeGeneration(),
   ]);
 
   const totalIssues =
@@ -797,7 +903,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     duplicateMembers.issues.length +
     childrenCounts.issues.length +
     lineageConsistency.issues.length +
-    pendingMembers.issues.length;
+    pendingMembers.issues.length +
+    ageGeneration.issues.length;
 
   const allValidations = [
     generations,
@@ -809,6 +916,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     childrenCounts,
     lineageConsistency,
     pendingMembers,
+    ageGeneration,
   ];
 
   const hasErrors = allValidations.some(v => 
@@ -830,6 +938,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
       childrenCounts,
       lineageConsistency,
       pendingMembers,
+      ageGeneration,
     },
   };
 }
@@ -998,6 +1107,7 @@ export function formatValidationReport(report: DataConsistencyReport): string {
     { name: '7. Children Counts Validation', key: 'childrenCounts' as const },
     { name: '8. Lineage Consistency Validation', key: 'lineageConsistency' as const },
     { name: '9. Pending Members Validation', key: 'pendingMembers' as const },
+    { name: '10. Age-Generation Validation', key: 'ageGeneration' as const },
   ];
 
   for (const section of validationSections) {

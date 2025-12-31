@@ -23,6 +23,8 @@ export interface FuzzyMatchInput {
   fatherId?: string;
   birthYear?: number;
   gender?: string;
+  phone?: string;
+  email?: string;
 }
 
 const DUPLICATE_THRESHOLD = 80;
@@ -186,6 +188,32 @@ export function calculateMemberSimilarity(
     const score = genderMatch ? 100 : 0;
     totalScore += score * weight;
     weightSum += weight;
+  }
+
+  if (input.phone && existingMember.phone) {
+    const normalizedInputPhone = input.phone.replace(/\D/g, '').slice(-9);
+    const normalizedMemberPhone = existingMember.phone.replace(/\D/g, '').slice(-9);
+    const phoneMatch = normalizedInputPhone === normalizedMemberPhone && normalizedInputPhone.length >= 9;
+    
+    if (phoneMatch) {
+      const weight = 50;
+      totalScore += 100 * weight;
+      weightSum += weight;
+      matchReasons.push('Phone number match');
+      matchReasonsAr.push('تطابق رقم الهاتف');
+    }
+  }
+
+  if (input.email && existingMember.email) {
+    const emailMatch = input.email.toLowerCase().trim() === existingMember.email.toLowerCase().trim();
+    
+    if (emailMatch) {
+      const weight = 40;
+      totalScore += 100 * weight;
+      weightSum += weight;
+      matchReasons.push('Email match');
+      matchReasonsAr.push('تطابق البريد الإلكتروني');
+    }
   }
   
   const similarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;

@@ -89,26 +89,17 @@ export class DuplicateError extends Error {
 export async function generateNextMemberId(tx?: TransactionClient): Promise<string> {
   const client = tx || prisma;
   
-  const result = await client.$queryRaw<{ max_prefixed: number | null; max_numeric: number | null; has_prefixed: boolean }[]>`
+  const result = await client.$queryRaw<{ max_prefixed: number | null; max_numeric: number | null }[]>`
     SELECT 
       MAX(CASE WHEN id ~ '^P[0-9]+$' THEN CAST(SUBSTRING(id FROM 2) AS INTEGER) ELSE NULL END) as max_prefixed,
-      MAX(CASE WHEN id ~ '^[0-9]+$' THEN CAST(id AS INTEGER) ELSE NULL END) as max_numeric,
-      EXISTS(SELECT 1 FROM "FamilyMember" WHERE id ~ '^P[0-9]+$') as has_prefixed
+      MAX(CASE WHEN id ~ '^[0-9]+$' THEN CAST(id AS INTEGER) ELSE NULL END) as max_numeric
     FROM "FamilyMember"
   `;
 
-  const { max_prefixed, max_numeric, has_prefixed } = result[0] || {};
-
-  if (max_prefixed === null && max_numeric === null) {
-    return 'P001';
-  }
-
-  if (has_prefixed) {
-    const nextNum = Math.max(max_prefixed || 0, max_numeric || 0) + 1;
-    return `P${String(nextNum).padStart(3, '0')}`;
-  }
-
-  return String((max_numeric || 0) + 1);
+  const { max_prefixed, max_numeric } = result[0] || {};
+  
+  const nextNum = Math.max(max_prefixed || 0, max_numeric || 0) + 1;
+  return `P${String(nextNum).padStart(4, '0')}`;
 }
 
 export async function calculateGeneration(

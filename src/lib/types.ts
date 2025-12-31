@@ -14,7 +14,9 @@ export interface FamilyMember {
   fatherId: string | null;
   gender: 'Male' | 'Female';
   birthYear: number | null;
+  birthCalendar?: 'HIJRI' | 'GREGORIAN' | null;
   deathYear?: number | null;
+  deathCalendar?: 'HIJRI' | 'GREGORIAN' | null;
   sonsCount: number;
   daughtersCount: number;
   generation: number;

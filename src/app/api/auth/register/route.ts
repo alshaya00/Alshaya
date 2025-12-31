@@ -10,6 +10,7 @@ import {
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
+import { normalizePhone } from '@/lib/phone-utils';
 
 // Sanitize string input
 function sanitizeString(input: string | null | undefined): string {
@@ -129,6 +130,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize phone for consistent identity matching
+    const normalizedPhone = phone ? normalizePhone(phone) : null;
+
     // Hash the password to store with the access request
     const passwordHash = await bcrypt.hash(password, 12);
 
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest) {
       email: sanitizeString(email).toLowerCase(),
       nameArabic: sanitizeString(nameArabic),
       nameEnglish: sanitizeString(nameEnglish),
-      phone: sanitizeString(phone),
+      phone: normalizedPhone || sanitizeString(phone),
       gender: sanitizeString(gender),
       claimedRelation: sanitizeString(claimedRelation),
       relatedMemberId: sanitizeString(relatedMemberId),

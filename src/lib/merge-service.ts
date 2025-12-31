@@ -89,6 +89,16 @@ export async function generateMergePreview(
     warningsAr.push('الأعضاء لديهم آباء مختلفون - قد يعني ذلك أنهم ليسوا تكرارات');
   }
 
+  if (source.phone && target.phone && source.phone !== target.phone) {
+    warnings.push(`Phone number conflict: source ${source.phone} vs target ${target.phone}`);
+    warningsAr.push(`تعارض في رقم الهاتف: المصدر ${source.phone} مقابل الهدف ${target.phone}`);
+  }
+
+  if (source.email && target.email && source.email.toLowerCase() !== target.email.toLowerCase()) {
+    warnings.push(`Email conflict: source ${source.email} vs target ${target.email}`);
+    warningsAr.push(`تعارض في البريد الإلكتروني: المصدر ${source.email} مقابل الهدف ${target.email}`);
+  }
+
   const [children, photos, journals] = await Promise.all([
     prisma.familyMember.findMany({
       where: { fatherId: sourceId, deletedAt: null },

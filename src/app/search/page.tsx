@@ -8,6 +8,7 @@ import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch, Loader
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import GenderAvatar from '@/components/GenderAvatar';
+import Image from 'next/image';
 
 function SearchPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
@@ -316,7 +317,18 @@ function SearchPageContent() {
                   href={`/member/${member.id}`}
                   className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
                 >
-                  <GenderAvatar gender={member.gender} size="lg" />
+                  {member.photoUrl ? (
+                    <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
+                      <Image
+                        src={member.photoUrl}
+                        alt={member.firstName}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <GenderAvatar gender={member.gender} size="lg" />
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-gray-800">{member.ancestorChain}</span>
