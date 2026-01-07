@@ -216,14 +216,16 @@ export async function getGen2Branches(): Promise<FamilyMember[]> {
  * which generates the ID atomically within a transaction.
  */
 export async function getNextId(): Promise<string> {
-  const result = await prisma.familyMember.findFirst({
-    orderBy: { id: 'desc' },
-    select: { id: true },
-  });
-  if (!result) return 'P001';
+  const result = await prisma.$queryRaw<{ max_prefixed: number | null; max_numeric: number | null }[]>`
+    SELECT 
+      MAX(CASE WHEN id ~ '^P[0-9]+$' THEN CAST(SUBSTRING(id FROM 2) AS INTEGER) ELSE NULL END) as max_prefixed,
+      MAX(CASE WHEN id ~ '^[0-9]+$' THEN CAST(id AS INTEGER) ELSE NULL END) as max_numeric
+    FROM "FamilyMember"
+  `;
 
-  const numPart = parseInt(result.id.replace('P', ''));
-  return `P${String(numPart + 1).padStart(3, '0')}`;
+  const { max_prefixed, max_numeric } = result[0] || {};
+  const nextNum = Math.max(max_prefixed || 0, max_numeric || 0) + 1;
+  return `P${String(nextNum).padStart(4, '0')}`;
 }
 
 export async function getMemberCount(): Promise<number> {
@@ -244,18 +246,20 @@ export async function memberExists(id: string): Promise<boolean> {
 /**
  * Generate the next available ID atomically within a transaction
  * This prevents race conditions where two concurrent requests get the same ID
+ * Handles both P-prefixed IDs (P001) and numeric IDs (123) for backward compatibility
  */
 // eslint-disable-next-line
 async function generateNextIdInTransaction(tx: any): Promise<string> {
-  const result = await tx.familyMember.findFirst({
-    orderBy: { id: 'desc' },
-    select: { id: true },
-  });
+  const result = await tx.$queryRaw<{ max_prefixed: number | null; max_numeric: number | null }[]>`
+    SELECT 
+      MAX(CASE WHEN id ~ '^P[0-9]+$' THEN CAST(SUBSTRING(id FROM 2) AS INTEGER) ELSE NULL END) as max_prefixed,
+      MAX(CASE WHEN id ~ '^[0-9]+$' THEN CAST(id AS INTEGER) ELSE NULL END) as max_numeric
+    FROM "FamilyMember"
+  `;
 
-  if (!result) return 'P001';
-
-  const numPart = parseInt(result.id.replace('P', ''));
-  return `P${String(numPart + 1).padStart(3, '0')}`;
+  const { max_prefixed, max_numeric } = result[0] || {};
+  const nextNum = Math.max(max_prefixed || 0, max_numeric || 0) + 1;
+  return `P${String(nextNum).padStart(4, '0')}`;
 }
 
 /**
