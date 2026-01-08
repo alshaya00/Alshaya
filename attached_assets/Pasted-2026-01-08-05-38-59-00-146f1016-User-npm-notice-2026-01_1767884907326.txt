@@ -1,0 +1,164 @@
+2026-01-08 05:38:59.00
+146f1016
+User
+npm notice
+2026-01-08 05:38:59.00
+146f1016
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+2026-01-08 05:38:59.00
+146f1016
+User
+npm notice
+2026-01-08 05:47:54.94
+146f1016
+User
+ℹ️ Recommended env vars not set: JWT_SECRET, ENCRYPTION_SECRET
+2026-01-08 05:47:57.01
+146f1016
+User
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2026-01-08 06:18:49.00
+146f1016
+User
+npm notice
+2026-01-08 06:18:49.00
+146f1016
+User
+npm notice
+2026-01-08 06:18:49.00
+146f1016
+User
+npm notice New major version of npm available! 10.8.2 -> 11.7.0
+2026-01-08 06:18:49.00
+146f1016
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+2026-01-08 06:18:49.00
+146f1016
+User
+npm notice To update run: npm install -g npm@11.7.0
+2026-01-08 06:26:56.60
+146f1016
+User
+ℹ️ Recommended env vars not set: JWT_SECRET, ENCRYPTION_SECRET
+2026-01-08 06:26:58.61
+146f1016
+User
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2026-01-08 07:26:39.02
+146f1016
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+2026-01-08 07:26:39.02
+146f1016
+User
+npm notice
+2026-01-08 07:26:39.02
+146f1016
+User
+npm notice To update run: npm install -g npm@11.7.0
+2026-01-08 07:26:39.02
+146f1016
+User
+npm notice
+2026-01-08 07:26:39.02
+146f1016
+User
+npm notice New major version of npm available! 10.8.2 -> 11.7.0
+2026-01-08 07:27:19.34
+146f1016
+User
+ℹ️ Recommended env vars not set: JWT_SECRET, ENCRYPTION_SECRET
+2026-01-08 07:27:21.55
+146f1016
+User
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2026-01-08 08:03:56.98
+146f1016
+User
+ℹ️ Recommended env vars not set: JWT_SECRET, ENCRYPTION_SECRET
+2026-01-08 08:03:58.66
+146f1016
+User
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2026-01-08 08:05:26.14
+146f1016
+User
+npm notice
+2026-01-08 08:05:26.14
+146f1016
+User
+npm notice New major version of npm available! 10.8.2 -> 11.7.0
+2026-01-08 08:05:26.14
+146f1016
+User
+npm notice
+2026-01-08 08:05:26.14
+146f1016
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+2026-01-08 08:05:26.14
+146f1016
+User
+npm notice To update run: npm install -g npm@11.7.0
+2026-01-08 08:31:47.36
+146f1016
+User
+npm notice
+2026-01-08 08:31:47.36
+146f1016
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+2026-01-08 08:31:47.36
+146f1016
+User
+npm notice To update run: npm install -g npm@11.7.0
+2026-01-08 08:31:47.36
+146f1016
+User
+npm notice New major version of npm available! 10.8.2 -> 11.7.0
+2026-01-08 08:31:47.36
+146f1016
+User
+npm notice
+2026-01-08 08:37:06.97
+146f1016
+User
+ℹ️ Recommended env vars not set: JWT_SECRET, ENCRYPTION_SECRET
+2026-01-08 08:37:08.59
+146f1016
+User
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2026-01-08 08:55:07.36
+146f1016
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+2026-01-08 08:55:07.36
+146f1016
+User
+npm notice New major version of npm available! 10.8.2 -> 11.7.0
+2026-01-08 08:55:07.36
+146f1016
+User
+npm notice To update run: npm install -g npm@11.7.0
+2026-01-08 08:55:07.36
+146f1016
+User
+npm notice
+2026-01-08 08:55:07.36
+146f1016
+User
+npm notice
+2026-01-08 09:21:31.97
+146f1016
+User
+ℹ️ Recommended env vars not set: JWT_SECRET, ENCRYPTION_SECRET
+2026-01-08 09:21:33.65
+146f1016
+User
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+2026-01-08 09:49:57.38
+146f1016
+User
+npm notice
