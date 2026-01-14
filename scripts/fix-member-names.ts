@@ -38,9 +38,10 @@ async function generateFullNamesFromLineage(
   
   const fullNameAr = partsAr.join(' ').replace(/\s+/g, ' ').trim();
   
+  const connectorEn = memberData.gender === 'Female' ? 'bint' : 'bin';
   const partsEn: string[] = [transliterateName(memberData.firstName)];
   for (const name of ancestorNames) {
-    partsEn.push(`bin ${transliterateName(name)}`);
+    partsEn.push(`${connectorEn} ${transliterateName(name)}`);
   }
   partsEn.push('Al Shaye');
   
