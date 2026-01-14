@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Replit deployment: standalone output for smaller deployments
-  output: 'standalone',
-
   // Disable telemetry
   env: {
     NEXT_TELEMETRY_DISABLED: '1',
