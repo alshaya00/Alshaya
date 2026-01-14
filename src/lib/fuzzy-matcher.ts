@@ -123,7 +123,7 @@ export function calculateMemberSimilarity(
   
   if (input.firstName) {
     const firstNameScore = compareNames(input.firstName, existingMember.firstName);
-    const weight = 40;
+    const weight = 30;
     totalScore += firstNameScore * weight;
     weightSum += weight;
     
@@ -135,7 +135,7 @@ export function calculateMemberSimilarity(
   
   if (input.fatherName && existingMember.fatherName) {
     const fatherNameScore = compareNames(input.fatherName, existingMember.fatherName);
-    const weight = 25;
+    const weight = 15;
     totalScore += fatherNameScore * weight;
     weightSum += weight;
     
@@ -147,7 +147,7 @@ export function calculateMemberSimilarity(
   
   if (input.fatherId && existingMember.fatherId) {
     const fatherIdMatch = input.fatherId === existingMember.fatherId;
-    const weight = 20;
+    const weight = 50;
     const score = fatherIdMatch ? 100 : 0;
     totalScore += score * weight;
     weightSum += weight;

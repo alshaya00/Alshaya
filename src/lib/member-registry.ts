@@ -375,6 +375,52 @@ export function generateFullNames(
   return { fullNameAr, fullNameEn };
 }
 
+export async function generateFullNamesFromLineage(
+  memberId: string,
+  memberData: {
+    firstName: string;
+    gender: 'Male' | 'Female';
+    fatherId?: string | null;
+  },
+  tx?: TransactionClient
+): Promise<FullNames> {
+  const client = tx || prisma;
+  const connector = memberData.gender === 'Female' ? 'بنت' : 'بن';
+  
+  const ancestorNames: string[] = [];
+  let currentFatherId: string | null | undefined = memberData.fatherId;
+  
+  for (let i = 0; i < MAX_GENERATION && currentFatherId; i++) {
+    const ancestor = await client.familyMember.findUnique({
+      where: { id: currentFatherId },
+      select: { id: true, firstName: true, fatherId: true },
+    });
+    
+    if (!ancestor) break;
+    
+    ancestorNames.push(ancestor.firstName);
+    currentFatherId = ancestor.fatherId;
+  }
+  
+  const partsAr: string[] = [memberData.firstName.trim()];
+  for (const name of ancestorNames) {
+    partsAr.push(`${connector} ${name.trim()}`);
+  }
+  partsAr.push('آل شايع');
+  
+  const fullNameAr = partsAr.join(' ').replace(/\s+/g, ' ').trim();
+  
+  const partsEn: string[] = [transliterateName(memberData.firstName)];
+  for (const name of ancestorNames) {
+    partsEn.push(`bin ${transliterateName(name)}`);
+  }
+  partsEn.push('Al Shaye');
+  
+  const fullNameEn = partsEn.join(' ').replace(/\s+/g, ' ').trim();
+  
+  return { fullNameAr, fullNameEn };
+}
+
 export async function createMember(
   input: MemberInput,
   options: CreateMemberOptions = {}
