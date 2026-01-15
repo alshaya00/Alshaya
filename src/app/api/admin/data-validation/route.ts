@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findSessionByToken, findUserById } from '@/lib/db';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { 
   validateMemberData, 
   getSuggestedCorrection, 
