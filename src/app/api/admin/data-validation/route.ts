@@ -1,11 +1,29 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { findSessionByToken, findUserById } from '@/lib/db';
 import { 
   validateMemberData, 
   getSuggestedCorrection, 
   normalizeToGregorian,
   ValidationIssue 
 } from '@/lib/utils/calendar-utils';
+
+async function getAuthAdmin(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') return null;
+
+  return user;
+}
 
 export interface MemberValidationResult {
   id: string;
@@ -29,8 +47,17 @@ export interface MemberValidationResult {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Authenticate admin user
+    const user = await getAuthAdmin(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all';
     const fix = searchParams.get('fix') === 'true';
@@ -136,8 +163,17 @@ export async function GET(request: Request) {
 }
 
 // POST endpoint to fix detected issues
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Authenticate admin user
+    const user = await getAuthAdmin(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Admin access required', messageAr: 'يتطلب صلاحيات المدير' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { memberId, newBirthCalendar } = body;
 
@@ -166,14 +202,14 @@ export async function POST(request: Request) {
       data: { birthCalendar: newBirthCalendar }
     });
 
-    // Log the change
+    // Log the change with admin username
     await prisma.auditLog.create({
       data: {
         action: 'CALENDAR_FIX',
         entityType: 'MEMBER',
         entityId: memberId,
         details: `Fixed birth calendar from ${member.birthCalendar || 'GREGORIAN'} to ${newBirthCalendar}`,
-        performedBy: 'SYSTEM',
+        performedBy: user.username || user.email || 'ADMIN',
         performedAt: new Date()
       }
     });
