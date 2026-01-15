@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 import type { FamilyMember } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Home, UserPlus, Check } from 'lucide-react';
 import { generationColors } from '@/config/theme';
+import { GenderAvatarInline } from './GenderAvatar';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -685,13 +686,7 @@ export default function AddMemberGraph({
           }}
         >
           <div className="flex items-center gap-3 mb-2 pb-2 border-b">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 shadow-sm ${
-              hoveredNode.gender === 'Male'
-                ? 'bg-blue-50 border-blue-300'
-                : 'bg-pink-50 border-pink-300'
-            }`}>
-              {hoveredNode.gender === 'Male' ? '👨' : '👩'}
-            </div>
+            <GenderAvatarInline gender={hoveredNode.gender} size="md" />
             <div>
               <p className="font-bold text-gray-800">
                 {hoveredNode.fatherName 
@@ -715,7 +710,7 @@ export default function AddMemberGraph({
 
           {hoveredNode.gender === 'Male' ? (
             <p className="text-xs text-center text-green-600 font-medium">
-              {selectedFatherId === hoveredNode.id ? '✓ تم الاختيار' : '👆 انقر للاختيار كأب'}
+              {selectedFatherId === hoveredNode.id ? '✓ تم الاختيار' : 'انقر للاختيار كأب'}
             </p>
           ) : (
             <p className="text-xs text-center text-gray-400 font-medium">
@@ -758,7 +753,7 @@ export default function AddMemberGraph({
               🌳 مفتاح الأجيال
             </p>
             <p className="text-xs text-green-600 font-medium">
-              انقر على أي ذكر 👨 لاختياره كأب
+              انقر على أي ذكر لاختياره كأب
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">

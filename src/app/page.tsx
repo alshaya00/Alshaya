@@ -8,6 +8,7 @@ import {
   Star, Phone, MessageCircle, Sparkles, ArrowLeft,
   Check, Map, History, UserPlus, ChevronDown
 } from 'lucide-react';
+import { GenderAvatarInline } from '@/components/GenderAvatar';
 
 // ============================================
 // MAIN COMPONENT
@@ -334,9 +335,9 @@ export default function HomePage() {
             {/* Highlight Box */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
               <div className="flex items-center justify-center gap-4 mb-4">
-                <span className="text-4xl">👨</span>
+                <GenderAvatarInline gender="Male" size="lg" />
                 <span className="text-3xl font-bold">+</span>
-                <span className="text-4xl">👩</span>
+                <GenderAvatarInline gender="Female" size="lg" />
               </div>
               <h3 className="text-2xl font-bold mb-3">
                 دعوة لجميع أفراد العائلة

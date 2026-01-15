@@ -13,6 +13,7 @@ import {
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import SaudiPhoneInput from '@/components/SaudiPhoneInput';
+import { GenderAvatarInline } from '@/components/GenderAvatar';
 
 interface FormData {
   email: string;
@@ -670,7 +671,7 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           className="sr-only"
                         />
-                        <span className="text-2xl">👨</span>
+                        <GenderAvatarInline gender="Male" size="md" />
                         <span className="font-medium text-gray-800">ذكر</span>
                       </label>
                       <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${formData.gender === 'Female' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
@@ -682,7 +683,7 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           className="sr-only"
                         />
-                        <span className="text-2xl">👩</span>
+                        <GenderAvatarInline gender="Female" size="md" />
                         <span className="font-medium text-gray-800">أنثى</span>
                       </label>
                     </div>

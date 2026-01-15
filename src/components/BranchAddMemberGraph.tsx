@@ -6,6 +6,7 @@ import type { FamilyMember } from '@/lib/types';
 import { PendingMember } from '@/lib/branchEntry';
 import { ZoomIn, ZoomOut, Maximize2, Home, UserPlus, Check } from 'lucide-react';
 import { generationColors } from '@/config/theme';
+import { GenderAvatarInline } from './GenderAvatar';
 
 interface TreeNode extends FamilyMember {
   children?: TreeNode[];
@@ -617,15 +618,11 @@ export default function BranchAddMemberGraph({
           }}
         >
           <div className="flex items-center gap-2 mb-2 pb-2 border-b">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border ${
-              hoveredNode.isPending
-                ? 'bg-yellow-50 border-yellow-300'
-                : hoveredNode.gender === 'Male'
-                ? 'bg-blue-50 border-blue-300'
-                : 'bg-pink-50 border-pink-300'
-            }`}>
-              {hoveredNode.isPending ? '⏳' : hoveredNode.gender === 'Male' ? '👨' : '👩'}
-            </div>
+            {hoveredNode.isPending ? (
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm bg-yellow-50 border border-yellow-300">⏳</div>
+            ) : (
+              <GenderAvatarInline gender={hoveredNode.gender} size="sm" />
+            )}
             <div>
               <p className="font-bold text-gray-800 text-sm">
                 {hoveredNode.fatherName 
@@ -640,7 +637,7 @@ export default function BranchAddMemberGraph({
 
           {hoveredNode.gender === 'Male' ? (
             <p className="text-xs text-center text-green-600 font-medium">
-              {selectedFatherId === hoveredNode.id ? '✓ تم الاختيار' : '👆 انقر للاختيار'}
+              {selectedFatherId === hoveredNode.id ? '✓ تم الاختيار' : 'انقر للاختيار'}
             </p>
           ) : (
             <p className="text-xs text-center text-gray-400 font-medium">

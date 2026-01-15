@@ -584,18 +584,14 @@ export default function MemberMiniGraph({
                     />
 
                     {/* Avatar image */}
-                    {node.type === 'milk_mother' ? (
-                      <text x={0} y={-10} textAnchor="middle" fontSize={12} fill="white">🤱</text>
-                    ) : (
-                      <image
-                        href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
-                        x={-12}
-                        y={-26}
-                        width={24}
-                        height={24}
-                        clipPath="url(#mini-avatar-clip)"
-                      />
-                    )}
+                    <image
+                      href={isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      x={-12}
+                      y={-26}
+                      width={24}
+                      height={24}
+                      clipPath="url(#mini-avatar-clip)"
+                    />
 
                     {/* Star for main person */}
                     {isMain && (
