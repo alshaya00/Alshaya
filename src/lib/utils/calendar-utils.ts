@@ -51,12 +51,27 @@ export function normalizeToGregorian(year: number | null | undefined, calendar: 
 
 /**
  * Calculate age from birth year, handling both Hijri and Gregorian calendars
+ * Includes smart auto-detection: if year is 1300-1500 and stored as Gregorian,
+ * it's likely Hijri and will be treated as such to avoid impossible ages (600+ years)
  */
 export function calculateAge(birthYear: number | null | undefined, birthCalendar: string = 'GREGORIAN'): number | null {
   if (!birthYear) return null;
   
   const currentYear = new Date().getFullYear();
-  const gregorianBirthYear = normalizeToGregorian(birthYear, birthCalendar);
+  
+  // Smart auto-detection: years 1300-1500 stored as GREGORIAN are likely Hijri
+  // This prevents showing impossible ages like 658 years
+  let effectiveCalendar = birthCalendar;
+  if (birthCalendar === 'GREGORIAN' && birthYear >= 1300 && birthYear <= 1500) {
+    // Check if treating as Gregorian gives impossible age (>150 years)
+    const rawAge = currentYear - birthYear;
+    if (rawAge > 150) {
+      // Treat as Hijri instead
+      effectiveCalendar = 'HIJRI';
+    }
+  }
+  
+  const gregorianBirthYear = normalizeToGregorian(birthYear, effectiveCalendar);
   
   if (!gregorianBirthYear) return null;
   
