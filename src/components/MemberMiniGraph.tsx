@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FamilyMember, MilkFamily } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Home } from 'lucide-react';
 import { relationshipColors, genderColors } from '@/config/theme';
+import { GenderAvatarInline } from './GenderAvatar';
 
 interface MemberMiniGraphProps {
   person: FamilyMember;
@@ -653,11 +654,7 @@ export default function MemberMiniGraph({
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                hoveredNode.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
-              }`}>
-                {hoveredNode.gender === 'Male' ? '👨' : '👩'}
-              </span>
+              <GenderAvatarInline gender={hoveredNode.gender} size="sm" />
               <div>
                 <p className="font-bold text-gray-800 text-sm">{hoveredNode.name}</p>
                 {hoveredNode.member && (
@@ -680,22 +677,22 @@ export default function MemberMiniGraph({
       {/* Summary */}
       <div className="bg-gray-50 px-4 py-3 border-t flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs">👨</span>
+          <GenderAvatarInline gender="Male" size="xs" />
           <span className="text-gray-600">الإخوة: <strong>{siblings.length}</strong></span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs">👶</span>
+          <GenderAvatarInline gender="Male" size="xs" />
           <span className="text-gray-600">الأبناء: <strong>{children.length}</strong></span>
         </div>
         {grandchildren.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs">👦</span>
+            <GenderAvatarInline gender="Male" size="xs" />
             <span className="text-gray-600">الأحفاد: <strong>{grandchildren.length}</strong></span>
           </div>
         )}
         {hasMilkFamily && (
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center text-xs">🤱</span>
+            <GenderAvatarInline gender="Female" size="xs" />
             <span className="text-gray-600">علاقات الرضاعة: <strong>{milkFamilies.length}</strong></span>
           </div>
         )}
