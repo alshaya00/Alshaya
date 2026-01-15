@@ -29,6 +29,7 @@ import {
   Layers,
   UserPlus,
   Key,
+  AlertCircle,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
@@ -114,6 +115,12 @@ const adminNavItems: NavItem[] = [
     label: 'أدوات البيانات',
     labelEn: 'Data Tools',
     icon: Wrench,
+  },
+  {
+    href: '/admin/data-validation',
+    label: 'فحص البيانات',
+    labelEn: 'Data Validation',
+    icon: AlertCircle,
   },
   {
     href: '/admin/reports',
