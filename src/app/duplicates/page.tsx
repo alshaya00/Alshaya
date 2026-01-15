@@ -458,7 +458,7 @@ function DuplicatesPageContent() {
                                     ) : (
                                       <Check className="w-4 h-4" />
                                     )}
-                                    احتفظ بـ {pair.member1.firstName}
+                                    احتفظ بـ {pair.member1.firstName} ({pair.member1.id})
                                   </button>
                                   <button
                                     onClick={() => mergePair(realIndex, pair.member2.id)}
@@ -470,7 +470,7 @@ function DuplicatesPageContent() {
                                     ) : (
                                       <Check className="w-4 h-4" />
                                     )}
-                                    احتفظ بـ {pair.member2.firstName}
+                                    احتفظ بـ {pair.member2.firstName} ({pair.member2.id})
                                   </button>
                                 </div>
                                 <span className="text-xs text-gray-500">* يمكن استعادة العضو المحذوف من صفحة &quot;المحذوفين مؤخراً&quot;</span>
@@ -485,14 +485,14 @@ function DuplicatesPageContent() {
                             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
                           >
                             <Eye className="w-4 h-4" />
-                            عرض {pair.member1.firstName}
+                            عرض {pair.member1.firstName} ({pair.member1.id})
                           </Link>
                           <Link
                             href={`/member/${pair.member2.id}`}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
                           >
                             <Eye className="w-4 h-4" />
-                            عرض {pair.member2.firstName}
+                            عرض {pair.member2.firstName} ({pair.member2.id})
                           </Link>
                         </div>
                       )}
