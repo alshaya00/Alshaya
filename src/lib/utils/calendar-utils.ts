@@ -104,8 +104,8 @@ export function validateMemberData(member: {
     const gregorianBirth = normalizeToGregorian(member.birthYear, member.birthCalendar || 'GREGORIAN');
     const age = gregorianBirth ? currentYear - gregorianBirth : null;
     
-    // Check for impossible ages
-    if (age !== null && age > 120) {
+    // Check for impossible ages (exclude Gen 1-2 as historical ancestors)
+    if (age !== null && age > 120 && member.generation >= 3) {
       issues.push({
         field: 'birthYear',
         fieldAr: 'سنة الميلاد',
