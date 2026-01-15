@@ -23,6 +23,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
     -   **Transactional Approval Pipeline**: Atomic member approval using Prisma SERIALIZABLE transactions (`src/lib/transactional-approval.ts`). Uses MemberRegistry functions for ID generation, generation calculation, lineage building, and parent validation. Includes duplicate detection, generation verification, children count reconciliation, and descriptive rollback reasons.
     -   **Pending Member Data Consistency**: All pending member operations are database-driven, ensuring consistent data across admin and public interfaces.
     -   **Data Integrity Validation**: Comprehensive validation system (`src/lib/data-integrity.ts`) with 9 validation checks: generations, parent relationships, orphaned members, circular ancestry, deleted references, duplicate members, children counts, lineage consistency, and pending members. Available via admin API endpoint (`/api/admin/data-validation`) with type parameter for specific checks.
+    -   **Hijri Calendar Validation** (`src/lib/utils/calendar-utils.ts`): Detects and suggests fixes for birth years incorrectly stored with wrong calendar type (e.g., Hijri year 1424 stored as Gregorian = 600+ year age). Provides automatic suggestions to fix calendar type. Admin UI at `/admin/data-validation` shows all detected issues with one-click fixes.
     -   **Duplicate Detection & Prevention System**:
         -   **Fuzzy Matching Service** (`src/lib/fuzzy-matcher.ts`): Uses Levenshtein distance for 80%+ similarity matching on Arabic/English names with weighted scoring (firstName 40%, fatherName 25%, fatherId 20%, birthYear 15%).
         -   **Real-time Quick-Add Validation**: Non-blocking duplicate warnings with "Link to existing member" suggestions when firstName + fatherId match potential duplicates.
@@ -69,6 +70,7 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   Admin Invitations (`/admin/invitations`) - Generate and manage invitation codes
 -   Admin Album Folders (`/admin/album-folders`) - Manage photo album folders
 -   Admin Merge Tool (`/admin/merge`) - Merge duplicate member profiles
+-   Admin Data Validation (`/admin/data-validation`) - Detect and fix data integrity issues
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database for all application data.
