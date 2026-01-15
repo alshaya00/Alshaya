@@ -454,23 +454,27 @@ export default function HistoryPage() {
                   ))}
                 </select>
 
-                <input
-                  type="date"
-                  dir="ltr"
-                  value={filterDateFrom}
-                  onChange={(e) => setFilterDateFrom(e.target.value)}
-                  className="px-4 py-2 border rounded-lg text-right"
-                  placeholder="من تاريخ"
-                />
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 whitespace-nowrap">من:</label>
+                  <input
+                    type="date"
+                    dir="ltr"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                    className="px-4 py-2 border rounded-lg"
+                  />
+                </div>
 
-                <input
-                  type="date"
-                  dir="ltr"
-                  value={filterDateTo}
-                  onChange={(e) => setFilterDateTo(e.target.value)}
-                  className="px-4 py-2 border rounded-lg text-right"
-                  placeholder="إلى تاريخ"
-                />
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 whitespace-nowrap">إلى:</label>
+                  <input
+                    type="date"
+                    dir="ltr"
+                    value={filterDateTo}
+                    onChange={(e) => setFilterDateTo(e.target.value)}
+                    className="px-4 py-2 border rounded-lg"
+                  />
+                </div>
 
                 {(searchQuery || filterMember || filterDateFrom || filterDateTo) && (
                   <button
