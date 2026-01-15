@@ -225,48 +225,74 @@ export default function AdminPendingPage() {
   };
 
   const handleApprove = async (ids: string[]) => {
-    if (!session?.token) return;
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
     setIsProcessing(true);
     try {
-      await Promise.all(ids.map(id =>
-        fetch(`/api/admin/pending/${id}`, {
+      const results = await Promise.all(ids.map(async (id) => {
+        const res = await fetch(`/api/admin/pending/${id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.token}`,
           },
           body: JSON.stringify({ action: 'approve' }),
-        })
-      ));
+        });
+        const data = await res.json();
+        return { id, ok: res.ok, data };
+      }));
+      
+      const failed = results.filter(r => !r.ok);
+      if (failed.length > 0) {
+        const errorMessages = failed.map(f => f.data.messageAr || f.data.message || 'خطأ غير معروف').join('\n');
+        alert(`فشل في الموافقة على بعض الأعضاء:\n${errorMessages}`);
+      }
+      
       await fetchPendingMembers();
       setSelectedIds(new Set());
       setShowConfirmModal(null);
     } catch (error) {
       console.error('Error approving members:', error);
+      alert('حدث خطأ أثناء الموافقة. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleReject = async (ids: string[]) => {
-    if (!session?.token) return;
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
     setIsProcessing(true);
     try {
-      await Promise.all(ids.map(id =>
-        fetch(`/api/admin/pending/${id}`, {
+      const results = await Promise.all(ids.map(async (id) => {
+        const res = await fetch(`/api/admin/pending/${id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.token}`,
           },
           body: JSON.stringify({ action: 'reject' }),
-        })
-      ));
+        });
+        const data = await res.json();
+        return { id, ok: res.ok, data };
+      }));
+      
+      const failed = results.filter(r => !r.ok);
+      if (failed.length > 0) {
+        const errorMessages = failed.map(f => f.data.messageAr || f.data.message || 'خطأ غير معروف').join('\n');
+        alert(`فشل في رفض بعض الأعضاء:\n${errorMessages}`);
+      }
+      
       await fetchPendingMembers();
       setSelectedIds(new Set());
       setShowConfirmModal(null);
     } catch (error) {
       console.error('Error rejecting members:', error);
+      alert('حدث خطأ أثناء الرفض. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsProcessing(false);
     }
