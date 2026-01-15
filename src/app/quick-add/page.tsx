@@ -125,7 +125,7 @@ export default function QuickAddPage() {
     fatherId: '',
     gender: 'Male',
     birthYear: '',
-    birthCalendar: 'GREGORIAN',
+    birthCalendar: 'HIJRI',
     city: '',
     occupation: '',
     phone: '',
@@ -454,7 +454,7 @@ export default function QuickAddPage() {
           fatherId: '',
           gender: 'Male',
           birthYear: '',
-          birthCalendar: 'GREGORIAN',
+          birthCalendar: 'HIJRI',
           city: '',
           occupation: '',
           phone: '',
@@ -486,7 +486,7 @@ export default function QuickAddPage() {
       fatherId: '',
       gender: 'Male',
       birthYear: '',
-      birthCalendar: 'GREGORIAN',
+      birthCalendar: 'HIJRI',
       city: '',
       occupation: '',
       phone: '',
@@ -939,13 +939,38 @@ export default function QuickAddPage() {
                         className="px-3 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-all bg-white"
                         title="نوع التقويم"
                       >
-                        <option value="GREGORIAN">ميلادي</option>
                         <option value="HIJRI">هجري</option>
+                        <option value="GREGORIAN">ميلادي</option>
                       </select>
                     </div>
                     {errors.birthYear && (
                       <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>
                     )}
+                    {/* Smart calendar detection warning */}
+                    {formData.birthYear && (() => {
+                      const year = parseInt(formData.birthYear);
+                      if (!isNaN(year)) {
+                        // If HIJRI selected but year looks Gregorian (1900-2030)
+                        if (formData.birthCalendar === 'HIJRI' && year >= 1900 && year <= 2030) {
+                          return (
+                            <p className="text-amber-600 text-sm mt-1 flex items-center gap-1">
+                              <AlertTriangle size={14} />
+                              هل تقصد السنة الميلادية؟ {year} تبدو ميلادية وليست هجرية
+                            </p>
+                          );
+                        }
+                        // If GREGORIAN selected but year looks Hijri (1300-1500)
+                        if (formData.birthCalendar === 'GREGORIAN' && year >= 1300 && year <= 1500) {
+                          return (
+                            <p className="text-amber-600 text-sm mt-1 flex items-center gap-1">
+                              <AlertTriangle size={14} />
+                              هل تقصد السنة الهجرية؟ {year} تبدو هجرية وليست ميلادية
+                            </p>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   {/* City */}

@@ -196,7 +196,7 @@ export default function BranchEntryPage() {
   const [fatherId, setFatherId] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [birthYear, setBirthYear] = useState('');
-  const [birthCalendar, setBirthCalendar] = useState<CalendarType>('GREGORIAN');
+  const [birthCalendar, setBirthCalendar] = useState<CalendarType>('HIJRI');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
 
@@ -1100,10 +1100,31 @@ export default function BranchEntryPage() {
                       className="px-2 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white"
                       title="نوع التقويم"
                     >
-                      <option value="GREGORIAN">ميلادي</option>
                       <option value="HIJRI">هجري</option>
+                      <option value="GREGORIAN">ميلادي</option>
                     </select>
                   </div>
+                  {/* Smart calendar detection warning */}
+                  {birthYear && (() => {
+                    const year = parseInt(birthYear);
+                    if (!isNaN(year)) {
+                      if (birthCalendar === 'HIJRI' && year >= 1900 && year <= 2030) {
+                        return (
+                          <p className="text-amber-600 text-xs mt-1 col-span-2">
+                            ⚠️ هل تقصد السنة الميلادية؟ {year} تبدو ميلادية
+                          </p>
+                        );
+                      }
+                      if (birthCalendar === 'GREGORIAN' && year >= 1300 && year <= 1500) {
+                        return (
+                          <p className="text-amber-600 text-xs mt-1 col-span-2">
+                            ⚠️ هل تقصد السنة الهجرية؟ {year} تبدو هجرية
+                          </p>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600 mb-1 block">

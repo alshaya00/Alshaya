@@ -681,10 +681,30 @@ export default function EditMemberPage() {
                                   }`}
                                   title="نوع التقويم"
                                 >
-                                  <option value="GREGORIAN">ميلادي</option>
                                   <option value="HIJRI">هجري</option>
+                                  <option value="GREGORIAN">ميلادي</option>
                                 </select>
                               </div>
+                              {/* Smart calendar detection warning */}
+                              {formData.birthYear && (() => {
+                                const year = formData.birthYear as number;
+                                const calendar = (formData.birthCalendar as string) || 'GREGORIAN';
+                                if (calendar === 'HIJRI' && year >= 1900 && year <= 2030) {
+                                  return (
+                                    <p className="text-amber-600 text-xs mt-1">
+                                      ⚠️ هل تقصد السنة الميلادية؟ {year} تبدو ميلادية
+                                    </p>
+                                  );
+                                }
+                                if (calendar === 'GREGORIAN' && year >= 1300 && year <= 1500) {
+                                  return (
+                                    <p className="text-amber-600 text-xs mt-1">
+                                      ⚠️ هل تقصد السنة الهجرية؟ {year} تبدو هجرية
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
