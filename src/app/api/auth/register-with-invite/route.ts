@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, validatePassword } from '@/lib/auth/password';
-import { logActivity, getSiteSettings } from '@/lib/auth/db-store';
+import { logActivity, getSiteSettings, checkMemberLinkedToUser } from '@/lib/auth/db-store';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
 
@@ -146,6 +146,21 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // Check if the linked member is already linked to another user
+    if (invitation.linkedMemberId) {
+      const existingLink = await checkMemberLinkedToUser(invitation.linkedMemberId);
+      if (existingLink) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'This member is already linked to another account',
+            messageAr: 'هذا العضو مرتبط بحساب آخر',
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const passwordHash = await hashPassword(password);

@@ -11,6 +11,7 @@ export interface MergePreview {
   impactedJournals: number;
   warnings: string[];
   warningsAr: string[];
+  linkedAccounts: { userId: string; email: string; nameArabic: string; memberType: 'source' | 'target' }[];
 }
 
 export interface MergeConflict {
@@ -31,6 +32,7 @@ export interface MergeResult {
     childrenUpdated: number;
     photosTransferred: number;
     journalsUpdated: number;
+    linkedAccountsTransferred: number;
   };
 }
 
@@ -99,7 +101,7 @@ export async function generateMergePreview(
     warningsAr.push(`تعارض في البريد الإلكتروني: المصدر ${source.email} مقابل الهدف ${target.email}`);
   }
 
-  const [children, photos, journals] = await Promise.all([
+  const [children, photos, journals, linkedUsers] = await Promise.all([
     prisma.familyMember.findMany({
       where: { fatherId: sourceId, deletedAt: null },
       select: { id: true, firstName: true },
@@ -113,11 +115,48 @@ export async function generateMergePreview(
         ],
       },
     }),
+    prisma.user.findMany({
+      where: { linkedMemberId: { in: [sourceId, targetId] } },
+      select: { id: true, email: true, nameArabic: true, linkedMemberId: true }
+    }),
   ]);
 
   if (children.length > 0) {
     warnings.push(`Source member has ${children.length} children that will be reassigned to target`);
     warningsAr.push(`العضو المصدر لديه ${children.length} أبناء سيتم نقلهم للعضو الهدف`);
+  }
+
+  // Process linked accounts
+  const linkedAccounts: { userId: string; email: string; nameArabic: string; memberType: 'source' | 'target' }[] = [];
+  const sourceLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === sourceId);
+  const targetLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === targetId);
+
+  for (const user of sourceLinkedUsers) {
+    linkedAccounts.push({
+      userId: user.id,
+      email: user.email,
+      nameArabic: user.nameArabic,
+      memberType: 'source',
+    });
+    warnings.push(`Source has linked account: ${user.email}`);
+    warningsAr.push(`المصدر مرتبط بحساب: ${user.email}`);
+  }
+
+  for (const user of targetLinkedUsers) {
+    linkedAccounts.push({
+      userId: user.id,
+      email: user.email,
+      nameArabic: user.nameArabic,
+      memberType: 'target',
+    });
+    warnings.push(`Target has linked account: ${user.email}`);
+    warningsAr.push(`الهدف مرتبط بحساب: ${user.email}`);
+  }
+
+  // Critical warning if both have linked accounts - merge will be blocked
+  if (sourceLinkedUsers.length > 0 && targetLinkedUsers.length > 0) {
+    warnings.push('BLOCKED: Both members have linked user accounts! You must unlink one account before merging.');
+    warningsAr.push('محظور: كلا العضوين مرتبطان بحسابات مستخدمين! يجب فك ارتباط أحد الحسابات قبل الدمج');
   }
 
   return {
@@ -129,6 +168,7 @@ export async function generateMergePreview(
     impactedJournals: journals,
     warnings,
     warningsAr,
+    linkedAccounts,
   };
 }
 
@@ -144,6 +184,17 @@ export async function mergeMemberProfiles(
       success: false,
       message: 'One or both members not found',
       messageAr: 'لم يتم العثور على أحد الأعضاء أو كلاهما',
+    };
+  }
+
+  // Block merge if both members have linked user accounts
+  const sourceAccounts = preview.linkedAccounts.filter(a => a.memberType === 'source');
+  const targetAccounts = preview.linkedAccounts.filter(a => a.memberType === 'target');
+  if (sourceAccounts.length > 0 && targetAccounts.length > 0) {
+    return {
+      success: false,
+      message: 'Cannot merge: both members have linked user accounts. Unlink one account first.',
+      messageAr: 'لا يمكن الدمج: كلا العضوين مرتبطان بحسابات مستخدمين. يرجى فك ارتباط أحد الحسابات أولاً',
     };
   }
 
@@ -228,11 +279,18 @@ export async function mergeMemberProfiles(
         },
       });
 
+      // Transfer linked user accounts from source to target
+      const linkedAccountsTransfer = await tx.user.updateMany({
+        where: { linkedMemberId: sourceId },
+        data: { linkedMemberId: targetId },
+      });
+
       return {
         mergedMember,
         childrenUpdated,
         photosTransferred,
         journalsUpdated,
+        linkedAccountsTransferred: linkedAccountsTransfer.count,
       };
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -250,9 +308,10 @@ export async function mergeMemberProfiles(
         childrenUpdated: result.childrenUpdated,
         photosTransferred: result.photosTransferred,
         journalsUpdated: result.journalsUpdated,
+        linkedAccountsTransferred: result.linkedAccountsTransferred,
       },
       impactedIds: [sourceId, targetId, ...preview.impactedChildren.map(c => c.id)],
-      impactSummary: `Merged ${source.firstName} into ${target.firstName}. Updated ${result.childrenUpdated} children, ${result.photosTransferred} photos, ${result.journalsUpdated} journals.`,
+      impactSummary: `Merged ${source.firstName} into ${target.firstName}. Updated ${result.childrenUpdated} children, ${result.photosTransferred} photos, ${result.journalsUpdated} journals, ${result.linkedAccountsTransferred} linked accounts.`,
     });
 
     return {
@@ -265,6 +324,7 @@ export async function mergeMemberProfiles(
         childrenUpdated: result.childrenUpdated,
         photosTransferred: result.photosTransferred,
         journalsUpdated: result.journalsUpdated,
+        linkedAccountsTransferred: result.linkedAccountsTransferred,
       },
     };
   } catch (error) {

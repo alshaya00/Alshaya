@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { verifyOtp, normalizePhoneNumber } from '@/lib/otp-service';
-import { findUserByEmail, logActivity, getSiteSettings } from '@/lib/auth/db-store';
+import { findUserByEmail, logActivity, getSiteSettings, checkMemberLinkedToUser } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import crypto from 'crypto';
@@ -136,6 +136,22 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // Check if the linked member is already linked to another user
+    const targetLinkedMemberId = relatedMemberId || parentMemberId;
+    if (targetLinkedMemberId) {
+      const existingLink = await checkMemberLinkedToUser(targetLinkedMemberId);
+      if (existingLink) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'This member is already linked to another account',
+            messageAr: 'هذا العضو مرتبط بحساب آخر',
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const passwordHash = await bcrypt.hash(password, 12);

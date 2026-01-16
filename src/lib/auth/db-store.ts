@@ -1087,6 +1087,35 @@ export async function use2FABackupCode(userId: string, code: string): Promise<bo
 }
 
 // ============================================
+// MEMBER LINKING VALIDATION
+// ============================================
+
+/**
+ * Check if a family member is already linked to a user account
+ * @param memberId - The family member ID to check
+ * @param excludeUserId - Optional user ID to exclude from the check (for updates)
+ * @returns The user that is linked to this member, or null if not linked
+ */
+export async function checkMemberLinkedToUser(
+  memberId: string,
+  excludeUserId?: string
+): Promise<{ id: string; email: string; nameArabic: string } | null> {
+  await initializeStore();
+
+  const whereClause: Record<string, unknown> = { linkedMemberId: memberId };
+  if (excludeUserId) {
+    whereClause.id = { not: excludeUserId };
+  }
+
+  const existingLink = await prisma.user.findFirst({
+    where: whereClause,
+    select: { id: true, email: true, nameArabic: true }
+  });
+
+  return existingLink;
+}
+
+// ============================================
 // VERIFY PASSWORD HELPER
 // ============================================
 

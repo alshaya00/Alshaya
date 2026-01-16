@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findSessionByToken, findUserById, logActivity, createUser, createUserWithHash, findUserByEmail } from '@/lib/auth/db-store';
+import { findSessionByToken, findUserById, logActivity, createUser, createUserWithHash, findUserByEmail, checkMemberLinkedToUser } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import crypto from 'crypto';
@@ -71,6 +71,23 @@ export async function POST(
       );
     }
 
+    // Check if the linked member is already linked to another user
+    const linkedMemberId = accessRequest.relatedMemberId || accessRequest.parentMemberId;
+    if (linkedMemberId) {
+      const existingLink = await checkMemberLinkedToUser(linkedMemberId);
+      if (existingLink) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'This member is already linked to another account', 
+            messageAr: 'هذا العضو مرتبط بحساب آخر',
+            linkedUser: { email: existingLink.email, name: existingLink.nameArabic }
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // Check if the access request has a stored password hash from registration
     let newUser;
     let userPassword: string | undefined;
@@ -119,8 +136,8 @@ export async function POST(
     });
 
     // Sync user contact info to the linked FamilyMember
-    const linkedMemberId = accessRequest.relatedMemberId || accessRequest.parentMemberId;
-    if (linkedMemberId) {
+    const memberIdToSync = accessRequest.relatedMemberId || accessRequest.parentMemberId;
+    if (memberIdToSync) {
       try {
         const updateData: Record<string, string | null> = {};
         
@@ -129,10 +146,10 @@ export async function POST(
         
         if (Object.keys(updateData).length > 0) {
           await prisma.familyMember.update({
-            where: { id: linkedMemberId },
+            where: { id: memberIdToSync },
             data: updateData,
           });
-          console.log(`Synced contact info to FamilyMember ${linkedMemberId}:`, updateData);
+          console.log(`Synced contact info to FamilyMember ${memberIdToSync}:`, updateData);
         }
       } catch (syncError) {
         console.error('Failed to sync contact info to FamilyMember:', syncError);
