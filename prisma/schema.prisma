@@ -219,8 +219,12 @@ model User {
   twoFactorSecret     String?
   twoFactorBackupCodes String?
 
+  // Phone verification
+  phoneVerified       Boolean  @default(false)
+
   // Relations
   sessions        Session[]
+  otpCodes        OtpCode[]
   invitesSent     Invite[] @relation("InviteSender")
   inviteUsed      Invite?  @relation("InviteUsed")
   accessRequest   AccessRequest?
@@ -231,6 +235,26 @@ model User {
   @@index([role])
   @@index([status])
   @@index([linkedMemberId])
+}
+
+model OtpCode {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone        String
+  code         String
+  purpose      String   // LOGIN, REGISTRATION, VERIFICATION
+
+  expiresAt    DateTime
+  usedAt       DateTime?
+  attempts     Int      @default(0)
+
+  createdAt    DateTime @default(now())
+
+  @@index([phone])
+  @@index([phone, code])
+  @@index([expiresAt])
 }
 
 model Session {

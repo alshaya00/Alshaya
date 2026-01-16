@@ -41,4 +41,4 @@ build = ["npm", "run", "build"]
 
 [agent]
 expertMode = true
-integrations = ["resend:1.0.0", "google-sheet:1.0.0", "github:1.0.0", "google-drive:1.0.0"]
+integrations = ["resend:1.0.0", "google-sheet:1.0.0", "github:1.0.0", "google-drive:1.0.0", "twilio:1.0.0"]
