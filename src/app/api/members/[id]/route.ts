@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
+import { generateFullNamesFromLineage } from '@/lib/member-registry';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -228,6 +229,31 @@ async function handleUpdate(
         delete updateData[key];
       }
     });
+
+    // Auto-regenerate fullNameAr/fullNameEn when firstName, gender, or fatherId changes
+    const nameAffectingFields = ['firstName', 'gender', 'fatherId'];
+    const hasNameChanges = nameAffectingFields.some(field => 
+      updateData[field] !== undefined && updateData[field] !== member[field as keyof typeof member]
+    );
+    
+    if (hasNameChanges) {
+      try {
+        const newFirstName = (updateData.firstName as string) || member.firstName;
+        const newGender = (updateData.gender as 'Male' | 'Female') || member.gender;
+        const newFatherId = updateData.fatherId !== undefined ? (updateData.fatherId as string | null) : member.fatherId;
+        
+        const fullNames = await generateFullNamesFromLineage(params.id, {
+          firstName: newFirstName,
+          gender: newGender,
+          fatherId: newFatherId,
+        });
+        
+        updateData.fullNameAr = fullNames.fullNameAr;
+        updateData.fullNameEn = fullNames.fullNameEn;
+      } catch (nameError) {
+        console.error('Failed to regenerate full names:', nameError);
+      }
+    }
 
     const originalMember = { ...member };
 
