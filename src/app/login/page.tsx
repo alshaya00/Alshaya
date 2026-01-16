@@ -352,7 +352,7 @@ function LoginForm() {
               ) : (
                 <>
                   {!show2FA && phoneStep === 'phone' && (
-                    <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+                    <div className="flex flex-row-reverse mb-6 bg-gray-100 rounded-lg p-1">
                       <button
                         type="button"
                         onClick={() => setLoginMethod('phone')}
