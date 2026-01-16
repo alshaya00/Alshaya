@@ -53,7 +53,34 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   **Localization Enhancements**:
     -   **Arabic Transliteration**: 80+ common Arabic name mappings for proper fullNameEn generation.
     -   **Branch Identification**: Recursive lookup with fuzzy Arabic name matching for pending member approvals.
--   **Security**: Admin credentials are set via Replit Secrets.
+-   **Security Hardening**:
+    -   **Admin credentials**: Set via Replit Secrets (ADMIN_USERNAME, ADMIN_PASSWORD).
+    -   **API Rate Limiting** (`src/lib/rate-limiter.ts`): In-memory rate limiter protects public endpoints (OTP: 5/min, duplicate-check: 20/min, register: 5/min). Returns 429 with bilingual messages.
+    -   **Session Timeout**: 30-minute inactivity timeout for admin sessions with activity tracking via mouse/keyboard events.
+    -   **Account Lockout**: Failed login tracking with DB fields (failedLoginAttempts, lockedUntil). 5 failed attempts = 15-minute lockout.
+    -   **Password Strength Validation**: Minimum 8 characters with uppercase, lowercase, and number requirements.
+    -   **Deletion Protection**: Block deleting members with linked user accounts or pending merge references. Cascade warning shows affected children count before proceeding.
+    -   **Deletion Impact Preview** (`/api/members/[id]/delete-preview`): API to preview deletion impact (children, photos, journals, linked users) before confirming.
+    -   **Backup Integrity Verification**: Member count verification after backup creation. Size anomaly detection warns if backup is <50% of average size.
+    -   **Restore Confirmation Modal**: Destructive restore operations require typing "CONFIRM" before proceeding.
+    -   **Production Sync Safety**: CLI sync script (`npm run sync:prod --confirm`) requires --confirm flag to execute.
+-   **Data Validation** (13 checks via `/api/admin/data-validation`):
+    1. Generations validation
+    2. Parent relationships
+    3. Orphaned members
+    4. Circular ancestry
+    5. Deleted references
+    6. Duplicate members
+    7. Children counts
+    8. Lineage consistency
+    9. Pending members
+    10. Age-generation correlation
+    11. Birth year logic (child born 12+ years after parent)
+    12. Death year validation (not before birth, not in future)
+    13. Linked accounts (orphaned/duplicate detection)
+-   **Admin Tools**:
+    -   **Generation Auto-Correction** (`/api/admin/fix-generations`): GET lists members with wrong generations, POST fixes them with full audit logging.
+    -   **Linked Accounts Report**: Visible in data validation UI showing orphaned links and duplicate account references.
 -   **UI/UX**: Clean, modern interface with Tailwind CSS.
 
 **Core Pages:**
