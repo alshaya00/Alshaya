@@ -20,6 +20,7 @@ import {
   Check,
   UserX,
   UserCheck,
+  Link2Off,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
@@ -62,9 +63,10 @@ export default function AdminUsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{
-    type: 'block' | 'unblock';
+    type: 'block' | 'unblock' | 'unlink';
     user: UserData;
   } | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const limit = 20;
 
   useEffect(() => {
@@ -146,6 +148,37 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error('Error updating user:', err);
       setError('حدث خطأ في تحديث المستخدم');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUnlink = async (user: UserData) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ userId: user.id, linkedMemberId: null }),
+      });
+
+      if (res.ok) {
+        setSuccessMessage('تم فك ارتباط الحساب بالعضو بنجاح');
+        await fetchUsers();
+        setShowConfirmModal(null);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في فك ارتباط المستخدم');
+      }
+    } catch (err) {
+      console.error('Error unlinking user:', err);
+      setError('حدث خطأ في فك ارتباط المستخدم');
     } finally {
       setIsProcessing(false);
     }
@@ -342,6 +375,20 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+          <p className="text-green-700">{successMessage}</p>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="mr-auto text-green-500 hover:text-green-700"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
@@ -451,36 +498,48 @@ export default function AdminUsersPage() {
 
                       {/* Actions */}
                       <td className="px-4 py-3">
-                        {user.role !== 'SUPER_ADMIN' && (
-                          <>
-                            {user.status === 'ACTIVE' && (
-                              <button
-                                onClick={() => setShowConfirmModal({ type: 'block', user })}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                title="حظر المستخدم"
-                              >
-                                <UserX className="w-4 h-4" />
-                                حظر
-                              </button>
-                            )}
-                            {user.status === 'DISABLED' && (
-                              <button
-                                onClick={() => setShowConfirmModal({ type: 'unblock', user })}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
-                                title="إلغاء الحظر"
-                              >
-                                <UserCheck className="w-4 h-4" />
-                                إلغاء الحظر
-                              </button>
-                            )}
-                            {user.status === 'PENDING' && (
-                              <span className="text-gray-400 text-sm">بانتظار التفعيل</span>
-                            )}
-                          </>
-                        )}
-                        {user.role === 'SUPER_ADMIN' && (
-                          <span className="text-gray-400 text-sm">لا يمكن التعديل</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {user.role !== 'SUPER_ADMIN' && (
+                            <>
+                              {user.linkedMemberId && (
+                                <button
+                                  onClick={() => setShowConfirmModal({ type: 'unlink', user })}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors"
+                                  title="فك الارتباط"
+                                >
+                                  <Link2Off className="w-4 h-4" />
+                                  فك الارتباط
+                                </button>
+                              )}
+                              {user.status === 'ACTIVE' && (
+                                <button
+                                  onClick={() => setShowConfirmModal({ type: 'block', user })}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="حظر المستخدم"
+                                >
+                                  <UserX className="w-4 h-4" />
+                                  حظر
+                                </button>
+                              )}
+                              {user.status === 'DISABLED' && (
+                                <button
+                                  onClick={() => setShowConfirmModal({ type: 'unblock', user })}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                                  title="إلغاء الحظر"
+                                >
+                                  <UserCheck className="w-4 h-4" />
+                                  إلغاء الحظر
+                                </button>
+                              )}
+                              {user.status === 'PENDING' && (
+                                <span className="text-gray-400 text-sm">بانتظار التفعيل</span>
+                              )}
+                            </>
+                          )}
+                          {user.role === 'SUPER_ADMIN' && (
+                            <span className="text-gray-400 text-sm">لا يمكن التعديل</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -522,29 +581,40 @@ export default function AdminUsersPage() {
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center gap-4 mb-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                showConfirmModal.type === 'block' ? 'bg-red-100' : 'bg-green-100'
+                showConfirmModal.type === 'block' ? 'bg-red-100' : 
+                showConfirmModal.type === 'unlink' ? 'bg-orange-100' : 'bg-green-100'
               }`}>
                 {showConfirmModal.type === 'block' ? (
                   <UserX className="w-6 h-6 text-red-600" />
+                ) : showConfirmModal.type === 'unlink' ? (
+                  <Link2Off className="w-6 h-6 text-orange-600" />
                 ) : (
                   <UserCheck className="w-6 h-6 text-green-600" />
                 )}
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
-                  {showConfirmModal.type === 'block' ? 'حظر المستخدم' : 'إلغاء حظر المستخدم'}
+                  {showConfirmModal.type === 'block' ? 'حظر المستخدم' : 
+                   showConfirmModal.type === 'unlink' ? 'فك ارتباط الحساب' : 'إلغاء حظر المستخدم'}
                 </h3>
                 <p className="text-gray-500">{showConfirmModal.user.nameArabic}</p>
               </div>
             </div>
 
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-2">
               {showConfirmModal.type === 'block'
                 ? 'هل أنت متأكد من حظر هذا المستخدم؟ لن يتمكن من تسجيل الدخول إلى حسابه.'
+                : showConfirmModal.type === 'unlink'
+                ? 'هل تريد فك ارتباط هذا الحساب بالعضو؟'
                 : 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟ سيتمكن من تسجيل الدخول مرة أخرى.'}
             </p>
+            {showConfirmModal.type === 'unlink' && (
+              <p className="text-gray-500 text-sm mb-4" dir="ltr">
+                Unlink this account from the family member?
+              </p>
+            )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowConfirmModal(null)}
                 className="flex-1 px-4 py-2.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -553,11 +623,19 @@ export default function AdminUsersPage() {
                 إلغاء
               </button>
               <button
-                onClick={() => handleBlockUnblock(showConfirmModal.user, showConfirmModal.type)}
+                onClick={() => {
+                  if (showConfirmModal.type === 'unlink') {
+                    handleUnlink(showConfirmModal.user);
+                  } else {
+                    handleBlockUnblock(showConfirmModal.user, showConfirmModal.type);
+                  }
+                }}
                 disabled={isProcessing}
                 className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition-colors flex items-center justify-center gap-2 ${
                   showConfirmModal.type === 'block'
                     ? 'bg-red-600 hover:bg-red-700'
+                    : showConfirmModal.type === 'unlink'
+                    ? 'bg-orange-600 hover:bg-orange-700'
                     : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
@@ -569,6 +647,11 @@ export default function AdminUsersPage() {
                       <>
                         <UserX className="w-5 h-5" />
                         حظر
+                      </>
+                    ) : showConfirmModal.type === 'unlink' ? (
+                      <>
+                        <Link2Off className="w-5 h-5" />
+                        فك الارتباط
                       </>
                     ) : (
                       <>

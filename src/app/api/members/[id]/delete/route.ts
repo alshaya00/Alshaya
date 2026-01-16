@@ -44,6 +44,21 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Member already deleted' }, { status: 400 });
     }
 
+    // Check if member has linked user account - block deletion
+    const linkedUser = await prisma.user.findFirst({
+      where: { linkedMemberId: params.id },
+      select: { id: true, email: true, nameArabic: true },
+    });
+
+    if (linkedUser) {
+      return NextResponse.json({
+        success: false,
+        message: `Cannot delete: this member is linked to user account "${linkedUser.email}". Unlink the account first.`,
+        messageAr: `لا يمكن الحذف: هذا العضو مرتبط بحساب المستخدم "${linkedUser.nameArabic}". يرجى فك الارتباط أولاً.`,
+        linkedUser: { id: linkedUser.id, email: linkedUser.email, name: linkedUser.nameArabic },
+      }, { status: 400 });
+    }
+
     const fullSnapshot = JSON.stringify(member);
 
     if (mergedIntoId) {

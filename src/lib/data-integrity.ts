@@ -31,6 +31,8 @@ export interface DataConsistencyReport {
     lineageConsistency: ValidationResult;
     pendingMembers: ValidationResult;
     ageGeneration: ValidationResult;
+    birthYearLogic: ValidationResult;
+    linkedAccounts: ValidationResult;
   };
 }
 
@@ -865,6 +867,195 @@ export async function validateAgeGeneration(): Promise<ValidationResult> {
   };
 }
 
+const MIN_PARENT_AGE = 12;
+
+export async function validateBirthYearLogic(): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+
+  const membersWithFatherAndBirthYear = await prisma.familyMember.findMany({
+    where: {
+      deletedAt: null,
+      fatherId: { not: null },
+      birthYear: { not: null },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      fatherId: true,
+      birthYear: true,
+    },
+  });
+
+  const fatherIds = membersWithFatherAndBirthYear
+    .map(m => m.fatherId)
+    .filter((id): id is string => id !== null);
+
+  const fathers = await prisma.familyMember.findMany({
+    where: {
+      id: { in: fatherIds },
+      birthYear: { not: null },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      birthYear: true,
+    },
+  });
+
+  const fatherMap = new Map(fathers.map(f => [f.id, f]));
+
+  for (const member of membersWithFatherAndBirthYear) {
+    if (!member.fatherId || !member.birthYear) continue;
+
+    const father = fatherMap.get(member.fatherId);
+    if (!father || !father.birthYear) continue;
+
+    const yearDifference = member.birthYear - father.birthYear;
+
+    if (yearDifference < MIN_PARENT_AGE) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Child's birth year (${member.birthYear}) is before or too close to father's birth year (${father.birthYear})`,
+        issueAr: `سنة ميلاد الابن (${member.birthYear}) قبل أو قريبة جداً من سنة ميلاد الأب (${father.birthYear})`,
+        severity: 'warning',
+        details: {
+          childBirthYear: member.birthYear,
+          fatherBirthYear: father.birthYear,
+          fatherId: member.fatherId,
+          fatherName: father.firstName,
+          yearDifference,
+          minimumRequired: MIN_PARENT_AGE,
+        },
+      });
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
+export async function validateLinkedAccounts(): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+
+  const usersWithLinkedMember = await prisma.user.findMany({
+    where: {
+      linkedMemberId: { not: null },
+    },
+    select: {
+      id: true,
+      email: true,
+      linkedMemberId: true,
+    },
+  });
+
+  if (usersWithLinkedMember.length === 0) {
+    return {
+      valid: true,
+      issues,
+      checkedAt: new Date(),
+    };
+  }
+
+  const linkedMemberIds = usersWithLinkedMember
+    .map(u => u.linkedMemberId)
+    .filter((id): id is string => id !== null);
+
+  const deletedMembers = await prisma.familyMember.findMany({
+    where: {
+      id: { in: linkedMemberIds },
+      deletedAt: { not: null },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      deletedAt: true,
+    },
+  });
+
+  const deletedMemberMap = new Map(deletedMembers.map(m => [m.id, m]));
+
+  const allLinkedMembers = await prisma.familyMember.findMany({
+    where: {
+      id: { in: linkedMemberIds },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const existingMemberIds = new Set(allLinkedMembers.map(m => m.id));
+
+  for (const user of usersWithLinkedMember) {
+    if (!user.linkedMemberId) continue;
+
+    const deletedMember = deletedMemberMap.get(user.linkedMemberId);
+    if (deletedMember) {
+      issues.push({
+        memberId: user.id,
+        memberName: user.email,
+        issue: `User account is linked to a deleted member`,
+        issueAr: `حساب المستخدم مرتبط بعضو محذوف`,
+        severity: 'warning',
+        details: {
+          userId: user.id,
+          userEmail: user.email,
+          deletedMemberId: user.linkedMemberId,
+          deletedMemberName: deletedMember.firstName,
+          deletedAt: deletedMember.deletedAt,
+        },
+      });
+    } else if (!existingMemberIds.has(user.linkedMemberId)) {
+      issues.push({
+        memberId: user.id,
+        memberName: user.email,
+        issue: `User account is linked to a non-existent member ID '${user.linkedMemberId}'`,
+        issueAr: `حساب المستخدم مرتبط بمعرف عضو غير موجود '${user.linkedMemberId}'`,
+        severity: 'error',
+        details: {
+          userId: user.id,
+          userEmail: user.email,
+          invalidMemberId: user.linkedMemberId,
+        },
+      });
+    }
+  }
+
+  const memberLinkCounts = new Map<string, string[]>();
+  for (const user of usersWithLinkedMember) {
+    if (!user.linkedMemberId) continue;
+    if (!memberLinkCounts.has(user.linkedMemberId)) {
+      memberLinkCounts.set(user.linkedMemberId, []);
+    }
+    memberLinkCounts.get(user.linkedMemberId)!.push(user.email);
+  }
+
+  for (const [memberId, userEmails] of memberLinkCounts) {
+    if (userEmails.length > 1) {
+      issues.push({
+        memberId: memberId,
+        issue: `Member has multiple user accounts linked: ${userEmails.join(', ')}`,
+        issueAr: `العضو لديه حسابات مستخدمين متعددة مرتبطة: ${userEmails.join(', ')}`,
+        severity: 'error',
+        details: {
+          memberId,
+          linkedUserEmails: userEmails,
+          linkCount: userEmails.length,
+        },
+      });
+    }
+  }
+
+  return {
+    valid: issues.filter(i => i.severity === 'error').length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
 export async function checkDataConsistency(): Promise<DataConsistencyReport> {
   const totalMembers = await prisma.familyMember.count({
     where: { deletedAt: null },
@@ -881,6 +1072,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     lineageConsistency,
     pendingMembers,
     ageGeneration,
+    birthYearLogic,
+    linkedAccounts,
   ] = await Promise.all([
     validateGenerations(),
     validateParentRelationships(),
@@ -892,6 +1085,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     validateLineageConsistency(),
     validatePendingMembers(),
     validateAgeGeneration(),
+    validateBirthYearLogic(),
+    validateLinkedAccounts(),
   ]);
 
   const totalIssues =
@@ -904,7 +1099,9 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     childrenCounts.issues.length +
     lineageConsistency.issues.length +
     pendingMembers.issues.length +
-    ageGeneration.issues.length;
+    ageGeneration.issues.length +
+    birthYearLogic.issues.length +
+    linkedAccounts.issues.length;
 
   const allValidations = [
     generations,
@@ -917,6 +1114,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     lineageConsistency,
     pendingMembers,
     ageGeneration,
+    birthYearLogic,
+    linkedAccounts,
   ];
 
   const hasErrors = allValidations.some(v => 
@@ -939,6 +1138,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
       lineageConsistency,
       pendingMembers,
       ageGeneration,
+      birthYearLogic,
+      linkedAccounts,
     },
   };
 }
@@ -1108,6 +1309,8 @@ export function formatValidationReport(report: DataConsistencyReport): string {
     { name: '8. Lineage Consistency Validation', key: 'lineageConsistency' as const },
     { name: '9. Pending Members Validation', key: 'pendingMembers' as const },
     { name: '10. Age-Generation Validation', key: 'ageGeneration' as const },
+    { name: '11. Birth Year Logic Validation', key: 'birthYearLogic' as const },
+    { name: '12. Linked Accounts Validation', key: 'linkedAccounts' as const },
   ];
 
   for (const section of validationSections) {

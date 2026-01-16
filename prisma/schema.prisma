@@ -231,10 +231,10 @@ model User {
   activityLogs    ActivityLog[]
   notifications   Notification[]
 
+  @@unique([linkedMemberId])
   @@index([email])
   @@index([role])
   @@index([status])
-  @@index([linkedMemberId])
 }
 
 model OtpCode {
@@ -1646,9 +1646,9 @@ model InvitationCode {
   // Redemption tracking
   redemptions     InvitationRedemption[]
   
+  @@unique([linkedMemberId])
   @@index([code])
   @@index([status])
-  @@index([linkedMemberId])
   @@index([expiresAt])
 }
 

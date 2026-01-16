@@ -267,6 +267,16 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // Check unlink permission - only SUPER_ADMIN or ADMIN can unlink
+    if (body.linkedMemberId === null && targetUser.linkedMemberId !== null) {
+      if (currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN') {
+        return NextResponse.json(
+          { success: false, message: 'No permission to unlink users', messageAr: 'لا تملك صلاحية فك ارتباط المستخدمين' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Prevent self-demotion for super admin
     if (currentUser.id === userId && currentUser.role === 'SUPER_ADMIN' && role && role !== 'SUPER_ADMIN') {
       return NextResponse.json(
@@ -279,19 +289,24 @@ export async function PATCH(request: NextRequest) {
     if (role) updateData.role = role;
     if (status) updateData.status = status;
     if (assignedBranch !== undefined) updateData.assignedBranch = assignedBranch;
+    if (body.linkedMemberId === null) updateData.linkedMemberId = null;
 
     const updatedUser = await updateUser(userId, updateData);
+
+    const isUnlinkAction = body.linkedMemberId === null && targetUser.linkedMemberId !== null;
 
     await logActivity({
       userId: currentUser.id,
       userEmail: currentUser.email,
       userName: currentUser.nameArabic,
-      action: 'EDIT_USER',
+      action: isUnlinkAction ? 'UNLINK_USER' : 'EDIT_USER',
       category: 'USER',
       targetType: 'USER',
       targetId: userId,
       targetName: targetUser.nameArabic,
-      details: { changes: updateData, previousRole: targetUser.role, previousStatus: targetUser.status },
+      details: isUnlinkAction 
+        ? { unlinkedFromMemberId: targetUser.linkedMemberId }
+        : { changes: updateData, previousRole: targetUser.role, previousStatus: targetUser.status },
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown',
       success: true,
