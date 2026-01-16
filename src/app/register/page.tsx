@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
-import SaudiPhoneInput from '@/components/SaudiPhoneInput';
+import PhoneInput from '@/components/PhoneInput';
+import OtpInput from '@/components/OtpInput';
 import { GenderAvatarInline } from '@/components/GenderAvatar';
 
 interface FormData {
@@ -22,6 +23,7 @@ interface FormData {
   nameArabic: string;
   nameEnglish: string;
   phone: string;
+  countryCode: string;
   claimedRelation: string;
   relatedMemberId: string;
   relationshipType: string;
@@ -46,6 +48,7 @@ export default function RegisterPage() {
     nameArabic: '',
     nameEnglish: '',
     phone: '',
+    countryCode: '+966',
     claimedRelation: '',
     relatedMemberId: '',
     relationshipType: '',
@@ -180,7 +183,7 @@ export default function RegisterPage() {
     if (formData.password !== formData.confirmPassword) return 'كلمتا المرور غير متطابقتين';
     if (!selectedMember && !formData.nameArabic) return 'الاسم بالعربي مطلوب';
     if (!formData.phone) return 'رقم الاتصال مطلوب';
-    if (!/^[\d\s+()-]{9,15}$/.test(formData.phone.replace(/\s/g, ''))) {
+    if (formData.phone.replace(/\D/g, '').length < 7) {
       return 'صيغة رقم الاتصال غير صحيحة';
     }
     if (!selectedMember && formData.parentMemberId && !formData.gender) {
@@ -784,12 +787,10 @@ export default function RegisterPage() {
                   معلومات التواصل
                 </h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    رقم الاتصال <span className="text-red-500">*</span>
-                  </label>
-                  <SaudiPhoneInput
+                  <PhoneInput
                     value={formData.phone}
-                    onChange={(value) => setFormData({ ...formData, phone: value })}
+                    onChange={(phone, countryCode) => setFormData({ ...formData, phone, countryCode })}
+                    countryCode={formData.countryCode}
                     required
                   />
                 </div>
