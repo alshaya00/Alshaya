@@ -133,8 +133,7 @@ function LoginForm() {
       if (data.success) {
         localStorage.setItem('auth_token', data.token);
         const isAdmin = data.user?.role === 'SUPER_ADMIN' || data.user?.role === 'ADMIN';
-        router.push(isAdmin ? '/admin' : '/');
-        window.location.reload();
+        window.location.href = isAdmin ? '/admin' : '/';
       } else {
         setError(data.error || 'رمز التحقق غير صحيح');
       }
