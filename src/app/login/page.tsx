@@ -5,21 +5,35 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
+import PhoneInput from '@/components/PhoneInput';
+import OtpInput from '@/components/OtpInput';
+
+type LoginMethod = 'email' | 'phone';
+type PhoneStep = 'phone' | 'otp';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, verify2FA } = useAuth();
 
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>('phone');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+966');
+  const [otpCode, setOtpCode] = useState('');
+  
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const [show2FA, setShow2FA] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [isBackupCode, setIsBackupCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -36,7 +50,14 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -45,7 +66,6 @@ function LoginForm() {
       const result = await login(email, password, rememberMe);
 
       if (result.success) {
-        // Redirect admins to dashboard, others to home
         const isAdmin = result.user?.role === 'SUPER_ADMIN' || result.user?.role === 'ADMIN';
         router.push(isAdmin ? '/admin' : '/');
       } else if (result.requires2FA) {
@@ -53,7 +73,6 @@ function LoginForm() {
       } else {
         setError(result.error || 'فشل تسجيل الدخول');
 
-        // Extract remaining attempts from error if available
         if (result.error?.includes('attempts')) {
           const match = result.error.match(/(\d+)/);
           if (match) {
@@ -63,6 +82,92 @@ function LoginForm() {
       }
     } catch {
       setError('حدث خطأ أثناء تسجيل الدخول');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, countryCode, purpose: 'LOGIN' }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccessMessage('تم إرسال رمز التحقق إلى جوالك');
+        setPhoneStep('otp');
+        setCountdown(data.expiresIn || 300);
+      } else {
+        setError(data.error || 'فشل في إرسال رمز التحقق');
+      }
+    } catch {
+      setError('حدث خطأ في إرسال رمز التحقق');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, countryCode, code: otpCode, purpose: 'LOGIN', rememberMe }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('auth_token', data.token);
+        const isAdmin = data.user?.role === 'SUPER_ADMIN' || data.user?.role === 'ADMIN';
+        router.push(isAdmin ? '/admin' : '/');
+        window.location.reload();
+      } else {
+        setError(data.error || 'رمز التحقق غير صحيح');
+      }
+    } catch {
+      setError('حدث خطأ في التحقق');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (countdown > 0) return;
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, countryCode, purpose: 'LOGIN' }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccessMessage('تم إعادة إرسال رمز التحقق');
+        setCountdown(data.expiresIn || 300);
+        setOtpCode('');
+      } else {
+        setError(data.error || 'فشل في إعادة إرسال الرمز');
+      }
+    } catch {
+      setError('حدث خطأ');
     } finally {
       setIsLoading(false);
     }
@@ -88,14 +193,15 @@ function LoginForm() {
     }
   };
 
-  const handleOAuthLogin = (provider: 'google' | 'github') => {
-    window.location.href = `/api/auth/oauth/${provider}`;
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
     <GuestOnly redirectTo="/">
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-emerald-50 to-teal-100" dir="rtl">
-        {/* Header */}
         <header className="py-6 px-4">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <Link href="/" className="text-2xl font-bold text-emerald-800">
@@ -110,12 +216,9 @@ function LoginForm() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1 flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-md">
-            {/* Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
-              {/* Logo/Title */}
               <div className="text-center mb-8">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
                   <svg
@@ -138,7 +241,6 @@ function LoginForm() {
                 </p>
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start gap-3">
@@ -167,8 +269,13 @@ function LoginForm() {
                 </div>
               )}
 
+              {successMessage && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-800 font-medium">{successMessage}</p>
+                </div>
+              )}
+
               {show2FA ? (
-                /* 2FA Form */
                 <form onSubmit={handle2FASubmit} className="space-y-5">
                   <div className="text-center mb-4">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
@@ -226,130 +333,254 @@ function LoginForm() {
                   </button>
                 </form>
               ) : (
-                /* Login Form */
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Email */}
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      البريد الإلكتروني
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                      placeholder="example@email.com"
-                      required
-                      autoComplete="email"
-                      dir="ltr"
-                    />
-                  </div>
+                <>
+                  {!show2FA && phoneStep === 'phone' && (
+                    <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+                      <button
+                        type="button"
+                        onClick={() => setLoginMethod('phone')}
+                        className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+                          loginMethod === 'phone'
+                            ? 'bg-white text-emerald-700 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        رقم الجوال
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLoginMethod('email')}
+                        className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+                          loginMethod === 'email'
+                            ? 'bg-white text-emerald-700 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        البريد الإلكتروني
+                      </button>
+                    </div>
+                  )}
 
-                  {/* Password */}
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      كلمة المرور
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                      placeholder="••••••••"
-                      required
-                      autoComplete="current-password"
-                      dir="ltr"
-                    />
-                  </div>
+                  {loginMethod === 'email' ? (
+                    <form onSubmit={handleEmailSubmit} className="space-y-5">
+                      <div>
+                        <label
+                          htmlFor="email"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          البريد الإلكتروني
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                          placeholder="example@email.com"
+                          required
+                          autoComplete="email"
+                          dir="ltr"
+                        />
+                      </div>
 
-                  {/* Remember Me & Forgot Password */}
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <span className="text-sm text-gray-600">تذكرني</span>
-                    </label>
-                    <Link
-                      href="/forgot-password"
-                      className="text-sm text-emerald-600 hover:text-emerald-800"
-                    >
-                      نسيت كلمة المرور؟
-                    </Link>
-                  </div>
+                      <div>
+                        <label
+                          htmlFor="password"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          كلمة المرور
+                        </label>
+                        <input
+                          type="password"
+                          id="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                          placeholder="••••••••"
+                          required
+                          autoComplete="current-password"
+                          dir="ltr"
+                        />
+                      </div>
 
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                           />
+                          <span className="text-sm text-gray-600">تذكرني</span>
+                        </label>
+                        <Link
+                          href="/forgot-password"
+                          className="text-sm text-emerald-600 hover:text-emerald-800"
+                        >
+                          نسيت كلمة المرور؟
+                        </Link>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            جاري تسجيل الدخول...
+                          </span>
+                        ) : (
+                          'تسجيل الدخول'
+                        )}
+                      </button>
+                    </form>
+                  ) : phoneStep === 'phone' ? (
+                    <form onSubmit={handleSendOtp} className="space-y-5">
+                      <PhoneInput
+                        value={phone}
+                        onChange={(p, c) => {
+                          setPhone(p);
+                          setCountryCode(c);
+                        }}
+                        countryCode={countryCode}
+                        required
+                      />
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-600">تذكرني</span>
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading || !phone}
+                        className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            جاري الإرسال...
+                          </span>
+                        ) : (
+                          'إرسال رمز التحقق'
+                        )}
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtp} className="space-y-5">
+                      <div className="text-center mb-4">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <h2 className="text-xl font-semibold text-gray-900">أدخل رمز التحقق</h2>
+                        <p className="text-gray-600 mt-1">
+                          تم إرسال رمز مكون من 6 أرقام إلى
+                        </p>
+                        <p className="text-emerald-700 font-medium" dir="ltr">
+                          {countryCode} {phone}
+                        </p>
+                      </div>
+
+                      <OtpInput
+                        value={otpCode}
+                        onChange={setOtpCode}
+                        disabled={isLoading}
+                      />
+
+                      {countdown > 0 && (
+                        <p className="text-center text-sm text-gray-500">
+                          صالح لمدة {formatCountdown(countdown)}
+                        </p>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={isLoading || otpCode.length < 6}
+                        className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? 'جاري التحقق...' : 'تأكيد'}
+                      </button>
+
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhoneStep('phone');
+                            setOtpCode('');
+                            setError(null);
+                            setSuccessMessage(null);
+                          }}
+                          className="text-gray-600 hover:text-gray-800 text-sm"
+                        >
+                          تغيير الرقم
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={countdown > 0 || isLoading}
+                          className="text-emerald-600 hover:text-emerald-800 text-sm disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {countdown > 0 ? `إعادة الإرسال (${formatCountdown(countdown)})` : 'إعادة إرسال الرمز'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {!show2FA && phoneStep === 'phone' && (
+                    <div className="mt-6 text-center">
+                      <p className="text-gray-600 mb-3">لديك رمز دعوة؟</p>
+                      <Link
+                        href="/invite"
+                        className="inline-flex items-center gap-2 px-6 py-2 border border-emerald-600 text-emerald-600 font-medium rounded-lg hover:bg-emerald-50 transition-colors"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
                           <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                           />
                         </svg>
-                        جاري تسجيل الدخول...
-                      </span>
-                    ) : (
-                      'تسجيل الدخول'
-                    )}
-                  </button>
-                </form>
-              )}
-
-              {/* Invite Code Link */}
-              {!show2FA && (
-                <div className="text-center">
-                  <p className="text-gray-600 mb-3">لديك رمز دعوة؟</p>
-                  <Link
-                    href="/invite"
-                    className="inline-flex items-center gap-2 px-6 py-2 border border-emerald-600 text-emerald-600 font-medium rounded-lg hover:bg-emerald-50 transition-colors"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                    استخدام رمز الدعوة
-                  </Link>
-                </div>
+                        استخدام رمز الدعوة
+                      </Link>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Register Link */}
             <p className="text-center mt-6 text-gray-600">
               ليس لديك حساب؟{' '}
               <Link
@@ -362,7 +593,6 @@ function LoginForm() {
           </div>
         </main>
 
-        {/* Footer */}
         <footer className="py-6 text-center text-gray-500 text-sm">
           <p>شجرة عائلة آل شايع - نحفظ إرثنا، نربط أجيالنا</p>
         </footer>
