@@ -64,10 +64,11 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   Advanced Search (`/search`)
 -   Admin Audit Log (`/admin/audit`)
 -   History (Backup Management) (`/history`)
--   Registration (`/register`) - Dual-path signup with "Claim Your Place" wizard (parent selection + gender)
+-   Registration (`/register`) - Dual-path signup with WhatsApp OTP verification for auto-approval + "Claim Your Place" wizard (parent selection + gender)
 -   Invitation Signup (`/invite`) - Code-based registration with auto-approval
--   Admin Access Requests (`/admin/access-requests`) - Approve/reject signup requests
+-   Admin Access Requests (`/admin/access-requests`) - Approve/reject signup requests (for users who can't use WhatsApp verification)
 -   Admin Invitations (`/admin/invitations`) - Generate and manage invitation codes
+-   Admin User Management (`/admin/users`) - View all registered users, search/filter, block/unblock accounts
 -   Admin Album Folders (`/admin/album-folders`) - Manage photo album folders
 -   Admin Merge Tool (`/admin/merge`) - Merge duplicate member profiles
 -   Admin Data Validation (`/admin/data-validation`) - Detect and fix data integrity issues

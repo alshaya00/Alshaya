@@ -87,6 +87,12 @@ const adminNavItems: NavItem[] = [
     icon: Key,
   },
   {
+    href: '/admin/users',
+    label: 'إدارة المستخدمين',
+    labelEn: 'User Management',
+    icon: Users,
+  },
+  {
     href: '/admin/images',
     label: 'إدارة الصور',
     labelEn: 'Image Moderation',

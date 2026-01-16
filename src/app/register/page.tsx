@@ -8,7 +8,7 @@ import type { FamilyMember } from '@/lib/types';
 import { getFullLineageString } from '@/lib/lineage-utils';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
-  Users, Lock, ArrowRight, Loader2, X, Search
+  Users, Lock, ArrowRight, Loader2, X, Search, Phone, MessageCircle
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +33,7 @@ interface FormData {
 }
 
 type JoinPath = 'invite' | 'request' | 'browse' | null;
+type PhoneStep = 'form' | 'verify' | 'complete';
 
 const RELATIONSHIP_TYPES = relationshipTypes;
 
@@ -65,6 +66,12 @@ export default function RegisterPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>('form');
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpExpiresIn, setOtpExpiresIn] = useState<number>(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   useEffect(() => {
     async function fetchMembers() {
       try {
@@ -79,6 +86,20 @@ export default function RegisterPage() {
     }
     fetchMembers();
   }, []);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    if (otpExpiresIn > 0) {
+      const timer = setTimeout(() => setOtpExpiresIn(otpExpiresIn - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpExpiresIn]);
 
   const normalizeArabic = (text: string): string => {
     return text
@@ -195,9 +216,9 @@ export default function RegisterPage() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOtp = async () => {
     setError(null);
+    setOtpError(null);
 
     const validationError = validateForm();
     if (validationError) {
@@ -208,29 +229,102 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          phone: formData.phone,
+          countryCode: formData.countryCode,
+          purpose: 'REGISTRATION',
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.messageAr || data.message || 'فشل التسجيل');
+        setError(data.error || 'فشل في إرسال رمز التحقق');
         return;
       }
 
-      setSuccess(true);
-      setRequestId(data.requestId);
+      setPhoneStep('verify');
+      setOtpExpiresIn(data.expiresIn || 300);
+      setResendCooldown(60);
     } catch {
-      setError('حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.');
+      setError('حدث خطأ أثناء إرسال رمز التحقق');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Close dropdowns when clicking outside
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+
+    setOtpError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: formData.phone,
+          countryCode: formData.countryCode,
+          purpose: 'REGISTRATION',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOtpError(data.error || 'فشل في إرسال رمز التحقق');
+        return;
+      }
+
+      setOtp('');
+      setOtpExpiresIn(data.expiresIn || 300);
+      setResendCooldown(60);
+    } catch {
+      setOtpError('حدث خطأ أثناء إرسال رمز التحقق');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyAndCreate = async () => {
+    if (otp.length !== 6) {
+      setOtpError('يرجى إدخال رمز التحقق المكون من 6 أرقام');
+      return;
+    }
+
+    setOtpError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/register/verify-and-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          otp,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOtpError(data.messageAr || data.message || 'فشل في التحقق');
+        return;
+      }
+
+      setPhoneStep('complete');
+      setSuccess(true);
+    } catch {
+      setOtpError('حدث خطأ أثناء التحقق');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = () => {
       setShowMemberDropdown(false);
@@ -240,7 +334,6 @@ export default function RegisterPage() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Update claimedRelation when gender changes and parent is selected
   useEffect(() => {
     if (formData.parentMemberId && formData.gender) {
       const parent = allMembers.find((m) => m.id === formData.parentMemberId);
@@ -258,9 +351,6 @@ export default function RegisterPage() {
     }
   }, [formData.gender, formData.parentMemberId, allMembers]);
 
-  // ============================================
-  // SUCCESS STATE
-  // ============================================
   if (success) {
     return (
       <GuestOnly redirectTo="/">
@@ -270,24 +360,17 @@ export default function RegisterPage() {
               <Check className="w-10 h-10 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              تم تقديم طلبك بنجاح!
+              تم إنشاء حسابك بنجاح!
             </h2>
             <p className="text-gray-600 mb-6">
-              شكراً لك على طلب الانضمام لشجرة عائلة آل شايع. سيتم مراجعة طلبك من قبل
-              إدارة الموقع وستتلقى إشعاراً عند الموافقة.
+              تم التحقق من رقم جوالك وإنشاء حسابك. يمكنك الآن تسجيل الدخول واستخدام شجرة العائلة.
             </p>
-            {requestId && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <p className="text-sm text-gray-500 mb-1">رقم الطلب</p>
-                <p className="font-mono text-gray-900">{requestId}</p>
-              </div>
-            )}
             <div className="space-y-3">
               <Link
                 href="/login"
                 className="block w-full py-3 px-4 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
               >
-                العودة لتسجيل الدخول
+                تسجيل الدخول
               </Link>
               <Link
                 href="/"
@@ -302,14 +385,110 @@ export default function RegisterPage() {
     );
   }
 
-  // ============================================
-  // STEP 1: CHOOSE PATH (Fix #5: 3-Path Signup)
-  // ============================================
+  if (phoneStep === 'verify') {
+    return (
+      <GuestOnly redirectTo="/">
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100" dir="rtl">
+          <header className="py-6 px-4">
+            <div className="max-w-7xl mx-auto flex justify-between items-center">
+              <Link href="/" className="flex items-center gap-2">
+                <span className="text-2xl">🌳</span>
+                <span className="text-xl font-bold text-green-800">آل شايع</span>
+              </Link>
+            </div>
+          </header>
+
+          <main className="max-w-md mx-auto px-4 py-8">
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+              <button
+                onClick={() => {
+                  setPhoneStep('form');
+                  setOtp('');
+                  setOtpError(null);
+                }}
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6"
+              >
+                <ChevronRight className="w-5 h-5" />
+                رجوع
+              </button>
+
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-2xl mb-4">
+                  <MessageCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">التحقق من رقم الجوال</h1>
+                <p className="text-gray-600 mt-2">
+                  تم إرسال رمز التحقق عبر واتساب إلى
+                </p>
+                <p className="text-lg font-semibold text-gray-900 mt-1 dir-ltr" dir="ltr">
+                  {formData.countryCode} {formData.phone}
+                </p>
+              </div>
+
+              {otpError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                  <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-red-800">{otpError}</p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+                  أدخل رمز التحقق المكون من 6 أرقام
+                </label>
+                <OtpInput
+                  value={otp}
+                  onChange={setOtp}
+                  disabled={isLoading}
+                />
+                {otpExpiresIn > 0 && (
+                  <p className="text-sm text-gray-500 text-center mt-3">
+                    صالح لمدة {Math.floor(otpExpiresIn / 60)}:{(otpExpiresIn % 60).toString().padStart(2, '0')}
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={handleVerifyAndCreate}
+                disabled={isLoading || otp.length !== 6}
+                className="w-full py-4 px-4 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    جاري التحقق...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    تأكيد وإنشاء الحساب
+                  </>
+                )}
+              </button>
+
+              <div className="mt-6 text-center">
+                <p className="text-gray-600 mb-2">لم تستلم الرمز؟</p>
+                <button
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || isLoading}
+                  className="text-green-600 hover:text-green-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resendCooldown > 0
+                    ? `إعادة الإرسال بعد ${resendCooldown} ثانية`
+                    : 'إعادة إرسال الرمز'}
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </GuestOnly>
+    );
+  }
+
   if (!joinPath) {
     return (
       <GuestOnly redirectTo="/">
         <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100" dir="rtl">
-          {/* Header */}
           <header className="py-6 px-4">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
               <Link href="/" className="flex items-center gap-2">
@@ -325,7 +504,6 @@ export default function RegisterPage() {
             </div>
           </header>
 
-          {/* Main Content */}
           <main className="max-w-2xl mx-auto px-4 py-12">
             <div className="text-center mb-10">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-3xl mb-6">
@@ -339,9 +517,7 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            {/* Three Paths */}
             <div className="space-y-4">
-              {/* Path 1: Invitation */}
               <button
                 onClick={() => router.push('/invite')}
                 className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-green-500 p-6 text-right transition-all group"
@@ -363,7 +539,6 @@ export default function RegisterPage() {
                 </div>
               </button>
 
-              {/* Path 2: Request Access */}
               <button
                 onClick={() => setJoinPath('request')}
                 className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-500 p-6 text-right transition-all group"
@@ -378,14 +553,13 @@ export default function RegisterPage() {
                     </h3>
                     <p className="text-sm text-gray-500">I&apos;m a family member</p>
                     <p className="text-gray-600 mt-2">
-                      أرغب في طلب الانضمام وسيتم مراجعة طلبي
+                      أرغب في الانضمام والتحقق عبر رقم جوالي
                     </p>
                   </div>
                   <ChevronLeft className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
                 </div>
               </button>
 
-              {/* Path 3: Browse */}
               <button
                 onClick={() => router.push('/tree')}
                 className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-gray-400 p-6 text-right transition-all group"
@@ -408,7 +582,6 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Trust Badges */}
             <div className="mt-10 p-6 bg-white/50 rounded-2xl">
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="w-5 h-5 text-green-600" />
@@ -434,7 +607,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Already have account */}
             <p className="text-center mt-8 text-gray-600">
               لديك حساب بالفعل؟{' '}
               <Link href="/login" className="text-green-600 hover:text-green-800 font-medium">
@@ -447,13 +619,9 @@ export default function RegisterPage() {
     );
   }
 
-  // ============================================
-  // STEP 2: REQUEST ACCESS FORM
-  // ============================================
   return (
     <GuestOnly redirectTo="/">
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100" dir="rtl">
-        {/* Header */}
         <header className="py-6 px-4">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <Link href="/" className="flex items-center gap-2">
@@ -469,10 +637,8 @@ export default function RegisterPage() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="max-w-2xl mx-auto px-4 py-8">
           <div className="bg-white rounded-3xl shadow-xl p-8">
-            {/* Back Button */}
             <button
               onClick={() => setJoinPath(null)}
               className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6"
@@ -481,18 +647,16 @@ export default function RegisterPage() {
               رجوع
             </button>
 
-            {/* Title */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
                 <UserPlus className="w-8 h-8 text-blue-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">طلب الانضمام للعائلة</h1>
+              <h1 className="text-2xl font-bold text-gray-900">الانضمام للعائلة</h1>
               <p className="text-gray-600 mt-2">
-                سيتم مراجعة طلبك من قبل إدارة العائلة
+                أدخل بياناتك وسيتم التحقق من رقم جوالك عبر واتساب
               </p>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                 <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
@@ -500,9 +664,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Registration Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Step 1: Find yourself in the family tree */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }} className="space-y-6">
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">1</span>
@@ -512,7 +674,6 @@ export default function RegisterPage() {
                   ابحث عن اسمك في الشجرة لتسهيل عملية التحقق من هويتك
                 </p>
 
-                {/* Member Search with improved styling */}
                 <div className="relative">
                   <div className="relative">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -580,7 +741,6 @@ export default function RegisterPage() {
                   )}
                 </div>
 
-                {/* Selected Member Card */}
                 {selectedMember && (
                   <div className="mt-4 p-4 bg-gradient-to-l from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
                     <div className="flex items-start justify-between">
@@ -618,7 +778,6 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Personal Info Section - Only show if member not selected */}
               {!selectedMember && (
                 <div className="border-b pb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -780,12 +939,19 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              {/* Contact Info */}
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">2</span>
                   معلومات التواصل
                 </h3>
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <MessageCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-blue-800">
+                      سيتم إرسال رمز التحقق عبر واتساب للتأكد من رقم جوالك
+                    </p>
+                  </div>
+                </div>
                 <div>
                   <PhoneInput
                     value={formData.phone}
@@ -796,7 +962,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Account Info Section */}
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">3</span>
@@ -856,7 +1021,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Family Relation Section - Only show if not claiming self */}
               {!selectedMember && (
               <div className="border-b pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -884,7 +1048,6 @@ export default function RegisterPage() {
               </div>
               )}
 
-              {/* Additional Message */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   رسالة إضافية (اختياري)
@@ -899,7 +1062,6 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -908,18 +1070,17 @@ export default function RegisterPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    جاري إرسال الطلب...
+                    جاري إرسال رمز التحقق...
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-5 h-5" />
-                    تقديم طلب الانضمام
+                    <Phone className="w-5 h-5" />
+                    التحقق من رقم الجوال
                   </>
                 )}
               </button>
             </form>
 
-            {/* Already have account */}
             <p className="text-center mt-6 text-gray-600">
               لديك حساب بالفعل؟{' '}
               <Link href="/login" className="text-green-600 hover:text-green-800 font-medium">
