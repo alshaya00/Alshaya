@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { sendEmail } from './services/email';
+import { emailService } from './services/email';
 
 export interface BackupNotificationData {
   success: boolean;
@@ -41,11 +41,11 @@ export async function sendBackupNotification(data: BackupNotificationData): Prom
     for (const admin of adminsWithEmailAlerts) {
       if (admin.email) {
         try {
-          await sendEmail({
-            to: admin.email,
+          await emailService.sendTemplateEmail(
             templateName,
-            templateData,
-          });
+            { name: admin.nameArabic || 'المسؤول', ...templateData },
+            admin.email
+          );
           console.log(`Backup notification sent to ${admin.email}`);
         } catch (emailError) {
           console.error(`Failed to send backup notification to ${admin.email}:`, emailError);

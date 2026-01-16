@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth/session';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+import { getPermissionsForRole } from '@/lib/auth/permissions';
+
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) return null;
+
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+
+  return user;
+}
 
 interface MemberWithIncorrectGeneration {
   id: string;
@@ -74,9 +90,9 @@ async function getMembersWithIncorrectGeneration(): Promise<MemberWithIncorrectG
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session || !['SUPER_ADMIN', 'ADMIN'].includes(session.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await getAuthUser(request);
+    if (!user || !['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
+      return NextResponse.json({ error: 'Unauthorized', messageAr: 'غير مصرح' }, { status: 401 });
     }
 
     const incorrectMembers = await getMembersWithIncorrectGeneration();
@@ -97,9 +113,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session || !['SUPER_ADMIN', 'ADMIN'].includes(session.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await getAuthUser(request);
+    if (!user || !['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
+      return NextResponse.json({ error: 'Unauthorized', messageAr: 'غير مصرح' }, { status: 401 });
     }
 
     const body = await request.json();
