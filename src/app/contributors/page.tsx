@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Heart, Star, Award, Users, BookOpen, Camera, Code,
-  Sparkles, ChevronUp, Home, TreePine
+  Sparkles, ChevronUp, Home, Palmtree
 } from 'lucide-react';
 
 // ============================================
@@ -281,39 +281,6 @@ export default function ContributorsPage() {
       })}
 
       {/* ============================================
-          DEDICATION SECTION
-          ============================================ */}
-      <section className="py-32 bg-gradient-to-b from-gray-800 to-gray-900">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            {/* Decorative Line */}
-            <div className="flex items-center justify-center gap-4 mb-12">
-              <div className="w-16 h-px bg-gradient-to-r from-transparent to-amber-500" />
-              <Star className="text-amber-400" size={24} />
-              <div className="w-16 h-px bg-gradient-to-l from-transparent to-amber-500" />
-            </div>
-
-            <h2 className="text-4xl md:text-5xl font-bold mb-8 text-amber-400">
-              إهداء
-            </h2>
-
-            <p className="text-2xl text-gray-300 leading-relaxed mb-8">
-              نُهدي هذا العمل إلى أرواح أجدادنا الطاهرة
-              <br />
-              الذين بنوا مجد هذه العائلة
-              <br />
-              وتركوا لنا إرثاً نفخر به
-            </p>
-
-            {/* Decorative Element */}
-            <div className="mt-12">
-              <span className="text-6xl">🕊️</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================
           FINAL MESSAGE
           ============================================ */}
       <section className="py-24 bg-gray-900">
@@ -346,7 +313,7 @@ export default function ContributorsPage() {
                 href="/tree"
                 className="inline-flex items-center gap-2 border-2 border-amber-500 text-amber-400 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-amber-500/10 transition-all"
               >
-                <TreePine size={24} />
+                <Palmtree size={24} />
                 استكشف الشجرة
               </Link>
             </div>
