@@ -115,8 +115,7 @@ export interface EmailVerificationToken {
   createdAt: Date;
 }
 
-// Login attempt tracking (in-memory)
-const loginAttempts: Map<string, { count: number; lockedUntil?: Date }> = new Map();
+// Login attempt tracking is now stored in the database (User.failedLoginAttempts and User.lockedUntil)
 
 // ============================================
 // HELPER FUNCTIONS
@@ -778,36 +777,44 @@ export async function getActivityLogs(options?: {
 }
 
 // ============================================
-// LOGIN ATTEMPT TRACKING
+// LOGIN ATTEMPT TRACKING (Database-backed)
 // ============================================
 
 export async function checkLoginAttempts(email: string): Promise<{ allowed: boolean; remainingAttempts: number; lockedUntil?: Date }> {
   await initializeStore();
 
   const settings = await getSiteSettings();
-  const key = email.toLowerCase();
-  const attempts = loginAttempts.get(key);
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    select: { failedLoginAttempts: true, lockedUntil: true }
+  });
 
-  if (!attempts) {
+  // If no user exists, allow the attempt (will fail at password check)
+  if (!user) {
     return { allowed: true, remainingAttempts: settings.maxLoginAttempts };
   }
 
-  if (attempts.lockedUntil && attempts.lockedUntil > new Date()) {
+  // Check if account is locked
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
     return {
       allowed: false,
       remainingAttempts: 0,
-      lockedUntil: attempts.lockedUntil,
+      lockedUntil: user.lockedUntil,
     };
   }
 
-  if (attempts.lockedUntil && attempts.lockedUntil <= new Date()) {
-    loginAttempts.delete(key);
+  // If lock has expired, reset the attempts
+  if (user.lockedUntil && user.lockedUntil <= new Date()) {
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { failedLoginAttempts: 0, lockedUntil: null }
+    });
     return { allowed: true, remainingAttempts: settings.maxLoginAttempts };
   }
 
   return {
-    allowed: attempts.count < settings.maxLoginAttempts,
-    remainingAttempts: Math.max(0, settings.maxLoginAttempts - attempts.count),
+    allowed: user.failedLoginAttempts < settings.maxLoginAttempts,
+    remainingAttempts: Math.max(0, settings.maxLoginAttempts - user.failedLoginAttempts),
   };
 }
 
@@ -815,20 +822,46 @@ export async function recordFailedLogin(email: string): Promise<void> {
   await initializeStore();
 
   const settings = await getSiteSettings();
-  const key = email.toLowerCase();
-  const attempts = loginAttempts.get(key) || { count: 0 };
-  attempts.count++;
+  
+  // First, check if user exists
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    select: { failedLoginAttempts: true }
+  });
 
-  if (attempts.count >= settings.maxLoginAttempts) {
-    attempts.lockedUntil = new Date(Date.now() + settings.lockoutDurationMinutes * 60 * 1000);
+  if (!user) {
+    // User doesn't exist, nothing to record
+    return;
   }
 
-  loginAttempts.set(key, attempts);
+  const newAttemptCount = user.failedLoginAttempts + 1;
+  
+  // Lock account if attempts exceed threshold
+  const updateData: { failedLoginAttempts: number; lockedUntil?: Date } = {
+    failedLoginAttempts: newAttemptCount,
+  };
+
+  if (newAttemptCount >= settings.maxLoginAttempts) {
+    updateData.lockedUntil = new Date(Date.now() + settings.lockoutDurationMinutes * 60 * 1000);
+  }
+
+  await prisma.user.update({
+    where: { email: email.toLowerCase() },
+    data: updateData
+  });
 }
 
 export async function clearLoginAttempts(email: string): Promise<void> {
   await initializeStore();
-  loginAttempts.delete(email.toLowerCase());
+
+  try {
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { failedLoginAttempts: 0, lockedUntil: null }
+    });
+  } catch {
+    // User might not exist, ignore error
+  }
 }
 
 // ============================================

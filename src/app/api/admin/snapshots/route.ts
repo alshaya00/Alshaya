@@ -74,22 +74,61 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Get source member count before backup
+    const expectedCount = await prisma.familyMember.count();
+
     // Get all members for the snapshot
     const members = await prisma.familyMember.findMany();
+    const treeDataJson = JSON.stringify(members);
+    const actualCount = members.length;
+
+    // Verify backup integrity
+    const verified = expectedCount === actualCount;
+
+    // Calculate backup size
+    const backupSize = Buffer.byteLength(treeDataJson, 'utf8');
+
+    // Check for size anomaly - get last 5 backups for comparison
+    const recentBackups = await prisma.snapshot.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { treeData: true },
+    });
+
+    let sizeWarning: string | null = null;
+    let sizeWarningAr: string | null = null;
+
+    if (recentBackups.length > 0) {
+      const recentSizes = recentBackups.map(b => Buffer.byteLength(b.treeData, 'utf8'));
+      const averageSize = recentSizes.reduce((a, b) => a + b, 0) / recentSizes.length;
+
+      if (backupSize < averageSize * 0.5) {
+        sizeWarning = 'Warning: backup size is significantly smaller than usual';
+        sizeWarningAr = 'تحذير: حجم النسخة الاحتياطية أصغر بكثير من المعتاد';
+      }
+    }
 
     const snapshot = await prisma.snapshot.create({
       data: {
         name: body.name,
         description: body.description,
-        treeData: JSON.stringify(members),
-        memberCount: members.length,
+        treeData: treeDataJson,
+        memberCount: actualCount,
         createdBy: user.id,
         createdByName: user.nameArabic,
         snapshotType: body.snapshotType || 'MANUAL',
       },
     });
 
-    return NextResponse.json({ snapshot });
+    return NextResponse.json({
+      snapshot,
+      verified,
+      expectedCount,
+      actualCount,
+      backupSize,
+      ...(sizeWarning && { sizeWarning }),
+      ...(sizeWarningAr && { sizeWarningAr }),
+    });
   } catch (error) {
     console.error('Error creating snapshot:', error);
     return NextResponse.json({ error: 'Failed to create snapshot' }, { status: 500 });

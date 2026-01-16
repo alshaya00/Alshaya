@@ -2,9 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyOtp, normalizePhoneNumber, findUserByPhone } from '@/lib/otp-service';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
+import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(
+      clientIp,
+      'otp-verify',
+      RATE_LIMITS.OTP_VERIFY.limit,
+      RATE_LIMITS.OTP_VERIFY.windowMs
+    );
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(createRateLimitResponse(rateLimitResult.resetAt), { status: 429 });
+    }
+
     const body = await request.json();
     const { phone, countryCode = '+966', code, purpose = 'LOGIN', rememberMe = false } = body;
 

@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAndSendOtp, normalizePhoneNumber, findUserByPhone } from '@/lib/otp-service';
+import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(
+      clientIp,
+      'otp-send',
+      RATE_LIMITS.OTP_SEND.limit,
+      RATE_LIMITS.OTP_SEND.windowMs
+    );
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(createRateLimitResponse(rateLimitResult.resetAt), { status: 429 });
+    }
+
     const body = await request.json();
     const { phone, countryCode = '+966', purpose = 'LOGIN' } = body;
 

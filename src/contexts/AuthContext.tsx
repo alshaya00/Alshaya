@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   SessionUser,
   AuthSession,
@@ -14,6 +15,14 @@ import {
   isSessionValid,
   getPermissionsForRole,
 } from '@/lib/auth';
+
+// ============================================
+// SESSION TIMEOUT CONSTANTS
+// ============================================
+
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+const ACTIVITY_CHECK_INTERVAL_MS = 60 * 1000; // Check every 1 minute
+const LAST_ACTIVITY_KEY = 'alshaye_last_activity';
 
 // ============================================
 // AUTH CONTEXT TYPES
@@ -95,11 +104,102 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const activityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Computed values
   const user = session?.user ?? null;
   const isAuthenticated = !!user && user.status === 'ACTIVE';
   const isGuest = !user || user.role === 'GUEST';
+
+  // ============================================
+  // SESSION ACTIVITY TRACKING
+  // ============================================
+
+  // Update last activity timestamp
+  const updateLastActivity = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    }
+  }, []);
+
+  // Get last activity timestamp
+  const getLastActivity = useCallback((): number => {
+    if (typeof window === 'undefined') return Date.now();
+    const stored = localStorage.getItem(LAST_ACTIVITY_KEY);
+    return stored ? parseInt(stored, 10) : Date.now();
+  }, []);
+
+  // Check if session has timed out due to inactivity
+  const checkInactivityTimeout = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    const lastActivity = getLastActivity();
+    const now = Date.now();
+    const inactiveDuration = now - lastActivity;
+
+    if (inactiveDuration >= SESSION_TIMEOUT_MS) {
+      console.log('Session timeout due to inactivity');
+      
+      // Clear the activity tracking
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+      
+      // Clear the stored session
+      clearStoredSession();
+      setSession(null);
+      
+      // Notify server to invalidate session
+      if (session?.token) {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.token}` },
+        }).catch(() => {});
+      }
+      
+      // Redirect to login with timeout message
+      router.push('/login?timeout=true');
+    }
+  }, [isAuthenticated, getLastActivity, session, router]);
+
+  // Set up activity listeners and inactivity check interval
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Clear interval if user logs out
+      if (activityCheckIntervalRef.current) {
+        clearInterval(activityCheckIntervalRef.current);
+        activityCheckIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Initialize last activity on login
+    updateLastActivity();
+
+    // Activity event handler
+    const handleActivity = () => {
+      updateLastActivity();
+    };
+
+    // Add activity listeners
+    const events = ['mousemove', 'keypress', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    // Set up interval to check inactivity
+    activityCheckIntervalRef.current = setInterval(checkInactivityTimeout, ACTIVITY_CHECK_INTERVAL_MS);
+
+    // Cleanup
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      if (activityCheckIntervalRef.current) {
+        clearInterval(activityCheckIntervalRef.current);
+        activityCheckIntervalRef.current = null;
+      }
+    };
+  }, [isAuthenticated, updateLastActivity, checkInactivityTimeout]);
 
   // ============================================
   // INITIALIZE SESSION FROM STORAGE
@@ -111,6 +211,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const stored = getStoredSession();
         if (stored && isSessionValid(stored)) {
           setSession(stored);
+          // Initialize activity timestamp
+          updateLastActivity();
           // Optionally validate with server
           validateSessionWithServer(stored.token);
         }
@@ -123,7 +225,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initSession();
-  }, []);
+  }, [updateLastActivity]);
 
   // ============================================
   // VALIDATE SESSION WITH SERVER

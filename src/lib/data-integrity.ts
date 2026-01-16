@@ -33,6 +33,7 @@ export interface DataConsistencyReport {
     ageGeneration: ValidationResult;
     birthYearLogic: ValidationResult;
     linkedAccounts: ValidationResult;
+    deathYear: ValidationResult;
   };
 }
 
@@ -1056,6 +1057,63 @@ export async function validateLinkedAccounts(): Promise<ValidationResult> {
   };
 }
 
+const CURRENT_YEAR = 2026;
+
+export async function validateDeathYear(): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+
+  const members = await prisma.familyMember.findMany({
+    where: {
+      deletedAt: null,
+      deathYear: { not: null },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      birthYear: true,
+      deathYear: true,
+    },
+  });
+
+  for (const member of members) {
+    if (member.deathYear === null) continue;
+
+    if (member.deathYear > CURRENT_YEAR) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Death year (${member.deathYear}) is in the future`,
+        issueAr: `سنة الوفاة (${member.deathYear}) في المستقبل`,
+        severity: 'error',
+        details: {
+          deathYear: member.deathYear,
+          currentYear: CURRENT_YEAR,
+        },
+      });
+    }
+
+    if (member.birthYear !== null && member.deathYear < member.birthYear) {
+      issues.push({
+        memberId: member.id,
+        memberName: member.firstName,
+        issue: `Death year (${member.deathYear}) is before birth year (${member.birthYear})`,
+        issueAr: `سنة الوفاة (${member.deathYear}) قبل سنة الميلاد (${member.birthYear})`,
+        severity: 'error',
+        details: {
+          deathYear: member.deathYear,
+          birthYear: member.birthYear,
+        },
+      });
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
 export async function checkDataConsistency(): Promise<DataConsistencyReport> {
   const totalMembers = await prisma.familyMember.count({
     where: { deletedAt: null },
@@ -1074,6 +1132,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     ageGeneration,
     birthYearLogic,
     linkedAccounts,
+    deathYear,
   ] = await Promise.all([
     validateGenerations(),
     validateParentRelationships(),
@@ -1087,6 +1146,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     validateAgeGeneration(),
     validateBirthYearLogic(),
     validateLinkedAccounts(),
+    validateDeathYear(),
   ]);
 
   const totalIssues =
@@ -1101,7 +1161,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     pendingMembers.issues.length +
     ageGeneration.issues.length +
     birthYearLogic.issues.length +
-    linkedAccounts.issues.length;
+    linkedAccounts.issues.length +
+    deathYear.issues.length;
 
   const allValidations = [
     generations,
@@ -1116,6 +1177,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     ageGeneration,
     birthYearLogic,
     linkedAccounts,
+    deathYear,
   ];
 
   const hasErrors = allValidations.some(v => 
@@ -1140,6 +1202,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
       ageGeneration,
       birthYearLogic,
       linkedAccounts,
+      deathYear,
     },
   };
 }
@@ -1311,6 +1374,7 @@ export function formatValidationReport(report: DataConsistencyReport): string {
     { name: '10. Age-Generation Validation', key: 'ageGeneration' as const },
     { name: '11. Birth Year Logic Validation', key: 'birthYearLogic' as const },
     { name: '12. Linked Accounts Validation', key: 'linkedAccounts' as const },
+    { name: '13. Death Year Validation', key: 'deathYear' as const },
   ];
 
   for (const section of validationSections) {

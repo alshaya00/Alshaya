@@ -24,6 +24,12 @@ export interface BackupResult {
   memberCount?: number;
   duration?: number;
   error?: string;
+  verified?: boolean;
+  expectedCount?: number;
+  actualCount?: number;
+  backupSize?: number;
+  sizeWarning?: string;
+  sizeWarningAr?: string;
 }
 
 // ============================================
@@ -96,10 +102,42 @@ export class BackupService {
     const startTime = Date.now();
 
     try {
+      // Get source member count before backup
+      const expectedCount = await prisma.familyMember.count();
+
       // Get all family members
       const members = await prisma.familyMember.findMany({
         orderBy: { id: 'asc' },
       });
+
+      const treeDataJson = JSON.stringify(members);
+      const actualCount = members.length;
+
+      // Verify backup integrity
+      const verified = expectedCount === actualCount;
+
+      // Calculate backup size
+      const backupSize = Buffer.byteLength(treeDataJson, 'utf8');
+
+      // Check for size anomaly - get last 5 backups for comparison
+      const recentBackups = await prisma.snapshot.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: { treeData: true },
+      });
+
+      let sizeWarning: string | undefined;
+      let sizeWarningAr: string | undefined;
+
+      if (recentBackups.length > 0) {
+        const recentSizes = recentBackups.map(b => Buffer.byteLength(b.treeData, 'utf8'));
+        const averageSize = recentSizes.reduce((a, b) => a + b, 0) / recentSizes.length;
+
+        if (backupSize < averageSize * 0.5) {
+          sizeWarning = 'Warning: backup size is significantly smaller than usual';
+          sizeWarningAr = 'تحذير: حجم النسخة الاحتياطية أصغر بكثير من المعتاد';
+        }
+      }
 
       // Create snapshot name
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -109,9 +147,9 @@ export class BackupService {
       const snapshot = await prisma.snapshot.create({
         data: {
           name: snapshotName,
-          description: description || `Automatic backup - ${members.length} members`,
-          treeData: JSON.stringify(members),
-          memberCount: members.length,
+          description: description || `Automatic backup - ${actualCount} members`,
+          treeData: treeDataJson,
+          memberCount: actualCount,
           createdBy: 'SYSTEM',
           createdByName: 'Automated Backup',
           snapshotType: type,
@@ -142,7 +180,7 @@ export class BackupService {
           'backup_complete',
           {
             snapshotName: snapshot.name,
-            memberCount: members.length,
+            memberCount: actualCount,
             date: new Date().toLocaleDateString('ar-SA'),
           }
         );
@@ -152,8 +190,14 @@ export class BackupService {
         success: true,
         snapshotId: snapshot.id,
         snapshotName: snapshot.name,
-        memberCount: members.length,
+        memberCount: actualCount,
         duration,
+        verified,
+        expectedCount,
+        actualCount,
+        backupSize,
+        ...(sizeWarning && { sizeWarning }),
+        ...(sizeWarningAr && { sizeWarningAr }),
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -30,7 +30,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { reason, mergedIntoId } = body;
+    const { reason, mergedIntoId, force } = body;
 
     const member = await prisma.familyMember.findUnique({
       where: { id: params.id },
@@ -42,6 +42,26 @@ export async function POST(
 
     if (member.deletedAt) {
       return NextResponse.json({ success: false, message: 'Member already deleted' }, { status: 400 });
+    }
+
+    // Check if member is involved in a pending merge operation - block deletion
+    const pendingMerge = await prisma.duplicateFlag.findFirst({
+      where: {
+        status: 'PENDING',
+        OR: [
+          { sourceMemberId: params.id },
+          { targetMemberId: params.id },
+        ],
+      },
+    });
+
+    if (pendingMerge) {
+      return NextResponse.json({
+        success: false,
+        message: 'Cannot delete: member is involved in a pending merge operation',
+        messageAr: 'لا يمكن حذف هذا العضو لأنه مشترك في عملية دمج معلقة',
+        pendingMergeId: pendingMerge.id,
+      }, { status: 400 });
     }
 
     // Check if member has linked user account - block deletion
@@ -57,6 +77,40 @@ export async function POST(
         messageAr: `لا يمكن الحذف: هذا العضو مرتبط بحساب المستخدم "${linkedUser.nameArabic}". يرجى فك الارتباط أولاً.`,
         linkedUser: { id: linkedUser.id, email: linkedUser.email, name: linkedUser.nameArabic },
       }, { status: 400 });
+    }
+
+    // Check if member has children - warn unless force=true
+    const children = await prisma.familyMember.findMany({
+      where: {
+        fatherId: params.id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        fullNameAr: true,
+      },
+      take: 5,
+    });
+
+    const childrenCount = await prisma.familyMember.count({
+      where: {
+        fatherId: params.id,
+        deletedAt: null,
+      },
+    });
+
+    if (childrenCount > 0 && !force) {
+      const childrenNames = children.map(c => c.fullNameAr || c.firstName);
+      return NextResponse.json({
+        success: false,
+        warning: true,
+        hasChildren: true,
+        childrenCount,
+        childrenNames,
+        message: `This member has ${childrenCount} children. Proceed with deletion?`,
+        messageAr: `هذا العضو لديه ${childrenCount} أبناء. هل تريد المتابعة؟`,
+      }, { status: 200 });
     }
 
     const fullSnapshot = JSON.stringify(member);

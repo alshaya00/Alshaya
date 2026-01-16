@@ -8,7 +8,7 @@ import {
   logActivity,
 } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
-import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
 import { normalizePhone } from '@/lib/phone-utils';
 
@@ -23,12 +23,17 @@ function sanitizeString(input: string | null | undefined): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // SECURITY: Rate limit by IP address
+    // SECURITY: Rate limit by IP address - 5 requests per minute
     const clientIp = getClientIp(request);
-    const rateLimitResult = checkRateLimit(clientIp, rateLimiters.register);
+    const rateLimitResult = checkRateLimit(
+      clientIp,
+      'register',
+      RATE_LIMITS.REGISTER.limit,
+      RATE_LIMITS.REGISTER.windowMs
+    );
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });
+      return NextResponse.json(createRateLimitResponse(rateLimitResult.resetAt), { status: 429 });
     }
 
     const body = await request.json();

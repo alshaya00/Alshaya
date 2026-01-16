@@ -37,7 +37,11 @@ function LoginForm() {
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
-    if (errorParam) {
+    const timeoutParam = searchParams.get('timeout');
+    
+    if (timeoutParam === 'true') {
+      setError('انتهت جلستك بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى');
+    } else if (errorParam) {
       const errorMessages: Record<string, string> = {
         'oauth_failed': 'فشل تسجيل الدخول عبر الحساب الخارجي',
         'oauth_denied': 'تم إلغاء تسجيل الدخول',

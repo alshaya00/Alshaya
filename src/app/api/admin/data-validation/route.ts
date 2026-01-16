@@ -7,6 +7,7 @@ import {
   normalizeToGregorian,
   ValidationIssue 
 } from '@/lib/utils/calendar-utils';
+import { validateLinkedAccounts, ValidationResult } from '@/lib/data-integrity';
 
 async function getAuthAdmin(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -147,10 +148,13 @@ export async function GET(request: NextRequest) {
       fixableBirthYears: results.filter(r => r.suggestedFix !== null).length
     };
 
+    const linkedAccountsValidation = await validateLinkedAccounts();
+
     return NextResponse.json({
       success: true,
       summary,
-      results: type === 'all' ? filteredResults.filter(r => r.issues.length > 0) : filteredResults
+      results: type === 'all' ? filteredResults.filter(r => r.issues.length > 0) : filteredResults,
+      linkedAccounts: linkedAccountsValidation
     });
 
   } catch (error) {

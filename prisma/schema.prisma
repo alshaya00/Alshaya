@@ -222,6 +222,10 @@ model User {
   // Phone verification
   phoneVerified       Boolean  @default(false)
 
+  // Failed login tracking (for account lockout)
+  failedLoginAttempts Int      @default(0)
+  lockedUntil         DateTime?
+
   // Relations
   sessions        Session[]
   otpCodes        OtpCode[]

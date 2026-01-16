@@ -56,12 +56,37 @@ interface ValidationSummary {
   fixableBirthYears: number;
 }
 
+interface LinkedAccountIssue {
+  memberId: string;
+  memberName?: string;
+  issue: string;
+  issueAr: string;
+  severity: 'error' | 'warning';
+  details?: {
+    userId?: string;
+    userEmail?: string;
+    deletedMemberId?: string;
+    deletedMemberName?: string;
+    invalidMemberId?: string;
+    linkedUserEmails?: string[];
+    linkCount?: number;
+    deletedAt?: string;
+  };
+}
+
+interface LinkedAccountsValidation {
+  valid: boolean;
+  issues: LinkedAccountIssue[];
+  checkedAt: string;
+}
+
 type FilterType = 'all' | 'errors' | 'warnings';
 
 export default function DataValidationPage() {
   const { session } = useAuth();
   const [results, setResults] = useState<MemberValidationResult[]>([]);
   const [summary, setSummary] = useState<ValidationSummary | null>(null);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountsValidation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -95,6 +120,7 @@ export default function DataValidationPage() {
       if (data.success) {
         setResults(data.results || []);
         setSummary(data.summary || null);
+        setLinkedAccounts(data.linkedAccounts || null);
       } else {
         throw new Error(data.error || 'فشل في جلب البيانات');
       }
@@ -457,6 +483,113 @@ export default function DataValidationPage() {
           </table>
         </div>
       </div>
+
+      {linkedAccounts && (
+        <div className="bg-white rounded-xl shadow-sm border mb-6">
+          <div className="p-4 border-b flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <User className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">الحسابات المرتبطة</h2>
+              <p className="text-sm text-gray-500">التحقق من ارتباط حسابات المستخدمين بالأعضاء</p>
+            </div>
+            <div className="mr-auto">
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                linkedAccounts.valid 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {linkedAccounts.valid ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 ml-1" />
+                    سليم
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4 ml-1" />
+                    يوجد مشاكل ({linkedAccounts.issues.length})
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {linkedAccounts.issues.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                <p className="text-lg font-medium">لا توجد مشاكل في الحسابات المرتبطة</p>
+                <p className="text-sm">جميع حسابات المستخدمين مرتبطة بأعضاء صالحين</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {linkedAccounts.issues.map((issue, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-lg border ${
+                      issue.severity === 'error'
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {issue.severity === 'error' ? (
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <p className={`font-medium ${
+                          issue.severity === 'error' ? 'text-red-800' : 'text-yellow-800'
+                        }`}>
+                          {issue.issueAr}
+                        </p>
+                        {issue.details && (
+                          <div className={`mt-2 text-sm ${
+                            issue.severity === 'error' ? 'text-red-600' : 'text-yellow-600'
+                          }`}>
+                            {issue.details.userEmail && (
+                              <p>البريد الإلكتروني: {issue.details.userEmail}</p>
+                            )}
+                            {issue.details.deletedMemberName && (
+                              <p>العضو المحذوف: {issue.details.deletedMemberName} ({issue.details.deletedMemberId})</p>
+                            )}
+                            {issue.details.invalidMemberId && (
+                              <p>معرف العضو غير الموجود: {issue.details.invalidMemberId}</p>
+                            )}
+                            {issue.details.linkedUserEmails && issue.details.linkedUserEmails.length > 0 && (
+                              <p>الحسابات المرتبطة: {issue.details.linkedUserEmails.join(', ')}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {issue.details?.userId && (
+                          <Link
+                            href={`/admin/users`}
+                            className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          >
+                            إدارة المستخدم
+                          </Link>
+                        )}
+                        {issue.details?.deletedMemberId && (
+                          <Link
+                            href={`/deleted`}
+                            className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          >
+                            الأعضاء المحذوفين
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
