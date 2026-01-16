@@ -14,7 +14,7 @@ type PhoneStep = 'phone' | 'otp';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, verify2FA } = useAuth();
+  const { login, verify2FA, setSessionFromOAuth } = useAuth();
 
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
   const [phoneStep, setPhoneStep] = useState<PhoneStep>('phone');
@@ -130,10 +130,28 @@ function LoginForm() {
 
       const data = await response.json();
 
-      if (data.success) {
-        localStorage.setItem('auth_token', data.token);
+      if (data.success && data.user && data.token) {
+        const expiresAt = rememberMe 
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        
+        setSessionFromOAuth({
+          user: {
+            id: data.user.id,
+            email: data.user.email || '',
+            nameArabic: data.user.nameArabic,
+            nameEnglish: data.user.nameEnglish || '',
+            phone: data.user.phone,
+            role: data.user.role,
+            status: 'ACTIVE',
+            linkedMemberId: data.user.linkedMemberId,
+          },
+          token: data.token,
+          expiresAt,
+        });
+        
         const isAdmin = data.user?.role === 'SUPER_ADMIN' || data.user?.role === 'ADMIN';
-        window.location.href = isAdmin ? '/admin' : '/';
+        router.push(isAdmin ? '/admin' : '/');
       } else {
         setError(data.error || 'رمز التحقق غير صحيح');
       }
