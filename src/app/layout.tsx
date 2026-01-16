@@ -9,6 +9,11 @@ import { ToastProvider } from '@/components/ui/Toast';
 export const metadata: Metadata = {
   title: 'شجرة عائلة آل شايع | Al-Shaye Family Tree',
   description: 'تطبيق شجرة العائلة لآل شايع - Family Tree Application for Al-Shaye family',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
