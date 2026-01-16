@@ -11,23 +11,16 @@ export default function ProfilePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 py-8" dir="rtl">
-        <div className="max-w-2xl mx-auto px-4">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">الملف الشخصي</h1>
-            <p className="text-gray-600 mt-1">معلومات حسابك في شجرة العائلة</p>
-          </div>
-
+      <div className="min-h-screen bg-gray-50" dir="rtl">
           {user && (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white shadow-sm border-b border-gray-200 overflow-hidden">
                 {/* Header Banner */}
                 <div className="bg-gradient-to-l from-green-600 to-green-700 h-24" />
 
                 {/* Avatar & Name */}
-                <div className="px-6 pb-6">
+                <div className="max-w-2xl mx-auto px-4 pb-6">
                   <div className="-mt-12 flex items-end gap-4 mb-6">
                     <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center text-green-600">
                       <User size={40} />
@@ -126,17 +119,18 @@ export default function ProfilePage() {
               </div>
 
               {/* Actions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">إجراءات الحساب</h3>
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-500">
-                    لتعديل معلومات حسابك أو تغيير كلمة المرور، يرجى التواصل مع مدير النظام.
-                  </p>
+              <div className="max-w-2xl mx-auto px-4 pb-8">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">إجراءات الحساب</h3>
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-500">
+                      لتعديل معلومات حسابك أو تغيير كلمة المرور، يرجى التواصل مع مدير النظام.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
-        </div>
       </div>
     </ProtectedRoute>
   );
