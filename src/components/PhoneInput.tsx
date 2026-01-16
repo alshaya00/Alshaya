@@ -6,36 +6,40 @@ interface CountryCode {
   code: string;
   name: string;
   nameAr: string;
-  flag: string;
+  iso: string;
 }
 
 const COUNTRY_CODES: CountryCode[] = [
-  { code: '+966', name: 'Saudi Arabia', nameAr: 'السعودية', flag: '🇸🇦' },
-  { code: '+971', name: 'UAE', nameAr: 'الإمارات', flag: '🇦🇪' },
-  { code: '+965', name: 'Kuwait', nameAr: 'الكويت', flag: '🇰🇼' },
-  { code: '+973', name: 'Bahrain', nameAr: 'البحرين', flag: '🇧🇭' },
-  { code: '+974', name: 'Qatar', nameAr: 'قطر', flag: '🇶🇦' },
-  { code: '+968', name: 'Oman', nameAr: 'عمان', flag: '🇴🇲' },
-  { code: '+962', name: 'Jordan', nameAr: 'الأردن', flag: '🇯🇴' },
-  { code: '+20', name: 'Egypt', nameAr: 'مصر', flag: '🇪🇬' },
-  { code: '+212', name: 'Morocco', nameAr: 'المغرب', flag: '🇲🇦' },
-  { code: '+216', name: 'Tunisia', nameAr: 'تونس', flag: '🇹🇳' },
-  { code: '+213', name: 'Algeria', nameAr: 'الجزائر', flag: '🇩🇿' },
-  { code: '+963', name: 'Syria', nameAr: 'سوريا', flag: '🇸🇾' },
-  { code: '+961', name: 'Lebanon', nameAr: 'لبنان', flag: '🇱🇧' },
-  { code: '+964', name: 'Iraq', nameAr: 'العراق', flag: '🇮🇶' },
-  { code: '+967', name: 'Yemen', nameAr: 'اليمن', flag: '🇾🇪' },
-  { code: '+970', name: 'Palestine', nameAr: 'فلسطين', flag: '🇵🇸' },
-  { code: '+90', name: 'Turkey', nameAr: 'تركيا', flag: '🇹🇷' },
-  { code: '+44', name: 'UK', nameAr: 'بريطانيا', flag: '🇬🇧' },
-  { code: '+1', name: 'USA/Canada', nameAr: 'أمريكا/كندا', flag: '🇺🇸' },
-  { code: '+33', name: 'France', nameAr: 'فرنسا', flag: '🇫🇷' },
-  { code: '+49', name: 'Germany', nameAr: 'ألمانيا', flag: '🇩🇪' },
-  { code: '+91', name: 'India', nameAr: 'الهند', flag: '🇮🇳' },
-  { code: '+92', name: 'Pakistan', nameAr: 'باكستان', flag: '🇵🇰' },
-  { code: '+60', name: 'Malaysia', nameAr: 'ماليزيا', flag: '🇲🇾' },
-  { code: '+62', name: 'Indonesia', nameAr: 'إندونيسيا', flag: '🇮🇩' },
+  { code: '+966', name: 'Saudi Arabia', nameAr: 'السعودية', iso: 'SA' },
+  { code: '+971', name: 'UAE', nameAr: 'الإمارات', iso: 'AE' },
+  { code: '+965', name: 'Kuwait', nameAr: 'الكويت', iso: 'KW' },
+  { code: '+973', name: 'Bahrain', nameAr: 'البحرين', iso: 'BH' },
+  { code: '+974', name: 'Qatar', nameAr: 'قطر', iso: 'QA' },
+  { code: '+968', name: 'Oman', nameAr: 'عمان', iso: 'OM' },
+  { code: '+962', name: 'Jordan', nameAr: 'الأردن', iso: 'JO' },
+  { code: '+20', name: 'Egypt', nameAr: 'مصر', iso: 'EG' },
+  { code: '+212', name: 'Morocco', nameAr: 'المغرب', iso: 'MA' },
+  { code: '+216', name: 'Tunisia', nameAr: 'تونس', iso: 'TN' },
+  { code: '+213', name: 'Algeria', nameAr: 'الجزائر', iso: 'DZ' },
+  { code: '+963', name: 'Syria', nameAr: 'سوريا', iso: 'SY' },
+  { code: '+961', name: 'Lebanon', nameAr: 'لبنان', iso: 'LB' },
+  { code: '+964', name: 'Iraq', nameAr: 'العراق', iso: 'IQ' },
+  { code: '+967', name: 'Yemen', nameAr: 'اليمن', iso: 'YE' },
+  { code: '+970', name: 'Palestine', nameAr: 'فلسطين', iso: 'PS' },
+  { code: '+90', name: 'Turkey', nameAr: 'تركيا', iso: 'TR' },
+  { code: '+44', name: 'UK', nameAr: 'بريطانيا', iso: 'GB' },
+  { code: '+1', name: 'USA/Canada', nameAr: 'أمريكا/كندا', iso: 'US' },
+  { code: '+33', name: 'France', nameAr: 'فرنسا', iso: 'FR' },
+  { code: '+49', name: 'Germany', nameAr: 'ألمانيا', iso: 'DE' },
+  { code: '+91', name: 'India', nameAr: 'الهند', iso: 'IN' },
+  { code: '+92', name: 'Pakistan', nameAr: 'باكستان', iso: 'PK' },
+  { code: '+60', name: 'Malaysia', nameAr: 'ماليزيا', iso: 'MY' },
+  { code: '+62', name: 'Indonesia', nameAr: 'إندونيسيا', iso: 'ID' },
 ];
+
+function getFlagUrl(iso: string): string {
+  return `https://flagcdn.com/w40/${iso.toLowerCase()}.png`;
+}
 
 interface PhoneInputProps {
   value: string;
@@ -97,7 +101,11 @@ export default function PhoneInput({
               disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'
             }`}
           >
-            <span className="text-lg">{selectedCountry.flag}</span>
+            <img 
+              src={getFlagUrl(selectedCountry.iso)} 
+              alt={selectedCountry.name}
+              className="w-6 h-4 object-cover rounded-sm"
+            />
             <span className="text-gray-700">{selectedCountry.code}</span>
             <svg
               className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -120,7 +128,11 @@ export default function PhoneInput({
                     selectedCountry.code === country.code ? 'bg-emerald-50' : ''
                   }`}
                 >
-                  <span className="text-lg">{country.flag}</span>
+                  <img 
+                    src={getFlagUrl(country.iso)} 
+                    alt={country.name}
+                    className="w-6 h-4 object-cover rounded-sm"
+                  />
                   <span className="flex-1 text-gray-800">{country.nameAr}</span>
                   <span className="text-gray-500 text-sm">{country.code}</span>
                 </button>

@@ -36,6 +36,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.repl.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'flagcdn.com',
+      },
     ],
     unoptimized: false,
   },

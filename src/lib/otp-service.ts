@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { getTwilioClient, getTwilioFromPhoneNumber } from './twilio-client';
+import { randomInt } from 'crypto';
 
 const OTP_EXPIRY_MINUTES = 5;
 const MAX_ATTEMPTS = 5;
@@ -9,10 +10,10 @@ const MAX_CODES_PER_WINDOW = 5;
 export type OtpPurpose = 'LOGIN' | 'REGISTRATION' | 'VERIFICATION';
 
 function generateOtpCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }
 
-export function normalizePhoneNumber(phone: string, countryCode: string = '+966'): string {
+export function normalizePhoneNumber(phone: string, countryCode?: string): string {
   let cleaned = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
   
   if (cleaned.startsWith('+')) {
@@ -23,11 +24,13 @@ export function normalizePhoneNumber(phone: string, countryCode: string = '+966'
     return '+' + cleaned.substring(2);
   }
   
+  const effectiveCountryCode = countryCode || '+966';
+  
   if (cleaned.startsWith('0')) {
     cleaned = cleaned.substring(1);
   }
   
-  return countryCode + cleaned;
+  return effectiveCountryCode + cleaned;
 }
 
 export async function checkRateLimit(phone: string): Promise<{ allowed: boolean; remainingAttempts: number }> {
@@ -49,9 +52,10 @@ export async function checkRateLimit(phone: string): Promise<{ allowed: boolean;
 export async function createAndSendOtp(
   phone: string,
   purpose: OtpPurpose,
-  userId?: string
+  userId?: string,
+  countryCode?: string
 ): Promise<{ success: boolean; message: string; expiresIn?: number }> {
-  const normalizedPhone = normalizePhoneNumber(phone);
+  const normalizedPhone = normalizePhoneNumber(phone, countryCode);
   
   const { allowed, remainingAttempts } = await checkRateLimit(normalizedPhone);
   if (!allowed) {
@@ -127,9 +131,10 @@ export async function createAndSendOtp(
 export async function verifyOtp(
   phone: string,
   code: string,
-  purpose: OtpPurpose
+  purpose: OtpPurpose,
+  countryCode?: string
 ): Promise<{ valid: boolean; message: string; userId?: string }> {
-  const normalizedPhone = normalizePhoneNumber(phone);
+  const normalizedPhone = normalizePhoneNumber(phone, countryCode);
   
   const otpRecord = await prisma.otpCode.findFirst({
     where: {
@@ -185,8 +190,8 @@ export async function verifyOtp(
   };
 }
 
-export async function findUserByPhone(phone: string) {
-  const normalizedPhone = normalizePhoneNumber(phone);
+export async function findUserByPhone(phone: string, countryCode?: string) {
+  const normalizedPhone = normalizePhoneNumber(phone, countryCode);
   
   return prisma.user.findFirst({
     where: {
