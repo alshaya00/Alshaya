@@ -95,24 +95,24 @@ export async function createAndSendOtp(
     const fromNumber = await getTwilioFromPhoneNumber();
     
     const messageBody = purpose === 'LOGIN' 
-      ? `رمز الدخول لشجرة عائلة آل شايع: ${code}\nصالح لمدة ${OTP_EXPIRY_MINUTES} دقائق.`
+      ? `رمز الدخول لشجرة عائلة آل شايع: *${code}*\nصالح لمدة ${OTP_EXPIRY_MINUTES} دقائق.`
       : purpose === 'REGISTRATION'
-      ? `رمز التحقق للتسجيل في شجرة عائلة آل شايع: ${code}\nصالح لمدة ${OTP_EXPIRY_MINUTES} دقائق.`
-      : `رمز التحقق من رقم الجوال: ${code}\nصالح لمدة ${OTP_EXPIRY_MINUTES} دقائق.`;
+      ? `رمز التحقق للتسجيل في شجرة عائلة آل شايع: *${code}*\nصالح لمدة ${OTP_EXPIRY_MINUTES} دقائق.`
+      : `رمز التحقق من رقم الجوال: *${code}*\nصالح لمدة ${OTP_EXPIRY_MINUTES} دقائق.`;
     
     await client.messages.create({
       body: messageBody,
-      from: fromNumber,
-      to: normalizedPhone
+      from: `whatsapp:${fromNumber}`,
+      to: `whatsapp:${normalizedPhone}`
     });
     
     return {
       success: true,
-      message: 'تم إرسال رمز التحقق',
+      message: 'تم إرسال رمز التحقق عبر واتساب',
       expiresIn: OTP_EXPIRY_MINUTES * 60
     };
   } catch (error: any) {
-    console.error('Failed to send SMS:', error);
+    console.error('Failed to send WhatsApp message:', error);
     
     await prisma.otpCode.deleteMany({
       where: {
@@ -123,7 +123,7 @@ export async function createAndSendOtp(
     
     return {
       success: false,
-      message: 'فشل في إرسال الرسالة النصية. يرجى التأكد من صحة رقم الجوال.'
+      message: 'فشل في إرسال رسالة واتساب. يرجى التأكد من صحة رقم الجوال.'
     };
   }
 }
