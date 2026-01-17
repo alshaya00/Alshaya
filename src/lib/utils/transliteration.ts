@@ -114,7 +114,7 @@ const arabicNameMappings: Record<string, string> = {
   'فاتن': 'Faten',
   'فواز': 'Fawaz',
   'فوزية': 'Fawzia',
-  'في': 'Fi',
+  'فيصل': 'Faisal',
   'قتيبة': 'Qutaiba',
   'قماشة': 'Qumasha',
   'كندا': 'Kinda',
