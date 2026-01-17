@@ -87,6 +87,10 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   **Admin Tools**:
     -   **Generation Auto-Correction** (`/api/admin/fix-generations`): GET lists members with wrong generations, POST fixes them with full audit logging.
     -   **Linked Accounts Report**: Visible in data validation UI showing orphaned links and duplicate account references.
+    -   **Login History Tracking** (`LoginHistory` table): Tracks all login attempts (successful and failed) with method (PASSWORD/OTP), IP address, user agent, and failure reasons in Arabic.
+    -   **User Login Stats**: Admin users page shows login count, failed attempts, and last failed login for each user.
+    -   **Unregistered Members Page** (`/admin/unregistered`): Shows family members without linked user accounts, with filters by branch/generation, search, and direct invitation sending.
+    -   **Invitation Usage Tracking**: Invitations page shows who used each code (user name, email, phone) and when.
 -   **UI/UX**: Clean, modern interface with Tailwind CSS.
 
 **Core Pages:**
@@ -102,7 +106,8 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   Invitation Signup (`/invite`) - Code-based registration with auto-approval
 -   Admin Access Requests (`/admin/access-requests`) - Approve/reject signup requests (for users who can't use WhatsApp verification)
 -   Admin Invitations (`/admin/invitations`) - Generate and manage invitation codes
--   Admin User Management (`/admin/users`) - View all registered users, search/filter, block/unblock accounts, unlink from family member
+-   Admin User Management (`/admin/users`) - View all registered users, search/filter, block/unblock accounts, unlink from family member, login stats
+-   Admin Unregistered Members (`/admin/unregistered`) - View family members without accounts, send invitations
 -   Admin Album Folders (`/admin/album-folders`) - Manage photo album folders
 -   Admin Merge Tool (`/admin/merge`) - Merge duplicate member profiles
 -   Admin Data Validation (`/admin/data-validation`) - Detect and fix data integrity issues
