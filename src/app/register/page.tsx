@@ -134,23 +134,34 @@ export default function RegisterPage() {
 
   const filteredParents = (() => {
     if (!parentSearchQuery || parentSearchQuery.length < 2) return [];
+    
+    // Check if searching by ID directly (e.g., P333)
+    const upperQuery = parentSearchQuery.trim().toUpperCase();
+    if (/^P\d+$/.test(upperQuery)) {
+      const found = allMembers.filter(m => m.id.toUpperCase() === upperQuery);
+      if (found.length > 0) return found;
+    }
+    
     const normalizedQuery = normalizeArabic(parentSearchQuery);
     const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
     
     // The FIRST word is the father's first name - prioritize matching this
     const fatherFirstName = queryParts[0];
     
-    // Score and filter members - prioritize firstName matches
+    // Score and filter members - prioritize firstName, fatherName, branch matches
     const scored = allMembers.map((m) => {
       const normalizedFirstName = normalizeArabic(m.firstName || '');
+      const normalizedFatherName = normalizeArabic(m.fatherName || '');
+      const normalizedGrandfatherName = normalizeArabic(m.grandfatherName || '');
       const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
       const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
+      const normalizedBranch = normalizeArabic(m.branch || '');
       
       let score = 0;
       
       // Strong match: firstName exactly matches or starts with search
       if (normalizedFirstName === fatherFirstName) {
-        score += 100; // Exact match
+        score += 100; // Exact firstName match
       } else if (normalizedFirstName.startsWith(fatherFirstName)) {
         score += 80; // Prefix match
       } else if (normalizedFirstName.includes(fatherFirstName)) {
@@ -161,18 +172,41 @@ export default function RegisterPage() {
       if (queryParts.length > 1) {
         const lineageNames = queryParts.slice(1);
         for (const part of lineageNames) {
+          // High priority: fatherName match (second word often is father's name)
+          if (normalizedFatherName === part) {
+            score += 60; // Exact fatherName match - very important
+          } else if (normalizedFatherName.includes(part)) {
+            score += 40; // Partial fatherName match
+          }
+          
+          // Medium priority: grandfatherName match
+          if (normalizedGrandfatherName === part) {
+            score += 35;
+          } else if (normalizedGrandfatherName.includes(part)) {
+            score += 25;
+          }
+          
+          // Branch match bonus
+          if (normalizedBranch.includes(part)) {
+            score += 30;
+          }
+          
+          // General lineage match
           if (normalizedFullNameAr.includes(part)) {
-            score += 20; // Lineage part found
+            score += 15;
           }
         }
       }
       
-      // Fallback: any match in full name
+      // Fallback: any match in full name or ID
       if (score === 0) {
         const matchesAny = queryParts.some(part => 
           normalizedFirstName.includes(part) ||
+          normalizedFatherName.includes(part) ||
           normalizedFullNameAr.includes(part) ||
-          normalizedFullNameEn.includes(part)
+          normalizedFullNameEn.includes(part) ||
+          normalizedBranch.includes(part) ||
+          m.id.toLowerCase().includes(part)
         );
         if (matchesAny) score = 10;
       }
@@ -180,13 +214,14 @@ export default function RegisterPage() {
       return { member: m, score };
     }).filter(({ score }) => score > 0);
     
-    // Sort by score descending, then by generation (higher generations first as more likely fathers)
+    // Sort by score descending, then by generation (lower generations first - closer to user)
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return (b.member.generation || 0) - (a.member.generation || 0);
+      // Lower generation = closer family member, more likely to be the father
+      return (a.member.generation || 0) - (b.member.generation || 0);
     });
     
-    return scored.slice(0, 15).map(({ member }) => member);
+    return scored.slice(0, 30).map(({ member }) => member);
   })();
 
   const selectedParent = formData.parentMemberId
