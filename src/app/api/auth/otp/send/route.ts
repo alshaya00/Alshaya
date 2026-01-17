@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { phone, countryCode = '+966', purpose = 'LOGIN', channel = 'sms' } = body;
-    const otpChannel: OtpChannel = channel === 'whatsapp' ? 'whatsapp' : 'sms';
+    const { phone, countryCode = '+966', purpose = 'LOGIN' } = body;
+    const otpChannel: OtpChannel = 'sms';
 
     if (!phone) {
       return NextResponse.json(

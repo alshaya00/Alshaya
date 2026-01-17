@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { phone, channel = 'sms' } = body;
+    const { phone } = body;
 
     if (!phone) {
       return NextResponse.json(
@@ -30,16 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (channel !== 'sms' && channel !== 'whatsapp') {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid channel. Use "sms" or "whatsapp"',
-          messageAr: 'قناة غير صالحة. استخدم "sms" أو "whatsapp"',
-        },
-        { status: 400 }
-      );
-    }
+    const channel = 'sms';
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';

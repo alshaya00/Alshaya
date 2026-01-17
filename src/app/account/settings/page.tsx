@@ -16,7 +16,6 @@ import {
   User,
   Eye,
   EyeOff,
-  MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PhoneInput from '@/components/PhoneInput';
@@ -24,7 +23,6 @@ import OtpInput from '@/components/OtpInput';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 
 type PhoneStep = 'form' | 'otp';
-type OtpChannel = 'sms' | 'whatsapp';
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -49,7 +47,6 @@ export default function AccountSettingsPage() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [otpExpiresIn, setOtpExpiresIn] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
 
   const [newEmail, setNewEmail] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
@@ -154,7 +151,7 @@ export default function AccountSettingsPage() {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
-        body: JSON.stringify({ newPhone: fullPhone, channel: otpChannel }),
+        body: JSON.stringify({ newPhone: fullPhone, channel: 'sms' }),
       });
 
       const data = await response.json();
@@ -236,7 +233,7 @@ export default function AccountSettingsPage() {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
-        body: JSON.stringify({ newPhone: fullPhone, channel: otpChannel }),
+        body: JSON.stringify({ newPhone: fullPhone, channel: 'sms' }),
       });
 
       const data = await response.json();
@@ -505,36 +502,6 @@ export default function AccountSettingsPage() {
 
           {phoneStep === 'form' ? (
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
-              <div className="flex items-center gap-4 mb-4">
-                <label className="text-sm font-medium text-gray-700">طريقة الإرسال:</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="otpChannel"
-                      value="sms"
-                      checked={otpChannel === 'sms'}
-                      onChange={() => setOtpChannel('sms')}
-                      className="text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <Phone className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">رسالة SMS</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="otpChannel"
-                      value="whatsapp"
-                      checked={otpChannel === 'whatsapp'}
-                      onChange={() => setOtpChannel('whatsapp')}
-                      className="text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <MessageCircle className="w-4 h-4 text-green-500" />
-                    <span className="text-sm">واتساب</span>
-                  </label>
-                </div>
-              </div>
-
               <PhoneInput
                 value={newPhone}
                 onChange={(phone, countryCode) => {

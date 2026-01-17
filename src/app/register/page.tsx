@@ -8,7 +8,7 @@ import type { FamilyMember } from '@/lib/types';
 import { getFullLineageString } from '@/lib/lineage-utils';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
-  Users, Lock, ArrowRight, Loader2, X, Search, Phone, MessageCircle
+  Users, Lock, ArrowRight, Loader2, X, Search, Phone
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
@@ -489,11 +489,11 @@ export default function RegisterPage() {
 
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-2xl mb-4">
-                  <MessageCircle className="w-8 h-8 text-green-600" />
+                  <Phone className="w-8 h-8 text-green-600" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900">التحقق من رقم الجوال</h1>
                 <p className="text-gray-600 mt-2">
-                  تم إرسال رمز التحقق عبر واتساب إلى
+                  تم إرسال رمز التحقق إلى
                 </p>
                 <p className="text-lg font-semibold text-gray-900 mt-1 dir-ltr" dir="ltr">
                   {formData.countryCode} {formData.phone}
@@ -728,7 +728,7 @@ export default function RegisterPage() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900">الانضمام للعائلة</h1>
               <p className="text-gray-600 mt-2">
-                أدخل بياناتك وسيتم التحقق من رقم جوالك عبر واتساب
+                أدخل بياناتك وسيتم التحقق من رقم جوالك عبر رسالة نصية
               </p>
             </div>
 
@@ -1021,9 +1021,9 @@ export default function RegisterPage() {
                 </h3>
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                   <div className="flex items-start gap-3">
-                    <MessageCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <Phone className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                     <p className="text-sm text-blue-800">
-                      سيتم إرسال رمز التحقق عبر واتساب للتأكد من رقم جوالك
+                      سيتم إرسال رمز التحقق عبر رسالة نصية للتأكد من رقم جوالك
                     </p>
                   </div>
                 </div>

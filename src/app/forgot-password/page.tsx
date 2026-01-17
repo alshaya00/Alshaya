@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, ArrowRight, CheckCircle, Phone, MessageCircle, Smartphone, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, ArrowRight, CheckCircle, Phone, Smartphone, Eye, EyeOff, Loader2 } from 'lucide-react';
 import PhoneInput from '@/components/PhoneInput';
 import OtpInput from '@/components/OtpInput';
 
 type ResetMethod = 'email' | 'phone';
 type PhoneStep = 'form' | 'otp' | 'success';
-type OtpChannel = 'sms' | 'whatsapp';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -22,7 +21,6 @@ export default function ForgotPasswordPage() {
 
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+966');
-  const [channel, setChannel] = useState<OtpChannel>('whatsapp');
   const [phoneStep, setPhoneStep] = useState<PhoneStep>('form');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -102,7 +100,7 @@ export default function ForgotPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: getFullPhone(),
-          channel,
+          channel: 'sms',
         }),
       });
 
@@ -204,7 +202,7 @@ export default function ForgotPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: getFullPhone(),
-          channel,
+          channel: 'sms',
         }),
       });
 
@@ -388,38 +386,6 @@ export default function ForgotPasswordPage() {
                       label="رقم الجوال"
                       required
                     />
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        طريقة الإرسال
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setChannel('whatsapp')}
-                          className={`flex items-center justify-center gap-2 py-3 px-4 border-2 rounded-lg transition-all ${
-                            channel === 'whatsapp'
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                          }`}
-                        >
-                          <MessageCircle size={20} />
-                          <span className="font-medium">واتساب</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setChannel('sms')}
-                          className={`flex items-center justify-center gap-2 py-3 px-4 border-2 rounded-lg transition-all ${
-                            channel === 'sms'
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                          }`}
-                        >
-                          <Smartphone size={20} />
-                          <span className="font-medium">رسالة نصية</span>
-                        </button>
-                      </div>
-                    </div>
 
                     <button
                       type="submit"

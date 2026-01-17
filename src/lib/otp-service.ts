@@ -7,6 +7,7 @@ const RATE_LIMIT_WINDOW_MINUTES = 30;
 const MAX_REQUESTS_PER_WINDOW = 30;
 
 export type OtpPurpose = 'LOGIN' | 'REGISTRATION' | 'VERIFICATION';
+// Note: WhatsApp channel is currently disabled. Only SMS is supported.
 export type OtpChannel = 'sms' | 'whatsapp';
 
 const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
