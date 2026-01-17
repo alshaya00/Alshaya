@@ -155,6 +155,7 @@ model User {
   notifications        Notification[]
   otpCodes             OtpCode[]
   sessions             Session[]
+  loginHistory         LoginHistory[]
 
   @@index([email])
   @@index([role])
@@ -194,6 +195,23 @@ model Session {
   @@index([token])
   @@index([userId])
   @@index([expiresAt])
+}
+
+model LoginHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  loginAt       DateTime @default(now())
+  success       Boolean
+  ipAddress     String?
+  userAgent     String?
+  deviceName    String?
+  failureReason String?
+  method        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([loginAt])
+  @@index([userId, success])
 }
 
 model Invite {

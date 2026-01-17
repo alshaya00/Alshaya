@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
       const token = randomBytes(32).toString('hex');
       const expiresAt = rememberMe
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -68,9 +71,9 @@ export async function POST(request: NextRequest) {
           token,
           expiresAt,
           rememberMe,
-          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-          userAgent: request.headers.get('user-agent') || 'unknown',
-          deviceName: 'Phone Login'
+          ipAddress,
+          userAgent,
+          deviceName: 'تسجيل دخول برمز التحقق'
         }
       });
 
@@ -81,6 +84,21 @@ export async function POST(request: NextRequest) {
           phoneVerified: true
         }
       });
+
+      try {
+        await prisma.loginHistory.create({
+          data: {
+            userId: user.id,
+            success: true,
+            method: 'OTP',
+            ipAddress,
+            userAgent,
+            deviceName: 'تسجيل دخول برمز التحقق',
+          },
+        });
+      } catch (error) {
+        console.error('Failed to record OTP login history:', error);
+      }
 
       return NextResponse.json({
         success: true,

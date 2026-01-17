@@ -30,6 +30,7 @@ import {
   UserPlus,
   Key,
   AlertCircle,
+  UserX,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
@@ -91,6 +92,12 @@ const adminNavItems: NavItem[] = [
     label: 'إدارة المستخدمين',
     labelEn: 'User Management',
     icon: Users,
+  },
+  {
+    href: '/admin/unregistered',
+    label: 'الأعضاء غير المسجلين',
+    labelEn: 'Unregistered Members',
+    icon: UserX,
   },
   {
     href: '/admin/images',

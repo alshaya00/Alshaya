@@ -69,10 +69,35 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Enrich redemptions with user phone data
+    const userIds = invitations.flatMap(inv => inv.redemptions.map(r => r.userId));
+    const uniqueUserIds = [...new Set(userIds)];
+    
+    const users = uniqueUserIds.length > 0 
+      ? await prisma.user.findMany({
+          where: { id: { in: uniqueUserIds } },
+          select: { id: true, phone: true, nameArabic: true, nameEnglish: true },
+        })
+      : [];
+    
+    const userMap = new Map(users.map(u => [u.id, u]));
+    
+    const enrichedInvitations = invitations.map(inv => ({
+      ...inv,
+      redemptions: inv.redemptions.map(r => {
+        const user = userMap.get(r.userId);
+        return {
+          ...r,
+          userPhone: user?.phone || null,
+          userNameAr: user?.nameArabic || r.userName,
+        };
+      }),
+    }));
+
     return NextResponse.json({
       success: true,
-      invitations,
-      count: invitations.length,
+      invitations: enrichedInvitations,
+      count: enrichedInvitations.length,
     });
   } catch (error) {
     console.error('Error fetching invitations:', error);

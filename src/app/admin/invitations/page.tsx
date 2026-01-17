@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Key, Copy, Trash2, Clock, Users, Search, Plus, AlertCircle,
-  CheckCircle, XCircle, Loader2, X, User, Calendar, Hash, FileText
+  CheckCircle, XCircle, Loader2, X, User, Calendar, Hash, FileText, Phone, Mail
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,8 @@ interface Redemption {
   userId: string;
   userEmail: string;
   userName: string | null;
+  userNameAr: string | null;
+  userPhone: string | null;
   redeemedAt: string;
 }
 
@@ -399,8 +401,21 @@ export default function AdminInvitationsPage() {
         )}
 
         <div className="space-y-4">
-          {filteredInvitations.map(invitation => (
-            <div key={invitation.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {filteredInvitations.map(invitation => {
+            const cardBorderColors = {
+              ACTIVE: 'border-r-4 border-r-green-500',
+              USED: 'border-r-4 border-r-blue-500',
+              EXPIRED: 'border-r-4 border-r-gray-400',
+              REVOKED: 'border-r-4 border-r-red-500',
+            };
+            const cardBgColors = {
+              ACTIVE: 'bg-white',
+              USED: 'bg-blue-50/30',
+              EXPIRED: 'bg-gray-50',
+              REVOKED: 'bg-red-50/30',
+            };
+            return (
+            <div key={invitation.id} className={`${cardBgColors[invitation.status]} ${cardBorderColors[invitation.status]} rounded-xl shadow-sm overflow-hidden`}>
               <div className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
@@ -483,26 +498,52 @@ export default function AdminInvitationsPage() {
                 )}
 
                 {invitation.redemptions && invitation.redemptions.length > 0 && (
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-blue-700 text-sm mb-2">
-                      <Users size={14} />
-                      <span>سجل الاستخدام ({invitation.redemptions.length}):</span>
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-blue-700 font-medium mb-3">
+                      <Users size={16} />
+                      <span>استُخدم بواسطة ({invitation.redemptions.length}):</span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {invitation.redemptions.map(redemption => (
-                        <div key={redemption.id} className="flex items-center justify-between text-sm">
-                          <span className="text-blue-800">
-                            {redemption.userName || redemption.userEmail}
-                          </span>
-                          <span className="text-blue-600 text-xs">
-                            {new Date(redemption.redeemedAt).toLocaleDateString('ar-SA', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+                        <div key={redemption.id} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <User size={16} className="text-blue-500" />
+                                <span className="font-medium text-gray-800">
+                                  {redemption.userNameAr || redemption.userName || 'غير محدد'}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                                <span className="flex items-center gap-1.5">
+                                  <Mail size={14} className="text-gray-400" />
+                                  <span dir="ltr">{redemption.userEmail}</span>
+                                </span>
+                                {redemption.userPhone && (
+                                  <span className="flex items-center gap-1.5">
+                                    <Phone size={14} className="text-gray-400" />
+                                    <span dir="ltr">{redemption.userPhone}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs text-gray-400 mb-1">تاريخ الاستخدام</div>
+                              <div className="text-sm text-blue-600 font-medium">
+                                {new Date(redemption.redeemedAt).toLocaleDateString('ar-SA', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(redemption.redeemedAt).toLocaleTimeString('ar-SA', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -529,7 +570,8 @@ export default function AdminInvitationsPage() {
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
 
         {showCreateModal && (

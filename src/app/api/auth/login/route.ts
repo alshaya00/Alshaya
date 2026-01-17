@@ -11,6 +11,31 @@ import {
 } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+import { prisma } from '@/lib/prisma';
+
+async function recordLoginHistory(
+  userId: string,
+  success: boolean,
+  method: string,
+  ipAddress?: string,
+  userAgent?: string,
+  failureReason?: string
+) {
+  try {
+    await prisma.loginHistory.create({
+      data: {
+        userId,
+        success,
+        method,
+        ipAddress,
+        userAgent,
+        failureReason,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to record login history:', error);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -101,6 +126,7 @@ export async function POST(request: NextRequest) {
     const isValidPassword = await verifyPassword(password, user.passwordHash);
     if (!isValidPassword) {
       await recordFailedLogin(email);
+      await recordLoginHistory(user.id, false, 'PASSWORD', ipAddress, userAgent, 'كلمة المرور غير صحيحة');
       await logActivity({
         userId: user.id,
         userEmail: user.email,
@@ -127,6 +153,7 @@ export async function POST(request: NextRequest) {
 
     // Check user status
     if (user.status === 'PENDING') {
+      await recordLoginHistory(user.id, false, 'PASSWORD', ipAddress, userAgent, 'الحساب بانتظار الموافقة');
       await logActivity({
         userId: user.id,
         userEmail: user.email,
@@ -152,6 +179,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (user.status === 'DISABLED') {
+      await recordLoginHistory(user.id, false, 'PASSWORD', ipAddress, userAgent, 'الحساب معطل');
       await logActivity({
         userId: user.id,
         userEmail: user.email,
@@ -184,6 +212,9 @@ export async function POST(request: NextRequest) {
 
     // Update last login
     await updateUser(user.id, { lastLoginAt: new Date() });
+
+    // Record successful login history
+    await recordLoginHistory(user.id, true, 'PASSWORD', ipAddress, userAgent);
 
     // Log successful login
     await logActivity({

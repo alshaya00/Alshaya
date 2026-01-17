@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           lastLoginAt: true,
           linkedMemberId: true,
+          failedLoginAttempts: true,
         },
       }),
       prisma.user.count({ where }),
@@ -110,9 +111,23 @@ export async function GET(request: NextRequest) {
             },
           });
         }
+
+        const [loginCount, lastFailedLogin] = await Promise.all([
+          prisma.loginHistory.count({
+            where: { userId: u.id, success: true },
+          }),
+          prisma.loginHistory.findFirst({
+            where: { userId: u.id, success: false },
+            orderBy: { loginAt: 'desc' },
+            select: { loginAt: true, failureReason: true, ipAddress: true },
+          }),
+        ]);
+
         return {
           ...u,
           linkedMember,
+          loginCount,
+          lastFailedLogin,
         };
       })
     );

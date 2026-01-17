@@ -35,6 +35,12 @@ interface LinkedMember {
   fullNameEn: string | null;
 }
 
+interface LastFailedLogin {
+  loginAt: string;
+  failureReason: string | null;
+  ipAddress: string | null;
+}
+
 interface UserData {
   id: string;
   email: string;
@@ -48,6 +54,9 @@ interface UserData {
   lastLoginAt: string | null;
   linkedMemberId: string | null;
   linkedMember: LinkedMember | null;
+  loginCount: number;
+  failedLoginAttempts: number;
+  lastFailedLogin: LastFailedLogin | null;
 }
 
 type FilterStatus = 'all' | 'ACTIVE' | 'PENDING' | 'DISABLED';
@@ -518,6 +527,7 @@ export default function AdminUsersPage() {
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">رقم الجوال</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الصلاحية</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الحالة</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">سجل الدخول</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">آخر دخول</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">تاريخ التسجيل</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الإجراءات</th>
@@ -576,6 +586,21 @@ export default function AdminUsersPage() {
                       {/* Status */}
                       <td className="px-4 py-3">
                         {getStatusBadge(user.status)}
+                      </td>
+
+                      {/* Login Stats */}
+                      <td className="px-4 py-3">
+                        <div className="text-sm">
+                          <p className="text-gray-700">
+                            <span className="text-green-600 font-medium">{user.loginCount || 0}</span>
+                            <span className="text-gray-400 mx-1">دخول</span>
+                          </p>
+                          {(user.failedLoginAttempts > 0) && (
+                            <p className="text-red-500 text-xs mt-0.5">
+                              {user.failedLoginAttempts} محاولة فاشلة
+                            </p>
+                          )}
+                        </div>
                       </td>
 
                       {/* Last Login */}
