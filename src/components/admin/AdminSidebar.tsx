@@ -31,6 +31,7 @@ import {
   Key,
   AlertCircle,
   UserX,
+  FileText,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
@@ -104,6 +105,12 @@ const adminNavItems: NavItem[] = [
     label: 'إدارة الصور',
     labelEn: 'Image Moderation',
     icon: Image,
+  },
+  {
+    href: '/admin/journals',
+    label: 'موافقات القصص',
+    labelEn: 'Story Approvals',
+    icon: FileText,
   },
   {
     href: '/admin/broadcasts',

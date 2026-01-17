@@ -179,8 +179,9 @@ export async function POST(request: NextRequest) {
         narrator: sanitizeString(body.narrator),
         narratorId: body.narratorId || null,
         source: sanitizeString(body.source),
-        status: body.status || 'DRAFT',
-        isFeatured: body.isFeatured || false,
+        // New journals are always created as DRAFT - admins must approve before publishing
+        status: 'DRAFT',
+        isFeatured: false,
         displayOrder: body.displayOrder || 0,
         authorId: body.authorId || null,
         authorName: sanitizeString(body.authorName) || 'مجهول',
