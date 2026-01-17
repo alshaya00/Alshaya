@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, Search, BarChart3
+  Menu, X, MoreHorizontal, ChevronDown, Loader2, LogOut, User, Shield, Search, BarChart3, Settings
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlags, routeToFeature, FeatureKey } from '@/contexts/FeatureFlagsContext';
@@ -269,6 +269,14 @@ export function Navigation() {
                         >
                           <User size={16} />
                           <span>الملف الشخصي</span>
+                        </Link>
+                        <Link
+                          href="/account/settings"
+                          className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <Settings size={16} />
+                          <span>إعدادات الحساب</span>
                         </Link>
                         {hasPermission('view_users') && (
                           <Link
