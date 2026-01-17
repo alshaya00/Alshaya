@@ -5,7 +5,14 @@
 
 /**
  * Normalizes a phone number to Saudi international format: +9665XXXXXXXX
- * Handles formats: 00966..., +966..., 05..., 5..., 966...
+ * Handles ALL formats including the problematic double-zero case:
+ * - +9660505399914 -> +966505399914 (removes extra 0 after country code)
+ * - +966505399914 -> +966505399914 (already correct)
+ * - 00966505399914 -> +966505399914
+ * - 0505399914 -> +966505399914
+ * - 505399914 -> +966505399914
+ * - 05XXXXXXXX -> +9665XXXXXXXX
+ * - 5XXXXXXXX -> +9665XXXXXXXX
  */
 export function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -20,12 +27,24 @@ export function normalizePhone(phone: string | null | undefined): string | null 
   
   // Handle different formats
   if (cleaned.startsWith('00966')) {
-    // 009665XXXXXXXX -> 9665XXXXXXXX
+    // 009665XXXXXXXX or 009660XXXXXXXX -> remove 00
     cleaned = cleaned.substring(2);
-  } else if (cleaned.startsWith('966')) {
-    // Already in 966 format
+  }
+  
+  // Now handle 966 prefix cases
+  if (cleaned.startsWith('966')) {
+    // Remove the 966 prefix to get the local number
+    let localPart = cleaned.substring(3);
+    
+    // CRITICAL FIX: Remove leading 0 if present (handles +9660505... case)
+    if (localPart.startsWith('0')) {
+      localPart = localPart.substring(1);
+    }
+    
+    // Rebuild with clean local number
+    cleaned = '966' + localPart;
   } else if (cleaned.startsWith('05')) {
-    // 05XXXXXXXX -> 9665XXXXXXXX
+    // 05XXXXXXXX -> 9665XXXXXXXX (remove leading 0)
     cleaned = '966' + cleaned.substring(1);
   } else if (cleaned.startsWith('5') && cleaned.length === 9) {
     // 5XXXXXXXX -> 9665XXXXXXXX
@@ -34,6 +53,11 @@ export function normalizePhone(phone: string | null | undefined): string | null 
     // 9 digits starting with 5
     if (cleaned.startsWith('5')) {
       cleaned = '966' + cleaned;
+    }
+  } else if (cleaned.startsWith('0') && cleaned.length === 10) {
+    // 0XXXXXXXXX -> might be 05XXXXXXXX
+    if (cleaned.charAt(1) === '5') {
+      cleaned = '966' + cleaned.substring(1);
     }
   }
   

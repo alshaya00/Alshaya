@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { getTwilioClient } from './twilio-client';
+import { normalizePhone } from './phone-utils';
 
 const OTP_EXPIRY_MINUTES = 10;
 const RATE_LIMIT_WINDOW_MINUTES = 15;
@@ -10,7 +11,21 @@ export type OtpChannel = 'sms' | 'whatsapp';
 
 const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
 
+/**
+ * Normalizes a phone number using the centralized phone-utils function.
+ * This ensures consistent format across all OTP operations.
+ * Handles all Saudi phone formats including +9660505... -> +966505...
+ */
 export function normalizePhoneNumber(phone: string, countryCode?: string): string {
+  // Use the centralized normalizePhone function
+  const normalized = normalizePhone(phone);
+  
+  // If normalization succeeded, return it
+  if (normalized) {
+    return normalized;
+  }
+  
+  // Fallback: basic cleanup for non-Saudi numbers
   let cleaned = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
   
   if (cleaned.startsWith('+')) {
