@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyOtp, normalizePhoneNumber, findUserByPhone } from '@/lib/otp-service';
+import { checkVerification, normalizePhoneNumber, findUserByPhone } from '@/lib/otp-service';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
 
     const normalizedPhone = normalizePhoneNumber(phone, countryCode);
     
-    const result = await verifyOtp(normalizedPhone, code, purpose);
+    const result = await checkVerification(normalizedPhone, code, purpose, countryCode);
 
     if (!result.valid) {
       return NextResponse.json(
-        { success: false, error: result.message },
+        { success: false, error: result.messageAr, errorEn: result.message },
         { status: 400 }
       );
     }

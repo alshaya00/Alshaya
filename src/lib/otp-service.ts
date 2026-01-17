@@ -1,17 +1,14 @@
 import { prisma } from './prisma';
-import { getTwilioClient, getTwilioFromPhoneNumber } from './twilio-client';
-import { randomInt } from 'crypto';
+import { getTwilioClient } from './twilio-client';
 
-const OTP_EXPIRY_MINUTES = 5;
-const MAX_ATTEMPTS = 5;
+const OTP_EXPIRY_MINUTES = 10;
 const RATE_LIMIT_WINDOW_MINUTES = 15;
-const MAX_CODES_PER_WINDOW = 5;
+const MAX_REQUESTS_PER_WINDOW = 5;
 
 export type OtpPurpose = 'LOGIN' | 'REGISTRATION' | 'VERIFICATION';
+export type OtpChannel = 'sms' | 'whatsapp';
 
-function generateOtpCode(): string {
-  return randomInt(100000, 1000000).toString();
-}
+const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
 
 export function normalizePhoneNumber(phone: string, countryCode?: string): string {
   let cleaned = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
@@ -43,102 +40,125 @@ export async function checkRateLimit(phone: string): Promise<{ allowed: boolean;
     }
   });
   
-  const allowed = recentCodes < MAX_CODES_PER_WINDOW;
-  const remainingAttempts = Math.max(0, MAX_CODES_PER_WINDOW - recentCodes);
+  const allowed = recentCodes < MAX_REQUESTS_PER_WINDOW;
+  const remainingAttempts = Math.max(0, MAX_REQUESTS_PER_WINDOW - recentCodes);
   
   return { allowed, remainingAttempts };
 }
 
-export async function createAndSendOtp(
+export async function sendVerification(
   phone: string,
   purpose: OtpPurpose,
-  userId?: string,
+  channel: OtpChannel = 'sms',
   countryCode?: string
-): Promise<{ success: boolean; message: string; expiresIn?: number }> {
+): Promise<{ success: boolean; message: string; messageAr: string; expiresIn?: number }> {
   const normalizedPhone = normalizePhoneNumber(phone, countryCode);
+  
+  if (!TWILIO_VERIFY_SERVICE_SID) {
+    console.error('TWILIO_VERIFY_SERVICE_SID not configured');
+    return {
+      success: false,
+      message: 'OTP service not configured',
+      messageAr: 'خدمة التحقق غير مُعدة'
+    };
+  }
   
   const { allowed, remainingAttempts } = await checkRateLimit(normalizedPhone);
   if (!allowed) {
     return {
       success: false,
-      message: `تم تجاوز الحد الأقصى للمحاولات. يرجى الانتظار ${RATE_LIMIT_WINDOW_MINUTES} دقيقة.`
+      message: `Too many attempts. Please wait ${RATE_LIMIT_WINDOW_MINUTES} minutes.`,
+      messageAr: `تم تجاوز الحد الأقصى للمحاولات. يرجى الانتظار ${RATE_LIMIT_WINDOW_MINUTES} دقيقة.`
     };
   }
   
-  await prisma.otpCode.updateMany({
-    where: {
-      phone: normalizedPhone,
-      purpose,
-      usedAt: null,
-      expiresAt: { gt: new Date() }
-    },
-    data: {
-      expiresAt: new Date()
-    }
-  });
-  
-  const code = generateOtpCode();
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-  
-  await prisma.otpCode.create({
-    data: {
-      phone: normalizedPhone,
-      code,
-      purpose,
-      userId,
-      expiresAt
-    }
-  });
-  
   try {
     const client = await getTwilioClient();
-    const fromNumber = await getTwilioFromPhoneNumber();
     
-    const messageBody = purpose === 'LOGIN' 
-      ? `رمز الدخول لشجرة عائلة آل شايع: ${code} - صالح لمدة ${OTP_EXPIRY_MINUTES} دقائق`
-      : purpose === 'REGISTRATION'
-      ? `رمز التحقق للتسجيل في شجرة عائلة آل شايع: ${code} - صالح لمدة ${OTP_EXPIRY_MINUTES} دقائق`
-      : `رمز التحقق من رقم الجوال: ${code} - صالح لمدة ${OTP_EXPIRY_MINUTES} دقائق`;
+    const verification = await client.verify.v2
+      .services(TWILIO_VERIFY_SERVICE_SID)
+      .verifications.create({
+        to: normalizedPhone,
+        channel: channel
+      });
     
-    await client.messages.create({
-      body: messageBody,
-      from: fromNumber,
-      to: normalizedPhone
-    });
+    console.log(`Twilio Verify sent to ${normalizedPhone.slice(0, 7)}*** via ${channel}, status: ${verification.status}`);
     
-    console.log(`SMS OTP sent successfully to ${normalizedPhone.slice(0, 7)}***`);
-    
-    return {
-      success: true,
-      message: 'تم إرسال رمز التحقق عبر رسالة نصية SMS',
-      expiresIn: OTP_EXPIRY_MINUTES * 60
-    };
-  } catch (error: any) {
-    console.error('Failed to send SMS:', error?.message || error);
-    
-    await prisma.otpCode.deleteMany({
+    await prisma.otpCode.updateMany({
       where: {
         phone: normalizedPhone,
-        code
+        usedAt: null,
+        expiresAt: { gt: new Date() }
+      },
+      data: {
+        expiresAt: new Date()
       }
     });
     
+    await prisma.otpCode.create({
+      data: {
+        phone: normalizedPhone,
+        code: 'VERIFY_SERVICE',
+        purpose,
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000)
+      }
+    });
+    
+    const channelMessage = channel === 'whatsapp' 
+      ? { en: 'Verification code sent via WhatsApp', ar: 'تم إرسال رمز التحقق عبر واتساب' }
+      : { en: 'Verification code sent via SMS', ar: 'تم إرسال رمز التحقق عبر رسالة نصية' };
+    
+    return {
+      success: true,
+      message: channelMessage.en,
+      messageAr: channelMessage.ar,
+      expiresIn: OTP_EXPIRY_MINUTES * 60
+    };
+  } catch (error: any) {
+    console.error('Twilio Verify error:', error?.message || error);
+    
+    if (error?.code === 60200) {
+      return {
+        success: false,
+        message: 'Invalid phone number format',
+        messageAr: 'صيغة رقم الجوال غير صحيحة'
+      };
+    }
+    
+    if (error?.code === 60203) {
+      return {
+        success: false,
+        message: 'Too many verification attempts. Please wait before trying again.',
+        messageAr: 'محاولات كثيرة جداً. يرجى الانتظار قبل المحاولة مرة أخرى.'
+      };
+    }
+    
     return {
       success: false,
-      message: 'فشل في إرسال رسالة SMS. يرجى التأكد من صحة رقم الجوال.'
+      message: 'Failed to send verification code. Please try again.',
+      messageAr: 'فشل في إرسال رمز التحقق. يرجى المحاولة مرة أخرى.'
     };
   }
 }
 
-export async function verifyOtp(
+export async function checkVerification(
   phone: string,
   code: string,
   purpose: OtpPurpose,
   countryCode?: string
-): Promise<{ valid: boolean; message: string; userId?: string }> {
+): Promise<{ valid: boolean; message: string; messageAr: string }> {
   const normalizedPhone = normalizePhoneNumber(phone, countryCode);
   
-  const otpRecord = await prisma.otpCode.findFirst({
+  if (!TWILIO_VERIFY_SERVICE_SID) {
+    console.error('TWILIO_VERIFY_SERVICE_SID not configured');
+    return {
+      valid: false,
+      message: 'OTP service not configured',
+      messageAr: 'خدمة التحقق غير مُعدة'
+    };
+  }
+  
+  const activeOtp = await prisma.otpCode.findFirst({
     where: {
       phone: normalizedPhone,
       purpose,
@@ -148,47 +168,103 @@ export async function verifyOtp(
     orderBy: { createdAt: 'desc' }
   });
   
-  if (!otpRecord) {
+  if (!activeOtp) {
     return {
       valid: false,
-      message: 'لا يوجد رمز تحقق صالح. يرجى طلب رمز جديد.'
+      message: 'No active verification for this purpose. Please request a new code.',
+      messageAr: 'لا يوجد تحقق نشط لهذا الغرض. يرجى طلب رمز جديد.'
     };
   }
   
-  if (otpRecord.attempts >= MAX_ATTEMPTS) {
-    await prisma.otpCode.update({
-      where: { id: otpRecord.id },
-      data: { expiresAt: new Date() }
-    });
+  try {
+    const client = await getTwilioClient();
+    
+    const verificationCheck = await client.verify.v2
+      .services(TWILIO_VERIFY_SERVICE_SID)
+      .verificationChecks.create({
+        to: normalizedPhone,
+        code: code
+      });
+    
+    console.log(`Verification check for ${normalizedPhone.slice(0, 7)}*** (${purpose}): ${verificationCheck.status}`);
+    
+    if (verificationCheck.status === 'approved') {
+      await prisma.otpCode.update({
+        where: { id: activeOtp.id },
+        data: { usedAt: new Date() }
+      });
+      
+      return {
+        valid: true,
+        message: 'Verification successful',
+        messageAr: 'تم التحقق بنجاح'
+      };
+    }
     
     return {
       valid: false,
-      message: 'تم تجاوز عدد المحاولات المسموح. يرجى طلب رمز جديد.'
+      message: 'Invalid verification code',
+      messageAr: 'رمز التحقق غير صحيح'
     };
-  }
-  
-  if (otpRecord.code !== code) {
-    await prisma.otpCode.update({
-      where: { id: otpRecord.id },
-      data: { attempts: otpRecord.attempts + 1 }
-    });
+  } catch (error: any) {
+    console.error('Verification check error:', error?.message || error);
     
-    const remaining = MAX_ATTEMPTS - otpRecord.attempts - 1;
+    if (error?.code === 20404) {
+      await prisma.otpCode.update({
+        where: { id: activeOtp.id },
+        data: { expiresAt: new Date() }
+      });
+      return {
+        valid: false,
+        message: 'Verification code expired or not found. Please request a new code.',
+        messageAr: 'رمز التحقق منتهي الصلاحية أو غير موجود. يرجى طلب رمز جديد.'
+      };
+    }
+    
+    if (error?.code === 60202) {
+      await prisma.otpCode.update({
+        where: { id: activeOtp.id },
+        data: { expiresAt: new Date() }
+      });
+      return {
+        valid: false,
+        message: 'Too many failed attempts. Please request a new code.',
+        messageAr: 'محاولات فاشلة كثيرة. يرجى طلب رمز جديد.'
+      };
+    }
+    
     return {
       valid: false,
-      message: `رمز التحقق غير صحيح. المحاولات المتبقية: ${remaining}`
+      message: 'Verification failed. Please try again.',
+      messageAr: 'فشل التحقق. يرجى المحاولة مرة أخرى.'
     };
   }
-  
-  await prisma.otpCode.update({
-    where: { id: otpRecord.id },
-    data: { usedAt: new Date() }
-  });
-  
+}
+
+export async function createAndSendOtp(
+  phone: string,
+  purpose: OtpPurpose,
+  userId?: string,
+  countryCode?: string
+): Promise<{ success: boolean; message: string; expiresIn?: number }> {
+  const result = await sendVerification(phone, purpose, 'sms', countryCode);
   return {
-    valid: true,
-    message: 'تم التحقق بنجاح',
-    userId: otpRecord.userId || undefined
+    success: result.success,
+    message: result.messageAr,
+    expiresIn: result.expiresIn
+  };
+}
+
+export async function verifyOtp(
+  phone: string,
+  code: string,
+  purpose: OtpPurpose,
+  countryCode?: string
+): Promise<{ valid: boolean; message: string; userId?: string }> {
+  const result = await checkVerification(phone, code, purpose, countryCode);
+  return {
+    valid: result.valid,
+    message: result.messageAr
   };
 }
 

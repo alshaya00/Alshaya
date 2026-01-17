@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { verifyOtp, normalizePhoneNumber } from '@/lib/otp-service';
+import { checkVerification, normalizePhoneNumber } from '@/lib/otp-service';
 import { findUserByEmail, logActivity, getSiteSettings, checkMemberLinkedToUser } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
@@ -99,14 +99,14 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedPhone = normalizePhoneNumber(phone, countryCode);
-    const otpResult = await verifyOtp(normalizedPhone, otp, 'REGISTRATION');
+    const otpResult = await checkVerification(normalizedPhone, otp, 'REGISTRATION', countryCode);
 
     if (!otpResult.valid) {
       return NextResponse.json(
         {
           success: false,
           message: 'OTP verification failed',
-          messageAr: otpResult.message,
+          messageAr: otpResult.messageAr,
         },
         { status: 400 }
       );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAndSendOtp, normalizePhoneNumber, findUserByPhone } from '@/lib/otp-service';
+import { sendVerification, normalizePhoneNumber, findUserByPhone, OtpChannel } from '@/lib/otp-service';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { phone, countryCode = '+966', purpose = 'LOGIN' } = body;
+    const { phone, countryCode = '+966', purpose = 'LOGIN', channel = 'sms' } = body;
+    const otpChannel: OtpChannel = channel === 'whatsapp' ? 'whatsapp' : 'sms';
 
     if (!phone) {
       return NextResponse.json(
@@ -38,19 +39,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await createAndSendOtp(normalizedPhone, purpose);
+    const result = await sendVerification(normalizedPhone, purpose, otpChannel, countryCode);
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: result.message },
+        { success: false, error: result.messageAr, errorEn: result.message },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: result.message,
-      expiresIn: result.expiresIn
+      message: result.messageAr,
+      messageEn: result.message,
+      expiresIn: result.expiresIn,
+      channel: otpChannel
     });
   } catch (error: any) {
     console.error('OTP send error:', error);
