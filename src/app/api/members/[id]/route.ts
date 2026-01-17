@@ -187,7 +187,7 @@ async function handleUpdate(
 
       if (father.gender !== 'Male') {
         return NextResponse.json(
-          { success: false, error: 'Father must be male' },
+          { success: false, error: 'Father must be male', messageAr: 'يجب أن يكون الوالد ذكراً' },
           { status: 400 }
         );
       }

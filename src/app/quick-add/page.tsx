@@ -165,7 +165,7 @@ export default function QuickAddPage() {
 
     if (fatherId && allMembers.length > 0) {
       const father = allMembers.find(m => m.id === fatherId);
-      if (father) {
+      if (father && father.gender === 'Male') {
         // Pre-fill with father from URL
         const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
         setAutoFillData({
