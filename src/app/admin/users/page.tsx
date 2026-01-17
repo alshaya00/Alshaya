@@ -22,6 +22,8 @@ import {
   UserCheck,
   Link2Off,
   UserCog,
+  Key,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
@@ -64,7 +66,7 @@ export default function AdminUsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{
-    type: 'block' | 'unblock' | 'unlink' | 'promote';
+    type: 'block' | 'unblock' | 'unlink' | 'promote' | 'reset_password' | 'delete';
     user: UserData;
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -211,6 +213,64 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error('Error promoting user:', err);
       setError('حدث خطأ في ترقية المستخدم');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleResetPassword = async (user: UserData) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+
+      if (res.ok) {
+        setSuccessMessage(`تم إرسال رابط إعادة تعيين كلمة المرور إلى ${user.email}`);
+        setShowConfirmModal(null);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في إرسال رابط إعادة التعيين');
+      }
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      setError('حدث خطأ في إرسال رابط إعادة التعيين');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: UserData) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+
+      if (res.ok) {
+        setSuccessMessage(`تم حذف حساب ${user.nameArabic} بنجاح`);
+        await fetchUsers();
+        setShowConfirmModal(null);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في حذف الحساب');
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('حدث خطأ في حذف الحساب');
     } finally {
       setIsProcessing(false);
     }
@@ -576,6 +636,22 @@ export default function AdminUsersPage() {
                                   ترقية لمشرف
                                 </button>
                               )}
+                              <button
+                                onClick={() => setShowConfirmModal({ type: 'reset_password', user })}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="إعادة تعيين كلمة المرور"
+                              >
+                                <Key className="w-4 h-4" />
+                                إعادة كلمة المرور
+                              </button>
+                              <button
+                                onClick={() => setShowConfirmModal({ type: 'delete', user })}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                title="حذف الحساب"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                حذف
+                              </button>
                             </>
                           )}
                           {user.role === 'SUPER_ADMIN' && (
@@ -625,7 +701,9 @@ export default function AdminUsersPage() {
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                 showConfirmModal.type === 'block' ? 'bg-red-100' : 
                 showConfirmModal.type === 'unlink' ? 'bg-orange-100' :
-                showConfirmModal.type === 'promote' ? 'bg-purple-100' : 'bg-green-100'
+                showConfirmModal.type === 'promote' ? 'bg-purple-100' :
+                showConfirmModal.type === 'reset_password' ? 'bg-blue-100' :
+                showConfirmModal.type === 'delete' ? 'bg-red-100' : 'bg-green-100'
               }`}>
                 {showConfirmModal.type === 'block' ? (
                   <UserX className="w-6 h-6 text-red-600" />
@@ -633,6 +711,10 @@ export default function AdminUsersPage() {
                   <Link2Off className="w-6 h-6 text-orange-600" />
                 ) : showConfirmModal.type === 'promote' ? (
                   <UserCog className="w-6 h-6 text-purple-600" />
+                ) : showConfirmModal.type === 'reset_password' ? (
+                  <Key className="w-6 h-6 text-blue-600" />
+                ) : showConfirmModal.type === 'delete' ? (
+                  <Trash2 className="w-6 h-6 text-red-600" />
                 ) : (
                   <UserCheck className="w-6 h-6 text-green-600" />
                 )}
@@ -641,7 +723,9 @@ export default function AdminUsersPage() {
                 <h3 className="text-lg font-bold text-gray-900">
                   {showConfirmModal.type === 'block' ? 'حظر المستخدم' : 
                    showConfirmModal.type === 'unlink' ? 'فك ارتباط الحساب' :
-                   showConfirmModal.type === 'promote' ? 'ترقية لمشرف' : 'إلغاء حظر المستخدم'}
+                   showConfirmModal.type === 'promote' ? 'ترقية لمشرف' :
+                   showConfirmModal.type === 'reset_password' ? 'إعادة تعيين كلمة المرور' :
+                   showConfirmModal.type === 'delete' ? 'حذف الحساب' : 'إلغاء حظر المستخدم'}
                 </h3>
                 <p className="text-gray-500">{showConfirmModal.user.nameArabic}</p>
               </div>
@@ -654,6 +738,10 @@ export default function AdminUsersPage() {
                 ? 'هل تريد فك ارتباط هذا الحساب بالعضو؟'
                 : showConfirmModal.type === 'promote'
                 ? 'هل تريد ترقية هذا المستخدم إلى مشرف؟ سيحصل على صلاحيات إدارية.'
+                : showConfirmModal.type === 'reset_password'
+                ? `سيتم إرسال رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني: ${showConfirmModal.user.email}`
+                : showConfirmModal.type === 'delete'
+                ? 'هل أنت متأكد من حذف هذا الحساب نهائياً؟ لا يمكن التراجع عن هذا الإجراء.'
                 : 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟ سيتمكن من تسجيل الدخول مرة أخرى.'}
             </p>
             {showConfirmModal.type === 'unlink' && (
@@ -676,6 +764,10 @@ export default function AdminUsersPage() {
                     handleUnlink(showConfirmModal.user);
                   } else if (showConfirmModal.type === 'promote') {
                     handlePromote(showConfirmModal.user);
+                  } else if (showConfirmModal.type === 'reset_password') {
+                    handleResetPassword(showConfirmModal.user);
+                  } else if (showConfirmModal.type === 'delete') {
+                    handleDeleteUser(showConfirmModal.user);
                   } else {
                     handleBlockUnblock(showConfirmModal.user, showConfirmModal.type === 'block' ? 'block' : 'unblock');
                   }
@@ -688,6 +780,10 @@ export default function AdminUsersPage() {
                     ? 'bg-orange-600 hover:bg-orange-700'
                     : showConfirmModal.type === 'promote'
                     ? 'bg-purple-600 hover:bg-purple-700'
+                    : showConfirmModal.type === 'reset_password'
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : showConfirmModal.type === 'delete'
+                    ? 'bg-red-600 hover:bg-red-700'
                     : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
@@ -709,6 +805,16 @@ export default function AdminUsersPage() {
                       <>
                         <UserCog className="w-5 h-5" />
                         ترقية لمشرف
+                      </>
+                    ) : showConfirmModal.type === 'reset_password' ? (
+                      <>
+                        <Key className="w-5 h-5" />
+                        إرسال الرابط
+                      </>
+                    ) : showConfirmModal.type === 'delete' ? (
+                      <>
+                        <Trash2 className="w-5 h-5" />
+                        حذف نهائياً
                       </>
                     ) : (
                       <>
