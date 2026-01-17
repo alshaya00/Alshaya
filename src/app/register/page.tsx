@@ -132,22 +132,62 @@ export default function RegisterPage() {
     );
   }).slice(0, 15);
 
-  const filteredParents = allMembers.filter((m) => {
-    if (!parentSearchQuery || parentSearchQuery.length < 2) return false;
+  const filteredParents = (() => {
+    if (!parentSearchQuery || parentSearchQuery.length < 2) return [];
     const normalizedQuery = normalizeArabic(parentSearchQuery);
     const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
     
-    const normalizedFirstName = normalizeArabic(m.firstName || '');
-    const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
-    const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
+    // The FIRST word is the father's first name - prioritize matching this
+    const fatherFirstName = queryParts[0];
     
-    return queryParts.every(part => 
-      normalizedFirstName.includes(part) ||
-      normalizedFullNameAr.includes(part) ||
-      normalizedFullNameEn.includes(part) ||
-      m.id.toLowerCase().includes(part)
-    );
-  }).slice(0, 15);
+    // Score and filter members - prioritize firstName matches
+    const scored = allMembers.map((m) => {
+      const normalizedFirstName = normalizeArabic(m.firstName || '');
+      const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
+      const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
+      
+      let score = 0;
+      
+      // Strong match: firstName exactly matches or starts with search
+      if (normalizedFirstName === fatherFirstName) {
+        score += 100; // Exact match
+      } else if (normalizedFirstName.startsWith(fatherFirstName)) {
+        score += 80; // Prefix match
+      } else if (normalizedFirstName.includes(fatherFirstName)) {
+        score += 50; // Partial match
+      }
+      
+      // Check if lineage matches (subsequent query parts)
+      if (queryParts.length > 1) {
+        const lineageNames = queryParts.slice(1);
+        for (const part of lineageNames) {
+          if (normalizedFullNameAr.includes(part)) {
+            score += 20; // Lineage part found
+          }
+        }
+      }
+      
+      // Fallback: any match in full name
+      if (score === 0) {
+        const matchesAny = queryParts.some(part => 
+          normalizedFirstName.includes(part) ||
+          normalizedFullNameAr.includes(part) ||
+          normalizedFullNameEn.includes(part)
+        );
+        if (matchesAny) score = 10;
+      }
+      
+      return { member: m, score };
+    }).filter(({ score }) => score > 0);
+    
+    // Sort by score descending, then by generation (higher generations first as more likely fathers)
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (b.member.generation || 0) - (a.member.generation || 0);
+    });
+    
+    return scored.slice(0, 15).map(({ member }) => member);
+  })();
 
   const selectedParent = formData.parentMemberId
     ? allMembers.find((m) => m.id === formData.parentMemberId)
@@ -210,8 +250,8 @@ export default function RegisterPage() {
     if (!selectedMember && formData.parentMemberId && !formData.gender) {
       return 'يرجى تحديد الجنس';
     }
-    if (!formData.claimedRelation && !formData.relatedMemberId && !formData.parentMemberId) {
-      return 'يرجى تحديد صلة القرابة أو اختيار أحد أفراد العائلة أو تحديد الوالد';
+    if (!formData.relatedMemberId && !formData.parentMemberId) {
+      return 'يرجى اختيار اسمك من الشجرة أو تحديد والدك';
     }
     return null;
   };
@@ -1021,32 +1061,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {!selectedMember && (
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">4</span>
-                  صلة القرابة
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  إذا لم تجد اسمك في الشجرة، يرجى وصف صلة قرابتك بالعائلة
-                </p>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    وصف صلة القرابة <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="claimedRelation"
-                    value={formData.claimedRelation}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="مثال: ابن محمد أحمد آل شايع"
-                    required={!selectedMember}
-                  />
-                </div>
-              </div>
-              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
