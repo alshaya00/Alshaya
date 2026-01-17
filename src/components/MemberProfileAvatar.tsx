@@ -1,16 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Camera, Upload, Image as ImageIcon, X, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Camera, Upload, Image as ImageIcon, X, Loader2, Check } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import ImageUploadForm from './ImageUploadForm';
+import ReactCrop, {
+  Crop,
+  PixelCrop,
+  centerCrop,
+  makeAspectCrop,
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface MemberProfileAvatarProps {
   memberId: string;
   memberName: string;
   gender: string;
   size?: '2xl' | 'xl' | 'lg';
+  linkedMemberId?: string | null;
 }
 
 const sizeClasses = {
@@ -25,18 +32,47 @@ const sizePx = {
   '2xl': 96,
 };
 
-export default function MemberProfileAvatar({ memberId, memberName, gender, size = '2xl' }: MemberProfileAvatarProps) {
-  const { isAuthenticated, hasPermission, getAuthHeader } = useAuth();
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const OUTPUT_SIZE = 400;
+const COMPRESSION_QUALITY = 0.85;
+
+function centerAspectCrop(mediaWidth: number, mediaHeight: number): Crop {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 80 }, 1, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
+export default function MemberProfileAvatar({ 
+  memberId, 
+  memberName, 
+  gender, 
+  size = '2xl',
+  linkedMemberId 
+}: MemberProfileAvatarProps) {
+  const { isAuthenticated, hasPermission, getAuthHeader, user } = useAuth();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showOptions, setShowOptions] = useState(false);
-  const [showUploadForm, setShowUploadForm] = useState(false);
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
   const [photos, setPhotos] = useState<Array<{ id: string; thumbnailData: string; isProfilePhoto: boolean }>>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [settingPhotoId, setSettingPhotoId] = useState<string | null>(null);
 
+  const [step, setStep] = useState<'idle' | 'crop' | 'uploading' | 'success' | 'error'>('idle');
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const isAdmin = isAuthenticated && (hasPermission('manage_all_members') || hasPermission('edit_any_member'));
+  const isOwner = isAuthenticated && user?.linkedMemberId === memberId;
+  const canEdit = isAdmin || isOwner;
   const isMale = gender === 'Male';
   const defaultAvatar = isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png';
 
@@ -104,9 +140,139 @@ export default function MemberProfileAvatar({ memberId, memberName, gender, size
     }
   };
 
-  const handleUploadSuccess = () => {
-    setShowUploadForm(false);
-    loadProfilePhoto();
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('يرجى اختيار ملف صورة فقط');
+      setStep('error');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setErrorMessage('حجم الملف أكبر من 5 ميجابايت');
+      setStep('error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setOriginalImage(reader.result as string);
+      setShowOptions(false);
+      setStep('crop');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height));
+  }, []);
+
+  const getCroppedImage = useCallback((): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const image = imgRef.current;
+      const canvas = canvasRef.current;
+
+      if (!image || !canvas || !completedCrop) {
+        reject(new Error('Missing crop data'));
+        return;
+      }
+
+      const scaleX = image.naturalWidth / image.width;
+      const scaleY = image.naturalHeight / image.height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('No canvas context'));
+        return;
+      }
+
+      canvas.width = OUTPUT_SIZE;
+      canvas.height = OUTPUT_SIZE;
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+      const cropX = completedCrop.x * scaleX;
+      const cropY = completedCrop.y * scaleY;
+      const cropWidth = completedCrop.width * scaleX;
+      const cropHeight = completedCrop.height * scaleY;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.drawImage(
+        image,
+        cropX,
+        cropY,
+        cropWidth,
+        cropHeight,
+        0,
+        0,
+        OUTPUT_SIZE,
+        OUTPUT_SIZE
+      );
+
+      ctx.restore();
+
+      resolve(canvas.toDataURL('image/jpeg', COMPRESSION_QUALITY));
+    });
+  }, [completedCrop]);
+
+  const handleConfirmCrop = async () => {
+    try {
+      setStep('uploading');
+      const croppedImage = await getCroppedImage();
+
+      const res = await fetch(`/api/members/${memberId}/photos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({
+          imageData: croppedImage,
+          category: 'profile',
+          setAsProfile: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setStep('success');
+        setProfilePhoto(croppedImage);
+        setTimeout(() => {
+          resetUploadState();
+        }, 1500);
+      } else {
+        setErrorMessage(data.errorAr || data.error || 'فشل في رفع الصورة');
+        setStep('error');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setErrorMessage('حدث خطأ أثناء الرفع');
+      setStep('error');
+    }
+  };
+
+  const resetUploadState = () => {
+    setStep('idle');
+    setOriginalImage(null);
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+    setErrorMessage('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCancel = () => {
+    resetUploadState();
   };
 
   if (isLoading) {
@@ -119,6 +285,15 @@ export default function MemberProfileAvatar({ memberId, memberName, gender, size
 
   return (
     <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      <canvas ref={canvasRef} className="hidden" />
+
       <div className="relative group">
         <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-4 border-white/30`}>
           {profilePhoto ? (
@@ -140,7 +315,7 @@ export default function MemberProfileAvatar({ memberId, memberName, gender, size
           )}
         </div>
 
-        {isAdmin && (
+        {canEdit && (
           <button
             onClick={() => setShowOptions(true)}
             className="absolute -bottom-1 -right-1 p-2 bg-white rounded-full shadow-lg text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
@@ -162,10 +337,7 @@ export default function MemberProfileAvatar({ memberId, memberName, gender, size
             
             <div className="space-y-3">
               <button
-                onClick={() => {
-                  setShowOptions(false);
-                  setShowUploadForm(true);
-                }}
+                onClick={() => fileInputRef.current?.click()}
                 className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 <Upload className="text-blue-600" size={24} />
@@ -190,22 +362,111 @@ export default function MemberProfileAvatar({ memberId, memberName, gender, size
         </div>
       )}
 
-      {showUploadForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowUploadForm(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">رفع صورة الملف الشخصي</h3>
-              <button onClick={() => setShowUploadForm(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
+      {step === 'crop' && originalImage && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-800">قص الصورة</h3>
+              <button
+                onClick={handleCancel}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <ImageUploadForm
-              memberId={memberId}
-              memberName={memberName}
-              onSuccess={handleUploadSuccess}
-              onCancel={() => setShowUploadForm(false)}
-              defaultCategory="profile"
-            />
+
+            <div className="p-4 bg-gray-50">
+              <div className="relative flex justify-center">
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={1}
+                  circularCrop
+                  className="max-h-[50vh]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    ref={imgRef}
+                    src={originalImage}
+                    alt="قص الصورة"
+                    onLoad={onImageLoad}
+                    className="max-h-[50vh] object-contain"
+                  />
+                </ReactCrop>
+              </div>
+              <p className="text-center text-sm text-gray-500 mt-3">
+                اسحب الإطار لتحديد المنطقة المراد قصها
+              </p>
+            </div>
+
+            <div className="p-4 flex gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 py-3 px-4 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleConfirmCrop}
+                className="flex-1 py-3 px-4 bg-[#1E3A5F] text-white rounded-xl hover:bg-[#2d5a8a] transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <Check className="w-5 h-5" />
+                تأكيد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 'uploading' && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
+            <Loader2 className="w-12 h-12 text-[#1E3A5F] animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-800 mb-2">جاري رفع الصورة...</h3>
+            <p className="text-gray-500 text-sm">يرجى الانتظار</p>
+          </div>
+        </div>
+      )}
+
+      {step === 'success' && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-green-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">تم بنجاح!</h3>
+            <p className="text-gray-500 text-sm">تم تحديث صورة الملف الشخصي</p>
+          </div>
+        </div>
+      )}
+
+      {step === 'error' && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">حدث خطأ</h3>
+            <p className="text-gray-500 text-sm mb-4">{errorMessage}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => {
+                  setStep('idle');
+                  setErrorMessage('');
+                  fileInputRef.current?.click();
+                }}
+                className="flex-1 py-2 px-4 bg-[#1E3A5F] text-white rounded-lg hover:bg-[#2d5a8a]"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
           </div>
         </div>
       )}

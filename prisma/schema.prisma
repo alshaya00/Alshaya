@@ -1,6 +1,3 @@
-// Prisma schema for آل شايع Family Tree Application
-// Enhanced with change history, audit trail, and permissions
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,76 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// CORE MODELS
-// ============================================
-
 model FamilyMember {
-  id                    String   @id // P001, P002, etc.
-  firstName             String   // الاسم
-  fatherName            String?  // اسم الأب
-  grandfatherName       String?  // اسم الجد
-  greatGrandfatherName  String?  // اسم الجد الثاني
-  familyName            String   @default("آل شايع")
-
-  // Relationship
-  fatherId              String?  // Father_ID reference
-  father                FamilyMember?  @relation("ParentChild", fields: [fatherId], references: [id])
-  children              FamilyMember[] @relation("ParentChild")
-
-  // Personal info
-  gender                String   // Male or Female
-  birthYear             Int?     // سنة الميلاد
-  birthCalendar         String   @default("GREGORIAN") // GREGORIAN or HIJRI
-  deathYear             Int?     // سنة الوفاة
-  deathCalendar         String   @default("GREGORIAN") // GREGORIAN or HIJRI
-  sonsCount             Int      @default(0) // عدد الأبناء
-  daughtersCount        Int      @default(0) // عدد البنات
-
-  // Calculated/Display fields
-  generation            Int      @default(1) // الجيل
-  branch                String?  // الفرع (الأصل, الفرع 1, etc.)
-  fullNameAr            String?  // الاسم الكامل بالعربي
-  fullNameEn            String?  // Full name in English
-
-  // Lineage Identification (Gen 2/Gen 3 branch tracking)
-  lineageBranchId       String?  // ID of Gen 2 ancestor (main branch founder)
-  lineageBranchName     String?  // Name of Gen 2 ancestor for display
-  subBranchId           String?  // ID of Gen 3 ancestor (sub-branch founder)
-  subBranchName         String?  // Name of Gen 3 ancestor for display
-  lineagePath           String?  // JSON array of ancestor IDs from root to parent
-
-  // Contact info
-  phone                 String?
-  city                  String?
-  status                String   @default("Living") // Living, Deceased
-  photoUrl              String?
-  biography             String?
-  occupation            String?
-  email                 String?
-
-  // Metadata
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  createdBy             String?  // Admin who created
-  lastModifiedBy        String?  // Admin who last modified
-  version               Int      @default(1) // Version number for optimistic locking
-  
-  // Soft delete
-  deletedAt             DateTime?  // When set, member is considered deleted
-  deletedBy             String?    // Admin who deleted
-  deletedReason         String?    // Reason for deletion (e.g., "Merged with P001")
-
-  // Relations
-  changeHistory         ChangeHistory[]
-  duplicateOf           DuplicateFlag[] @relation("DuplicateSource")
-  duplicatedBy          DuplicateFlag[] @relation("DuplicateTarget")
-  photos                MemberPhoto[]
-
-  // Breastfeeding relations (علاقات الرضاعة)
-  breastfedBy           BreastfeedingRelationship[] @relation("BreastfedChild")    // Who breastfed this person
-  nursedChildren        BreastfeedingRelationship[] @relation("NurseRelation")     // Children this person breastfed
-  milkChildren          BreastfeedingRelationship[] @relation("MilkFatherRelation") // Children where this person is milk father
+  id                   String                      @id
+  firstName            String
+  fatherName           String?
+  grandfatherName      String?
+  greatGrandfatherName String?
+  familyName           String                      @default("آل شايع")
+  fatherId             String?
+  gender               String
+  birthYear            Int?
+  birthCalendar        String                      @default("GREGORIAN")
+  deathYear            Int?
+  deathCalendar        String                      @default("GREGORIAN")
+  sonsCount            Int                         @default(0)
+  daughtersCount       Int                         @default(0)
+  generation           Int                         @default(1)
+  branch               String?
+  fullNameAr           String?
+  fullNameEn           String?
+  lineageBranchId      String?
+  lineageBranchName    String?
+  subBranchId          String?
+  subBranchName        String?
+  lineagePath          String?
+  phone                String?
+  city                 String?
+  status               String                      @default("Living")
+  photoUrl             String?
+  biography            String?
+  occupation           String?
+  email                String?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  createdBy            String?
+  lastModifiedBy       String?
+  version              Int                         @default(1)
+  deletedAt            DateTime?
+  deletedBy            String?
+  deletedReason        String?
+  breastfedBy          BreastfeedingRelationship[] @relation("BreastfedChild")
+  milkChildren         BreastfeedingRelationship[] @relation("MilkFatherRelation")
+  nursedChildren       BreastfeedingRelationship[] @relation("NurseRelation")
+  changeHistory        ChangeHistory[]
+  duplicateOf          DuplicateFlag[]             @relation("DuplicateSource")
+  duplicatedBy         DuplicateFlag[]             @relation("DuplicateTarget")
+  father               FamilyMember?               @relation("ParentChild", fields: [fatherId], references: [id])
+  children             FamilyMember[]              @relation("ParentChild")
+  photos               MemberPhoto[]
 
   @@index([generation])
   @@index([branch])
@@ -93,35 +68,21 @@ model FamilyMember {
   @@index([fatherId, deletedAt])
 }
 
-// ============================================
-// AUDIT & HISTORY MODELS
-// ============================================
-
 model ChangeHistory {
-  id              String   @id @default(cuid())
-  memberId        String
-  member          FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
-
-  // What changed
-  fieldName       String   // Field that was changed
-  oldValue        String?  // Previous value (JSON for complex fields)
-  newValue        String?  // New value (JSON for complex fields)
-  changeType      String   // CREATE, UPDATE, DELETE, PARENT_CHANGE, RESTORE
-
-  // Who and when
-  changedBy       String   // Admin ID who made the change
-  changedByName   String   // Admin name for display
-  changedAt       DateTime @default(now())
-
-  // For grouping related changes (batch edits)
-  batchId         String?  // Groups changes made together
-
-  // Snapshot for rollback
-  fullSnapshot    String?  // JSON snapshot of entire member state before change
-
-  // Additional context
-  reason          String?  // Optional reason for the change
-  ipAddress       String?  // For security audit
+  id            String       @id @default(cuid())
+  memberId      String
+  fieldName     String
+  oldValue      String?
+  newValue      String?
+  changeType    String
+  changedBy     String
+  changedByName String
+  changedAt     DateTime     @default(now())
+  batchId       String?
+  fullSnapshot  String?
+  reason        String?
+  ipAddress     String?
+  member        FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId])
   @@index([changedAt])
@@ -131,130 +92,86 @@ model ChangeHistory {
 }
 
 model Snapshot {
-  id              String   @id @default(cuid())
-  name            String   // User-provided name for the snapshot
-  description     String?  // Optional description
-
-  // Full tree data
-  treeData        String   // JSON of entire family tree at this point
-  memberCount     Int      // Number of members at this point
-
-  // Metadata
-  createdBy       String   // Admin who created snapshot
-  createdByName   String   // Admin name
-  createdAt       DateTime @default(now())
-
-  // Snapshot type
-  snapshotType    String   @default("MANUAL") // MANUAL, AUTO_BACKUP, PRE_IMPORT
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  treeData      String
+  memberCount   Int
+  createdBy     String
+  createdByName String
+  createdAt     DateTime @default(now())
+  snapshotType  String   @default("MANUAL")
 
   @@index([createdAt])
   @@index([snapshotType])
 }
 
-// ============================================
-// DUPLICATE DETECTION
-// ============================================
-
 model DuplicateFlag {
-  id              String   @id @default(cuid())
-
-  // The two members flagged as potential duplicates
-  sourceMemberId  String
-  sourceMember    FamilyMember @relation("DuplicateSource", fields: [sourceMemberId], references: [id], onDelete: Cascade)
-  targetMemberId  String
-  targetMember    FamilyMember @relation("DuplicateTarget", fields: [targetMemberId], references: [id], onDelete: Cascade)
-
-  // Similarity details
-  matchScore      Float    // 0-100 confidence score
-  matchReasons    String   // JSON array of why they might be duplicates
-
-  // Resolution
-  status          String   @default("PENDING") // PENDING, CONFIRMED_DUPLICATE, NOT_DUPLICATE, MERGED
-  resolvedBy      String?  // Admin who resolved
-  resolvedAt      DateTime?
-  resolution      String?  // What action was taken
-
-  // Metadata
-  detectedAt      DateTime @default(now())
-  detectedBy      String   @default("SYSTEM") // SYSTEM or admin ID
+  id             String       @id @default(cuid())
+  sourceMemberId String
+  targetMemberId String
+  matchScore     Float
+  matchReasons   String
+  status         String       @default("PENDING")
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  resolution     String?
+  detectedAt     DateTime     @default(now())
+  detectedBy     String       @default("SYSTEM")
+  sourceMember   FamilyMember @relation("DuplicateSource", fields: [sourceMemberId], references: [id], onDelete: Cascade)
+  targetMember   FamilyMember @relation("DuplicateTarget", fields: [targetMemberId], references: [id], onDelete: Cascade)
 
   @@unique([sourceMemberId, targetMemberId])
   @@index([status])
   @@index([matchScore])
 }
 
-// ============================================
-// USER & AUTHENTICATION
-// ============================================
-
 model User {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  passwordHash    String
-
-  // Profile
-  nameArabic      String
-  nameEnglish     String?
-  phone           String?
-  avatarUrl       String?
-
-  // Role & Status
-  role            String   @default("MEMBER") // SUPER_ADMIN, ADMIN, BRANCH_LEADER, MEMBER, GUEST
-  status          String   @default("PENDING") // PENDING, ACTIVE, DISABLED
-
-  // Link to family member profile (optional - user can be linked to their family member record)
-  linkedMemberId  String?
-
-  // For branch leaders - which branch they manage
-  assignedBranch  String?
-
-  // Timestamps
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  lastLoginAt     DateTime?
-  emailVerifiedAt DateTime?
-
-  // 2FA fields
-  twoFactorEnabled    Boolean  @default(false)
-  twoFactorSecret     String?
+  id                   String         @id @default(cuid())
+  email                String         @unique
+  passwordHash         String
+  nameArabic           String
+  nameEnglish          String?
+  phone                String?
+  avatarUrl            String?
+  role                 String         @default("MEMBER")
+  status               String         @default("PENDING")
+  linkedMemberId       String?        @unique
+  assignedBranch       String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  lastLoginAt          DateTime?
+  emailVerifiedAt      DateTime?
+  twoFactorEnabled     Boolean        @default(false)
+  twoFactorSecret      String?
   twoFactorBackupCodes String?
+  phoneVerified        Boolean        @default(false)
+  failedLoginAttempts  Int            @default(0)
+  lockedUntil          DateTime?
+  accessRequest        AccessRequest?
+  activityLogs         ActivityLog[]
+  invitesSent          Invite[]       @relation("InviteSender")
+  inviteUsed           Invite?        @relation("InviteUsed")
+  notifications        Notification[]
+  otpCodes             OtpCode[]
+  sessions             Session[]
 
-  // Phone verification
-  phoneVerified       Boolean  @default(false)
-
-  // Failed login tracking (for account lockout)
-  failedLoginAttempts Int      @default(0)
-  lockedUntil         DateTime?
-
-  // Relations
-  sessions        Session[]
-  otpCodes        OtpCode[]
-  invitesSent     Invite[] @relation("InviteSender")
-  inviteUsed      Invite?  @relation("InviteUsed")
-  accessRequest   AccessRequest?
-  activityLogs    ActivityLog[]
-  notifications   Notification[]
-
-  @@unique([linkedMemberId])
   @@index([email])
   @@index([role])
   @@index([status])
 }
 
 model OtpCode {
-  id           String   @id @default(cuid())
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  phone        String
-  code         String
-  purpose      String   // LOGIN, REGISTRATION, VERIFICATION
-
-  expiresAt    DateTime
-  usedAt       DateTime?
-  attempts     Int      @default(0)
-
-  createdAt    DateTime @default(now())
+  id        String    @id @default(cuid())
+  userId    String?
+  phone     String
+  code      String
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([phone])
   @@index([phone, code])
@@ -264,21 +181,15 @@ model OtpCode {
 model Session {
   id           String   @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   token        String   @unique
   expiresAt    DateTime
-
-  // Session options
   rememberMe   Boolean  @default(false)
-
-  // Device info for security
   ipAddress    String?
   userAgent    String?
-  deviceName   String?  // "Chrome on Windows", etc.
-
+  deviceName   String?
   createdAt    DateTime @default(now())
   lastActiveAt DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -286,28 +197,19 @@ model Session {
 }
 
 model Invite {
-  id           String   @id @default(cuid())
-  code         String   @unique
-  email        String
-
-  // What role and branch to assign
-  role         String   @default("MEMBER")
-  branch       String?  // For branch leader invites
-
-  // Who sent it
-  sentById     String
-  sentBy       User     @relation("InviteSender", fields: [sentById], references: [id])
-
-  // Usage tracking
-  expiresAt    DateTime
-  usedAt       DateTime?
-  usedById     String?  @unique
-  usedBy       User?    @relation("InviteUsed", fields: [usedById], references: [id])
-
-  // Personal message
-  message      String?
-
-  createdAt    DateTime @default(now())
+  id        String    @id @default(cuid())
+  code      String    @unique
+  email     String
+  role      String    @default("MEMBER")
+  branch    String?
+  sentById  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  usedById  String?   @unique
+  message   String?
+  createdAt DateTime  @default(now())
+  sentBy    User      @relation("InviteSender", fields: [sentById], references: [id])
+  usedBy    User?     @relation("InviteUsed", fields: [usedById], references: [id])
 
   @@index([code])
   @@index([email])
@@ -315,237 +217,155 @@ model Invite {
 }
 
 model AccessRequest {
-  id              String   @id @default(cuid())
-
-  // Request details
-  email           String
-  nameArabic      String
-  nameEnglish     String?
-  phone           String?
-  gender          String?  // Male or Female
-
-  // How they claim to be related
-  claimedRelation String   // "Son of محمد", "Daughter of أحمد", etc.
-  relatedMemberId String?  // ID of the family member they claim relation to
-  relationshipType String? // CHILD, SPOUSE, SIBLING, etc.
-  parentMemberId  String?  // ID of parent for tree placement (from "Claim Your Place" wizard)
-
-  // Their message
-  message         String?
-
-  // Store password hash for use when approved
-  passwordHash    String?  // Hashed password from registration
-
-  // Review status
-  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, MORE_INFO
-  reviewedById    String?
-  reviewedAt      DateTime?
-  reviewNote      String?
-
-  // If approved, link to created user
-  userId          String?  @unique
-  user            User?    @relation(fields: [userId], references: [id])
-
-  // Assigned role on approval
-  approvedRole    String?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String    @id @default(cuid())
+  email            String
+  nameArabic       String
+  nameEnglish      String?
+  phone            String?
+  gender           String?
+  claimedRelation  String
+  relatedMemberId  String?
+  relationshipType String?
+  parentMemberId   String?
+  message          String?
+  passwordHash     String?
+  status           String    @default("PENDING")
+  reviewedById     String?
+  reviewedAt       DateTime?
+  reviewNote       String?
+  userId           String?   @unique
+  approvedRole     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User?     @relation(fields: [userId], references: [id])
 
   @@index([email])
   @@index([status])
 }
 
 model PasswordReset {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([email])
 }
 
 model EmailVerification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([email])
 }
 
-// ============================================
-// PERMISSION MATRIX (Fully Configurable)
-// ============================================
-
 model PermissionMatrix {
-  id              String   @id @default("default")
-
-  // JSON object storing all permissions by role
-  // Structure: { "ROLE": { "permission_key": true/false, ... }, ... }
-  permissions     String   @default("{}")
-
-  updatedAt       DateTime @updatedAt
-  updatedBy       String?
+  id          String   @id @default("default")
+  permissions String   @default("{}")
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
 }
 
-// Individual permission overrides for specific users
 model UserPermissionOverride {
-  id              String   @id @default(cuid())
-  userId          String
-  permissionKey   String
-  allowed         Boolean
-
-  // Who set this override
-  setBy           String
-  setAt           DateTime @default(now())
-  reason          String?
+  id            String   @id @default(cuid())
+  userId        String
+  permissionKey String
+  allowed       Boolean
+  setBy         String
+  setAt         DateTime @default(now())
+  reason        String?
 
   @@unique([userId, permissionKey])
   @@index([userId])
 }
 
-// ============================================
-// SITE SETTINGS
-// ============================================
-
 model SiteSettings {
-  id                      String  @id @default("default")
-
-  // Branding
-  familyNameArabic        String  @default("آل شايع")
-  familyNameEnglish       String  @default("Al-Shaye")
-  taglineArabic           String  @default("نحفظ إرثنا، نربط أجيالنا")
-  taglineEnglish          String  @default("Preserving Our Legacy, Connecting Generations")
-  logoUrl                 String?
-
-  // General settings
-  defaultLanguage         String  @default("ar")
-  sessionDurationDays     Int     @default(7)
-  rememberMeDurationDays  Int     @default(30)
-
-  // Registration settings
-  allowSelfRegistration   Boolean @default(true)
-  requireEmailVerification Boolean @default(false)
-  requireApprovalForRegistration Boolean @default(true)
-
-  // Security settings
-  maxLoginAttempts        Int     @default(5)
-  lockoutDurationMinutes  Int     @default(15)
-  require2FAForAdmins     Boolean @default(false)
-  minPasswordLength       Int     @default(8)
-
-  // Guest access settings
-  allowGuestPreview       Boolean @default(true)  // Show simplified tree to guests
-  guestPreviewMemberCount Int     @default(20)    // How many members guests can see
-
-  updatedAt               DateTime @updatedAt
+  id                             String   @id @default("default")
+  familyNameArabic               String   @default("آل شايع")
+  familyNameEnglish              String   @default("Al-Shaye")
+  taglineArabic                  String   @default("نحفظ إرثنا، نربط أجيالنا")
+  taglineEnglish                 String   @default("Preserving Our Legacy, Connecting Generations")
+  logoUrl                        String?
+  defaultLanguage                String   @default("ar")
+  sessionDurationDays            Int      @default(7)
+  rememberMeDurationDays         Int      @default(30)
+  allowSelfRegistration          Boolean  @default(true)
+  requireEmailVerification       Boolean  @default(false)
+  requireApprovalForRegistration Boolean  @default(true)
+  maxLoginAttempts               Int      @default(5)
+  lockoutDurationMinutes         Int      @default(15)
+  require2FAForAdmins            Boolean  @default(false)
+  minPasswordLength              Int      @default(8)
+  allowGuestPreview              Boolean  @default(true)
+  guestPreviewMemberCount        Int      @default(20)
+  updatedAt                      DateTime @updatedAt
 }
 
 model PrivacySettings {
-  id                      String  @id @default("default")
-
-  // Profile visibility by role (JSON: { "GUEST": false, "MEMBER": true, ... })
-  profileVisibility       String  @default("{\"GUEST\":false,\"MEMBER\":true,\"BRANCH_LEADER\":true,\"ADMIN\":true,\"SUPER_ADMIN\":true}")
-
-  // Contact info visibility
-  showPhoneToRoles        String  @default("[\"ADMIN\",\"SUPER_ADMIN\"]")
-  showEmailToRoles        String  @default("[\"ADMIN\",\"SUPER_ADMIN\"]")
-
-  // Personal info visibility
-  showBirthYearToRoles    String  @default("[\"MEMBER\",\"BRANCH_LEADER\",\"ADMIN\",\"SUPER_ADMIN\"]")
-  showAgeForLiving        Boolean @default(false)
-  showOccupation          Boolean @default(true)
-  showCity                Boolean @default(true)
-  showBiography           Boolean @default(true)
-
-  // Photo visibility
-  showPhotosToRoles       String  @default("[\"MEMBER\",\"BRANCH_LEADER\",\"ADMIN\",\"SUPER_ADMIN\"]")
-
-  // Deceased members
-  showDeathYear           Boolean @default(true)
-  showFullDeathDate       Boolean @default(false)
-
-  updatedAt               DateTime @updatedAt
+  id                   String   @id @default("default")
+  profileVisibility    String   @default("{\"GUEST\":false,\"MEMBER\":true,\"BRANCH_LEADER\":true,\"ADMIN\":true,\"SUPER_ADMIN\":true}")
+  showPhoneToRoles     String   @default("[\"ADMIN\",\"SUPER_ADMIN\"]")
+  showEmailToRoles     String   @default("[\"ADMIN\",\"SUPER_ADMIN\"]")
+  showBirthYearToRoles String   @default("[\"MEMBER\",\"BRANCH_LEADER\",\"ADMIN\",\"SUPER_ADMIN\"]")
+  showAgeForLiving     Boolean  @default(false)
+  showOccupation       Boolean  @default(true)
+  showCity             Boolean  @default(true)
+  showBiography        Boolean  @default(true)
+  showPhotosToRoles    String   @default("[\"MEMBER\",\"BRANCH_LEADER\",\"ADMIN\",\"SUPER_ADMIN\"]")
+  showDeathYear        Boolean  @default(true)
+  showFullDeathDate    Boolean  @default(false)
+  updatedAt            DateTime @updatedAt
 }
 
-// ============================================
-// SYSTEM CONFIGURATION (Dynamic Settings)
-// ============================================
-
 model SystemConfig {
-  id                      String  @id @default("default")
-
-  // Display Settings (العرض)
-  defaultLanguage         String  @default("ar")       // ar, en
-  dateFormat              String  @default("DD/MM/YYYY")
-  treeDisplayMode         String  @default("vertical") // vertical, horizontal
-  showDeceasedMembers     Boolean @default(true)
-
-  // Validation Rules (التحقق)
-  minBirthYear            Int     @default(1400)
-  maxBirthYear            Int     @default(2025)
-  requirePhone            Boolean @default(false)
-  requireEmail            Boolean @default(false)
-  allowDuplicateNames     Boolean @default(true)
-
-  // Security Settings (الأمان)
-  sessionTimeout          Int     @default(60)         // minutes
-  maxLoginAttempts        Int     @default(20)
-  requireStrongAccessCode Boolean @default(false)
-
-  // Feature Toggles (الميزات)
-  enableBranchEntries     Boolean @default(true)
-  enablePublicRegistry    Boolean @default(true)
-  enableExport            Boolean @default(true)
-  enableImport            Boolean @default(true)
-  autoBackup              Boolean @default(true)
-  autoBackupInterval      Int     @default(24)         // hours
-
+  id                      String   @id @default("default")
+  defaultLanguage         String   @default("ar")
+  dateFormat              String   @default("DD/MM/YYYY")
+  treeDisplayMode         String   @default("vertical")
+  showDeceasedMembers     Boolean  @default(true)
+  minBirthYear            Int      @default(1400)
+  maxBirthYear            Int      @default(2025)
+  requirePhone            Boolean  @default(false)
+  requireEmail            Boolean  @default(false)
+  allowDuplicateNames     Boolean  @default(true)
+  sessionTimeout          Int      @default(60)
+  maxLoginAttempts        Int      @default(20)
+  requireStrongAccessCode Boolean  @default(false)
+  enableBranchEntries     Boolean  @default(true)
+  enablePublicRegistry    Boolean  @default(true)
+  enableExport            Boolean  @default(true)
+  enableImport            Boolean  @default(true)
+  autoBackup              Boolean  @default(true)
+  autoBackupInterval      Int      @default(24)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }
 
-// ============================================
-// ACTIVITY & NOTIFICATIONS
-// ============================================
-
 model ActivityLog {
-  id          String   @id @default(cuid())
-
-  // Who did it
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userEmail   String?  // Store email in case user is deleted
-  userName    String?  // Store name in case user is deleted
-
-  // What they did
-  action      String   // LOGIN, LOGOUT, VIEW_MEMBER, EDIT_MEMBER, CREATE_MEMBER, etc.
-  category    String   // AUTH, MEMBER, USER, SETTINGS, EXPORT, etc.
-
-  // Target of the action
-  targetType  String?  // USER, MEMBER, SETTINGS, etc.
-  targetId    String?
-  targetName  String?  // Human readable name of target
-
-  // Additional details
-  details     String?  // JSON with extra context
-
-  // Security info
-  ipAddress   String?
-  userAgent   String?
-
-  // Result
-  success     Boolean  @default(true)
+  id           String   @id @default(cuid())
+  userId       String?
+  userEmail    String?
+  userName     String?
+  action       String
+  category     String
+  targetType   String?
+  targetId     String?
+  targetName   String?
+  details      String?
+  ipAddress    String?
+  userAgent    String?
+  success      Boolean  @default(true)
   errorMessage String?
-
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([action])
@@ -555,114 +375,72 @@ model ActivityLog {
 }
 
 model Notification {
-  id          String   @id @default(cuid())
-
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Notification content
-  type        String   // WELCOME, ACCESS_APPROVED, NEW_MEMBER, EDIT_SUGGESTION, etc.
-  titleAr     String
-  titleEn     String
-  messageAr   String
-  messageEn   String
-
-  // Link to related content
-  linkUrl     String?
-  linkType    String?  // MEMBER, USER, REQUEST, etc.
-  linkId      String?
-
-  // Status
-  read        Boolean  @default(false)
-  readAt      DateTime?
-
-  createdAt   DateTime @default(now())
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  titleAr   String
+  titleEn   String
+  messageAr String
+  messageEn String
+  linkUrl   String?
+  linkType  String?
+  linkId    String?
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([read])
   @@index([createdAt])
 }
 
-// ============================================
-// LEGACY ADMIN MODEL (Deprecated - migrate to User)
-// ============================================
-
 model Admin {
-  id              String   @id @default(cuid())
-  name            String
-  email           String   @unique
-  accessCode      String   // Hashed access code
-
-  // Permissions
-  role            String   @default("EDITOR") // SUPER_ADMIN, ADMIN, EDITOR, VIEWER
-  permissions     String   // JSON array of specific permissions
-
-  // Status
-  isActive        Boolean  @default(true)
-  lastLoginAt     DateTime?
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       String?  // Admin who created this admin
-
-  // Sessions
-  sessions        AdminSession[]
-
-  // Migration flag
-  migratedToUserId String? // If migrated to new User model
+  id               String         @id @default(cuid())
+  name             String
+  email            String         @unique
+  accessCode       String
+  role             String         @default("EDITOR")
+  permissions      String
+  isActive         Boolean        @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  createdBy        String?
+  migratedToUserId String?
+  sessions         AdminSession[]
 
   @@index([email])
   @@index([isActive])
 }
 
 model AdminSession {
-  id              String   @id @default(cuid())
-  adminId         String
-  admin           Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-
-  // Session data
-  token           String   @unique
-  expiresAt       DateTime
-
-  // Device info
-  userAgent       String?
-  ipAddress       String?
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  lastActivityAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  adminId        String
+  token          String   @unique
+  expiresAt      DateTime
+  userAgent      String?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+  lastActivityAt DateTime @default(now())
+  admin          Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([adminId])
   @@index([expiresAt])
 }
 
-// ============================================
-// SEARCH HISTORY
-// ============================================
-
 model SearchHistory {
   id              String   @id @default(cuid())
-
-  // Who searched
-  userId          String?  // null for guest/anonymous searches
-  sessionId       String?  // For tracking guest searches
-
-  // What was searched
-  query           String   // The search query
-  searchType      String   @default("member") // member, branch, generation, global
-  filters         String?  // JSON of applied filters
-
-  // Results
+  userId          String?
+  sessionId       String?
+  query           String
+  searchType      String   @default("member")
+  filters         String?
   resultsCount    Int      @default(0)
-  clickedResultId String?  // If user clicked on a result
-
-  // Context
+  clickedResultId String?
   ipAddress       String?
   userAgent       String?
-
-  // Metadata
   searchedAt      DateTime @default(now())
 
   @@index([userId])
@@ -671,258 +449,168 @@ model SearchHistory {
   @@index([searchType])
 }
 
-// ============================================
-// IMPORT/EXPORT TRACKING
-// ============================================
-
 model ImportJob {
-  id              String   @id @default(cuid())
-
-  // Import details
-  fileName        String
-  fileType        String   // JSON, CSV, EXCEL
-  totalRecords    Int
-
-  // Progress
-  status          String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED
-  processedCount  Int      @default(0)
-  successCount    Int      @default(0)
-  errorCount      Int      @default(0)
-
-  // Conflict handling
-  conflictCount   Int      @default(0)
-  conflicts       String?  // JSON array of conflicts
-  conflictResolutions String? // JSON of how conflicts were resolved
-
-  // Results
-  importedIds     String?  // JSON array of imported member IDs
-  errorLog        String?  // JSON array of errors
-
-  // Metadata
-  importedBy      String
-  importedByName  String
-  startedAt       DateTime @default(now())
-  completedAt     DateTime?
-
-  // Rollback support
-  snapshotId      String?  // Snapshot created before import
+  id                  String    @id @default(cuid())
+  fileName            String
+  fileType            String
+  totalRecords        Int
+  status              String    @default("PENDING")
+  processedCount      Int       @default(0)
+  successCount        Int       @default(0)
+  errorCount          Int       @default(0)
+  conflictCount       Int       @default(0)
+  conflicts           String?
+  conflictResolutions String?
+  importedIds         String?
+  errorLog            String?
+  importedBy          String
+  importedByName      String
+  startedAt           DateTime  @default(now())
+  completedAt         DateTime?
+  snapshotId          String?
 
   @@index([status])
   @@index([importedBy])
 }
 
 model ExportJob {
-  id              String   @id @default(cuid())
-
-  // Export details
-  format          String   // JSON, CSV, EXCEL, PDF
-  fileName        String
-
-  // What was exported
-  memberCount     Int
-  fieldsIncluded  String   // JSON array of fields exported
-  filters         String?  // JSON of filters applied
-
-  // Metadata
-  exportedBy      String
-  exportedByName  String
-  exportedAt      DateTime @default(now())
-
-  // File info
-  fileSize        Int?     // bytes
-  downloadUrl     String?  // Temporary download URL
+  id             String   @id @default(cuid())
+  format         String
+  fileName       String
+  memberCount    Int
+  fieldsIncluded String
+  filters        String?
+  exportedBy     String
+  exportedByName String
+  exportedAt     DateTime @default(now())
+  fileSize       Int?
+  downloadUrl    String?
 
   @@index([exportedBy])
   @@index([exportedAt])
 }
 
-// ============================================
-// PENDING MEMBERS (for branch entry system)
-// ============================================
-
 model PendingMember {
-  id                    String   @id @default(cuid())
-
-  // Same fields as FamilyMember
-  firstName             String
-  fatherName            String?
-  grandfatherName       String?
-  greatGrandfatherName  String?
-  familyName            String   @default("آل شايع")
-  proposedFatherId      String?
-  gender                String
-  birthYear             Int?
-  birthCalendar         String   @default("GREGORIAN") // GREGORIAN or HIJRI
-  generation            Int      @default(1)
-  branch                String?
-  fullNameAr            String?
-  fullNameEn            String?
-  phone                 String?
-  city                  String?
-  status                String   @default("Living")
-  occupation            String?
-  email                 String?
-
-  // Submission info
-  submittedVia          String?  // Branch token or direct
-  submittedAt           DateTime @default(now())
-
-  // Review status
-  reviewStatus          String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  reviewedBy            String?
-  reviewedAt            DateTime?
-  reviewNotes           String?
-
-  // If approved, the created member ID
-  approvedMemberId      String?
+  id                   String    @id @default(cuid())
+  firstName            String
+  fatherName           String?
+  grandfatherName      String?
+  greatGrandfatherName String?
+  familyName           String    @default("آل شايع")
+  proposedFatherId     String?
+  gender               String
+  birthYear            Int?
+  birthCalendar        String    @default("GREGORIAN")
+  generation           Int       @default(1)
+  branch               String?
+  fullNameAr           String?
+  fullNameEn           String?
+  phone                String?
+  city                 String?
+  status               String    @default("Living")
+  occupation           String?
+  email                String?
+  submittedVia         String?
+  submittedAt          DateTime  @default(now())
+  reviewStatus         String    @default("PENDING")
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  reviewNotes          String?
+  approvedMemberId     String?
 
   @@index([reviewStatus])
   @@index([branch])
 }
 
-// ============================================
-// BRANCH ENTRY LINKS
-// ============================================
-
 model BranchEntryLink {
-  id              String   @id @default(cuid())
-  token           String   @unique
-
-  // Branch info
-  branchName      String
-  branchHeadId    String   // The member who is the branch head
-  branchHeadName  String
-
-  // Access control
-  isActive        Boolean  @default(true)
-  expiresAt       DateTime?
-  maxUses         Int?
-  useCount        Int      @default(0)
-
-  // Metadata
-  createdBy       String
-  createdAt       DateTime @default(now())
+  id             String    @id @default(cuid())
+  token          String    @unique
+  branchName     String
+  branchHeadId   String
+  branchHeadName String
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  maxUses        Int?
+  useCount       Int       @default(0)
+  createdBy      String
+  createdAt      DateTime  @default(now())
 
   @@index([token])
   @@index([isActive])
 }
 
-// ============================================
-// API SERVICE CONFIGURATION
-// ============================================
-
 model ApiServiceConfig {
-  id                      String  @id @default("default")
-
-  // Email Provider Configuration
-  emailProvider           String  @default("none") // resend, sendgrid, mailgun, smtp, none
-  emailApiKey             String? // Encrypted API key
-  emailFromAddress        String?
-  emailFromName           String?
-
-  // SMTP Configuration (when provider is smtp)
-  smtpHost                String?
-  smtpPort                Int?
-  smtpUser                String?
-  smtpPassword            String? // Encrypted
-  smtpSecure              Boolean @default(true)
-
-  // OTP/SMS Provider Configuration
-  otpProvider             String  @default("none") // twilio, vonage, messagebird, none
-  otpApiKey               String? // Encrypted
-  otpApiSecret            String? // Encrypted
-  otpFromNumber           String?
-
-  // General Settings
-  enableEmailNotifications Boolean @default(false)
-  enableSMSNotifications   Boolean @default(false)
-  testMode                 Boolean @default(true) // If true, don't actually send emails/SMS
-
-  // Metadata
-  updatedAt               DateTime @updatedAt
-  updatedBy               String?
+  id                       String   @id @default("default")
+  emailProvider            String   @default("none")
+  emailApiKey              String?
+  emailFromAddress         String?
+  emailFromName            String?
+  smtpHost                 String?
+  smtpPort                 Int?
+  smtpUser                 String?
+  smtpPassword             String?
+  smtpSecure               Boolean  @default(true)
+  otpProvider              String   @default("none")
+  otpApiKey                String?
+  otpApiSecret             String?
+  otpFromNumber            String?
+  enableEmailNotifications Boolean  @default(false)
+  enableSMSNotifications   Boolean  @default(false)
+  testMode                 Boolean  @default(true)
+  updatedAt                DateTime @updatedAt
+  updatedBy                String?
 }
 
-// ============================================
-// EMAIL LOGS
-// ============================================
-
 model EmailLog {
-  id              String   @id @default(cuid())
-
-  // Email details
-  to              String
-  from            String
-  subject         String
-  templateName    String?
-  templateData    String?  // JSON
-
-  // Status
-  status          String   @default("PENDING") // PENDING, SENT, FAILED, BOUNCED
-  provider        String
+  id                String    @id @default(cuid())
+  to                String
+  from              String
+  subject           String
+  templateName      String?
+  templateData      String?
+  status            String    @default("PENDING")
+  provider          String
   providerMessageId String?
-  errorMessage    String?
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  sentAt          DateTime?
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
+  sentAt            DateTime?
 
   @@index([to])
   @@index([status])
   @@index([createdAt])
 }
 
-// ============================================
-// EMAIL BROADCASTS (Family Meeting Invites, Updates, Reminders)
-// ============================================
-
 model Broadcast {
-  id              String   @id @default(cuid())
-
-  // Content
-  titleAr         String   // Arabic title
-  titleEn         String?  // English title (optional)
-  contentAr       String   // Arabic content (HTML)
-  contentEn       String?  // English content (HTML)
-
-  // Type of broadcast
-  type            String   @default("ANNOUNCEMENT") // MEETING, ANNOUNCEMENT, REMINDER, UPDATE
-
-  // Meeting-specific fields
-  meetingDate     DateTime?  // Date and time of the meeting
-  meetingLocation String?    // Physical or virtual location
-  meetingUrl      String?    // Zoom/Teams/Google Meet link
-  rsvpRequired    Boolean    @default(false)
-  rsvpDeadline    DateTime?  // Deadline to respond
-
-  // Targeting
-  targetAudience  String   @default("ALL") // ALL, BRANCH, GENERATION, CUSTOM
-  targetBranch    String?  // Specific branch if targeting branch
-  targetGeneration Int?    // Specific generation if targeting generation
-  targetMemberIds String?  // JSON array of specific member IDs if custom
-
-  // Scheduling
-  status          String   @default("DRAFT") // DRAFT, SCHEDULED, SENDING, SENT, CANCELLED
-  scheduledAt     DateTime? // When to send (null = send immediately)
-  sentAt          DateTime? // When actually sent
-
-  // Statistics
-  totalRecipients Int      @default(0)
-  sentCount       Int      @default(0)
-  failedCount     Int      @default(0)
-  openCount       Int      @default(0)
-  rsvpYesCount    Int      @default(0)
-  rsvpNoCount     Int      @default(0)
-  rsvpMaybeCount  Int      @default(0)
-
-  // Metadata
-  createdBy       String   // User ID who created
-  createdByName   String   // User name for display
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  recipients      BroadcastRecipient[]
+  id               String               @id @default(cuid())
+  titleAr          String
+  titleEn          String?
+  contentAr        String
+  contentEn        String?
+  type             String               @default("ANNOUNCEMENT")
+  meetingDate      DateTime?
+  meetingLocation  String?
+  meetingUrl       String?
+  rsvpRequired     Boolean              @default(false)
+  rsvpDeadline     DateTime?
+  targetAudience   String               @default("ALL")
+  targetBranch     String?
+  targetGeneration Int?
+  targetMemberIds  String?
+  status           String               @default("DRAFT")
+  scheduledAt      DateTime?
+  sentAt           DateTime?
+  totalRecipients  Int                  @default(0)
+  sentCount        Int                  @default(0)
+  failedCount      Int                  @default(0)
+  openCount        Int                  @default(0)
+  rsvpYesCount     Int                  @default(0)
+  rsvpNoCount      Int                  @default(0)
+  rsvpMaybeCount   Int                  @default(0)
+  createdBy        String
+  createdByName    String
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  recipients       BroadcastRecipient[]
 
   @@index([status])
   @@index([type])
@@ -931,29 +619,20 @@ model Broadcast {
 }
 
 model BroadcastRecipient {
-  id              String   @id @default(cuid())
-
+  id              String    @id @default(cuid())
   broadcastId     String
-  broadcast       Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
-
-  // Recipient info
-  memberId        String?  // Family member ID (if linked)
-  memberName      String   // Name for display
-  email           String   // Email address
-
-  // Delivery status
-  status          String   @default("PENDING") // PENDING, SENT, FAILED, BOUNCED
+  memberId        String?
+  memberName      String
+  email           String
+  status          String    @default("PENDING")
   sentAt          DateTime?
   errorMessage    String?
-
-  // Tracking
-  openedAt        DateTime?  // When email was opened
-  clickedAt       DateTime?  // When any link was clicked
-
-  // RSVP response (for meeting broadcasts)
-  rsvpResponse    String?    // YES, NO, MAYBE
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  rsvpResponse    String?
   rsvpRespondedAt DateTime?
-  rsvpNote        String?    // Optional note with RSVP
+  rsvpNote        String?
+  broadcast       Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
 
   @@unique([broadcastId, email])
   @@index([broadcastId])
@@ -961,141 +640,92 @@ model BroadcastRecipient {
   @@index([memberId])
 }
 
-// ============================================
-// SMS/OTP LOGS
-// ============================================
-
 model SmsLog {
-  id              String   @id @default(cuid())
-
-  // SMS details
-  to              String
-  from            String
-  message         String
-  type            String   @default("OTP") // OTP, NOTIFICATION
-
-  // Status
-  status          String   @default("PENDING") // PENDING, SENT, FAILED, DELIVERED
-  provider        String
+  id                String    @id @default(cuid())
+  to                String
+  from              String
+  message           String
+  type              String    @default("OTP")
+  status            String    @default("PENDING")
+  provider          String
   providerMessageId String?
-  errorMessage    String?
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  sentAt          DateTime?
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
+  sentAt            DateTime?
 
   @@index([to])
   @@index([status])
   @@index([createdAt])
 }
 
-// ============================================
-// SCHEDULED JOBS (for backups, cleanup, etc.)
-// ============================================
-
 model ScheduledJob {
-  id              String   @id @default(cuid())
-  name            String   @unique
+  id              String    @id @default(cuid())
+  name            String    @unique
   description     String?
-
-  // Schedule (cron expression)
   cronExpression  String
-  timezone        String   @default("Asia/Riyadh")
-
-  // Job configuration
-  jobType         String   // BACKUP, CLEANUP, EMAIL_DIGEST, etc.
-  jobConfig       String?  // JSON configuration
-
-  // Status
-  isEnabled       Boolean  @default(true)
+  timezone        String    @default("Asia/Riyadh")
+  jobType         String
+  jobConfig       String?
+  isEnabled       Boolean   @default(true)
   lastRunAt       DateTime?
-  lastRunStatus   String?  // SUCCESS, FAILED, RUNNING
-  lastRunDuration Int?     // milliseconds
+  lastRunStatus   String?
+  lastRunDuration Int?
   lastRunError    String?
   nextRunAt       DateTime?
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([isEnabled])
   @@index([nextRunAt])
 }
 
-// ============================================
-// IMAGE MANAGEMENT (Upload & Approval System)
-// ============================================
-
-// Album folders for organizing photos
 model AlbumFolder {
-  id              String   @id @default(cuid())
-  
-  // Names (bilingual)
-  name            String   // English name
-  nameAr          String   // Arabic name (required)
-  description     String?  // English description
-  descriptionAr   String?  // Arabic description
-  
-  // Display settings
-  color           String   @default("#6366f1") // Hex color for UI
-  icon            String?  // Optional icon name (lucide icon)
-  isSystem        Boolean  @default(false) // System folders can't be deleted
-  displayOrder    Int      @default(0)
-  
-  // Metadata
-  createdBy       String?  // User ID who created
-  createdByName   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  photos          MemberPhoto[]
-  pendingPhotos   PendingImage[]
-  
+  id            String         @id @default(cuid())
+  name          String
+  nameAr        String
+  description   String?
+  descriptionAr String?
+  color         String         @default("#6366f1")
+  icon          String?
+  isSystem      Boolean        @default(false)
+  displayOrder  Int            @default(0)
+  createdBy     String?
+  createdByName String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  photos        MemberPhoto[]
+  pendingPhotos PendingImage[]
+
   @@index([isSystem])
   @@index([displayOrder])
 }
 
 model PendingImage {
-  id              String   @id @default(cuid())
-
-  // Image data
-  imageData       String   // Base64 encoded image
-  thumbnailData   String?  // Smaller version for preview
-
-  // Categorization
-  category        String   @default("memory") // profile, memory, document, historical
-  title           String?  // User-provided title
-  titleAr         String?  // Arabic title
-  caption         String?  // Description/story
-  captionAr       String?  // Arabic caption
-  year            Int?     // Year the photo was taken (for timeline)
-
-  // Who/what is in the photo
-  memberId        String?  // Primary member in photo (optional)
-  memberName      String?  // Member name for display
-  taggedMemberIds String?  // JSON array of tagged member IDs
-
-  // Submission info
-  uploadedBy      String?  // User ID (null for guest uploads)
-  uploadedByName  String   // Name of uploader
-  uploadedByEmail String?  // Email for guest uploads
-  uploadedAt      DateTime @default(now())
-  ipAddress       String?  // For security
-
-  // Review status
-  reviewStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  reviewedBy      String?  // Admin who reviewed
+  id              String       @id @default(cuid())
+  imageData       String
+  thumbnailData   String?
+  category        String       @default("memory")
+  title           String?
+  titleAr         String?
+  caption         String?
+  captionAr       String?
+  year            Int?
+  memberId        String?
+  memberName      String?
+  taggedMemberIds String?
+  uploadedBy      String?
+  uploadedByName  String
+  uploadedByEmail String?
+  uploadedAt      DateTime     @default(now())
+  ipAddress       String?
+  reviewStatus    String       @default("PENDING")
+  reviewedBy      String?
   reviewedByName  String?
   reviewedAt      DateTime?
-  reviewNotes     String?  // Reason for rejection or notes
-
-  // If approved, link to created MemberPhoto
+  reviewNotes     String?
   approvedPhotoId String?
-  
-  // Album folder (optional)
   folderId        String?
-  folder          AlbumFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folder          AlbumFolder? @relation(fields: [folderId], references: [id])
 
   @@index([reviewStatus])
   @@index([category])
@@ -1106,47 +736,29 @@ model PendingImage {
 }
 
 model MemberPhoto {
-  id              String   @id @default(cuid())
-
-  // Image data
-  imageData       String   // Base64 encoded image
-  thumbnailData   String?  // Smaller version for gallery view
-
-  // Categorization
-  category        String   @default("memory") // profile, memory, document, historical
-  title           String?
-  titleAr         String?
-  caption         String?
-  captionAr       String?
-  year            Int?     // For timeline sorting
-
-  // Primary member (whose gallery this appears in)
-  memberId        String?
-  member          FamilyMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
-
-  // Tagged members (for group photos)
-  taggedMemberIds String?  // JSON array of member IDs
-
-  // For family album (photos not tied to specific member)
-  isFamilyAlbum   Boolean  @default(false)
-
-  // Contribution tracking
-  uploadedBy      String?  // User ID
-  uploadedByName  String
-  originalPendingId String? // Reference to original pending image
-
-  // Display settings
-  isProfilePhoto  Boolean  @default(false) // Primary profile photo for member
-  displayOrder    Int      @default(0) // For gallery ordering
-  isPublic        Boolean  @default(true) // Visible to all roles
-  
-  // Album folder (optional)
-  folderId        String?
-  folder          AlbumFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String        @id @default(cuid())
+  imageData         String
+  thumbnailData     String?
+  category          String        @default("memory")
+  title             String?
+  titleAr           String?
+  caption           String?
+  captionAr         String?
+  year              Int?
+  memberId          String?
+  taggedMemberIds   String?
+  isFamilyAlbum     Boolean       @default(false)
+  uploadedBy        String?
+  uploadedByName    String
+  originalPendingId String?
+  isProfilePhoto    Boolean       @default(false)
+  displayOrder      Int           @default(0)
+  isPublic          Boolean       @default(true)
+  folderId          String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  folder            AlbumFolder?  @relation(fields: [folderId], references: [id])
+  member            FamilyMember? @relation(fields: [memberId], references: [id])
 
   @@index([memberId])
   @@index([category])
@@ -1157,107 +769,62 @@ model MemberPhoto {
   @@index([folderId])
 }
 
-// ============================================
-// BREASTFEEDING RELATIONSHIPS (علاقات الرضاعة)
-// Islamic milk kinship - creates marriage prohibitions
-// ============================================
-
 model BreastfeedingRelationship {
-  id                    String   @id @default(cuid())
-
-  // The child who was breastfed (ابن/بنت من الرضاعة)
-  childId               String
-  child                 FamilyMember @relation("BreastfedChild", fields: [childId], references: [id], onDelete: Cascade)
-
-  // The wet nurse / milk mother (المرضعة / أم من الرضاعة)
-  nurseId               String?
-  nurse                 FamilyMember? @relation("NurseRelation", fields: [nurseId], references: [id], onDelete: SetNull)
-  externalNurseName     String?      // If nurse is not in family tree
-
-  // The milk father (أب من الرضاعة) - wet nurse's husband at time of breastfeeding
-  milkFatherId          String?
-  milkFather            FamilyMember? @relation("MilkFatherRelation", fields: [milkFatherId], references: [id], onDelete: SetNull)
-  externalMilkFatherName String?     // If milk father is not in family tree
-
-  // Additional information
-  notes                 String?      // Any additional notes
-  breastfeedingYear     Int?         // Year when breastfeeding occurred
-
-  // Metadata
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  createdBy             String?      // Admin who added this record
+  id                     String        @id @default(cuid())
+  childId                String
+  nurseId                String?
+  externalNurseName      String?
+  milkFatherId           String?
+  externalMilkFatherName String?
+  notes                  String?
+  breastfeedingYear      Int?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  createdBy              String?
+  child                  FamilyMember  @relation("BreastfedChild", fields: [childId], references: [id], onDelete: Cascade)
+  milkFather             FamilyMember? @relation("MilkFatherRelation", fields: [milkFatherId], references: [id])
+  nurse                  FamilyMember? @relation("NurseRelation", fields: [nurseId], references: [id])
 
   @@index([childId])
   @@index([nurseId])
   @@index([milkFatherId])
 }
 
-// ============================================
-// FAMILY JOURNALS & STORIES
-// ============================================
-
 model FamilyJournal {
-  id              String   @id @default(cuid())
-
-  // Titles (bilingual support)
-  titleAr         String   // Arabic title
-  titleEn         String?  // English title (optional)
-
-  // Story content
-  contentAr       String   // Arabic content (main story)
-  contentEn       String?  // English translation (optional)
-  excerpt         String?  // Short preview/summary for cards
-
-  // Categorization
-  category        String   @default("ORAL_HISTORY") // ORAL_HISTORY, MIGRATION, MEMORY, POEM, GENEALOGY
-  tags            String?  // JSON array of tags for filtering
-
-  // Time period
-  era             String?  // Free text era description
-  yearFrom        Int?     // Start year (approximate)
-  yearTo          Int?     // End year (approximate, null if single year)
-  dateDescription String?  // Human readable date: "في الأربعينات الهجرية"
-
-  // Location
-  location        String?  // Where the story took place
-  locationAr      String?  // Arabic location name
-
-  // Related family members
-  primaryMemberId   String?  // Main person this story is about
-  relatedMemberIds  String?  // JSON array of related member IDs
-  generation        Int?     // Which generation this story relates to
-
-  // Media attachments
-  coverImageUrl   String?  // Cover/hero image for the story
-  mediaItems      JournalMedia[]
-
-  // Narrative details
-  narrator        String?  // Who told this story
-  narratorId      String?  // If narrator is a family member
-  source          String?  // Source: "رواية شفهية", "وثيقة", "صورة قديمة"
-
-  // Publishing
-  status          String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
-  isFeatured      Boolean  @default(false) // Show on homepage/highlights
-  displayOrder    Int      @default(0) // For manual ordering
-
-  // Contribution tracking
-  authorId        String?  // User who wrote/submitted
-  authorName      String   // Author name for display
-
-  // Approval workflow
-  reviewStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  reviewedBy      String?
-  reviewedAt      DateTime?
-  reviewNotes     String?
-
-  // Engagement
-  viewCount       Int      @default(0)
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String         @id @default(cuid())
+  titleAr          String
+  titleEn          String?
+  contentAr        String
+  contentEn        String?
+  excerpt          String?
+  category         String         @default("ORAL_HISTORY")
+  tags             String?
+  era              String?
+  yearFrom         Int?
+  yearTo           Int?
+  dateDescription  String?
+  location         String?
+  locationAr       String?
+  primaryMemberId  String?
+  relatedMemberIds String?
+  generation       Int?
+  coverImageUrl    String?
+  narrator         String?
+  narratorId       String?
+  source           String?
+  status           String         @default("DRAFT")
+  isFeatured       Boolean        @default(false)
+  displayOrder     Int            @default(0)
+  authorId         String?
+  authorName       String
+  reviewStatus     String         @default("PENDING")
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  reviewNotes      String?
+  viewCount        Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  mediaItems       JournalMedia[]
 
   @@index([category])
   @@index([status])
@@ -1270,81 +837,55 @@ model FamilyJournal {
 }
 
 model JournalMedia {
-  id              String   @id @default(cuid())
-
-  journalId       String
-  journal         FamilyJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
-
-  // Media data
-  type            String   // IMAGE, DOCUMENT, AUDIO, VIDEO
-  url             String?  // External URL or path
-  imageData       String?  // Base64 for uploaded images
-  thumbnailData   String?  // Thumbnail for preview
-
-  // Description
-  titleAr         String?
-  titleEn         String?
-  captionAr       String?
-  captionEn       String?
-  year            Int?     // Year of the media
-
-  // Display
-  displayOrder    Int      @default(0)
-  isHero          Boolean  @default(false) // Main/hero image
-
-  // Metadata
-  createdAt       DateTime @default(now())
+  id            String        @id @default(cuid())
+  journalId     String
+  type          String
+  url           String?
+  imageData     String?
+  thumbnailData String?
+  titleAr       String?
+  titleEn       String?
+  captionAr     String?
+  captionEn     String?
+  year          Int?
+  displayOrder  Int           @default(0)
+  isHero        Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  journal       FamilyJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
 
   @@index([journalId])
   @@index([type])
 }
 
 model JournalCategory {
-  id              String   @id @default(cuid())
-
-  // Category info
-  key             String   @unique // ORAL_HISTORY, MIGRATION, etc.
-  nameAr          String   // الروايات الشفهية
-  nameEn          String   // Oral History
-  descriptionAr   String?  // Description in Arabic
-  descriptionEn   String?  // Description in English
-  icon            String?  // Icon name or emoji
-  color           String?  // Theme color for the category
-
-  // Display
-  displayOrder    Int      @default(0)
-  isActive        Boolean  @default(true)
+  id            String  @id @default(cuid())
+  key           String  @unique
+  nameAr        String
+  nameEn        String
+  descriptionAr String?
+  descriptionEn String?
+  icon          String?
+  color         String?
+  displayOrder  Int     @default(0)
+  isActive      Boolean @default(true)
 
   @@index([key])
   @@index([displayOrder])
 }
 
-// ============================================
-// PERMISSION DEFINITIONS (Database-driven)
-// ============================================
-
 model Permission {
-  id              String   @id @default(cuid())
-
-  // Permission info
-  key             String   @unique  // VIEW_MEMBERS, ADD_MEMBERS, etc.
-  labelAr         String             // عرض الأعضاء
-  labelEn         String             // View Members
-  description     String?            // Can view family members
-  descriptionAr   String?            // يمكنه عرض أعضاء العائلة
-
-  // Categorization
-  category        String             // members, data, history, admin, audit, backup
-
-  // Display
-  displayOrder    Int      @default(0)
-  isActive        Boolean  @default(true)
-
-  // Relations
+  id              String                  @id @default(cuid())
+  key             String                  @unique
+  labelAr         String
+  labelEn         String
+  description     String?
+  descriptionAr   String?
+  category        String
+  displayOrder    Int                     @default(0)
+  isActive        Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
   rolePermissions RoleDefaultPermission[]
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
   @@index([key])
   @@index([category])
@@ -1352,66 +893,43 @@ model Permission {
 }
 
 model PermissionCategory {
-  id              String   @id @default(cuid())
-
-  // Category info
-  key             String   @unique  // members, data, history, admin, etc.
-  labelAr         String             // الأعضاء
-  labelEn         String             // Members
-  descriptionAr   String?
-  descriptionEn   String?
-  icon            String?
-
-  // Display
-  displayOrder    Int      @default(0)
-  isActive        Boolean  @default(true)
+  id            String  @id @default(cuid())
+  key           String  @unique
+  labelAr       String
+  labelEn       String
+  descriptionAr String?
+  descriptionEn String?
+  icon          String?
+  displayOrder  Int     @default(0)
+  isActive      Boolean @default(true)
 
   @@index([key])
   @@index([displayOrder])
 }
 
 model RoleDefaultPermission {
-  id              String   @id @default(cuid())
-
-  // Role (SUPER_ADMIN, ADMIN, BRANCH_LEADER, MEMBER, GUEST)
-  role            String
-
-  // Permission
-  permissionId    String
-  permission      Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  // Whether this role has this permission by default
-  allowed         Boolean  @default(false)
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String     @id @default(cuid())
+  role         String
+  permissionId String
+  allowed      Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([role, permissionId])
   @@index([role])
   @@index([permissionId])
 }
 
-// ============================================
-// EXPORT FIELD DEFINITIONS (Database-driven)
-// ============================================
-
 model ExportField {
-  id              String   @id @default(cuid())
-
-  // Field info
-  key             String   @unique  // firstName, fatherName, etc.
-  labelEn         String             // First Name
-  labelAr         String             // الاسم الأول
-
-  // Categorization
-  category        String             // identity, family, personal, contact, meta
-
-  // Defaults
+  id                String  @id @default(cuid())
+  key               String  @unique
+  labelEn           String
+  labelAr           String
+  category          String
   selectedByDefault Boolean @default(false)
-
-  // Display
-  displayOrder    Int      @default(0)
-  isActive        Boolean  @default(true)
+  displayOrder      Int     @default(0)
+  isActive          Boolean @default(true)
 
   @@index([key])
   @@index([category])
@@ -1419,67 +937,39 @@ model ExportField {
 }
 
 model ExportFieldCategory {
-  id              String   @id @default(cuid())
-
-  // Category info
-  key             String   @unique  // identity, family, personal, contact, meta
-  labelEn         String             // Identity
-  labelAr         String             // الهوية
-
-  // Display
-  displayOrder    Int      @default(0)
-  isActive        Boolean  @default(true)
+  id           String  @id @default(cuid())
+  key          String  @unique
+  labelEn      String
+  labelAr      String
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
 
   @@index([key])
   @@index([displayOrder])
 }
 
-// ============================================
-// GATHERINGS & EVENTS
-// ============================================
-
 model Gathering {
-  id              String   @id @default(cuid())
-
-  // Titles
-  title           String             // Eid Al-Fitr Family Gathering
-  titleAr         String             // لقاء عيد الفطر العائلي
-
-  // Description
+  id              String              @id @default(cuid())
+  title           String
+  titleAr         String
   description     String?
   descriptionAr   String?
-
-  // Date & Time
   date            DateTime
-  endDate         DateTime?          // For multi-day events
-  time            String?            // "10:00"
-
-  // Location
+  endDate         DateTime?
+  time            String?
   location        String?
   locationAr      String?
-  locationUrl     String?            // Google Maps link
-
-  // Type
-  type            String   @default("gathering") // gathering, wedding, eid, memorial, celebration
-
-  // Media
-  coverImage      String?            // Base64 or URL
-
-  // Organizer
-  organizerId     String?            // User ID
+  locationUrl     String?
+  type            String              @default("gathering")
+  coverImage      String?
+  organizerId     String?
   organizerName   String
   organizerNameAr String
-
-  // Status
-  status          String   @default("UPCOMING") // DRAFT, UPCOMING, ONGOING, COMPLETED, CANCELLED
-  isPublic        Boolean  @default(true)
-
-  // Metadata
+  status          String              @default("UPCOMING")
+  isPublic        Boolean             @default(true)
   createdBy       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   attendees       GatheringAttendee[]
 
   @@index([date])
@@ -1489,28 +979,20 @@ model Gathering {
 }
 
 model GatheringAttendee {
-  id              String   @id @default(cuid())
-
-  gatheringId     String
-  gathering       Gathering @relation(fields: [gatheringId], references: [id], onDelete: Cascade)
-
-  // Attendee info
-  userId          String?            // User ID if registered
-  memberId        String?            // Family member ID
-  name            String             // Name for display
-  email           String?
-
-  // RSVP
-  rsvpStatus      String   @default("PENDING") // PENDING, YES, MAYBE, NO
-  rsvpNote        String?
-  rsvpAt          DateTime?
-
-  // Attendance tracking
-  attended        Boolean  @default(false)
-  attendedAt      DateTime?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String    @id @default(cuid())
+  gatheringId String
+  userId      String?
+  memberId    String?
+  name        String
+  email       String?
+  rsvpStatus  String    @default("PENDING")
+  rsvpNote    String?
+  rsvpAt      DateTime?
+  attended    Boolean   @default(false)
+  attendedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  gathering   Gathering @relation(fields: [gatheringId], references: [id], onDelete: Cascade)
 
   @@unique([gatheringId, userId])
   @@index([gatheringId])
@@ -1518,208 +1000,123 @@ model GatheringAttendee {
   @@index([rsvpStatus])
 }
 
-// ============================================
-// BACKUP CONFIGURATION
-// ============================================
-
 model BackupConfig {
-  id                  String   @id @default("default")
-
-  // Schedule
-  enabled             Boolean  @default(true)
-  intervalHours       Int      @default(24)
-  maxBackups          Int      @default(10)
-  retentionDays       Int      @default(30)
-
-  // Last backup info
-  lastBackupAt        DateTime?
-  lastBackupStatus    String?  // SUCCESS, FAILED
-  lastBackupError     String?
-  lastBackupSize      Int?     // bytes
-
-  // Metadata
-  updatedAt           DateTime @updatedAt
-  updatedBy           String?
+  id               String    @id @default("default")
+  enabled          Boolean   @default(true)
+  intervalHours    Int       @default(24)
+  maxBackups       Int       @default(10)
+  retentionDays    Int       @default(30)
+  lastBackupAt     DateTime?
+  lastBackupStatus String?
+  lastBackupError  String?
+  lastBackupSize   Int?
+  updatedAt        DateTime  @updatedAt
+  updatedBy        String?
 }
 
-// ============================================
-// EVENT TYPE CONFIGURATION
-// ============================================
-
 model EventType {
-  id              String   @id @default(cuid())
-
-  // Type info
-  key             String   @unique  // gathering, wedding, eid, memorial, celebration
-  labelEn         String             // Gathering
-  labelAr         String             // لقاء
-
-  // Styling
-  color           String?            // text-green-700
-  bgColor         String?            // bg-green-100
-  icon            String?
-
-  // Display
-  displayOrder    Int      @default(0)
-  isActive        Boolean  @default(true)
+  id           String  @id @default(cuid())
+  key          String  @unique
+  labelEn      String
+  labelAr      String
+  color        String?
+  bgColor      String?
+  icon         String?
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
 
   @@index([key])
   @@index([displayOrder])
 }
 
-// ============================================
-// FEATURE FLAGS (Admin Feature Preview System)
-// ============================================
-
 model FeatureFlag {
   id              String   @id @default("default")
-
-  // Core Pages
-  familyTree      Boolean  @default(true)   // شجرة العائلة
-  registry        Boolean  @default(true)   // سجل الأعضاء
-  journals        Boolean  @default(true)   // السجل التاريخي
-  gallery         Boolean  @default(true)   // معرض الصور
-  gatherings      Boolean  @default(true)   // المناسبات والتجمعات
-  dashboard       Boolean  @default(true)   // لوحة الإحصائيات
-  search          Boolean  @default(true)   // البحث
-  branches        Boolean  @default(true)   // الفروع
-
-  // Data Management
-  quickAdd        Boolean  @default(true)   // إضافة سريعة
-  importData      Boolean  @default(true)   // استيراد البيانات
-  exportData      Boolean  @default(true)   // تصدير البيانات
-  treeEditor      Boolean  @default(true)   // محرر الشجرة
-  duplicates      Boolean  @default(true)   // كشف التكرارات
-  changeHistory   Boolean  @default(true)   // سجل التغييرات
-
-  // User Features
-  registration    Boolean  @default(true)   // التسجيل
-  invitations     Boolean  @default(true)   // الدعوات
-  accessRequests  Boolean  @default(true)   // طلبات الانضمام
-  profiles        Boolean  @default(true)   // الملفات الشخصية
-
-  // Special Features
-  breastfeeding   Boolean  @default(true)   // علاقات الرضاعة
-  branchEntries   Boolean  @default(true)   // روابط الفروع
-  onboarding      Boolean  @default(true)   // دليل البداية
-
-  // Admin Features
-  imageModeration Boolean  @default(true)   // إدارة الصور
-  broadcasts      Boolean  @default(true)   // البث البريدي
-  reports         Boolean  @default(true)   // التقارير
-  audit           Boolean  @default(true)   // سجل المراجعة
-  apiServices     Boolean  @default(true)   // الخدمات الخارجية
-
-  // Metadata
+  familyTree      Boolean  @default(true)
+  registry        Boolean  @default(true)
+  journals        Boolean  @default(true)
+  gallery         Boolean  @default(true)
+  gatherings      Boolean  @default(true)
+  dashboard       Boolean  @default(true)
+  search          Boolean  @default(true)
+  branches        Boolean  @default(true)
+  quickAdd        Boolean  @default(true)
+  importData      Boolean  @default(true)
+  exportData      Boolean  @default(true)
+  treeEditor      Boolean  @default(true)
+  duplicates      Boolean  @default(true)
+  changeHistory   Boolean  @default(true)
+  registration    Boolean  @default(true)
+  invitations     Boolean  @default(true)
+  accessRequests  Boolean  @default(true)
+  profiles        Boolean  @default(true)
+  breastfeeding   Boolean  @default(true)
+  branchEntries   Boolean  @default(true)
+  onboarding      Boolean  @default(true)
+  imageModeration Boolean  @default(true)
+  broadcasts      Boolean  @default(true)
+  reports         Boolean  @default(true)
+  audit           Boolean  @default(true)
+  apiServices     Boolean  @default(true)
   updatedAt       DateTime @updatedAt
   updatedBy       String?
 }
 
-// ============================================
-// INVITATION CODE SYSTEM
-// ============================================
-
 model InvitationCode {
-  id              String   @id @default(cuid())
-  
-  // The code itself (store hashed for security)
-  code            String   @unique  // Plain code for lookup (or hash if you prefer)
-  
-  // Link to specific family member (optional)
-  linkedMemberId  String?  // ID of FamilyMember this code is for
-  linkedMemberName String? // Name for display
-  
-  // Usage limits
-  maxUses         Int      @default(1)  // How many times can be used
-  usedCount       Int      @default(0)  // How many times used
-  
-  // Expiration
-  expiresAt       DateTime // When code expires
-  
-  // Who created it
-  createdById     String   // Admin who created
-  createdByName   String   // Admin name for display
-  createdAt       DateTime @default(now())
-  
-  // Optional message/note
-  note            String?  // Admin note about this code
-  
-  // Status
-  status          String   @default("ACTIVE") // ACTIVE, USED, EXPIRED, REVOKED
-  
-  // Redemption tracking
-  redemptions     InvitationRedemption[]
-  
-  @@unique([linkedMemberId])
+  id               String                 @id @default(cuid())
+  code             String                 @unique
+  linkedMemberId   String?                @unique
+  linkedMemberName String?
+  maxUses          Int                    @default(1)
+  usedCount        Int                    @default(0)
+  expiresAt        DateTime
+  createdById      String
+  createdByName    String
+  createdAt        DateTime               @default(now())
+  note             String?
+  status           String                 @default("ACTIVE")
+  redemptions      InvitationRedemption[]
+
   @@index([code])
   @@index([status])
   @@index([expiresAt])
 }
 
 model InvitationRedemption {
-  id              String   @id @default(cuid())
-  
-  // Link to invitation
-  invitationId    String
-  invitation      InvitationCode @relation(fields: [invitationId], references: [id])
-  
-  // Who used it
-  userId          String   // User who redeemed
-  userEmail       String   // Email for audit
-  userName        String   // Name for audit
-  
-  // When
-  redeemedAt      DateTime @default(now())
-  
+  id           String         @id @default(cuid())
+  invitationId String
+  userId       String
+  userEmail    String
+  userName     String
+  redeemedAt   DateTime       @default(now())
+  invitation   InvitationCode @relation(fields: [invitationId], references: [id])
+
   @@index([invitationId])
   @@index([userId])
 }
 
-// ============================================
-// AUDIT LOG (Database-backed audit trail)
-// ============================================
-
 model AuditLog {
-  id              String   @id @default(cuid())
-  
-  // Timestamp
-  timestamp       DateTime @default(now())
-  
-  // Action details
-  action          String   // MEMBER_CREATE, MEMBER_UPDATE, MEMBER_DELETE, etc.
-  severity        String   @default("INFO") // INFO, WARNING, ERROR, CRITICAL
-  
-  // User who performed the action
-  userId          String?
-  userName        String?
-  userRole        String?
-  
-  // Target of the action
-  targetType      String   // MEMBER, BACKUP, CONFIG, ADMIN, EXPORT, IMPORT, etc.
-  targetId        String?
-  targetName      String?
-  
-  // Description
-  description     String
-  
-  // Detailed data (stored as JSON)
-  details         Json?
-  previousState   Json?
-  newState        Json?
-  
-  // Request metadata
-  ipAddress       String?
-  userAgent       String?
-  sessionId       String?
-  
-  // Result
-  success         Boolean  @default(true)
-  errorMessage    String?
-  
-  // Impact tracking (for member changes affecting descendants)
-  impactedIds     String?  // JSON array of affected entity IDs (descendants, etc.)
-  impactSummary   Json?    // Summary object with counts like { descendantsAffected: 15, lineagePathsUpdated: 10 }
-  
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  action        String
+  severity      String   @default("INFO")
+  userId        String?
+  userName      String?
+  userRole      String?
+  targetType    String
+  targetId      String?
+  targetName    String?
+  description   String
+  details       Json?
+  previousState Json?
+  newState      Json?
+  ipAddress     String?
+  userAgent     String?
+  sessionId     String?
+  success       Boolean  @default(true)
+  errorMessage  String?
+  impactedIds   String?
+  impactSummary Json?
+
   @@index([timestamp])
   @@index([action])
   @@index([userId])
