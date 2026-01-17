@@ -4,6 +4,7 @@ import { hashPassword, validatePassword } from '@/lib/auth/password';
 import { logActivity, getSiteSettings, checkMemberLinkedToUser } from '@/lib/auth/db-store';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
+import { normalizePhone } from '@/lib/phone-utils';
 
 function sanitizeString(input: string | null | undefined): string {
   if (!input) return '';
@@ -164,6 +165,22 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await hashPassword(password);
+    
+    // Normalize phone number if provided - reject invalid Saudi format
+    let normalizedPhone: string | null = null;
+    if (phone) {
+      normalizedPhone = normalizePhone(sanitizeString(phone));
+      if (!normalizedPhone) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Invalid phone number format',
+            messageAr: 'صيغة رقم الجوال غير صحيحة',
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     const newUser = await prisma.user.create({
       data: {
@@ -171,7 +188,7 @@ export async function POST(request: NextRequest) {
         passwordHash,
         nameArabic: sanitizeString(nameArabic),
         nameEnglish: sanitizeString(nameEnglish) || null,
-        phone: sanitizeString(phone) || null,
+        phone: normalizedPhone,
         role: 'MEMBER',
         status: 'ACTIVE',
         linkedMemberId: invitation.linkedMemberId || null,
@@ -184,10 +201,9 @@ export async function POST(request: NextRequest) {
       try {
         const updateData: Record<string, string | null> = {};
         const sanitizedEmail = sanitizeString(email).toLowerCase();
-        const sanitizedPhone = sanitizeString(phone);
         
         if (sanitizedEmail) updateData.email = sanitizedEmail;
-        if (sanitizedPhone) updateData.phone = sanitizedPhone;
+        if (normalizedPhone) updateData.phone = normalizedPhone;
         
         if (Object.keys(updateData).length > 0) {
           await prisma.familyMember.update({

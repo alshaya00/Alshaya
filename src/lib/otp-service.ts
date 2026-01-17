@@ -15,34 +15,52 @@ const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
  * Normalizes a phone number using the centralized phone-utils function.
  * This ensures consistent format across all OTP operations.
  * Handles all Saudi phone formats including +9660505... -> +966505...
+ * 
+ * For Saudi numbers (+966): Returns +9665XXXXXXXX format only
+ * For non-Saudi numbers: Basic cleanup with provided country code
  */
 export function normalizePhoneNumber(phone: string, countryCode?: string): string {
-  // Use the centralized normalizePhone function
+  // Use the centralized normalizePhone function for Saudi numbers
   const normalized = normalizePhone(phone);
   
-  // If normalization succeeded, return it
+  // If normalization to Saudi format succeeded, return it
   if (normalized) {
     return normalized;
   }
   
-  // Fallback: basic cleanup for non-Saudi numbers
+  // For non-Saudi numbers (with explicit non-966 country code), do basic cleanup
   let cleaned = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
   
-  if (cleaned.startsWith('+')) {
-    return cleaned;
+  // If a non-Saudi country code is explicitly provided, handle it
+  if (countryCode && !countryCode.startsWith('+966')) {
+    if (cleaned.startsWith('+')) {
+      return cleaned;
+    }
+    
+    if (cleaned.startsWith('00')) {
+      return '+' + cleaned.substring(2);
+    }
+    
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    return countryCode + cleaned;
   }
   
-  if (cleaned.startsWith('00')) {
-    return '+' + cleaned.substring(2);
+  // For Saudi numbers that failed normalization, try one more time with cleanup
+  // This handles edge cases where the input has extra characters
+  const reCleaned = phone.replace(/[^\d]/g, '');
+  if (reCleaned.length >= 9) {
+    // Try to normalize the cleaned digits
+    const retryNormalized = normalizePhone(reCleaned);
+    if (retryNormalized) {
+      return retryNormalized;
+    }
   }
   
-  const effectiveCountryCode = countryCode || '+966';
-  
-  if (cleaned.startsWith('0')) {
-    cleaned = cleaned.substring(1);
-  }
-  
-  return effectiveCountryCode + cleaned;
+  // If all else fails, throw an error for invalid Saudi numbers
+  throw new Error(`Invalid Saudi phone number format: ${phone}`);
 }
 
 export async function checkRateLimit(phone: string): Promise<{ allowed: boolean; remainingAttempts: number }> {
@@ -284,9 +302,16 @@ export async function verifyOtp(
 }
 
 export async function findUserByPhone(phone: string, countryCode?: string) {
-  const normalizedPhone = normalizePhoneNumber(phone, countryCode);
+  let normalizedPhone: string;
   
-  // First try exact match with normalized phone
+  try {
+    normalizedPhone = normalizePhoneNumber(phone, countryCode);
+  } catch {
+    // Invalid phone format - return null
+    return null;
+  }
+  
+  // Try exact match with normalized phone (preferred)
   let user = await prisma.user.findFirst({
     where: {
       phone: normalizedPhone,
@@ -296,25 +321,20 @@ export async function findUserByPhone(phone: string, countryCode?: string) {
   
   if (user) return user;
   
-  // If not found, try to match with different formats in database
-  // Extract the 9-digit local number for flexible matching
+  // TEMPORARY FALLBACK: Flexible matching for legacy/unnormalized data
+  // This can be removed once all data sources are verified to be normalized
   const digits = normalizedPhone.replace(/\D/g, '');
   let localNumber = '';
   
   if (digits.startsWith('966') && digits.length === 12) {
     localNumber = digits.substring(3); // 5XXXXXXXX
-  } else if (digits.length === 9 && digits.startsWith('5')) {
-    localNumber = digits;
   }
   
-  if (localNumber) {
-    // Build all possible formats for this number
+  if (localNumber && localNumber.length === 9) {
     const possibleFormats = [
-      `+966${localNumber}`,           // +9665XXXXXXXX
-      `966${localNumber}`,            // 9665XXXXXXXX
-      `0${localNumber}`,              // 05XXXXXXXX
-      localNumber,                     // 5XXXXXXXX
-      `+9660${localNumber}`,          // +96605XXXXXXXX (wrong but seen in some data)
+      `+966${localNumber}`,           // +9665XXXXXXXX (correct)
+      `0${localNumber}`,              // 05XXXXXXXX (legacy local)
+      localNumber,                     // 5XXXXXXXX (legacy without 0)
     ];
     
     user = await prisma.user.findFirst({

@@ -28,7 +28,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedPhone = normalizePhoneNumber(phone, countryCode);
+    let normalizedPhone: string;
+    try {
+      normalizedPhone = normalizePhoneNumber(phone, countryCode);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'صيغة رقم الجوال غير صحيحة', errorEn: 'Invalid phone number format' },
+        { status: 400 }
+      );
+    }
     
     const result = await checkVerification(normalizedPhone, code, purpose, countryCode);
 

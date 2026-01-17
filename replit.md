@@ -53,6 +53,12 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 -   **Localization Enhancements**:
     -   **Arabic Transliteration**: 80+ common Arabic name mappings for proper fullNameEn generation.
     -   **Branch Identification**: Recursive lookup with fuzzy Arabic name matching for pending member approvals.
+-   **Phone Number Normalization**:
+    -   **Centralized Utility** (`src/lib/phone-utils.ts`): All Saudi phone numbers normalized to +9665XXXXXXXX format.
+    -   **Handles All Input Formats**: +9660505..., 0505..., 505..., +966505..., 00966505... all normalize correctly.
+    -   **Strict Validation**: Invalid phone formats rejected with 400 error and bilingual message.
+    -   **Flexible User Lookup**: findUserByPhone supports legacy formats for backward compatibility.
+    -   **Database Normalized**: All User and AccessRequest phone records migrated to +9665XXXXXXXX format.
 -   **Security Hardening**:
     -   **Admin credentials**: Set via Replit Secrets (ADMIN_USERNAME, ADMIN_PASSWORD).
     -   **API Rate Limiting** (`src/lib/rate-limiter.ts`): In-memory rate limiter protects public endpoints (OTP: 5/min, duplicate-check: 20/min, register: 5/min). Returns 429 with bilingual messages.

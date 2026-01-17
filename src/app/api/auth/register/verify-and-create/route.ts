@@ -98,7 +98,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedPhone = normalizePhoneNumber(phone, countryCode);
+    let normalizedPhone: string;
+    try {
+      normalizedPhone = normalizePhoneNumber(phone, countryCode);
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid phone number format',
+          messageAr: 'صيغة رقم الجوال غير صحيحة',
+        },
+        { status: 400 }
+      );
+    }
+    
     const otpResult = await checkVerification(normalizedPhone, otp, 'REGISTRATION', countryCode);
 
     if (!otpResult.valid) {

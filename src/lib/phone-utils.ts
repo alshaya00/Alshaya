@@ -66,8 +66,9 @@ export function normalizePhone(phone: string | null | undefined): string | null 
     return '+' + cleaned;
   }
   
-  // If we can't normalize, return the original (stripped) or null
-  return phone.trim() || null;
+  // STRICT: If we can't normalize to valid Saudi format, return null
+  // This prevents invalid formats from being stored or used
+  return null;
 }
 
 /**
