@@ -77,8 +77,8 @@ export default function ReportsPage() {
       csv += `إجمالي الأعضاء,${stats.totalMembers}\n`;
       csv += `الأحياء,${stats.livingMembers}\n`;
       csv += `المتوفين,${stats.deceasedMembers}\n`;
-      csv += `الذكور,${stats.males}\n`;
-      csv += `الإناث,${stats.females}\n`;
+      csv += `الرجال,${stats.males}\n`;
+      csv += `النساء,${stats.females}\n`;
       csv += `الأجيال,${stats.generations}\n`;
 
       const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
@@ -225,14 +225,14 @@ export default function ReportsPage() {
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <p className="text-sm text-gray-500">الذكور</p>
+              <p className="text-sm text-gray-500">الرجال</p>
               <p className="text-3xl font-bold text-blue-600 mt-1">{stats.males}</p>
               <div className="mt-2 text-sm text-gray-500">
                 {Math.round((stats.males / stats.totalMembers) * 100)}% من الإجمالي
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <p className="text-sm text-gray-500">الإناث</p>
+              <p className="text-sm text-gray-500">النساء</p>
               <p className="text-3xl font-bold text-pink-600 mt-1">{stats.females}</p>
               <div className="mt-2 text-sm text-gray-500">
                 {Math.round((stats.females / stats.totalMembers) * 100)}% من الإجمالي
@@ -278,14 +278,14 @@ export default function ReportsPage() {
                     <GenderAvatar gender="Male" size="2xl" />
                   </div>
                   <p className="text-2xl font-bold text-blue-600">{stats.males}</p>
-                  <p className="text-sm text-gray-500">ذكور ({Math.round((stats.males / stats.totalMembers) * 100)}%)</p>
+                  <p className="text-sm text-gray-500">رجال ({Math.round((stats.males / stats.totalMembers) * 100)}%)</p>
                 </div>
                 <div className="text-center">
                   <div className="w-32 h-32 rounded-full bg-pink-100 flex items-center justify-center mb-2">
                     <GenderAvatar gender="Female" size="2xl" />
                   </div>
                   <p className="text-2xl font-bold text-pink-600">{stats.females}</p>
-                  <p className="text-sm text-gray-500">إناث ({Math.round((stats.females / stats.totalMembers) * 100)}%)</p>
+                  <p className="text-sm text-gray-500">نساء ({Math.round((stats.females / stats.totalMembers) * 100)}%)</p>
                 </div>
               </div>
             </div>
@@ -321,9 +321,9 @@ export default function ReportsPage() {
                   <tr className="border-b">
                     <th className="p-3 text-right">الجيل</th>
                     <th className="p-3 text-center">الإجمالي</th>
-                    <th className="p-3 text-center">الذكور</th>
-                    <th className="p-3 text-center">الإناث</th>
-                    <th className="p-3 text-center">نسبة الذكور</th>
+                    <th className="p-3 text-center">الرجال</th>
+                    <th className="p-3 text-center">النساء</th>
+                    <th className="p-3 text-center">نسبة الرجال</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -152,13 +152,13 @@ export default function DashboardPage() {
           <div className="stat-card bg-gradient-to-br from-blue-400 to-blue-500 text-white p-5 rounded-2xl shadow-lg">
             <div className="mb-2"><GenderAvatar gender="Male" size="lg" /></div>
             <div className="text-3xl font-bold">{stats.males}</div>
-            <div className="text-blue-100 text-sm mt-1">الذكور</div>
+            <div className="text-blue-100 text-sm mt-1">الرجال</div>
           </div>
 
           <div className="stat-card bg-gradient-to-br from-pink-400 to-pink-500 text-white p-5 rounded-2xl shadow-lg">
             <div className="mb-2"><GenderAvatar gender="Female" size="lg" /></div>
             <div className="text-3xl font-bold">{stats.females}</div>
-            <div className="text-pink-100 text-sm mt-1">الإناث</div>
+            <div className="text-pink-100 text-sm mt-1">النساء</div>
           </div>
 
           <div className="stat-card bg-gradient-to-br from-green-500 to-green-600 text-white p-5 rounded-2xl shadow-lg">
@@ -202,12 +202,12 @@ export default function DashboardPage() {
                         <div
                           className="bg-blue-500 h-full transition-all duration-500"
                           style={{ width: `${gen.count > 0 ? (gen.males / gen.count) * 100 : 0}%` }}
-                          title={`ذكور: ${gen.males}`}
+                          title={`رجال: ${gen.males}`}
                         />
                         <div
                           className="bg-pink-500 h-full transition-all duration-500"
                           style={{ width: `${gen.count > 0 ? (gen.females / gen.count) * 100 : 0}%` }}
-                          title={`إناث: ${gen.females}`}
+                          title={`نساء: ${gen.females}`}
                         />
                       </div>
                     </div>
@@ -320,7 +320,7 @@ export default function DashboardPage() {
         {/* Gender Ratio */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-            نسبة الذكور إلى الإناث
+            نسبة الرجال إلى النساء
           </h2>
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center gap-4 mb-4">

@@ -202,11 +202,11 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
           </div>
           <div class="stat-card">
             <div class="stat-value">${stats.males}</div>
-            <div class="stat-label">ذكور</div>
+            <div class="stat-label">رجال</div>
           </div>
           <div class="stat-card">
             <div class="stat-value">${stats.females}</div>
-            <div class="stat-label">إناث</div>
+            <div class="stat-label">نساء</div>
           </div>
         </div>
 

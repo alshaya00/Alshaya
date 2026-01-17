@@ -216,8 +216,8 @@ function RegistryPageContent() {
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
               >
                 <option value="all">الكل</option>
-                <option value="Male">ذكور</option>
-                <option value="Female">إناث</option>
+                <option value="Male">رجال</option>
+                <option value="Female">نساء</option>
               </select>
             </div>
 

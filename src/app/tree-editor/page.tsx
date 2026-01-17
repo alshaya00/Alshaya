@@ -778,7 +778,7 @@ export default function TreeEditorPage() {
                       )}
                       <div className="flex justify-between">
                         <span className="text-gray-500">الأبناء</span>
-                        <span>{selectedNode.sonsCount} ذكور، {selectedNode.daughtersCount} إناث</span>
+                        <span>{selectedNode.sonsCount} رجال، {selectedNode.daughtersCount} نساء</span>
                       </div>
                     </div>
                   </div>

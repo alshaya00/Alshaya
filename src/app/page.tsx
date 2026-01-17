@@ -139,11 +139,11 @@ export default function HomePage() {
             </div>
             <div className="bg-white rounded-xl p-4 text-center shadow">
               <p className="text-2xl font-bold text-blue-600">{stats.males}</p>
-              <p className="text-sm text-gray-500">ذكور</p>
+              <p className="text-sm text-gray-500">رجال</p>
             </div>
             <div className="bg-white rounded-xl p-4 text-center shadow">
               <p className="text-2xl font-bold text-pink-600">{stats.females}</p>
-              <p className="text-sm text-gray-500">إناث</p>
+              <p className="text-sm text-gray-500">نساء</p>
             </div>
           </div>
 

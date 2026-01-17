@@ -284,7 +284,7 @@ export function exportToReadableText(members: FamilyMember[]): string {
           lines.push(`     الحالة: ${statusIcon} ${member.status === 'Living' ? 'على قيد الحياة' : 'متوفى'}`);
 
           if (member.sonsCount > 0 || member.daughtersCount > 0) {
-            lines.push(`     الأبناء: ${member.sonsCount} ذكور، ${member.daughtersCount} إناث`);
+            lines.push(`     الأبناء: ${member.sonsCount} رجال، ${member.daughtersCount} نساء`);
           }
 
           lines.push('');
@@ -485,11 +485,11 @@ export function exportToHTML(
       </div>
       <div class="stat-card">
         <div class="stat-value">${members.filter(m => m.gender === 'Male').length}</div>
-        <div class="stat-label">ذكور</div>
+        <div class="stat-label">رجال</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">${members.filter(m => m.gender === 'Female').length}</div>
-        <div class="stat-label">إناث</div>
+        <div class="stat-label">نساء</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">${Object.keys(byGeneration).length}</div>
