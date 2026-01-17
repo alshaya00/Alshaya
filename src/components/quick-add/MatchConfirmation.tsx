@@ -81,14 +81,15 @@ export default function MatchConfirmation({
 
   const badge = getConfidenceBadge();
 
-  // Generate full lineage chain text
+  // Generate full lineage chain text (iterate in reverse: father first, then grandfather, etc.)
   const generateFullLineageText = () => {
     const connector = newPersonGender === 'Male' ? 'بن' : 'بنت';
     const parts = [newPersonName];
 
-    for (const ancestor of candidate.fullLineage) {
+    // fullLineage is ordered [root, ..., father], so iterate in reverse for correct display
+    for (let i = candidate.fullLineage.length - 1; i >= 0; i--) {
       parts.push(connector);
-      parts.push(ancestor.firstName);
+      parts.push(candidate.fullLineage[i].firstName);
     }
 
     parts.push('آل شايع');
@@ -124,7 +125,7 @@ export default function MatchConfirmation({
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
         <div className="flex items-center gap-2 mb-2">
           <TreeDeciduous size={18} className="text-indigo-600" />
-          <span className="text-sm font-medium text-indigo-700">الاسم الكامل للجيل الأول</span>
+          <span className="text-sm font-medium text-indigo-700">سلسلة النسب الكاملة</span>
         </div>
         <p className="text-lg font-bold text-gray-900 leading-relaxed" dir="rtl">
           {generateFullLineageText()}
