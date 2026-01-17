@@ -286,12 +286,46 @@ export async function verifyOtp(
 export async function findUserByPhone(phone: string, countryCode?: string) {
   const normalizedPhone = normalizePhoneNumber(phone, countryCode);
   
-  return prisma.user.findFirst({
+  // First try exact match with normalized phone
+  let user = await prisma.user.findFirst({
     where: {
       phone: normalizedPhone,
       status: 'ACTIVE'
     }
   });
+  
+  if (user) return user;
+  
+  // If not found, try to match with different formats in database
+  // Extract the 9-digit local number for flexible matching
+  const digits = normalizedPhone.replace(/\D/g, '');
+  let localNumber = '';
+  
+  if (digits.startsWith('966') && digits.length === 12) {
+    localNumber = digits.substring(3); // 5XXXXXXXX
+  } else if (digits.length === 9 && digits.startsWith('5')) {
+    localNumber = digits;
+  }
+  
+  if (localNumber) {
+    // Build all possible formats for this number
+    const possibleFormats = [
+      `+966${localNumber}`,           // +9665XXXXXXXX
+      `966${localNumber}`,            // 9665XXXXXXXX
+      `0${localNumber}`,              // 05XXXXXXXX
+      localNumber,                     // 5XXXXXXXX
+      `+9660${localNumber}`,          // +96605XXXXXXXX (wrong but seen in some data)
+    ];
+    
+    user = await prisma.user.findFirst({
+      where: {
+        phone: { in: possibleFormats },
+        status: 'ACTIVE'
+      }
+    });
+  }
+  
+  return user;
 }
 
 export async function cleanupExpiredOtps() {
