@@ -103,6 +103,13 @@ The application is built with Next.js 14 (App Router) using TypeScript and Tailw
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database for all application data.
+-   **Twilio Verify**: Production-grade OTP verification service (`src/lib/otp-service.ts`):
+    -   Supports SMS and WhatsApp channels via `TWILIO_VERIFY_SERVICE_SID` secret
+    -   Database-backed purpose tracking (LOGIN/REGISTRATION/VERIFICATION)
+    -   Single-active-verification-per-phone model: new verification requests invalidate all previous OTPs
+    -   Cost: $0.05 per successful verification
+    -   Error handling for invalid numbers (60200), rate limits (60203), expired codes (20404)
+    -   API endpoints: `/api/auth/otp/send` (POST with channel selection), `/api/auth/otp/verify` (POST)
 -   **Resend**: For transactional email sending (welcome, password reset, invitations, backup alerts) via Replit's Resend connector.
 -   **Google Drive API**: For automated cloud backups (CSV export, JSON backup) to Google Drive.
 -   **Google Sheets API**: For living registry export to shareable spreadsheet with rolling snapshots (30-day retention, Current + dated tabs).
