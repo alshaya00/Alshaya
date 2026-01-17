@@ -48,6 +48,7 @@ export default function AccountSettingsPage() {
   const [phoneSuccess, setPhoneSuccess] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [otpExpiresIn, setOtpExpiresIn] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
 
   const [newEmail, setNewEmail] = useState('');
@@ -69,6 +70,13 @@ export default function AccountSettingsPage() {
       return () => clearTimeout(timer);
     }
   }, [otpExpiresIn]);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const getAuthHeader = () => {
     return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
@@ -154,6 +162,7 @@ export default function AccountSettingsPage() {
       if (data.success) {
         setPhoneStep('otp');
         setOtpExpiresIn(data.expiresIn || 600);
+        setResendCooldown(60);
         setPhoneSuccess(data.messageAr || 'تم إرسال رمز التحقق');
       } else {
         setPhoneError(data.messageAr || 'فشل في إرسال رمز التحقق');
@@ -211,7 +220,7 @@ export default function AccountSettingsPage() {
   };
 
   const handleResendOtp = async () => {
-    if (otpExpiresIn > 0) return;
+    if (resendCooldown > 0) return;
 
     const fullPhone = phoneCountryCode === '+966' 
       ? `${phoneCountryCode}${newPhone.startsWith('0') ? newPhone.slice(1) : newPhone}`
@@ -234,6 +243,7 @@ export default function AccountSettingsPage() {
 
       if (data.success) {
         setOtpExpiresIn(data.expiresIn || 600);
+        setResendCooldown(60);
         setPhoneOtp('');
         setPhoneSuccess('تم إعادة إرسال رمز التحقق');
       } else {
@@ -637,10 +647,10 @@ export default function AccountSettingsPage() {
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={otpExpiresIn > 0 || phoneLoading}
+                disabled={resendCooldown > 0 || phoneLoading}
                 className="w-full text-center text-sm text-emerald-600 hover:text-emerald-700 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                {otpExpiresIn > 0 ? `إعادة الإرسال متاحة بعد ${formatCountdown(otpExpiresIn)}` : 'إعادة إرسال الرمز'}
+                {resendCooldown > 0 ? `إعادة الإرسال متاحة بعد ${formatCountdown(resendCooldown)}` : 'إعادة إرسال الرمز'}
               </button>
             </form>
           )}
