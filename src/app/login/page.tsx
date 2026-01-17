@@ -34,6 +34,7 @@ function LoginForm() {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [isBackupCode, setIsBackupCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -60,6 +61,13 @@ function LoginForm() {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +117,8 @@ function LoginForm() {
       if (data.success) {
         setSuccessMessage('تم إرسال رمز التحقق إلى جوالك');
         setPhoneStep('otp');
-        setCountdown(data.expiresIn || 300);
+        setCountdown(data.expiresIn || 600);
+        setResendCooldown(60);
       } else {
         setError(data.error || 'فشل في إرسال رمز التحقق');
       }
@@ -167,7 +176,7 @@ function LoginForm() {
   };
 
   const handleResendOtp = async () => {
-    if (countdown > 0) return;
+    if (resendCooldown > 0) return;
     setError(null);
     setIsLoading(true);
 
@@ -182,7 +191,8 @@ function LoginForm() {
 
       if (data.success) {
         setSuccessMessage('تم إعادة إرسال رمز التحقق');
-        setCountdown(data.expiresIn || 300);
+        setCountdown(data.expiresIn || 600);
+        setResendCooldown(60);
         setOtpCode('');
       } else {
         setError(data.error || 'فشل في إعادة إرسال الرمز');
@@ -565,10 +575,10 @@ function LoginForm() {
                         <button
                           type="button"
                           onClick={handleResendOtp}
-                          disabled={countdown > 0 || isLoading}
+                          disabled={resendCooldown > 0 || isLoading}
                           className="text-emerald-600 hover:text-emerald-800 text-sm disabled:text-gray-400 disabled:cursor-not-allowed"
                         >
-                          {countdown > 0 ? `إعادة الإرسال (${formatCountdown(countdown)})` : 'إعادة إرسال الرمز'}
+                          {resendCooldown > 0 ? `إعادة الإرسال (${formatCountdown(resendCooldown)})` : 'إعادة إرسال الرمز'}
                         </button>
                       </div>
                     </form>

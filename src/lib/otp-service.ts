@@ -2,7 +2,7 @@ import { prisma } from './prisma';
 import { getTwilioClient } from './twilio-client';
 import { normalizePhone } from './phone-utils';
 
-const OTP_EXPIRY_MINUTES = 15;
+const OTP_EXPIRY_MINUTES = 10;
 const RATE_LIMIT_WINDOW_MINUTES = 30;
 const MAX_REQUESTS_PER_WINDOW = 30;
 

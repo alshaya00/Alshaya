@@ -322,7 +322,7 @@ export default function RegisterPage() {
       }
 
       setPhoneStep('verify');
-      setOtpExpiresIn(data.expiresIn || 300);
+      setOtpExpiresIn(data.expiresIn || 600);
       setResendCooldown(60);
     } catch {
       setError('حدث خطأ أثناء إرسال رمز التحقق');
@@ -356,7 +356,7 @@ export default function RegisterPage() {
       }
 
       setOtp('');
-      setOtpExpiresIn(data.expiresIn || 300);
+      setOtpExpiresIn(data.expiresIn || 600);
       setResendCooldown(60);
     } catch {
       setOtpError('حدث خطأ أثناء إرسال رمز التحقق');

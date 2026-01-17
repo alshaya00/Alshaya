@@ -153,7 +153,7 @@ export default function AccountSettingsPage() {
 
       if (data.success) {
         setPhoneStep('otp');
-        setOtpExpiresIn(data.expiresIn || 300);
+        setOtpExpiresIn(data.expiresIn || 600);
         setPhoneSuccess(data.messageAr || 'تم إرسال رمز التحقق');
       } else {
         setPhoneError(data.messageAr || 'فشل في إرسال رمز التحقق');
@@ -233,7 +233,7 @@ export default function AccountSettingsPage() {
       const data = await response.json();
 
       if (data.success) {
-        setOtpExpiresIn(data.expiresIn || 300);
+        setOtpExpiresIn(data.expiresIn || 600);
         setPhoneOtp('');
         setPhoneSuccess('تم إعادة إرسال رمز التحقق');
       } else {
