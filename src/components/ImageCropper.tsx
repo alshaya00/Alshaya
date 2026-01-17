@@ -17,35 +17,48 @@ interface ImageCropperProps {
   aspectRatio?: number;
   circularCrop?: boolean;
   minDimension?: number;
+  maxDimension?: number;
+  compressionQuality?: number;
 }
 
 function centerAspectCrop(
   mediaWidth: number,
   mediaHeight: number,
-  aspect: number
+  aspect?: number
 ): Crop {
-  return centerCrop(
-    makeAspectCrop(
-      {
-        unit: '%',
-        width: 90,
-      },
-      aspect,
+  if (aspect) {
+    return centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        aspect,
+        mediaWidth,
+        mediaHeight
+      ),
       mediaWidth,
       mediaHeight
-    ),
-    mediaWidth,
-    mediaHeight
-  );
+    );
+  }
+  return {
+    unit: '%',
+    x: 5,
+    y: 5,
+    width: 90,
+    height: 90,
+  };
 }
 
 export default function ImageCropper({
   imageSrc,
   onCropComplete,
   onCancel,
-  aspectRatio = 1,
-  circularCrop = true,
+  aspectRatio,
+  circularCrop = false,
   minDimension = 150,
+  maxDimension = 1200,
+  compressionQuality = 0.8,
 }: ImageCropperProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
@@ -79,30 +92,53 @@ export default function ImageCropper({
       return;
     }
 
-    const pixelRatio = window.devicePixelRatio || 1;
-
     const cropWidth = completedCrop.width * scaleX;
     const cropHeight = completedCrop.height * scaleY;
-    const outputSize = Math.max(cropWidth, cropHeight, minDimension);
+    
+    let outputWidth = cropWidth;
+    let outputHeight = cropHeight;
+    
+    if (circularCrop) {
+      const outputSize = Math.min(
+        Math.max(cropWidth, cropHeight, minDimension),
+        maxDimension
+      );
+      outputWidth = outputSize;
+      outputHeight = outputSize;
+    } else {
+      if (outputWidth > maxDimension) {
+        outputHeight = (outputHeight * maxDimension) / outputWidth;
+        outputWidth = maxDimension;
+      }
+      if (outputHeight > maxDimension) {
+        outputWidth = (outputWidth * maxDimension) / outputHeight;
+        outputHeight = maxDimension;
+      }
+      if (outputWidth < minDimension && outputHeight < minDimension) {
+        const scale = minDimension / Math.min(outputWidth, outputHeight);
+        outputWidth *= scale;
+        outputHeight *= scale;
+      }
+    }
 
-    canvas.width = outputSize * pixelRatio;
-    canvas.height = outputSize * pixelRatio;
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
 
-    ctx.scale(pixelRatio, pixelRatio);
+    ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
     const cropX = completedCrop.x * scaleX;
     const cropY = completedCrop.y * scaleY;
 
     const rotateRads = (rotate * Math.PI) / 180;
-    const centerX = outputSize / 2;
-    const centerY = outputSize / 2;
+    const centerX = outputWidth / 2;
+    const centerY = outputHeight / 2;
 
     ctx.save();
 
     if (circularCrop) {
       ctx.beginPath();
-      ctx.arc(centerX, centerY, outputSize / 2, 0, 2 * Math.PI);
+      ctx.arc(centerX, centerY, Math.min(outputWidth, outputHeight) / 2, 0, 2 * Math.PI);
       ctx.closePath();
       ctx.clip();
     }
@@ -112,26 +148,23 @@ export default function ImageCropper({
     ctx.scale(scale, scale);
     ctx.translate(-centerX, -centerY);
 
-    const drawX = (outputSize - cropWidth) / 2;
-    const drawY = (outputSize - cropHeight) / 2;
-
     ctx.drawImage(
       image,
       cropX,
       cropY,
       cropWidth,
       cropHeight,
-      drawX,
-      drawY,
-      cropWidth,
-      cropHeight
+      0,
+      0,
+      outputWidth,
+      outputHeight
     );
 
     ctx.restore();
 
-    const base64 = canvas.toDataURL('image/jpeg', 0.9);
+    const base64 = canvas.toDataURL('image/jpeg', compressionQuality);
     onCropComplete(base64);
-  }, [completedCrop, scale, rotate, circularCrop, minDimension, onCropComplete]);
+  }, [completedCrop, scale, rotate, circularCrop, minDimension, maxDimension, compressionQuality, onCropComplete]);
 
   const handleZoomIn = () => {
     setScale((prev) => Math.min(prev + 0.1, 3));

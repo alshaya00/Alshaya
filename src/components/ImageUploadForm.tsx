@@ -13,8 +13,10 @@ import {
   CheckCircle,
   AlertCircle,
   Folder as FolderIcon,
+  Crop,
 } from 'lucide-react';
 import { imageCategories as configImageCategories } from '@/config/constants';
+import ImageCropper from './ImageCropper';
 
 interface Member {
   id: string;
@@ -89,6 +91,9 @@ export default function ImageUploadForm({
   const [folders, setFolders] = useState<Folder[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [sourceImage, setSourceImage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -171,13 +176,11 @@ export default function ImageUploadForm({
   }, []);
 
   const handleFileSelect = async (file: File) => {
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setErrorMessage('يرجى اختيار ملف صورة فقط');
       return;
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       setErrorMessage('حجم الملف أكبر من 5 ميجابايت');
       return;
@@ -186,12 +189,40 @@ export default function ImageUploadForm({
     setErrorMessage('');
 
     try {
-      const resizedImage = await resizeImage(file);
-      setPreview(resizedImage);
-      setFormData((prev) => ({ ...prev, imageData: resizedImage }));
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = e.target?.result as string;
+        setSourceImage(imageData);
+        setOriginalImage(imageData);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       setErrorMessage('فشل في معالجة الصورة');
       console.error('Error processing image:', error);
+    }
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    setShowCropper(false);
+    setOriginalImage(null);
+    setPreview(croppedImage);
+    setFormData((prev) => ({ ...prev, imageData: croppedImage }));
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setOriginalImage(null);
+    if (!preview && fileInputRef.current) {
+      fileInputRef.current.value = '';
+      setSourceImage(null);
+    }
+  };
+
+  const handleReCrop = () => {
+    if (sourceImage) {
+      setOriginalImage(sourceImage);
+      setShowCropper(true);
     }
   };
 
@@ -310,6 +341,7 @@ export default function ImageUploadForm({
 
   const removeImage = () => {
     setPreview(null);
+    setSourceImage(null);
     setFormData((prev) => ({ ...prev, imageData: '' }));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -322,6 +354,19 @@ export default function ImageUploadForm({
     label: c.labelAr,
     description: c.descriptionAr,
   }));
+
+  if (showCropper && originalImage) {
+    return (
+      <ImageCropper
+        imageSrc={originalImage}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+        aspectRatio={formData.category === 'profile' ? 1 : undefined}
+        circularCrop={formData.category === 'profile'}
+        minDimension={300}
+      />
+    );
+  }
 
   if (uploadStatus === 'success') {
     return (
@@ -392,15 +437,28 @@ export default function ImageUploadForm({
               <img
                 src={preview}
                 alt="معاينة"
-                className="w-full h-64 object-contain bg-gray-100 rounded-xl"
+                className={`w-full h-64 object-contain bg-gray-100 rounded-xl ${formData.category === 'profile' ? 'rounded-full mx-auto max-w-64' : ''}`}
               />
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="absolute top-2 right-2 flex gap-2">
+                {sourceImage && (
+                  <button
+                    type="button"
+                    onClick={handleReCrop}
+                    className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    title="إعادة القص"
+                  >
+                    <Crop className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  title="إزالة الصورة"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>
