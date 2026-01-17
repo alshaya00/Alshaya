@@ -2,9 +2,9 @@ import { prisma } from './prisma';
 import { getTwilioClient } from './twilio-client';
 import { normalizePhone } from './phone-utils';
 
-const OTP_EXPIRY_MINUTES = 10;
-const RATE_LIMIT_WINDOW_MINUTES = 15;
-const MAX_REQUESTS_PER_WINDOW = 15;
+const OTP_EXPIRY_MINUTES = 15;
+const RATE_LIMIT_WINDOW_MINUTES = 30;
+const MAX_REQUESTS_PER_WINDOW = 30;
 
 export type OtpPurpose = 'LOGIN' | 'REGISTRATION' | 'VERIFICATION';
 export type OtpChannel = 'sms' | 'whatsapp';
@@ -161,8 +161,8 @@ export async function sendVerification(
     if (error?.code === 60203) {
       return {
         success: false,
-        message: 'Too many verification attempts. Please wait before trying again.',
-        messageAr: 'محاولات كثيرة جداً. يرجى الانتظار قبل المحاولة مرة أخرى.'
+        message: 'Too many verification attempts. Please wait 5 minutes before trying again.',
+        messageAr: 'طلبات كثيرة جداً. يرجى الانتظار 5 دقائق ثم المحاولة مرة أخرى.'
       };
     }
     

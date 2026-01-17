@@ -113,8 +113,8 @@ export function createRateLimitResponse(resetAt: Date, lang: 'ar' | 'en' = 'ar')
 }
 
 export const RATE_LIMITS = {
-  OTP_SEND: { limit: 15, windowMs: 60 * 1000 },
-  OTP_VERIFY: { limit: 30, windowMs: 60 * 1000 },
-  REGISTER: { limit: 10, windowMs: 60 * 1000 },
-  DUPLICATE_CHECK: { limit: 30, windowMs: 60 * 1000 },
+  OTP_SEND: { limit: 30, windowMs: 5 * 60 * 1000 },
+  OTP_VERIFY: { limit: 60, windowMs: 5 * 60 * 1000 },
+  REGISTER: { limit: 20, windowMs: 5 * 60 * 1000 },
+  DUPLICATE_CHECK: { limit: 50, windowMs: 60 * 1000 },
 };
