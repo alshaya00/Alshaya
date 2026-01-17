@@ -147,7 +147,9 @@ export async function POST(
 
     const memberId = params.id;
 
-    if (user.linkedMemberId !== memberId) {
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
+    if (!isAdmin && user.linkedMemberId !== memberId) {
       return NextResponse.json(
         { 
           success: false, 
@@ -158,16 +160,18 @@ export async function POST(
       );
     }
 
-    const quotaCheck = await checkDailyQuota(user.id, memberId);
-    if (!quotaCheck.allowed) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Daily upload limit reached (${DAILY_UPLOAD_QUOTA} photos/day). You have uploaded ${quotaCheck.count} photos today.`,
-          errorAr: `تم الوصول إلى الحد اليومي (${DAILY_UPLOAD_QUOTA} صور/يوم). لقد رفعت ${quotaCheck.count} صور اليوم.`
-        },
-        { status: 429 }
-      );
+    if (!isAdmin) {
+      const quotaCheck = await checkDailyQuota(user.id, memberId);
+      if (!quotaCheck.allowed) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `Daily upload limit reached (${DAILY_UPLOAD_QUOTA} photos/day). You have uploaded ${quotaCheck.count} photos today.`,
+            errorAr: `تم الوصول إلى الحد اليومي (${DAILY_UPLOAD_QUOTA} صور/يوم). لقد رفعت ${quotaCheck.count} صور اليوم.`
+          },
+          { status: 429 }
+        );
+      }
     }
 
     const body = await request.json() as UploadRequest;
