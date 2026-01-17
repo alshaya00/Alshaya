@@ -21,6 +21,7 @@ import {
   UserX,
   UserCheck,
   Link2Off,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
@@ -63,7 +64,7 @@ export default function AdminUsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{
-    type: 'block' | 'unblock' | 'unlink';
+    type: 'block' | 'unblock' | 'unlink' | 'promote';
     user: UserData;
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -179,6 +180,37 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error('Error unlinking user:', err);
       setError('حدث خطأ في فك ارتباط المستخدم');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePromote = async (user: UserData) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ userId: user.id, role: 'ADMIN' }),
+      });
+
+      if (res.ok) {
+        setSuccessMessage(`تم ترقية ${user.nameArabic} إلى مشرف بنجاح`);
+        await fetchUsers();
+        setShowConfirmModal(null);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في ترقية المستخدم');
+      }
+    } catch (err) {
+      console.error('Error promoting user:', err);
+      setError('حدث خطأ في ترقية المستخدم');
     } finally {
       setIsProcessing(false);
     }
@@ -534,6 +566,16 @@ export default function AdminUsersPage() {
                               {user.status === 'PENDING' && (
                                 <span className="text-gray-400 text-sm">بانتظار التفعيل</span>
                               )}
+                              {user.status === 'ACTIVE' && (user.role === 'MEMBER' || user.role === 'EDITOR') && (
+                                <button
+                                  onClick={() => setShowConfirmModal({ type: 'promote', user })}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+                                  title="ترقية لمشرف"
+                                >
+                                  <UserCog className="w-4 h-4" />
+                                  ترقية لمشرف
+                                </button>
+                              )}
                             </>
                           )}
                           {user.role === 'SUPER_ADMIN' && (
@@ -582,12 +624,15 @@ export default function AdminUsersPage() {
             <div className="flex items-center gap-4 mb-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                 showConfirmModal.type === 'block' ? 'bg-red-100' : 
-                showConfirmModal.type === 'unlink' ? 'bg-orange-100' : 'bg-green-100'
+                showConfirmModal.type === 'unlink' ? 'bg-orange-100' :
+                showConfirmModal.type === 'promote' ? 'bg-purple-100' : 'bg-green-100'
               }`}>
                 {showConfirmModal.type === 'block' ? (
                   <UserX className="w-6 h-6 text-red-600" />
                 ) : showConfirmModal.type === 'unlink' ? (
                   <Link2Off className="w-6 h-6 text-orange-600" />
+                ) : showConfirmModal.type === 'promote' ? (
+                  <UserCog className="w-6 h-6 text-purple-600" />
                 ) : (
                   <UserCheck className="w-6 h-6 text-green-600" />
                 )}
@@ -595,7 +640,8 @@ export default function AdminUsersPage() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
                   {showConfirmModal.type === 'block' ? 'حظر المستخدم' : 
-                   showConfirmModal.type === 'unlink' ? 'فك ارتباط الحساب' : 'إلغاء حظر المستخدم'}
+                   showConfirmModal.type === 'unlink' ? 'فك ارتباط الحساب' :
+                   showConfirmModal.type === 'promote' ? 'ترقية لمشرف' : 'إلغاء حظر المستخدم'}
                 </h3>
                 <p className="text-gray-500">{showConfirmModal.user.nameArabic}</p>
               </div>
@@ -606,6 +652,8 @@ export default function AdminUsersPage() {
                 ? 'هل أنت متأكد من حظر هذا المستخدم؟ لن يتمكن من تسجيل الدخول إلى حسابه.'
                 : showConfirmModal.type === 'unlink'
                 ? 'هل تريد فك ارتباط هذا الحساب بالعضو؟'
+                : showConfirmModal.type === 'promote'
+                ? 'هل تريد ترقية هذا المستخدم إلى مشرف؟ سيحصل على صلاحيات إدارية.'
                 : 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟ سيتمكن من تسجيل الدخول مرة أخرى.'}
             </p>
             {showConfirmModal.type === 'unlink' && (
@@ -626,8 +674,10 @@ export default function AdminUsersPage() {
                 onClick={() => {
                   if (showConfirmModal.type === 'unlink') {
                     handleUnlink(showConfirmModal.user);
+                  } else if (showConfirmModal.type === 'promote') {
+                    handlePromote(showConfirmModal.user);
                   } else {
-                    handleBlockUnblock(showConfirmModal.user, showConfirmModal.type);
+                    handleBlockUnblock(showConfirmModal.user, showConfirmModal.type === 'block' ? 'block' : 'unblock');
                   }
                 }}
                 disabled={isProcessing}
@@ -636,6 +686,8 @@ export default function AdminUsersPage() {
                     ? 'bg-red-600 hover:bg-red-700'
                     : showConfirmModal.type === 'unlink'
                     ? 'bg-orange-600 hover:bg-orange-700'
+                    : showConfirmModal.type === 'promote'
+                    ? 'bg-purple-600 hover:bg-purple-700'
                     : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
@@ -652,6 +704,11 @@ export default function AdminUsersPage() {
                       <>
                         <Link2Off className="w-5 h-5" />
                         فك الارتباط
+                      </>
+                    ) : showConfirmModal.type === 'promote' ? (
+                      <>
+                        <UserCog className="w-5 h-5" />
+                        ترقية لمشرف
                       </>
                     ) : (
                       <>

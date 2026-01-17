@@ -63,14 +63,16 @@ export async function GET(request: NextRequest) {
       users = users.filter((u) => u.role === role);
     }
 
-    // Search by name or email
+    // Search by name, email, or phone
     if (search) {
       const query = search.toLowerCase();
+      const normalizedQuery = query.replace(/[+\-\s]/g, '');
       users = users.filter(
         (u) =>
           u.nameArabic.toLowerCase().includes(query) ||
           u.nameEnglish?.toLowerCase().includes(query) ||
-          u.email.toLowerCase().includes(query)
+          u.email.toLowerCase().includes(query) ||
+          (u.phone && u.phone.replace(/[+\-\s]/g, '').includes(normalizedQuery))
       );
     }
 
@@ -248,6 +250,14 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
+      // Only SUPER_ADMIN can promote to ADMIN or SUPER_ADMIN
+      if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && currentUser.role !== 'SUPER_ADMIN') {
+        return NextResponse.json(
+          { success: false, message: 'Only super admin can promote to admin roles', messageAr: 'فقط المدير الأعلى يمكنه ترقية المستخدمين لمشرفين' },
+          { status: 403 }
+        );
+      }
+
       const assignableRoles = getAssignableRoles(currentUser.role);
       if (!assignableRoles.includes(role as UserRole)) {
         return NextResponse.json(
@@ -294,23 +304,62 @@ export async function PATCH(request: NextRequest) {
     const updatedUser = await updateUser(userId, updateData);
 
     const isUnlinkAction = body.linkedMemberId === null && targetUser.linkedMemberId !== null;
+    const isRoleChange = role && role !== targetUser.role;
 
-    await logActivity({
-      userId: currentUser.id,
-      userEmail: currentUser.email,
-      userName: currentUser.nameArabic,
-      action: isUnlinkAction ? 'UNLINK_USER' : 'EDIT_USER',
-      category: 'USER',
-      targetType: 'USER',
-      targetId: userId,
-      targetName: targetUser.nameArabic,
-      details: isUnlinkAction 
-        ? { unlinkedFromMemberId: targetUser.linkedMemberId }
-        : { changes: updateData, previousRole: targetUser.role, previousStatus: targetUser.status },
-      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown',
-      success: true,
-    });
+    // Log the activity with appropriate action type
+    if (isRoleChange) {
+      // Specific audit log for role changes
+      await logActivity({
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userName: currentUser.nameArabic,
+        action: 'ROLE_CHANGE',
+        category: 'USER',
+        targetType: 'USER',
+        targetId: userId,
+        targetName: targetUser.nameArabic,
+        details: {
+          previousRole: targetUser.role,
+          newRole: role,
+          changedBy: currentUser.id,
+          changedByName: currentUser.nameArabic,
+          changedByEmail: currentUser.email,
+        },
+        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        success: true,
+      });
+    } else if (isUnlinkAction) {
+      await logActivity({
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userName: currentUser.nameArabic,
+        action: 'UNLINK_USER',
+        category: 'USER',
+        targetType: 'USER',
+        targetId: userId,
+        targetName: targetUser.nameArabic,
+        details: { unlinkedFromMemberId: targetUser.linkedMemberId },
+        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        success: true,
+      });
+    } else {
+      await logActivity({
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userName: currentUser.nameArabic,
+        action: 'EDIT_USER',
+        category: 'USER',
+        targetType: 'USER',
+        targetId: userId,
+        targetName: targetUser.nameArabic,
+        details: { changes: updateData, previousStatus: targetUser.status },
+        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        success: true,
+      });
+    }
 
     return NextResponse.json({
       success: true,
