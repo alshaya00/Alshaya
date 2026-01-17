@@ -53,14 +53,19 @@ try {
     console.warn('DATABASE_URL not set, using mock client');
     prisma = createMockPrismaClient();
   } else {
-    // Initialize Prisma with PostgreSQL
+    // Initialize Prisma with PostgreSQL and optimized connection settings
     prisma =
       globalForPrisma.prisma ??
       new PrismaClient({
         log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        datasourceUrl: process.env.DATABASE_URL,
       }) as PrismaClientType;
 
+    // Cache the client globally to reuse connections
     if (process.env.NODE_ENV !== 'production') {
+      globalForPrisma.prisma = prisma;
+    } else {
+      // In production, also cache to prevent connection exhaustion
       globalForPrisma.prisma = prisma;
     }
   }
