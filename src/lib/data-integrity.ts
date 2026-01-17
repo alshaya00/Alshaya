@@ -34,6 +34,7 @@ export interface DataConsistencyReport {
     birthYearLogic: ValidationResult;
     linkedAccounts: ValidationResult;
     deathYear: ValidationResult;
+    femaleParents: ValidationResult;
   };
 }
 
@@ -1114,6 +1115,63 @@ export async function validateDeathYear(): Promise<ValidationResult> {
   };
 }
 
+export async function validateFemaleParents(): Promise<ValidationResult> {
+  const issues: ValidationIssue[] = [];
+
+  const membersWithFather = await prisma.familyMember.findMany({
+    where: {
+      deletedAt: null,
+      fatherId: { not: null },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      fatherId: true,
+    },
+  });
+
+  const fatherIds = [...new Set(membersWithFather.map(m => m.fatherId).filter(Boolean) as string[])];
+
+  const fathers = await prisma.familyMember.findMany({
+    where: {
+      id: { in: fatherIds },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      gender: true,
+    },
+  });
+
+  const fatherMap = new Map(fathers.map(f => [f.id, f]));
+
+  for (const member of membersWithFather) {
+    if (member.fatherId) {
+      const father = fatherMap.get(member.fatherId);
+      if (father && father.gender === 'Female') {
+        issues.push({
+          memberId: member.id,
+          memberName: member.firstName,
+          issue: `Member's fatherId points to a female member '${father.firstName}' (${father.id}). Cannot add children under a female member.`,
+          issueAr: `معرف الأب للعضو يشير إلى عضو أنثى '${father.firstName}' (${father.id}). لا يمكن إضافة أطفال تحت عضو أنثى.`,
+          severity: 'error',
+          details: {
+            fatherId: member.fatherId,
+            fatherName: father.firstName,
+            fatherGender: father.gender,
+          },
+        });
+      }
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    checkedAt: new Date(),
+  };
+}
+
 export async function checkDataConsistency(): Promise<DataConsistencyReport> {
   const totalMembers = await prisma.familyMember.count({
     where: { deletedAt: null },
@@ -1133,6 +1191,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     birthYearLogic,
     linkedAccounts,
     deathYear,
+    femaleParents,
   ] = await Promise.all([
     validateGenerations(),
     validateParentRelationships(),
@@ -1147,6 +1206,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     validateBirthYearLogic(),
     validateLinkedAccounts(),
     validateDeathYear(),
+    validateFemaleParents(),
   ]);
 
   const totalIssues =
@@ -1162,7 +1222,8 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     ageGeneration.issues.length +
     birthYearLogic.issues.length +
     linkedAccounts.issues.length +
-    deathYear.issues.length;
+    deathYear.issues.length +
+    femaleParents.issues.length;
 
   const allValidations = [
     generations,
@@ -1178,6 +1239,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
     birthYearLogic,
     linkedAccounts,
     deathYear,
+    femaleParents,
   ];
 
   const hasErrors = allValidations.some(v => 
@@ -1203,6 +1265,7 @@ export async function checkDataConsistency(): Promise<DataConsistencyReport> {
       birthYearLogic,
       linkedAccounts,
       deathYear,
+      femaleParents,
     },
   };
 }
@@ -1375,6 +1438,7 @@ export function formatValidationReport(report: DataConsistencyReport): string {
     { name: '11. Birth Year Logic Validation', key: 'birthYearLogic' as const },
     { name: '12. Linked Accounts Validation', key: 'linkedAccounts' as const },
     { name: '13. Death Year Validation', key: 'deathYear' as const },
+    { name: '14. Female Parents Validation', key: 'femaleParents' as const },
   ];
 
   for (const section of validationSections) {

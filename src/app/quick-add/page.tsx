@@ -824,7 +824,7 @@ export default function QuickAddPage() {
                     </div>
 
                     <AddMemberGraph
-                      members={allMembers}
+                      members={allMembers.filter(m => m.gender === 'Male')}
                       selectedFatherId={formData.fatherId || null}
                       onSelectFather={handleGraphFatherSelect}
                       newMemberPreview={formData.firstName ? {
