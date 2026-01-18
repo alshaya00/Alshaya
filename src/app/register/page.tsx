@@ -38,7 +38,7 @@ type PhoneStep = 'form' | 'verify' | 'complete';
 const RELATIONSHIP_TYPES = relationshipTypes;
 
 export default function RegisterPage() {
-  const { session } = useAuth();
+  const { session, setSessionFromOAuth } = useAuth();
   const router = useRouter();
   const [joinPath, setJoinPath] = useState<JoinPath>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
@@ -388,6 +388,29 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         setOtpError(data.messageAr || data.message || 'فشل في التحقق');
+        return;
+      }
+
+      if (data.token && data.user && data.expiresAt) {
+        setSessionFromOAuth({
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            nameArabic: data.user.nameArabic,
+            nameEnglish: data.user.nameEnglish || null,
+            phone: data.user.phone,
+            role: data.user.role || 'MEMBER',
+            status: data.user.status || 'ACTIVE',
+            linkedMemberId: data.user.linkedMemberId || null,
+            assignedBranch: null,
+            permissions: [],
+            twoFactorEnabled: false,
+          },
+          token: data.token,
+          expiresAt: data.expiresAt,
+        });
+        
+        router.push('/');
         return;
       }
 

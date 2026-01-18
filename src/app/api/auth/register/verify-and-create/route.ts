@@ -255,15 +255,56 @@ export async function POST(request: NextRequest) {
       success: true,
     });
 
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt,
+        rememberMe: false,
+        ipAddress,
+        userAgent,
+        deviceName: 'تسجيل حساب جديد'
+      }
+    });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
+
+    try {
+      await prisma.loginHistory.create({
+        data: {
+          userId: user.id,
+          success: true,
+          method: 'REGISTRATION',
+          ipAddress,
+          userAgent,
+          deviceName: 'تسجيل حساب جديد',
+        },
+      });
+    } catch (historyError) {
+      console.error('Failed to record registration login history:', historyError);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Account created successfully',
       messageAr: 'تم إنشاء حسابك بنجاح',
+      token,
+      expiresAt: expiresAt.toISOString(),
       user: {
         id: user.id,
         email: user.email,
         nameArabic: user.nameArabic,
         nameEnglish: user.nameEnglish,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        linkedMemberId: user.linkedMemberId,
       }
     });
   } catch (error: any) {
