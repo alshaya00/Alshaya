@@ -5,6 +5,7 @@ import { checkVerification, normalizePhoneNumber } from '@/lib/otp-service';
 import { findUserByEmail, logActivity, getSiteSettings, checkMemberLinkedToUser } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+import { checkBlocklist } from '@/lib/blocklist';
 import crypto from 'crypto';
 
 function sanitizeString(input: string | null | undefined): string {
@@ -148,6 +149,18 @@ export async function POST(request: NextRequest) {
           messageAr: 'يوجد حساب بهذا الرقم',
         },
         { status: 409 }
+      );
+    }
+
+    const blocklistCheck = await checkBlocklist(normalizedPhone, email);
+    if (blocklistCheck.blocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Registration is not allowed for this phone/email',
+          messageAr: 'لا يمكن التسجيل بهذا الرقم أو البريد الإلكتروني',
+        },
+        { status: 403 }
       );
     }
 

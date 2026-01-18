@@ -24,6 +24,8 @@ import {
   UserCog,
   Key,
   Trash2,
+  ShieldCheck,
+  ShieldOff,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
@@ -50,6 +52,10 @@ interface UserData {
   phoneVerified: boolean;
   role: string;
   status: 'ACTIVE' | 'PENDING' | 'DISABLED';
+  verificationStatus: 'UNVERIFIED' | 'VERIFIED' | 'FRAUDULENT';
+  verifiedAt: string | null;
+  verifierName: string | null;
+  verificationNotes: string | null;
   createdAt: string;
   lastLoginAt: string | null;
   linkedMemberId: string | null;
@@ -75,10 +81,15 @@ export default function AdminUsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{
-    type: 'block' | 'unblock' | 'unlink' | 'promote' | 'reset_password' | 'delete';
+    type: 'block' | 'unblock' | 'unlink' | 'promote' | 'reset_password' | 'delete' | 'verify' | 'block_ban';
     user: UserData;
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [verifyNotes, setVerifyNotes] = useState('');
+  const [blockBanReason, setBlockBanReason] = useState('');
+  const [blockPhone, setBlockPhone] = useState(false);
+  const [blockEmail, setBlockEmail] = useState(true);
+  const [unlinkMember, setUnlinkMember] = useState(false);
   const limit = 20;
 
   useEffect(() => {
@@ -285,6 +296,97 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleVerifyUser = async (user: UserData, notes?: string) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'verify', notes }),
+      });
+
+      if (res.ok) {
+        setSuccessMessage(`تم التحقق من المستخدم ${user.nameArabic} بنجاح`);
+        await fetchUsers();
+        setShowConfirmModal(null);
+        setVerifyNotes('');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في التحقق من المستخدم');
+      }
+    } catch (err) {
+      console.error('Error verifying user:', err);
+      setError('حدث خطأ في التحقق من المستخدم');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBlockAndBan = async (
+    user: UserData,
+    reason: string,
+    shouldBlockPhone: boolean,
+    shouldBlockEmail: boolean,
+    shouldUnlinkMember: boolean
+  ) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/block-and-ban`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({
+          reason,
+          blockPhone: shouldBlockPhone,
+          blockEmail: shouldBlockEmail,
+          unlinkMember: shouldUnlinkMember,
+        }),
+      });
+
+      if (res.ok) {
+        setSuccessMessage(`تم حظر المستخدم ${user.nameArabic} وإضافته للقائمة السوداء بنجاح`);
+        await fetchUsers();
+        setShowConfirmModal(null);
+        setBlockBanReason('');
+        setBlockPhone(false);
+        setBlockEmail(true);
+        setUnlinkMember(false);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في حظر المستخدم');
+      }
+    } catch (err) {
+      console.error('Error blocking user:', err);
+      setError('حدث خطأ في حظر المستخدم');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const openBlockBanModal = (user: UserData) => {
+    setBlockPhone(!!user.phone);
+    setBlockEmail(true);
+    setUnlinkMember(!!user.linkedMemberId);
+    setBlockBanReason('');
+    setShowConfirmModal({ type: 'block_ban', user });
+  };
+
+  const openVerifyModal = (user: UserData) => {
+    setVerifyNotes('');
+    setShowConfirmModal({ type: 'verify', user });
+  };
+
   const stats = useMemo(() => ({
     total: counts.total,
     active: counts.ACTIVE,
@@ -339,6 +441,39 @@ export default function AdminUsersPage() {
         );
       default:
         return <span className="text-gray-500">{status}</span>;
+    }
+  };
+
+  const getVerificationStatusBadge = (user: UserData) => {
+    const status = user.verificationStatus || 'UNVERIFIED';
+    switch (status) {
+      case 'VERIFIED':
+        return (
+          <div className="flex flex-col">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              مُدقق
+            </span>
+            {user.verifierName && (
+              <span className="text-xs text-gray-500 mt-0.5">بواسطة: {user.verifierName}</span>
+            )}
+          </div>
+        );
+      case 'FRAUDULENT':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-900 text-white">
+            <span className="w-2 h-2 rounded-full bg-gray-600"></span>
+            متطفل
+          </span>
+        );
+      case 'UNVERIFIED':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+            غير مُدقق
+          </span>
+        );
     }
   };
 
@@ -527,6 +662,7 @@ export default function AdminUsersPage() {
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">رقم الجوال</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الصلاحية</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الحالة</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">حالة التدقيق</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">سجل الدخول</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">آخر دخول</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">تاريخ التسجيل</th>
@@ -588,6 +724,11 @@ export default function AdminUsersPage() {
                         {getStatusBadge(user.status)}
                       </td>
 
+                      {/* Verification Status */}
+                      <td className="px-4 py-3">
+                        {getVerificationStatusBadge(user)}
+                      </td>
+
                       {/* Login Stats */}
                       <td className="px-4 py-3">
                         <div className="text-sm">
@@ -615,9 +756,27 @@ export default function AdminUsersPage() {
 
                       {/* Actions */}
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {user.role !== 'SUPER_ADMIN' && (
                             <>
+                              {(!user.verificationStatus || user.verificationStatus === 'UNVERIFIED') && (
+                                <button
+                                  onClick={() => openVerifyModal(user)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                                  title="تأكيد التحقق"
+                                >
+                                  <ShieldCheck className="w-4 h-4" />
+                                  تأكيد التحقق
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openBlockBanModal(user)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                title="حظر ومنع"
+                              >
+                                <ShieldOff className="w-4 h-4" />
+                                حظر ومنع
+                              </button>
                               {user.linkedMemberId && (
                                 <button
                                   onClick={() => setShowConfirmModal({ type: 'unlink', user })}
@@ -718,8 +877,185 @@ export default function AdminUsersPage() {
         )}
       </div>
 
-      {/* Confirmation Modal */}
-      {showConfirmModal && (
+      {/* Verification Modal */}
+      {showConfirmModal?.type === 'verify' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-green-100">
+                <ShieldCheck className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">تأكيد التحقق من المستخدم</h3>
+                <p className="text-gray-500">{showConfirmModal.user.nameArabic}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <User className="w-4 h-4" />
+                <span>الاسم: {showConfirmModal.user.nameArabic}</span>
+              </div>
+              {showConfirmModal.user.phone && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Phone className="w-4 h-4" />
+                  <span dir="ltr">{formatPhoneDisplay(showConfirmModal.user.phone)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ملاحظات (اختياري)
+              </label>
+              <textarea
+                value={verifyNotes}
+                onChange={(e) => setVerifyNotes(e.target.value)}
+                placeholder="أضف ملاحظات حول عملية التحقق..."
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(null);
+                  setVerifyNotes('');
+                }}
+                className="flex-1 px-4 py-2.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                disabled={isProcessing}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => handleVerifyUser(showConfirmModal.user, verifyNotes)}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <ShieldCheck className="w-5 h-5" />
+                    تأكيد التحقق
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block and Ban Modal */}
+      {showConfirmModal?.type === 'block_ban' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-100">
+                <ShieldOff className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">حظر ومنع المستخدم</h3>
+                <p className="text-gray-500">{showConfirmModal.user.nameArabic}</p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">
+                  تحذير: سيتم حظر هذا المستخدم نهائياً وإضافته للقائمة السوداء. لن يتمكن من التسجيل مرة أخرى باستخدام نفس البيانات المحظورة.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                سبب الحظر
+              </label>
+              <textarea
+                value={blockBanReason}
+                onChange={(e) => setBlockBanReason(e.target.value)}
+                placeholder="اكتب سبب حظر هذا المستخدم..."
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={blockPhone}
+                  onChange={(e) => setBlockPhone(e.target.checked)}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  disabled={!showConfirmModal.user.phone}
+                />
+                <span className={`text-sm ${!showConfirmModal.user.phone ? 'text-gray-400' : 'text-gray-700'}`}>
+                  حظر رقم الجوال
+                  {!showConfirmModal.user.phone && ' (لا يوجد رقم جوال)'}
+                </span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={blockEmail}
+                  onChange={(e) => setBlockEmail(e.target.checked)}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                />
+                <span className="text-sm text-gray-700">حظر البريد الإلكتروني</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={unlinkMember}
+                  onChange={(e) => setUnlinkMember(e.target.checked)}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  disabled={!showConfirmModal.user.linkedMemberId}
+                />
+                <span className={`text-sm ${!showConfirmModal.user.linkedMemberId ? 'text-gray-400' : 'text-gray-700'}`}>
+                  فك ربط العضو من الشجرة
+                  {!showConfirmModal.user.linkedMemberId && ' (غير مرتبط)'}
+                </span>
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(null);
+                  setBlockBanReason('');
+                  setBlockPhone(false);
+                  setBlockEmail(true);
+                  setUnlinkMember(false);
+                }}
+                className="flex-1 px-4 py-2.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                disabled={isProcessing}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => handleBlockAndBan(showConfirmModal.user, blockBanReason, blockPhone, blockEmail, unlinkMember)}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <ShieldOff className="w-5 h-5" />
+                    حظر ومنع نهائياً
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Existing Confirmation Modal */}
+      {showConfirmModal && !['verify', 'block_ban'].includes(showConfirmModal.type) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center gap-4 mb-4">

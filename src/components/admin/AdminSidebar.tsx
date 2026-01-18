@@ -32,6 +32,7 @@ import {
   AlertCircle,
   UserX,
   FileText,
+  Ban,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
@@ -93,6 +94,12 @@ const adminNavItems: NavItem[] = [
     label: 'إدارة المستخدمين',
     labelEn: 'User Management',
     icon: Users,
+  },
+  {
+    href: '/admin/blocklist',
+    label: 'القائمة السوداء',
+    labelEn: 'Blocklist',
+    icon: Ban,
   },
   {
     href: '/admin/unregistered',
