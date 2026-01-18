@@ -148,6 +148,11 @@ model User {
   phoneVerified        Boolean        @default(false)
   failedLoginAttempts  Int            @default(0)
   lockedUntil          DateTime?
+  verificationStatus   String         @default("UNVERIFIED")
+  verifiedAt           DateTime?
+  verifiedBy           String?
+  verifierName         String?
+  verificationNotes    String?
   accessRequest        AccessRequest?
   activityLogs         ActivityLog[]
   invitesSent          Invite[]       @relation("InviteSender")
@@ -160,6 +165,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([verificationStatus])
 }
 
 model OtpCode {
@@ -1141,4 +1147,21 @@ model AuditLog {
   @@index([targetType])
   @@index([targetId])
   @@index([severity])
+}
+
+model Blocklist {
+  id          String   @id @default(cuid())
+  type        String
+  value       String
+  reason      String?
+  blockedBy   String
+  blockedByName String
+  blockedAt   DateTime @default(now())
+  relatedUserId String?
+  relatedUserName String?
+
+  @@unique([type, value])
+  @@index([type])
+  @@index([value])
+  @@index([blockedAt])
 }
