@@ -414,10 +414,19 @@ export default function RegisterPage() {
         return;
       }
 
+      // Handle needsLogin case - account created but needs manual login
+      if (data.needsLogin) {
+        setPhoneStep('complete');
+        setSuccess(true);
+        return;
+      }
+
+      // Default success case
       setPhoneStep('complete');
       setSuccess(true);
-    } catch {
-      setOtpError('حدث خطأ أثناء التحقق');
+    } catch (error) {
+      console.error('Registration verification error:', error);
+      setOtpError('فشل في الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsLoading(false);
     }
