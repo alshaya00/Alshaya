@@ -1,8 +1,9 @@
 'use client';
 
+import { useRef, useCallback } from 'react';
 import { MatchCandidate, compareCandidates } from '@/lib/matching';
 import LineageGraphPreview from './LineageGraphPreview';
-import { Check, AlertCircle, Star, Users, GitBranch } from 'lucide-react';
+import { Check, AlertCircle, Star, Users, GitBranch, MousePointer } from 'lucide-react';
 
 interface MatchComparisonGraphsProps {
   candidates: MatchCandidate[];
@@ -22,6 +23,35 @@ export default function MatchComparisonGraphs({
   maxDisplay = 4,
 }: MatchComparisonGraphsProps) {
   const displayCandidates = candidates.slice(0, maxDisplay);
+  
+  // Track touch start position to distinguish taps from scrolls
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const TOUCH_THRESHOLD = 10; // pixels - if moved more than this, it's a scroll not a tap
+  
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+    }
+  }, []);
+  
+  const handleCardClick = useCallback((candidate: MatchCandidate, e: React.MouseEvent | React.TouchEvent) => {
+    // For touch events, check if it was a scroll or a tap
+    if ('touches' in e || touchStartRef.current) {
+      // This was preceded by a touch - already handled by button or was a scroll
+      touchStartRef.current = null;
+      return;
+    }
+    // For mouse clicks, proceed with selection
+    onSelect(candidate);
+  }, [onSelect]);
+  
+  const handleSelectClick = useCallback((candidate: MatchCandidate, e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    onSelect(candidate);
+  }, [onSelect]);
 
   // Get comparison if we have exactly 2 candidates
   const comparison = displayCandidates.length === 2
@@ -70,8 +100,9 @@ export default function MatchComparisonGraphs({
           return (
             <div
               key={candidate.fatherId}
-              onClick={() => onSelect(candidate)}
-              className={`relative cursor-pointer rounded-xl border-2 transition-all duration-200 ${
+              onClick={(e) => handleCardClick(candidate, e)}
+              onTouchStart={handleTouchStart}
+              className={`relative rounded-xl border-2 transition-all duration-200 touch-manipulation ${
                 isSelected
                   ? 'border-indigo-500 ring-2 ring-indigo-200 shadow-lg'
                   : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
@@ -109,8 +140,12 @@ export default function MatchComparisonGraphs({
                 </h4>
               </div>
 
-              {/* Graph */}
-              <div className="p-2">
+              {/* Graph - stop propagation to prevent accidental selection on mobile */}
+              <div 
+                className="p-2"
+                onClick={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+              >
                 <LineageGraphPreview
                   candidate={candidate}
                   newPersonName={newPersonName}
@@ -202,6 +237,32 @@ export default function MatchComparisonGraphs({
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Mobile-friendly select button */}
+              <div className="p-2 border-t">
+                <button
+                  type="button"
+                  onClick={(e) => handleSelectClick(candidate, e)}
+                  onTouchEnd={(e) => handleSelectClick(candidate, e)}
+                  className={`w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-all touch-manipulation ${
+                    isSelected
+                      ? 'bg-indigo-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 active:bg-indigo-200'
+                  }`}
+                >
+                  {isSelected ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Check size={16} />
+                      تم الاختيار
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <MousePointer size={16} />
+                      اختر هذا
+                    </span>
+                  )}
+                </button>
               </div>
 
               {/* Selection overlay */}
