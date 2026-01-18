@@ -255,10 +255,10 @@ export async function POST(request: NextRequest) {
       targetType: 'USER',
       targetId: user.id,
       targetName: nameArabic,
-      details: JSON.stringify({
+      details: {
         method: 'phone_otp',
         autoApproved: true,
-      }),
+      },
       ipAddress,
       userAgent,
       success: true,
