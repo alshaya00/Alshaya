@@ -1165,3 +1165,22 @@ model Blocklist {
   @@index([value])
   @@index([blockedAt])
 }
+
+model CreditsCategory {
+  id            String   @id @default(cuid())
+  nameAr        String
+  nameEn        String?
+  descriptionAr String
+  descriptionEn String?
+  category      String   @default("data")
+  icon          String?  @default("BookOpen")
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+
+  @@index([category])
+  @@index([sortOrder])
+  @@index([isActive])
+}
