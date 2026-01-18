@@ -99,7 +99,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { nameAr, nameEn, descriptionAr, descriptionEn, category, icon, sortOrder, isActive } = body;
+    const { nameAr, nameEn, descriptionAr, descriptionEn, category, icon, imageUrl, sortOrder, isActive } = body;
 
     const updateData: Record<string, unknown> = {};
     if (nameAr !== undefined) updateData.nameAr = nameAr;
@@ -108,6 +108,7 @@ export async function PATCH(
     if (descriptionEn !== undefined) updateData.descriptionEn = descriptionEn;
     if (category !== undefined) updateData.category = category;
     if (icon !== undefined) updateData.icon = icon;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
     if (isActive !== undefined) updateData.isActive = isActive;
 

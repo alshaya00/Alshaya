@@ -11,7 +11,8 @@ interface Contributor {
   name: string;
   role: string;
   roleAr: string;
-  category: 'founder' | 'data' | 'technical' | 'support' | 'special';
+  category: string;
+  imageUrl?: string | null;
 }
 
 interface CreditsCategory {
@@ -20,13 +21,14 @@ interface CreditsCategory {
   nameEn: string | null;
   descriptionAr: string;
   descriptionEn: string | null;
-  category: 'founder' | 'data' | 'technical' | 'support' | 'special';
+  category: string;
   icon: string | null;
+  imageUrl: string | null;
   sortOrder: number;
   isActive: boolean;
 }
 
-const categoryConfig = {
+const categoryConfig: Record<string, { icon: typeof Star; color: string; bgColor: string; textColor: string; label: string }> = {
   founder: {
     icon: Star,
     color: 'from-amber-400 to-amber-600',
@@ -64,6 +66,23 @@ const categoryConfig = {
   },
 };
 
+const defaultCategoryStyle = {
+  icon: Award,
+  color: 'from-teal-400 to-teal-600',
+  bgColor: 'bg-teal-100',
+  textColor: 'text-teal-600',
+};
+
+const getCategoryConfig = (category: string) => {
+  if (categoryConfig[category]) {
+    return categoryConfig[category];
+  }
+  return {
+    ...defaultCategoryStyle,
+    label: category,
+  };
+};
+
 export default function ContributorsPage() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -82,6 +101,7 @@ export default function ContributorsPage() {
             role: cat.nameEn || cat.descriptionEn || '',
             roleAr: cat.descriptionAr,
             category: cat.category,
+            imageUrl: cat.imageUrl,
           }));
           setContributors(mapped);
         }
@@ -119,7 +139,12 @@ export default function ContributorsPage() {
     return acc;
   }, {} as Record<string, Contributor[]>);
 
-  const categoryOrder: Array<keyof typeof categoryConfig> = ['founder', 'data', 'technical', 'support', 'special'];
+  const predefinedOrder = ['founder', 'data', 'technical', 'support', 'special'];
+  const allCategories = Object.keys(groupedContributors);
+  const categoryOrder = [
+    ...predefinedOrder.filter(cat => allCategories.includes(cat)),
+    ...allCategories.filter(cat => !predefinedOrder.includes(cat))
+  ];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white" dir="rtl">
@@ -200,7 +225,7 @@ export default function ContributorsPage() {
         </section>
       ) : (
         categoryOrder.map((category, categoryIndex) => {
-          const config = categoryConfig[category];
+          const config = getCategoryConfig(category);
           const Icon = config.icon;
           const categoryContributors = groupedContributors[category] || [];
 
@@ -233,6 +258,15 @@ export default function ContributorsPage() {
                         <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${config.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
 
                         <div className="relative text-center">
+                          {contributor.imageUrl && (
+                            <div className="mb-4">
+                              <img 
+                                src={contributor.imageUrl} 
+                                alt={contributor.name}
+                                className="w-24 h-24 object-cover rounded-full mx-auto border-4 border-amber-500/30 shadow-lg"
+                              />
+                            </div>
+                          )}
                           <h3 className="text-3xl font-bold text-white mb-3">
                             {contributor.name}
                           </h3>

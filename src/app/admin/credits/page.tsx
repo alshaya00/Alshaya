@@ -31,6 +31,7 @@ interface CreditsCategory {
   descriptionEn: string | null;
   category: string;
   icon: string;
+  imageUrl: string | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -78,8 +79,9 @@ export default function AdminCreditsPage() {
     nameEn: '',
     descriptionAr: '',
     descriptionEn: '',
-    category: 'data',
+    category: '',
     icon: 'BookOpen',
+    imageUrl: '',
     sortOrder: 0,
     isActive: true,
   });
@@ -90,8 +92,9 @@ export default function AdminCreditsPage() {
       nameEn: '',
       descriptionAr: '',
       descriptionEn: '',
-      category: 'data',
+      category: '',
       icon: 'BookOpen',
+      imageUrl: '',
       sortOrder: 0,
       isActive: true,
     });
@@ -141,6 +144,7 @@ export default function AdminCreditsPage() {
       descriptionEn: category.descriptionEn || '',
       category: category.category,
       icon: category.icon,
+      imageUrl: category.imageUrl || '',
       sortOrder: category.sortOrder,
       isActive: category.isActive,
     });
@@ -174,8 +178,9 @@ export default function AdminCreditsPage() {
           nameEn: formData.nameEn.trim() || null,
           descriptionAr: formData.descriptionAr.trim(),
           descriptionEn: formData.descriptionEn.trim() || null,
-          category: formData.category,
+          category: formData.category.trim(),
           icon: formData.icon,
+          imageUrl: formData.imageUrl.trim() || null,
           sortOrder: formData.sortOrder,
           isActive: formData.isActive,
         }),
@@ -338,7 +343,7 @@ export default function AdminCreditsPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الأيقونة</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الصورة</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الاسم</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الوصف</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الفئة</th>
@@ -353,9 +358,17 @@ export default function AdminCreditsPage() {
                   return (
                     <tr key={category.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <IconComponent className="w-4 h-4 text-blue-600" />
-                        </div>
+                        {category.imageUrl ? (
+                          <img 
+                            src={category.imageUrl} 
+                            alt={category.nameAr}
+                            className="w-10 h-10 object-cover rounded-lg border"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <IconComponent className="w-5 h-5 text-blue-600" />
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-gray-900 font-medium">{category.nameAr}</span>
@@ -470,23 +483,44 @@ export default function AdminCreditsPage() {
                   dir="ltr"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  الفئة (اكتب أي اسم تريده)
+                </label>
+                <input
+                  type="text"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="مثال: المؤسسون، البيانات، الدعم..."
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  رابط الصورة (اختياري)
+                </label>
+                <input
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  dir="ltr"
+                />
+                {formData.imageUrl && (
+                  <div className="mt-2">
+                    <img 
+                      src={formData.imageUrl} 
+                      alt="معاينة" 
+                      className="w-20 h-20 object-cover rounded-lg border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    الفئة
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {CATEGORY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     الأيقونة

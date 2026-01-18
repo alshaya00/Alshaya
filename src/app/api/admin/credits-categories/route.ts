@@ -71,11 +71,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { nameAr, nameEn, descriptionAr, descriptionEn, category, icon, sortOrder, isActive } = body;
+    const { nameAr, nameEn, descriptionAr, descriptionEn, category, icon, imageUrl, sortOrder, isActive } = body;
 
-    if (!nameAr || !descriptionAr || !category) {
+    if (!nameAr || !descriptionAr) {
       return NextResponse.json(
-        { success: false, message: 'nameAr, descriptionAr, and category are required', messageAr: 'الاسم العربي والوصف العربي والتصنيف مطلوبة' },
+        { success: false, message: 'nameAr and descriptionAr are required', messageAr: 'الاسم العربي والوصف العربي مطلوبة' },
         { status: 400 }
       );
     }
@@ -86,8 +86,9 @@ export async function POST(request: NextRequest) {
         nameEn: nameEn || null,
         descriptionAr,
         descriptionEn: descriptionEn || null,
-        category,
+        category: category || 'عام',
         icon: icon || 'BookOpen',
+        imageUrl: imageUrl || null,
         sortOrder: sortOrder ?? 0,
         isActive: isActive ?? true,
         createdBy: user.id,
