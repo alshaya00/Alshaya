@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { normalizePhoneNumber } from '@/lib/phone-utils';
+import { normalizePhone } from '@/lib/phone-utils';
 
 export async function isPhoneBlocked(phone: string): Promise<{ blocked: boolean; reason?: string }> {
-  const normalizedPhone = normalizePhoneNumber(phone) || phone;
+  const normalizedPhone = normalizePhone(phone) || phone;
   
   const blockEntry = await prisma.blocklist.findFirst({
     where: {
