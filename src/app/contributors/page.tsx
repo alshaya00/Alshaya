@@ -4,12 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Heart, Star, Award, Users, BookOpen, Camera, Code,
-  Sparkles, ChevronUp, Home, Palmtree
+  Sparkles, ChevronUp, Home, Palmtree, Loader2
 } from 'lucide-react';
-
-// ============================================
-// CONTRIBUTOR TYPES
-// ============================================
 
 interface Contributor {
   name: string;
@@ -18,60 +14,18 @@ interface Contributor {
   category: 'founder' | 'data' | 'technical' | 'support' | 'special';
 }
 
-// ============================================
-// CONTRIBUTORS DATA
-// Customize this list with actual contributors
-// ============================================
+interface CreditsCategory {
+  id: string;
+  nameAr: string;
+  nameEn: string | null;
+  descriptionAr: string;
+  descriptionEn: string | null;
+  category: 'founder' | 'data' | 'technical' | 'support' | 'special';
+  icon: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
 
-const contributors: Contributor[] = [
-  // Founders & Initiators - المؤسسون
-  {
-    name: 'المؤسسون الأوائل',
-    role: 'Project Founders',
-    roleAr: 'أصحاب فكرة المشروع',
-    category: 'founder',
-  },
-
-  // Data Contributors - مساهمو البيانات
-  {
-    name: 'كبار العائلة',
-    role: 'Family Elders',
-    roleAr: 'مصدر المعلومات والروايات',
-    category: 'data',
-  },
-  {
-    name: 'حفظة الأنساب',
-    role: 'Genealogy Keepers',
-    roleAr: 'الذين حفظوا سلسلة النسب',
-    category: 'data',
-  },
-
-  // Technical Team - الفريق التقني
-  {
-    name: 'فريق التطوير',
-    role: 'Development Team',
-    roleAr: 'بناء وتطوير المنصة',
-    category: 'technical',
-  },
-
-  // Support - الداعمون
-  {
-    name: 'الداعمون والمشجعون',
-    role: 'Supporters',
-    roleAr: 'كل من دعم وشجع المشروع',
-    category: 'support',
-  },
-
-  // Special Thanks
-  {
-    name: 'جميع أفراد العائلة',
-    role: 'All Family Members',
-    roleAr: 'الذين صبروا وساهموا',
-    category: 'special',
-  },
-];
-
-// Category icons and colors
 const categoryConfig = {
   founder: {
     icon: Star,
@@ -110,15 +64,37 @@ const categoryConfig = {
   },
 };
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
-
 export default function ContributorsPage() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [contributors, setContributors] = useState<Contributor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Handle scroll for progress indicator
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/credits-categories');
+        const data = await response.json();
+        
+        if (data.success && data.categories) {
+          const mapped: Contributor[] = data.categories.map((cat: CreditsCategory) => ({
+            name: cat.nameAr,
+            role: cat.nameEn || cat.descriptionEn || '',
+            roleAr: cat.descriptionAr,
+            category: cat.category,
+          }));
+          setContributors(mapped);
+        }
+      } catch (error) {
+        console.error('Error fetching credits categories:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
@@ -135,7 +111,6 @@ export default function ContributorsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Group contributors by category
   const groupedContributors = contributors.reduce((acc, contributor) => {
     if (!acc[contributor.category]) {
       acc[contributor.category] = [];
@@ -148,7 +123,6 @@ export default function ContributorsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white" dir="rtl">
-      {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-gray-800 z-50">
         <div
           className="h-full bg-gradient-to-l from-amber-400 to-orange-500 transition-all duration-150"
@@ -156,14 +130,9 @@ export default function ContributorsPage() {
         />
       </div>
 
-      {/* ============================================
-          HERO SECTION - Movie Credits Style
-          ============================================ */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Animated Stars Background */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800" />
-          {/* Stars */}
           {[...Array(50)].map((_, i) => (
             <div
               key={i}
@@ -178,16 +147,13 @@ export default function ContributorsPage() {
           ))}
         </div>
 
-        {/* Content */}
         <div className="relative z-10 text-center px-4 py-20">
-          {/* Animated Tree Icon */}
           <div className="mb-8 animate-float">
             <div className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full shadow-2xl shadow-amber-500/30">
               <span className="text-6xl">🌳</span>
             </div>
           </div>
 
-          {/* Title */}
           <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-l from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent">
             شكر وتقدير
           </h1>
@@ -202,7 +168,6 @@ export default function ContributorsPage() {
             وجعل حلم توثيق شجرة العائلة حقيقة
           </p>
 
-          {/* Scroll Indicator */}
           <div className="animate-bounce">
             <div className="w-8 h-12 border-2 border-amber-400 rounded-full mx-auto flex justify-center">
               <div className="w-2 h-3 bg-amber-400 rounded-full mt-2 animate-scroll" />
@@ -212,77 +177,89 @@ export default function ContributorsPage() {
         </div>
       </section>
 
-      {/* ============================================
-          CONTRIBUTORS SECTIONS
-          ============================================ */}
-      {categoryOrder.map((category, categoryIndex) => {
-        const config = categoryConfig[category];
-        const Icon = config.icon;
-        const categoryContributors = groupedContributors[category] || [];
-
-        if (categoryContributors.length === 0) return null;
-
-        return (
-          <section
-            key={category}
-            className={`py-24 ${categoryIndex % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}
-          >
-            <div className="container mx-auto px-4">
-              {/* Category Header */}
-              <div className="text-center mb-16">
-                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br ${config.color} shadow-lg mb-6`}>
-                  <Icon size={36} className="text-white" />
-                </div>
-                <h2 className="text-4xl font-bold mb-2">{config.label}</h2>
-                <div className="w-24 h-1 bg-gradient-to-l from-amber-400 to-orange-500 mx-auto rounded-full" />
-              </div>
-
-              {/* Contributors Grid */}
-              <div className="max-w-4xl mx-auto">
-                <div className="grid gap-8">
-                  {categoryContributors.map((contributor, index) => (
-                    <div
-                      key={index}
-                      className="group relative bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700 hover:border-amber-500/50 transition-all duration-500 hover:transform hover:scale-[1.02]"
-                      style={{
-                        animationDelay: `${index * 0.1}s`,
-                      }}
-                    >
-                      {/* Glow Effect */}
-                      <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${config.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
-
-                      {/* Content */}
-                      <div className="relative text-center">
-                        <h3 className="text-3xl font-bold text-white mb-3">
-                          {contributor.name}
-                        </h3>
-                        <p className={`text-xl ${config.textColor} mb-2`}>
-                          {contributor.roleAr}
-                        </p>
-                        <p className="text-gray-500 text-sm">
-                          {contributor.role}
-                        </p>
-                      </div>
-
-                      {/* Decorative Stars */}
-                      <div className="absolute top-4 right-4 opacity-30">
-                        <Star size={20} className="text-amber-400" />
-                      </div>
-                      <div className="absolute bottom-4 left-4 opacity-30">
-                        <Star size={16} className="text-amber-400" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {isLoading ? (
+        <section className="py-24 bg-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <Loader2 size={48} className="text-amber-400 animate-spin" />
+              <p className="text-gray-400 text-lg">جاري تحميل المساهمين...</p>
             </div>
-          </section>
-        );
-      })}
+          </div>
+        </section>
+      ) : contributors.length === 0 ? (
+        <section className="py-24 bg-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-800 rounded-full mb-6">
+                <Users size={36} className="text-gray-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-400 mb-4">لا يوجد مساهمون حالياً</h2>
+              <p className="text-gray-500">سيتم إضافة قائمة المساهمين قريباً</p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        categoryOrder.map((category, categoryIndex) => {
+          const config = categoryConfig[category];
+          const Icon = config.icon;
+          const categoryContributors = groupedContributors[category] || [];
 
-      {/* ============================================
-          FINAL MESSAGE
-          ============================================ */}
+          if (categoryContributors.length === 0) return null;
+
+          return (
+            <section
+              key={category}
+              className={`py-24 ${categoryIndex % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}`}
+            >
+              <div className="container mx-auto px-4">
+                <div className="text-center mb-16">
+                  <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br ${config.color} shadow-lg mb-6`}>
+                    <Icon size={36} className="text-white" />
+                  </div>
+                  <h2 className="text-4xl font-bold mb-2">{config.label}</h2>
+                  <div className="w-24 h-1 bg-gradient-to-l from-amber-400 to-orange-500 mx-auto rounded-full" />
+                </div>
+
+                <div className="max-w-4xl mx-auto">
+                  <div className="grid gap-8">
+                    {categoryContributors.map((contributor, index) => (
+                      <div
+                        key={index}
+                        className="group relative bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700 hover:border-amber-500/50 transition-all duration-500 hover:transform hover:scale-[1.02]"
+                        style={{
+                          animationDelay: `${index * 0.1}s`,
+                        }}
+                      >
+                        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${config.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+
+                        <div className="relative text-center">
+                          <h3 className="text-3xl font-bold text-white mb-3">
+                            {contributor.name}
+                          </h3>
+                          <p className={`text-xl ${config.textColor} mb-2`}>
+                            {contributor.roleAr}
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            {contributor.role}
+                          </p>
+                        </div>
+
+                        <div className="absolute top-4 right-4 opacity-30">
+                          <Star size={20} className="text-amber-400" />
+                        </div>
+                        <div className="absolute bottom-4 left-4 opacity-30">
+                          <Star size={16} className="text-amber-400" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        })
+      )}
+
       <section className="py-24 bg-gray-900">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
@@ -321,9 +298,6 @@ export default function ContributorsPage() {
         </div>
       </section>
 
-      {/* ============================================
-          FOOTER
-          ============================================ */}
       <footer className="py-8 bg-gray-950 border-t border-gray-800">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-500">
@@ -335,9 +309,6 @@ export default function ContributorsPage() {
         </div>
       </footer>
 
-      {/* ============================================
-          SCROLL TO TOP BUTTON
-          ============================================ */}
       {showScrollTop && (
         <button
           onClick={scrollToTop}
@@ -347,9 +318,6 @@ export default function ContributorsPage() {
         </button>
       )}
 
-      {/* ============================================
-          CUSTOM STYLES
-          ============================================ */}
       <style jsx>{`
         @keyframes float {
           0%, 100% { transform: translateY(0); }

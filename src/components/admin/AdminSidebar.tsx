@@ -33,6 +33,7 @@ import {
   UserX,
   FileText,
   Ban,
+  Heart,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
 
@@ -100,6 +101,12 @@ const adminNavItems: NavItem[] = [
     label: 'القائمة السوداء',
     labelEn: 'Blocklist',
     icon: Ban,
+  },
+  {
+    href: '/admin/credits',
+    label: 'فئات الشكر والتقدير',
+    labelEn: 'Credits Categories',
+    icon: Heart,
   },
   {
     href: '/admin/unregistered',
