@@ -93,10 +93,10 @@ export default function MemberMiniGraph({
     const milkCenterX = dimensions.width * 0.75;
 
     // Spacing - increased for better readability
-    const nodeWidth = 130;
-    const nodeHeight = 90;
-    const verticalGap = 130;
-    const horizontalGap = 180;
+    const nodeWidth = 140;
+    const nodeHeight = 95;
+    const verticalGap = 140;
+    const horizontalGap = 220;
 
     // ========== BLOOD FAMILY (Left/Center) ==========
 
