@@ -497,26 +497,67 @@ export default function AdminCreditsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  رابط الصورة (اختياري)
+                  الصورة (اختياري)
                 </label>
-                <input
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  dir="ltr"
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                        <Camera className="w-5 h-5 text-gray-400" />
+                        <span className="text-sm text-gray-600">اختر صورة من جهازك</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 2 * 1024 * 1024) {
+                              setError('حجم الصورة يجب أن يكون أقل من 2 ميجابايت');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setFormData({ ...formData, imageUrl: reader.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    {formData.imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                        title="إزالة الصورة"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-center text-xs text-gray-400">أو</div>
+                  <input
+                    type="url"
+                    value={formData.imageUrl?.startsWith('data:') ? '' : formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    placeholder="أو أدخل رابط الصورة: https://example.com/image.jpg"
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    dir="ltr"
+                  />
+                </div>
                 {formData.imageUrl && (
-                  <div className="mt-2">
+                  <div className="mt-3 flex items-center gap-3">
                     <img 
                       src={formData.imageUrl} 
                       alt="معاينة" 
-                      className="w-20 h-20 object-cover rounded-lg border"
+                      className="w-20 h-20 object-cover rounded-lg border shadow-sm"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
+                    <span className="text-xs text-green-600">✓ الصورة جاهزة</span>
                   </div>
                 )}
               </div>
