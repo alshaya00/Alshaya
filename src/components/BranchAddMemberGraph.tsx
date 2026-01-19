@@ -184,8 +184,8 @@ export default function BranchAddMemberGraph({
 
     const hierarchy = d3.hierarchy<TreeNode>(treeData);
     const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([320, 240])
-      .separation((a, b) => (a.parent === b.parent ? 2.2 : 3.0));
+      .nodeSize([400, 260])
+      .separation((a, b) => (a.parent === b.parent ? 2.8 : 3.5));
 
     const root = treeLayout(hierarchy);
     const nodes = root.descendants() as unknown as D3TreeNode[];
