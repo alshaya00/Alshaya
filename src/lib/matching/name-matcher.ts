@@ -220,7 +220,9 @@ function getPotentialFathers(
 
   for (const member of members) {
     // Only males can be fathers - females cannot have children under them in the family tree
-    if (member.gender !== 'Male') continue;
+    // Handle both 'Male' and 'MALE' formats from database
+    const genderLower = member.gender?.toLowerCase();
+    if (genderLower !== 'male') continue;
 
     const nameMatch = comprehensiveNameMatch(member.firstName, fatherName);
 
