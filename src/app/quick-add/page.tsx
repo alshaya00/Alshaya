@@ -11,6 +11,7 @@ import { paginationSettings, dbSettings } from '@/config/constants';
 import { MatchConfirmation, MatchComparisonGraphs } from '@/components/quick-add';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import GenderAvatar from '@/components/GenderAvatar';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   PlusCircle,
   Check,
@@ -92,6 +93,7 @@ const STORAGE_KEY = storageKeys.newMembers;
 
 export default function QuickAddPage() {
   const searchParams = useSearchParams();
+  const { session, getAuthHeader } = useAuth();
   const [step, setStep] = useState(1);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [autoFillData, setAutoFillData] = useState<AutoFillData | null>(null);
@@ -135,12 +137,25 @@ export default function QuickAddPage() {
 
   const [errors, setErrors] = useState<Partial<Record<keyof NewMemberData, string>>>({});
 
-  // Load data on mount
+  // Load data on mount (requires authentication)
   useEffect(() => {
     const loadData = async () => {
+      if (!session?.token) {
+        console.log('QuickAdd: No session token, skipping member load');
+        return;
+      }
       try {
-        // Fetch all members from API
-        const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`);
+        // Fetch all members from API with auth header
+        const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`, {
+          headers: {
+            ...getAuthHeader(),
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (!res.ok) {
+          console.error('QuickAdd: Failed to fetch members, status:', res.status);
+          return;
+        }
         const data = await res.json();
         const members = data.data || [];
         setAllMembers(members);
@@ -156,7 +171,7 @@ export default function QuickAddPage() {
       }
     };
     loadData();
-  }, []);
+  }, [session?.token, getAuthHeader]);
 
   // Handle URL parameters for pre-filled links
   useEffect(() => {

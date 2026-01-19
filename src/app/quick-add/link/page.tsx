@@ -15,8 +15,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import GenderAvatar from '@/components/GenderAvatar';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function QuickAddLinkGenerator() {
+  const { session, getAuthHeader } = useAuth();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [selectedFatherId, setSelectedFatherId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,11 +26,25 @@ export default function QuickAddLinkGenerator() {
   const [showQR, setShowQR] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load members (public endpoint, no auth needed)
+  // Load members (requires authentication)
   useEffect(() => {
     const loadMembers = async () => {
+      if (!session?.token) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`);
+        const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`, {
+          headers: {
+            ...getAuthHeader(),
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (!res.ok) {
+          console.error('QuickAddLink: Failed to fetch members, status:', res.status);
+          setIsLoading(false);
+          return;
+        }
         const data = await res.json();
         setMembers(data.data || []);
       } catch (error) {
@@ -38,7 +54,7 @@ export default function QuickAddLinkGenerator() {
       }
     };
     loadMembers();
-  }, []);
+  }, [session?.token, getAuthHeader]);
 
   // Filter members based on search
   const filteredMembers = useMemo(() => {
