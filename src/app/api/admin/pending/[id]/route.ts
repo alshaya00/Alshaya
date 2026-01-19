@@ -86,7 +86,7 @@ export async function POST(
     const body = await request.json();
     const { action, reviewNote } = body;
 
-    if (!action || !['approve', 'reject'].includes(action)) {
+    if (!action || !['approve', 'reject', 'merge_update'].includes(action)) {
       return NextResponse.json(
         { success: false, message: 'Invalid action', messageAr: 'الإجراء غير صالح' },
         { status: 400 }
@@ -124,12 +124,24 @@ export async function POST(
       });
 
       if (!result.success) {
+        const isDuplicate = result.rollbackReason?.startsWith('DUPLICATE_FOUND:');
+        let duplicateIds: string[] = [];
+        
+        if (isDuplicate && result.rollbackReason) {
+          const idsMatch = result.rollbackReason.match(/DUPLICATE_FOUND: (.+)/);
+          if (idsMatch) {
+            duplicateIds = idsMatch[1].split(', ').filter(id => id.trim());
+          }
+        }
+        
         return NextResponse.json(
           { 
             success: false, 
             message: result.message, 
             messageAr: result.messageAr,
             rollbackReason: result.rollbackReason,
+            isDuplicate,
+            duplicateIds,
           },
           { status: 400 }
         );
@@ -212,6 +224,131 @@ export async function POST(
         success: true,
         message: 'Pending member rejected',
         messageAr: 'تم رفض العضو المعلق',
+      });
+    }
+
+    if (action === 'merge_update') {
+      const { targetMemberId } = body;
+      
+      if (!targetMemberId) {
+        return NextResponse.json(
+          { success: false, message: 'Target member ID required', messageAr: 'معرف العضو المستهدف مطلوب' },
+          { status: 400 }
+        );
+      }
+
+      const targetMember = await prisma.familyMember.findUnique({
+        where: { id: targetMemberId, deletedAt: null },
+      });
+
+      if (!targetMember) {
+        return NextResponse.json(
+          { success: false, message: 'Target member not found', messageAr: 'العضو المستهدف غير موجود' },
+          { status: 404 }
+        );
+      }
+
+      const updateData: Record<string, unknown> = {};
+      const updatedFields: string[] = [];
+
+      if (pending.birthYear && !targetMember.birthYear) {
+        updateData.birthYear = pending.birthYear;
+        updatedFields.push('birthYear');
+      }
+      if (pending.birthCalendar && !targetMember.birthCalendar) {
+        updateData.birthCalendar = pending.birthCalendar;
+        updatedFields.push('birthCalendar');
+      }
+      if (pending.phone && !targetMember.phone) {
+        updateData.phone = pending.phone;
+        updatedFields.push('phone');
+      }
+      if (pending.email && !targetMember.email) {
+        updateData.email = pending.email;
+        updatedFields.push('email');
+      }
+      if (pending.city && !targetMember.city) {
+        updateData.city = pending.city;
+        updatedFields.push('city');
+      }
+      if (pending.occupation && !targetMember.occupation) {
+        updateData.occupation = pending.occupation;
+        updatedFields.push('occupation');
+      }
+      if (pending.biography && !targetMember.biography) {
+        updateData.biography = pending.biography;
+        updatedFields.push('biography');
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        updateData.updatedAt = new Date();
+        updateData.lastModifiedBy = user.id;
+        
+        await prisma.familyMember.update({
+          where: { id: targetMemberId },
+          data: updateData,
+        });
+      }
+
+      await prisma.pendingMember.update({
+        where: { id: params.id },
+        data: {
+          reviewStatus: 'REJECTED',
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          reviewNotes: `تم دمج المعلومات مع العضو الموجود: ${targetMemberId}. الحقول المحدثة: ${updatedFields.join(', ') || 'لا يوجد'}`,
+        },
+      });
+
+      await logActivity({
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.nameArabic,
+        action: 'PENDING_MEMBER_MERGED',
+        category: 'MEMBER',
+        targetType: 'FAMILY_MEMBER',
+        targetId: targetMemberId,
+        targetName: targetMember.fullNameAr || targetMember.firstName,
+        details: { 
+          pendingId: params.id,
+          pendingName: pending.firstName,
+          updatedFields,
+          mergedFrom: pending.firstName,
+        },
+        ipAddress,
+        userAgent,
+        success: true,
+      });
+
+      try {
+        await logAuditToDb({
+          action: 'PENDING_MERGE_UPDATE',
+          severity: 'INFO',
+          userId: user.id,
+          userName: user.email,
+          userRole: user.role,
+          targetType: 'FAMILY_MEMBER',
+          targetId: targetMemberId,
+          targetName: targetMember.fullNameAr || targetMember.firstName,
+          description: `تم دمج معلومات العضو المعلق "${pending.firstName}" مع العضو الموجود "${targetMember.firstName}"`,
+          details: {
+            pendingMemberId: params.id,
+            pendingMemberName: pending.firstName,
+            updatedFields,
+            previousState: targetMember as unknown as Record<string, unknown>,
+          },
+          success: true,
+        });
+      } catch (auditError) {
+        console.error('Audit logging failed:', auditError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Member info merged successfully',
+        messageAr: `تم تحديث معلومات العضو الموجود بنجاح${updatedFields.length > 0 ? `. الحقول المحدثة: ${updatedFields.join('، ')}` : '. لم يتم تحديث أي حقول (جميع المعلومات موجودة مسبقاً)'}`,
+        updatedFields,
+        targetMemberId,
       });
     }
 
