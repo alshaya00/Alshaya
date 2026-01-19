@@ -109,8 +109,8 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
 
     const hierarchy = d3.hierarchy<TreeNode>(treeData);
     const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([160, 180])
-      .separation((a, b) => (a.parent === b.parent ? 1.1 : 1.6));
+      .nodeSize([200, 200])
+      .separation((a, b) => (a.parent === b.parent ? 1.4 : 2.0));
 
     const root = treeLayout(hierarchy);
     const nodes = root.descendants() as unknown as D3TreeNode[];

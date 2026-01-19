@@ -220,7 +220,7 @@ export default function TreeEditorPage() {
     // Create tree layout
     const treeLayout = d3.tree<TreeNode>()
       .size([height - margin.top - margin.bottom, width - margin.left - margin.right])
-      .separation((a, b) => a.parent === b.parent ? 1.5 : 2);
+      .separation((a, b) => a.parent === b.parent ? 1.8 : 2.5);
 
     // Create hierarchy
     const root = d3.hierarchy(treeData, d => d.children) as D3Node;
