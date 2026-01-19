@@ -63,6 +63,7 @@ interface UserData {
   loginCount: number;
   failedLoginAttempts: number;
   lastFailedLogin: LastFailedLogin | null;
+  hasDuplicatePhone?: boolean;
 }
 
 type FilterStatus = 'all' | 'ACTIVE' | 'PENDING' | 'DISABLED';
@@ -90,6 +91,7 @@ export default function AdminUsersPage() {
   const [blockPhone, setBlockPhone] = useState(false);
   const [blockEmail, setBlockEmail] = useState(true);
   const [unlinkMember, setUnlinkMember] = useState(false);
+  const [duplicatePhoneCount, setDuplicatePhoneCount] = useState(0);
   const limit = 20;
 
   useEffect(() => {
@@ -129,6 +131,9 @@ export default function AdminUsersPage() {
         setTotalPages(data.totalPages || 1);
         if (data.counts) {
           setCounts(data.counts);
+        }
+        if (data.duplicatePhoneCount !== undefined) {
+          setDuplicatePhoneCount(data.duplicatePhoneCount);
         }
       } else {
         const errorData = await res.json();
@@ -528,6 +533,20 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Duplicate Phone Warning */}
+      {duplicatePhoneCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-800">تحذير: أرقام جوال مكررة</h3>
+            <p className="text-amber-700 text-sm">
+              يوجد {duplicatePhoneCount} رقم جوال مستخدم من قبل أكثر من شخص. هذا قد يسبب مشاكل في تسجيل الدخول.
+              يرجى مراجعة الأرقام المميزة بعلامة تحذير وتحديثها.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg p-4 border shadow-sm">
@@ -699,13 +718,18 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3">
                         {user.phone ? (
                           <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-700 text-sm" dir="ltr">
+                            <Phone className={`w-4 h-4 ${user.hasDuplicatePhone ? 'text-amber-500' : 'text-gray-400'}`} />
+                            <span className={`text-sm ${user.hasDuplicatePhone ? 'text-amber-700 font-medium' : 'text-gray-700'}`} dir="ltr">
                               {formatPhoneDisplay(user.phone)}
                             </span>
                             {user.phoneVerified && (
                               <span className="text-green-500" title="موثق">
                                 <Check className="w-4 h-4" />
+                              </span>
+                            )}
+                            {user.hasDuplicatePhone && (
+                              <span className="text-amber-500" title="رقم مكرر - يستخدم من قبل مستخدم آخر">
+                                <AlertCircle className="w-4 h-4" />
                               </span>
                             )}
                           </div>

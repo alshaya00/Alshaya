@@ -149,6 +149,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for duplicate phone number
+    if (phone) {
+      const normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone) {
+        const existingPhoneUser = await prisma.user.findFirst({
+          where: { phone: normalizedPhone },
+        });
+        if (existingPhoneUser) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'An account with this phone number already exists',
+              messageAr: 'يوجد حساب بهذا الرقم',
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     // Check if the linked member is already linked to another user
     if (invitation.linkedMemberId) {
       const existingLink = await checkMemberLinkedToUser(invitation.linkedMemberId);

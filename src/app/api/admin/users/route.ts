@@ -58,6 +58,16 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // Find duplicate phone numbers
+    const duplicatePhones = await prisma.$queryRaw<{ phone: string; count: bigint }[]>`
+      SELECT phone, COUNT(*) as count 
+      FROM "User" 
+      WHERE phone IS NOT NULL 
+      GROUP BY phone 
+      HAVING COUNT(*) > 1
+    `;
+    const duplicatePhoneNumbers = duplicatePhones.map(d => d.phone);
+
     const [users, total, statusCounts] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -132,6 +142,7 @@ export async function GET(request: NextRequest) {
           linkedMember,
           loginCount,
           lastFailedLogin,
+          hasDuplicatePhone: u.phone ? duplicatePhoneNumbers.includes(u.phone) : false,
         };
       })
     );
@@ -144,6 +155,8 @@ export async function GET(request: NextRequest) {
       limit,
       totalPages: Math.ceil(total / limit),
       counts,
+      duplicatePhoneCount: duplicatePhoneNumbers.length,
+      duplicatePhoneNumbers,
     });
   } catch (error) {
     console.error('Error fetching users:', error);
