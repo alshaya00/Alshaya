@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { safeJsonParseArray } from '@/lib/utils/safe-json';
-import { getSessionFromCookie } from '@/lib/auth';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token) return null;
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+  return user;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSessionFromCookie();
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+    const user = await getAuthUser(request);
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { success: false, error: 'غير مصرح لك بالوصول' },
         { status: 403 }
