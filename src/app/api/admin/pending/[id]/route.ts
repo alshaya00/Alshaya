@@ -237,7 +237,7 @@ export async function POST(
         );
       }
 
-      const targetMember = await prisma.familyMember.findUnique({
+      const targetMember = await prisma.familyMember.findFirst({
         where: { id: targetMemberId, deletedAt: null },
       });
 

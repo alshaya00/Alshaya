@@ -84,6 +84,11 @@ export default function AdminPendingPage() {
     type: 'approve' | 'reject' | 'delete';
     ids: string[];
   } | null>(null);
+  const [duplicateModal, setDuplicateModal] = useState<{
+    pendingId: string;
+    pendingName: string;
+    duplicateIds: string[];
+  } | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -246,6 +251,19 @@ export default function AdminPendingPage() {
       
       const failed = results.filter(r => !r.ok);
       if (failed.length > 0) {
+        const duplicateResult = failed.find(f => f.data.isDuplicate && f.data.duplicateIds?.length > 0);
+        if (duplicateResult && ids.length === 1) {
+          const pending = members.find(m => m.id === duplicateResult.id);
+          setDuplicateModal({
+            pendingId: duplicateResult.id,
+            pendingName: pending?.firstName || 'العضو',
+            duplicateIds: duplicateResult.data.duplicateIds,
+          });
+          setShowConfirmModal(null);
+          setIsProcessing(false);
+          return;
+        }
+        
         const errorMessages = failed.map(f => f.data.messageAr || f.data.message || 'خطأ غير معروف').join('\n');
         alert(`فشل في الموافقة على بعض الأعضاء:\n${errorMessages}`);
       }
@@ -256,6 +274,38 @@ export default function AdminPendingPage() {
     } catch (error) {
       console.error('Error approving members:', error);
       alert('حدث خطأ أثناء الموافقة. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleMergeUpdate = async (pendingId: string, targetMemberId: string) => {
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/pending/${pendingId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'merge_update', targetMemberId }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(data.messageAr || 'تم تحديث معلومات العضو بنجاح');
+        await fetchPendingMembers();
+        setDuplicateModal(null);
+      } else {
+        alert(data.messageAr || data.message || 'حدث خطأ أثناء التحديث');
+      }
+    } catch (error) {
+      console.error('Error merging member:', error);
+      alert('حدث خطأ أثناء التحديث. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsProcessing(false);
     }
@@ -765,6 +815,77 @@ export default function AdminPendingPage() {
                 >
                   {isProcessing && <Loader2 className="animate-spin" size={18} />}
                   تأكيد
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {duplicateModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
+            <div className="px-6 py-4 rounded-t-2xl bg-gradient-to-l from-amber-500 to-amber-600 text-white">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={24} />
+                <h3 className="font-bold text-lg">تم اكتشاف عضو مكرر</h3>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-600 mb-4">
+                يوجد عضو بنفس الاسم ({duplicateModal.pendingName}) في الشجرة. هل تريد تحديث معلومات العضو الموجود بالمعلومات الجديدة؟
+              </p>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <p className="text-amber-800 text-sm">
+                  <strong>ملاحظة:</strong> سيتم تحديث الحقول الفارغة فقط (مثل رقم الجوال، البريد، المدينة) دون تغيير المعلومات الموجودة.
+                </p>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                <p className="text-sm font-medium text-gray-700">الأعضاء المطابقون:</p>
+                {duplicateModal.duplicateIds.map(memberId => {
+                  const member = allMembers.find(m => m.id === memberId);
+                  return member ? (
+                    <div key={memberId} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center gap-3">
+                        <GenderAvatar gender={member.gender} size={32} />
+                        <div>
+                          <p className="font-medium text-gray-900">{member.firstName}</p>
+                          <p className="text-sm text-gray-500">{getFullLineageName(member, allMembers)}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleMergeUpdate(duplicateModal.pendingId, memberId)}
+                        disabled={isProcessing}
+                        className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isProcessing && <Loader2 className="animate-spin" size={16} />}
+                        تحديث
+                      </button>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDuplicateModal(null)}
+                  className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50"
+                  disabled={isProcessing}
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={() => {
+                    handleReject([duplicateModal.pendingId]);
+                    setDuplicateModal(null);
+                  }}
+                  disabled={isProcessing}
+                  className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 disabled:opacity-50"
+                >
+                  رفض العضو المكرر
                 </button>
               </div>
             </div>
