@@ -141,7 +141,7 @@ function TreePageContent() {
   };
 
   const expandAll = () => {
-    setExpandedNodes(new Set(allMembers.filter(m => m.gender === 'Male').map(m => m.id)));
+    setExpandedNodes(new Set(allMembers.filter(m => m.gender?.toUpperCase() === 'MALE').map(m => m.id)));
   };
 
   const collapseAll = () => {
@@ -238,20 +238,20 @@ function TreePageContent() {
             </button>
           ) : (
             <div className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center shrink-0">
-              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${node.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}`} aria-hidden="true" />
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${node.gender?.toUpperCase() === 'MALE' ? 'bg-blue-400' : 'bg-pink-400'}`} aria-hidden="true" />
             </div>
           )}
 
           {/* Avatar */}
           <div className={`
             w-10 h-10 rounded-full overflow-hidden border-2
-            ${node.gender === 'Male'
+            ${node.gender?.toUpperCase() === 'MALE'
               ? 'border-blue-400'
               : 'border-pink-400'
             }
           `}>
             <img
-              src={node.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+              src={node.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
               alt=""
               className="w-full h-full object-cover"
             />
@@ -325,18 +325,18 @@ function TreePageContent() {
                 className={`
                   p-3 rounded-xl border-2 text-center transition-all hover:shadow-md
                   ${member.id === highlightedId ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100 hover:border-gray-200'}
-                  ${member.gender === 'Male' ? 'bg-blue-50/50' : 'bg-pink-50/50'}
+                  ${member.gender?.toUpperCase() === 'MALE' ? 'bg-blue-50/50' : 'bg-pink-50/50'}
                 `}
               >
                 <div className={`
                   w-12 h-12 mx-auto rounded-full overflow-hidden mb-2 border-2
-                  ${member.gender === 'Male'
+                  ${member.gender?.toUpperCase() === 'MALE'
                     ? 'border-blue-300'
                     : 'border-pink-300'
                   }
                 `}>
                   <img
-                    src={member.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                    src={member.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -375,10 +375,10 @@ function TreePageContent() {
                 <div className="flex items-center gap-3">
                   <div className={`
                     w-8 h-8 rounded-full overflow-hidden
-                    ${member.gender === 'Male' ? 'ring-1 ring-blue-200' : 'ring-1 ring-pink-200'}
+                    ${member.gender?.toUpperCase() === 'MALE' ? 'ring-1 ring-blue-200' : 'ring-1 ring-pink-200'}
                   `}>
                     <img
-                      src={member.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      src={member.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -395,8 +395,8 @@ function TreePageContent() {
                 </span>
               </td>
               <td className="px-4 py-3 text-center">
-                <span className={`text-sm ${member.gender === 'Male' ? 'text-blue-600' : 'text-pink-600'}`}>
-                  {member.gender === 'Male' ? 'ذكر' : 'أنثى'}
+                <span className={`text-sm ${member.gender?.toUpperCase() === 'MALE' ? 'text-blue-600' : 'text-pink-600'}`}>
+                  {member.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}
                 </span>
               </td>
               <td className="px-4 py-3 text-right hidden md:table-cell">
@@ -456,10 +456,10 @@ function TreePageContent() {
                       className="w-full px-4 py-2.5 text-right hover:bg-green-50 flex items-center gap-3 border-b last:border-0"
                     >
                       <div className={`w-8 h-8 rounded-full overflow-hidden ${
-                        m.gender === 'Male' ? 'ring-1 ring-blue-200' : 'ring-1 ring-pink-200'
+                        m.gender?.toUpperCase() === 'MALE' ? 'ring-1 ring-blue-200' : 'ring-1 ring-pink-200'
                       }`}>
                         <img
-                          src={m.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                          src={m.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
                           alt=""
                           className="w-full h-full object-cover"
                         />
@@ -570,13 +570,13 @@ function TreePageContent() {
               <div className="text-center mb-5">
                 <div className={`
                   w-20 h-20 mx-auto rounded-full overflow-hidden border-4
-                  ${selectedMember.gender === 'Male'
+                  ${selectedMember.gender?.toUpperCase() === 'MALE'
                     ? 'border-blue-400'
                     : 'border-pink-400'
                   }
                 `}>
                   <img
-                    src={selectedMember.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                    src={selectedMember.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -663,13 +663,13 @@ function TreePageContent() {
                 <div className="text-center mb-4">
                   <div className={`
                     w-16 h-16 mx-auto rounded-full overflow-hidden border-4
-                    ${selectedMember.gender === 'Male'
+                    ${selectedMember.gender?.toUpperCase() === 'MALE'
                       ? 'border-blue-400'
                       : 'border-pink-400'
                     }
                   `}>
                     <img
-                      src={selectedMember.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      src={selectedMember.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
                       alt=""
                       className="w-full h-full object-cover"
                     />
