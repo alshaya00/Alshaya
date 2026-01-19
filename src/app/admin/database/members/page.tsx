@@ -454,9 +454,9 @@ export default function MembersTablePage() {
                   </td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      member.gender === 'Male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
+                      member.gender?.toUpperCase() === 'MALE' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'
                     }`}>
-                      {member.gender === 'Male' ? 'ذكر' : 'أنثى'}
+                      {member.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}
                     </span>
                   </td>
                   <td className="p-3">

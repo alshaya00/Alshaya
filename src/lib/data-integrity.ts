@@ -449,9 +449,9 @@ export async function validateChildrenCounts(): Promise<ValidationResult> {
     }
     
     const counts = childrenByFather.get(child.fatherId)!;
-    if (child.gender === 'Male') {
+    if (child.gender?.toUpperCase() === 'MALE') {
       counts.sons++;
-    } else if (child.gender === 'Female') {
+    } else if (child.gender?.toUpperCase() === 'FEMALE') {
       counts.daughters++;
     }
   }
@@ -742,7 +742,7 @@ export async function validatePendingMembers(): Promise<ValidationResult> {
       });
     }
 
-    if (proposedFather.gender === 'Female') {
+    if (proposedFather.gender?.toUpperCase() === 'FEMALE') {
       issues.push({
         memberId: request.id,
         memberName: request.nameArabic,
@@ -1148,7 +1148,7 @@ export async function validateFemaleParents(): Promise<ValidationResult> {
   for (const member of membersWithFather) {
     if (member.fatherId) {
       const father = fatherMap.get(member.fatherId);
-      if (father && father.gender === 'Female') {
+      if (father && father.gender?.toUpperCase() === 'FEMALE') {
         issues.push({
           memberId: member.id,
           memberName: member.firstName,
@@ -1380,8 +1380,8 @@ export async function validateMemberChildrenCounts(memberId: string): Promise<Va
     select: { gender: true },
   });
 
-  const actualSons = children.filter(c => c.gender === 'Male').length;
-  const actualDaughters = children.filter(c => c.gender === 'Female').length;
+  const actualSons = children.filter(c => c.gender?.toUpperCase() === 'MALE').length;
+  const actualDaughters = children.filter(c => c.gender?.toUpperCase() === 'FEMALE').length;
 
   if (member.sonsCount !== actualSons) {
     issues.push({

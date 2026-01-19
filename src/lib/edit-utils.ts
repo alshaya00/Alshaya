@@ -297,7 +297,7 @@ export function generateFullName(
   parts.push(member.familyName || 'آل شايع');
 
   // Arabic full name with proper connectors
-  const connector = member.gender === 'Female' ? 'بنت' : 'بن';
+  const connector = member.gender?.toUpperCase() === 'FEMALE' ? 'بنت' : 'بن';
   const fullNameAr = parts.length > 2
     ? parts[0] + ' ' + connector + ' ' + parts.slice(1, -1).join(' ' + connector + ' ') + ' ' + parts[parts.length - 1]
     : parts.join(' ');

@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (oldParentId) {
-          const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
+          const countField = member.gender?.toUpperCase() === 'MALE' ? 'sonsCount' : 'daughtersCount';
           await tx.familyMember.update({
             where: { id: oldParentId },
             data: {
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (newParentId) {
-          const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
+          const countField = member.gender?.toUpperCase() === 'MALE' ? 'sonsCount' : 'daughtersCount';
           await tx.familyMember.update({
             where: { id: newParentId },
             data: {

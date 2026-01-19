@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     let members = await getAllMembersFromDb();
 
     if (malesOnly) {
-      members = members.filter(m => m.gender === 'Male');
+      members = members.filter(m => m.gender?.toUpperCase() === 'MALE');
     }
 
     if (gender) {

@@ -101,7 +101,7 @@ export default function BranchAddMemberGraph({
     if (newMemberPreview && selectedFatherId && newMemberPreview.firstName) {
       const selectedFather = memberMap.get(selectedFatherId);
       if (selectedFather) {
-        const connector = newMemberPreview.gender === 'Male' ? 'بن' : 'بنت';
+        const connector = newMemberPreview.gender?.toUpperCase() === 'MALE' ? 'بن' : 'بنت';
         const fullNameAr = `${newMemberPreview.firstName} ${connector} ${selectedFather.firstName} آل شايع`;
 
         const newMemberNode: TreeNode = {
@@ -294,7 +294,7 @@ export default function BranchAddMemberGraph({
   const handleNodeClick = (node: TreeNode) => {
     if (node.isNewMember) return;
 
-    if (node.gender === 'Male') {
+    if (node.gender?.toUpperCase() === 'MALE') {
       onSelectFather(node.id);
     }
   };
@@ -455,7 +455,7 @@ export default function BranchAddMemberGraph({
             {nodes.map((node) => {
               const isSelected = node.data.id === selectedFatherId;
               const isHovered = hoveredNode?.id === node.data.id;
-              const isMale = node.data.gender === 'Male';
+              const isMale = node.data.gender?.toUpperCase() === 'MALE';
               const isNewMember = node.data.isNewMember;
               const isPending = node.data.isPending;
               const isSelectable = isMale && !isNewMember;
@@ -635,7 +635,7 @@ export default function BranchAddMemberGraph({
             </div>
           </div>
 
-          {hoveredNode.gender === 'Male' ? (
+          {hoveredNode.gender?.toUpperCase() === 'MALE' ? (
             <p className="text-xs text-center text-green-600 font-medium">
               {selectedFatherId === hoveredNode.id ? '✓ تم الاختيار' : 'انقر للاختيار'}
             </p>
@@ -667,7 +667,7 @@ export default function BranchAddMemberGraph({
             </div>
           </div>
           <p className="text-xs text-center text-green-700 font-medium bg-green-100 rounded-lg py-1.5">
-            ج{hoveredNode.generation} • {hoveredNode.gender === 'Male' ? 'ذكر' : 'أنثى'}
+            ج{hoveredNode.generation} • {hoveredNode.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}
           </p>
         </div>
       )}

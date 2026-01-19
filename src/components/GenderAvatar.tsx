@@ -27,7 +27,7 @@ const sizePx = {
 };
 
 export default function GenderAvatar({ gender, size = 'md', className = '' }: GenderAvatarProps) {
-  const isMale = gender === 'Male';
+  const isMale = gender?.toUpperCase() === 'MALE';
   const avatarSrc = isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png';
   const altText = isMale ? 'صورة ذكر' : 'صورة أنثى';
   
@@ -46,7 +46,7 @@ export default function GenderAvatar({ gender, size = 'md', className = '' }: Ge
 }
 
 export function GenderAvatarInline({ gender, size = 'md' }: { gender: string; size?: 'xs' | 'sm' | 'md' | 'lg' }) {
-  const isMale = gender === 'Male';
+  const isMale = gender?.toUpperCase() === 'MALE';
   const avatarSrc = isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png';
   
   return (

@@ -59,7 +59,7 @@ async function getMembersWithIncorrectConnector(): Promise<MemberWithIncorrectCo
   for (const member of members) {
     if (!member.fullNameAr || !member.fatherId) continue;
 
-    const expectedConnector = member.gender === 'Female' ? 'بنت' : 'بن';
+    const expectedConnector = member.gender?.toUpperCase() === 'FEMALE' ? 'بنت' : 'بن';
     const actualConnector = getConnectorFromFullName(member.fullNameAr);
 
     if (actualConnector && actualConnector !== expectedConnector) {
@@ -90,7 +90,7 @@ async function regenerateFullNameAr(memberId: string): Promise<string> {
 
   if (!member) return '';
 
-  const connector = member.gender === 'Female' ? 'بنت' : 'بن';
+  const connector = member.gender?.toUpperCase() === 'FEMALE' ? 'بنت' : 'بن';
   const parts: string[] = [member.firstName];
 
   let currentId = member.fatherId;

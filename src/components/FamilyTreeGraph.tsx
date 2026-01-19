@@ -444,7 +444,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
             {nodes.map((node) => {
               const isHighlighted = node.data.id === highlightedId;
               const isHovered = hoveredNode?.id === node.data.id;
-              const isMale = node.data.gender === 'Male';
+              const isMale = node.data.gender?.toUpperCase() === 'MALE';
               const nodeColors = getNodeColors(node.data);
 
               // Get gradient ID based on color mode

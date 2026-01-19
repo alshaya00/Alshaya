@@ -178,8 +178,8 @@ export async function approvePendingMemberTransactional(
           where: { fatherId: father.id, deletedAt: null },
           select: { gender: true },
         });
-        const actualSons = actualChildren.filter(c => c.gender === 'Male').length;
-        const actualDaughters = actualChildren.filter(c => c.gender === 'Female').length;
+        const actualSons = actualChildren.filter(c => c.gender?.toUpperCase() === 'MALE').length;
+        const actualDaughters = actualChildren.filter(c => c.gender?.toUpperCase() === 'FEMALE').length;
 
         if (father.sonsCount !== actualSons || father.daughtersCount !== actualDaughters) {
           throw new Error(`CHILDREN_COUNT_MISMATCH: sons=${father.sonsCount}/${actualSons}, daughters=${father.daughtersCount}/${actualDaughters}`);

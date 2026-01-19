@@ -517,7 +517,7 @@ export default function MemberMiniGraph({
             {/* Nodes */}
             <g className="nodes">
               {nodes.map((node) => {
-                const isMale = node.gender === 'Male';
+                const isMale = node.gender?.toUpperCase() === 'MALE';
                 const isMain = node.isMainPerson;
                 const isMilkRelation = ['milk_mother', 'milk_father', 'milk_sibling'].includes(node.type);
 

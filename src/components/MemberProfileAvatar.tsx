@@ -73,7 +73,7 @@ export default function MemberProfileAvatar({
   const isAdmin = isAuthenticated && (hasPermission('manage_all_members') || hasPermission('edit_any_member'));
   const isOwner = isAuthenticated && user?.linkedMemberId === memberId;
   const canEdit = isAdmin || isOwner;
-  const isMale = gender === 'Male';
+  const isMale = gender?.toUpperCase() === 'MALE';
   const defaultAvatar = isMale ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png';
 
   useEffect(() => {

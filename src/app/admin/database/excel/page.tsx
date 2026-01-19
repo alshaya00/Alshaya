@@ -966,8 +966,8 @@ export default function ExcelViewPage() {
                           <div
                             className={`p-1 min-h-[28px] text-sm ${field?.editable ? 'cursor-cell hover:bg-gray-100' : 'cursor-default'}`}
                           >
-                            {field?.type === 'select' && value === 'Male' ? 'ذكر' :
-                             field?.type === 'select' && value === 'Female' ? 'أنثى' :
+                            {field?.type === 'select' && value?.toUpperCase() === 'MALE' ? 'ذكر' :
+                             field?.type === 'select' && value?.toUpperCase() === 'FEMALE' ? 'أنثى' :
                              field?.type === 'select' && value === 'Living' ? 'حي' :
                              field?.type === 'select' && value === 'Deceased' ? 'متوفي' :
                              value ?? '-'}
@@ -1094,7 +1094,7 @@ export default function ExcelViewPage() {
                           <td className="p-2">{index + 1}</td>
                           <td className="p-2">{member.id}</td>
                           <td className="p-2">{member.firstName}</td>
-                          <td className="p-2">{member.gender === 'Male' ? 'ذكر' : 'أنثى'}</td>
+                          <td className="p-2">{member.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}</td>
                           <td className="p-2">{member.generation}</td>
                           <td className="p-2">{member.status === 'Living' ? 'حي' : 'متوفي'}</td>
                         </tr>

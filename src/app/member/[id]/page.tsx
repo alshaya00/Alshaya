@@ -70,7 +70,7 @@ export default async function MemberPage({ params }: PageProps) {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div
             className={`p-8 ${
-              member.gender === 'Male'
+              member.gender?.toUpperCase() === 'MALE'
                 ? 'bg-gradient-to-l from-blue-500 to-blue-600'
                 : 'bg-gradient-to-l from-pink-500 to-pink-600'
             } text-white`}

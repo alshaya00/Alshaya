@@ -83,7 +83,7 @@ export default function MatchConfirmation({
 
   // Generate full lineage chain text (iterate in reverse: father first, then grandfather, etc.)
   const generateFullLineageText = () => {
-    const connector = newPersonGender === 'Male' ? 'بن' : 'بنت';
+    const connector = newPersonGender?.toUpperCase() === 'MALE' ? 'بن' : 'بنت';
     const parts = [newPersonName];
 
     // fullLineage is ordered [root, ..., father], so iterate in reverse for correct display

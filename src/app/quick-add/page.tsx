@@ -165,9 +165,9 @@ export default function QuickAddPage() {
 
     if (fatherId && allMembers.length > 0) {
       const father = allMembers.find(m => m.id === fatherId);
-      if (father && father.gender === 'Male') {
+      if (father && father.gender?.toUpperCase() === 'MALE') {
         // Pre-fill with father from URL
-        const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
+        const connector = formData.gender?.toUpperCase() === 'MALE' ? 'بن' : 'بنت';
         setAutoFillData({
           fatherName: father.firstName,
           grandfatherName: father.fatherName,
@@ -192,7 +192,7 @@ export default function QuickAddPage() {
   // Update auto-fill data when match is selected
   useEffect(() => {
     if (selectedMatch) {
-      const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
+      const connector = formData.gender?.toUpperCase() === 'MALE' ? 'بن' : 'بنت';
       setAutoFillData({
         fatherName: selectedMatch.father.firstName,
         grandfatherName: selectedMatch.grandfather?.firstName || null,
@@ -367,7 +367,7 @@ export default function QuickAddPage() {
   const handleGraphFatherSelect = (member: FamilyMember | null) => {
     if (member) {
       // Build manual match from selected father
-      const connector = formData.gender === 'Male' ? 'بن' : 'بنت';
+      const connector = formData.gender?.toUpperCase() === 'MALE' ? 'بن' : 'بنت';
       setAutoFillData({
         fatherName: member.firstName,
         grandfatherName: member.fatherName,
@@ -824,7 +824,7 @@ export default function QuickAddPage() {
                     </div>
 
                     <AddMemberGraph
-                      members={allMembers.filter(m => m.gender === 'Male')}
+                      members={allMembers.filter(m => m.gender?.toUpperCase() === 'MALE')}
                       selectedFatherId={formData.fatherId || null}
                       onSelectFather={handleGraphFatherSelect}
                       newMemberPreview={formData.firstName ? {
@@ -880,7 +880,7 @@ export default function QuickAddPage() {
                       type="button"
                       onClick={() => updateField('gender', 'Male')}
                       className={`p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
-                        formData.gender === 'Male'
+                        formData.gender?.toUpperCase() === 'MALE'
                           ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200'
                           : 'border-gray-200 hover:border-blue-300'
                       }`}
@@ -893,7 +893,7 @@ export default function QuickAddPage() {
                       type="button"
                       onClick={() => updateField('gender', 'Female')}
                       className={`p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
-                        formData.gender === 'Female'
+                        formData.gender?.toUpperCase() === 'FEMALE'
                           ? 'border-pink-500 bg-pink-50 text-pink-700 ring-2 ring-pink-200'
                           : 'border-gray-200 hover:border-pink-300'
                       }`}
@@ -1160,7 +1160,7 @@ export default function QuickAddPage() {
                     <div className="flex items-center gap-2">
                       <User className="text-gray-400" size={16} />
                       <span className="text-gray-500">الجنس:</span>
-                      <span className="font-semibold">{formData.gender === 'Male' ? 'ذكر' : 'أنثى'}</span>
+                      <span className="font-semibold">{formData.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}</span>
                     </div>
 
                     {formData.birthYear && (

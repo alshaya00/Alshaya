@@ -82,7 +82,7 @@ export function getGenerationColor(gen: number): string {
 }
 
 export function getGenderIcon(gender: 'Male' | 'Female'): string {
-  return gender === 'Male' ? '👨' : '👩';
+  return gender?.toUpperCase() === 'MALE' ? '👨' : '👩';
 }
 
 export function getStatusBadge(status: string): { text: string; color: string } {

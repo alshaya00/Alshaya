@@ -335,7 +335,7 @@ export function generateCSV(members: MemberBackup[]): string {
     m.greatGrandfatherName || '',
     m.familyName || '',
     m.fatherId || '',
-    m.gender === 'Male' ? 'ذكر' : 'أنثى',
+    m.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى',
     m.birthYear?.toString() || '',
     m.deathYear?.toString() || '',
     m.sonsCount.toString(),

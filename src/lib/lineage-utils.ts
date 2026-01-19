@@ -326,7 +326,7 @@ export function getFullLineageString(
   while (currentMember?.fatherId) {
     const father = allMembers.find((m) => m.id === currentMember.fatherId);
     if (father) {
-      const connector = currentMember.gender === 'Female' ? 'بنت' : 'بن';
+      const connector = currentMember.gender?.toUpperCase() === 'FEMALE' ? 'بنت' : 'بن';
       names.push(connector);
       names.push(father.firstName);
       currentMember = father;

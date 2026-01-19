@@ -289,11 +289,11 @@ export async function validateParent(
     };
   }
 
-  if (father.gender !== 'Male') {
+  if (father.gender?.toUpperCase() !== 'MALE') {
     return {
       valid: false,
       error: `Parent must be male. '${father.firstName}' is ${father.gender}`,
-      errorAr: `يجب أن يكون الوالد ذكراً. '${father.firstName}' هو ${father.gender === 'Female' ? 'أنثى' : father.gender}`,
+      errorAr: `يجب أن يكون الوالد ذكراً. '${father.firstName}' هو ${father.gender?.toUpperCase() === 'FEMALE' ? 'أنثى' : father.gender}`,
     };
   }
 
@@ -327,8 +327,8 @@ export async function updateParentChildrenCount(
     select: { gender: true },
   });
 
-  const sonsCount = children.filter(c => c.gender === 'Male').length;
-  const daughtersCount = children.filter(c => c.gender === 'Female').length;
+  const sonsCount = children.filter(c => c.gender?.toUpperCase() === 'MALE').length;
+  const daughtersCount = children.filter(c => c.gender?.toUpperCase() === 'FEMALE').length;
 
   await client.familyMember.update({
     where: { id: fatherId },
@@ -347,7 +347,7 @@ export function generateFullNames(
     gender: 'Male' | 'Female';
   }
 ): FullNames {
-  const connector = input.gender === 'Female' ? 'بنت' : 'بن';
+  const connector = input.gender?.toUpperCase() === 'FEMALE' ? 'بنت' : 'بن';
   const parts: string[] = [];
 
   if (input.firstName) {
@@ -385,7 +385,7 @@ export async function generateFullNamesFromLineage(
   tx?: TransactionClient
 ): Promise<FullNames> {
   const client = tx || prisma;
-  const connector = memberData.gender === 'Female' ? 'بنت' : 'بن';
+  const connector = memberData.gender?.toUpperCase() === 'FEMALE' ? 'بنت' : 'بن';
   
   const ancestorNames: string[] = [];
   let currentFatherId: string | null | undefined = memberData.fatherId;
@@ -410,7 +410,7 @@ export async function generateFullNamesFromLineage(
   
   const fullNameAr = partsAr.join(' ').replace(/\s+/g, ' ').trim();
   
-  const connectorEn = memberData.gender === 'Female' ? 'bint' : 'bin';
+  const connectorEn = memberData.gender?.toUpperCase() === 'FEMALE' ? 'bint' : 'bin';
   const partsEn: string[] = [transliterateName(memberData.firstName)];
   for (const name of ancestorNames) {
     partsEn.push(`${connectorEn} ${transliterateName(name)}`);

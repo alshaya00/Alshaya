@@ -304,7 +304,7 @@ export default function BranchEntryPage() {
 
     // Include pending members as potential fathers
     const pendingAsFathers = sessionMembers
-      .filter(p => p.gender === 'Male')
+      .filter(p => p.gender?.toUpperCase() === 'MALE')
       .map(p => ({
         id: p.tempId,
         firstName: p.firstName,
@@ -318,7 +318,7 @@ export default function BranchEntryPage() {
         isPending: true,
       } as FamilyMember & { isPending?: boolean }));
 
-    return [branchHead, ...descendants, ...pendingAsFathers].filter(m => m.gender === 'Male');
+    return [branchHead, ...descendants, ...pendingAsFathers].filter(m => m.gender?.toUpperCase() === 'MALE');
   }, [branchHead, allMembers, sessionMembers]);
 
   // Filter fathers by search
@@ -343,7 +343,7 @@ export default function BranchEntryPage() {
   const autoFill = useMemo(() => {
     if (!selectedFather || !firstName) return null;
 
-    const connector = gender === 'Male' ? 'بن' : 'بنت';
+    const connector = gender?.toUpperCase() === 'MALE' ? 'بن' : 'بنت';
     const generation = (selectedFather.generation || 1) + 1;
     const fatherFullName = getFullLineageName(selectedFather, allMembers, 2, sessionMembers);
 
@@ -1055,7 +1055,7 @@ export default function BranchEntryPage() {
                     type="button"
                     onClick={() => setGender('Male')}
                     className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                      gender === 'Male'
+                      gender?.toUpperCase() === 'MALE'
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-200 hover:border-blue-300'
                     }`}
@@ -1067,7 +1067,7 @@ export default function BranchEntryPage() {
                     type="button"
                     onClick={() => setGender('Female')}
                     className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                      gender === 'Female'
+                      gender?.toUpperCase() === 'FEMALE'
                         ? 'border-pink-500 bg-pink-50 text-pink-700'
                         : 'border-gray-200 hover:border-pink-300'
                     }`}
@@ -1340,7 +1340,7 @@ export default function BranchEntryPage() {
                       <div className="text-sm text-gray-500 mt-1 space-y-0.5">
                         <p>الجيل: {member.generation}</p>
                         <p>الأب: {member.fatherName}</p>
-                        <p>الجنس: {member.gender === 'Male' ? 'ذكر' : 'أنثى'}</p>
+                        <p>الجنس: {member.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}</p>
                         {member.birthYear && <p>سنة الميلاد: {member.birthYear}</p>}
                         {member.phone && <p>الجوال: {member.phone}</p>}
                       </div>

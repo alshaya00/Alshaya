@@ -320,7 +320,7 @@ export async function createMemberWithAutoId(
 
       // Update parent's child count within the same transaction
       if (memberData.fatherId) {
-        const countField = memberData.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
+        const countField = memberData.gender?.toUpperCase() === 'MALE' ? 'sonsCount' : 'daughtersCount';
         await tx.familyMember.update({
           where: { id: memberData.fatherId },
           data: {
@@ -392,7 +392,7 @@ export async function createMember(
 
       // Update parent's child count
       if (member.fatherId) {
-        const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
+        const countField = member.gender?.toUpperCase() === 'MALE' ? 'sonsCount' : 'daughtersCount';
         await tx.familyMember.update({
           where: { id: member.fatherId },
           data: {
@@ -512,7 +512,7 @@ export async function deleteMember(id: string): Promise<boolean> {
 
       // Update parent's child count
       if (member.fatherId) {
-        const countField = member.gender === 'Male' ? 'sonsCount' : 'daughtersCount';
+        const countField = member.gender?.toUpperCase() === 'MALE' ? 'sonsCount' : 'daughtersCount';
         await tx.familyMember.update({
           where: { id: member.fatherId },
           data: {
@@ -610,8 +610,8 @@ export async function getStatistics() {
     };
   }
 
-  const males = members.filter(m => m.gender === 'Male').length;
-  const females = members.filter(m => m.gender === 'Female').length;
+  const males = members.filter(m => m.gender?.toUpperCase() === 'MALE').length;
+  const females = members.filter(m => m.gender?.toUpperCase() === 'FEMALE').length;
   const generations = Math.max(...members.map(m => m.generation));
 
   const branches = [...new Set(members.map(m => m.branch).filter(Boolean))] as string[];
@@ -626,8 +626,8 @@ export async function getStatistics() {
     return {
       generation: gen,
       count: genMembers.length,
-      males: genMembers.filter(m => m.gender === 'Male').length,
-      females: genMembers.filter(m => m.gender === 'Female').length,
+      males: genMembers.filter(m => m.gender?.toUpperCase() === 'MALE').length,
+      females: genMembers.filter(m => m.gender?.toUpperCase() === 'FEMALE').length,
       percentage: totalMembers > 0 ? Math.round((genMembers.length / totalMembers) * 100) : 0,
     };
   });

@@ -416,7 +416,7 @@ export default function BranchTreeViewer({
               <g className="nodes">
                 {nodes.map((node) => {
                   const isHovered = hoveredNode?.id === node.data.id;
-                  const isMale = node.data.gender === 'Male';
+                  const isMale = node.data.gender?.toUpperCase() === 'MALE';
                   const isPending = node.data.isPending;
 
                   return (
@@ -569,13 +569,13 @@ export default function BranchTreeViewer({
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 overflow-hidden ${
                   hoveredNode.isPending
                     ? 'bg-yellow-50 border-yellow-300'
-                    : hoveredNode.gender === 'Male'
+                    : hoveredNode.gender?.toUpperCase() === 'MALE'
                     ? 'bg-blue-50 border-blue-300'
                     : 'bg-pink-50 border-pink-300'
                 }`}>
                   {hoveredNode.isPending ? '⏳' : (
                     <img 
-                      src={hoveredNode.gender === 'Male' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
+                      src={hoveredNode.gender?.toUpperCase() === 'MALE' ? '/avatars/male-avatar.png' : '/avatars/female-avatar.png'}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -597,7 +597,7 @@ export default function BranchTreeViewer({
                   <span className="font-bold text-green-600">ج{hoveredNode.generation}</span>
                 </div>
                 <div className="bg-gray-50 px-3 py-1.5 rounded-lg flex-1 text-center">
-                  <span className="text-gray-600">{hoveredNode.gender === 'Male' ? 'ذكر' : 'أنثى'}</span>
+                  <span className="text-gray-600">{hoveredNode.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}</span>
                 </div>
               </div>
             </div>

@@ -301,7 +301,7 @@ export default function PendingPage() {
                 </div>
                 <div>
                   <label className="text-sm text-gray-500">الجنس</label>
-                  <p>{selectedPending.gender === 'Male' ? 'ذكر' : 'أنثى'}</p>
+                  <p>{selectedPending.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-500">الجيل</label>

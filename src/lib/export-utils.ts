@@ -263,7 +263,7 @@ export function exportToReadableText(members: FamilyMember[]): string {
       genMembers
         .sort((a, b) => (a.birthYear || 9999) - (b.birthYear || 9999))
         .forEach(member => {
-          const genderIcon = member.gender === 'Male' ? '👨' : '👩';
+          const genderIcon = member.gender?.toUpperCase() === 'MALE' ? '👨' : '👩';
           const statusIcon = member.status === 'Living' ? '🟢' : '⚫';
 
           lines.push(`  ${genderIcon} ${member.fullNameAr || member.firstName}`);
@@ -302,7 +302,7 @@ export function exportToReadableText(members: FamilyMember[]): string {
 
   const renderTreeNode = (node: TreeNode, prefix: string = '', isLast: boolean = true): void => {
     const connector = isLast ? '└── ' : '├── ';
-    const genderIcon = node.gender === 'Male' ? '♂' : '♀';
+    const genderIcon = node.gender?.toUpperCase() === 'MALE' ? '♂' : '♀';
     const statusIcon = node.status === 'Living' ? '' : ' ✝';
 
     lines.push(`${prefix}${connector}${genderIcon} ${node.fullNameAr || node.firstName} (${node.id})${statusIcon}`);
@@ -349,13 +349,13 @@ export function exportToHTML(
   ];
 
   const renderTreeNodeHTML = (node: TreeNode, level: number = 0): string => {
-    const genderColor = node.gender === 'Male' ? '#3B82F6' : '#EC4899';
+    const genderColor = node.gender?.toUpperCase() === 'MALE' ? '#3B82F6' : '#EC4899';
     const statusClass = node.status === 'Living' ? '' : 'text-gray-400';
 
     return `
       <div style="margin-right: ${level * 24}px; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="color: ${genderColor}; font-weight: bold;">${node.gender === 'Male' ? '♂' : '♀'}</span>
+          <span style="color: ${genderColor}; font-weight: bold;">${node.gender?.toUpperCase() === 'MALE' ? '♂' : '♀'}</span>
           <span class="${statusClass}">${node.fullNameAr || node.firstName}</span>
           <span style="color: #9CA3AF; font-size: 12px;">(${node.id})</span>
           ${node.status === 'Deceased' ? '<span style="color: #9CA3AF;">✝</span>' : ''}
@@ -484,11 +484,11 @@ export function exportToHTML(
         <div class="stat-label">إجمالي الأعضاء</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${members.filter(m => m.gender === 'Male').length}</div>
+        <div class="stat-value">${members.filter(m => m.gender?.toUpperCase() === 'MALE').length}</div>
         <div class="stat-label">رجال</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${members.filter(m => m.gender === 'Female').length}</div>
+        <div class="stat-value">${members.filter(m => m.gender?.toUpperCase() === 'FEMALE').length}</div>
         <div class="stat-label">نساء</div>
       </div>
       <div class="stat-card">

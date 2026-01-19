@@ -165,7 +165,7 @@ export async function GET(
       } | null;
     }> = [];
 
-    if (member.gender === 'Female') {
+    if (member.gender?.toUpperCase() === 'FEMALE') {
       nursedChildren = await prisma.breastfeedingRelationship.findMany({
         where: { nurseId: memberId },
         include: {
