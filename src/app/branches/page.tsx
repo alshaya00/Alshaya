@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import GenderAvatar from '@/components/GenderAvatar';
+import { isMale } from '@/lib/utils';
 
 interface BranchData {
   head: FamilyMember;
@@ -121,10 +122,10 @@ function BranchesPageContent() {
       if (!root) return;
 
       // Get all direct children of root (Generation 2) - these are branch heads
-      const branchHeads = allMembers.filter(m => m.fatherId === 'P001' && m.gender === 'Male');
+      const branchHeads = allMembers.filter(m => m.fatherId === 'P001' && isMale(m.gender));
 
       // Also get Generation 3+ branch heads for more granular control
-      const gen3Heads = allMembers.filter(m => m.generation >= 3 && m.gender === 'Male' && m.sonsCount > 0);
+      const gen3Heads = allMembers.filter(m => m.generation >= 3 && isMale(m.gender) && m.sonsCount > 0);
 
       // Combine and dedupe
       const allBranchHeads = [...branchHeads, ...gen3Heads];
@@ -455,7 +456,7 @@ ${url}
                           <span
                             key={child.id}
                             className={`px-3 py-1.5 rounded-lg text-sm ${
-                              child.gender === 'Male'
+                              isMale(child.gender)
                                 ? 'bg-blue-100 text-blue-700'
                                 : 'bg-pink-100 text-pink-700'
                             }`}

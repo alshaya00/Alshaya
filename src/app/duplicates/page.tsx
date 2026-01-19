@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { isMale } from '@/lib/utils';
 import {
   ArrowRight,
   Search,
@@ -342,7 +343,7 @@ function DuplicatesPageContent() {
 
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${
-                          pair.member1.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
+                          isMale(pair.member1.gender) ? 'bg-blue-500' : 'bg-pink-500'
                         }`} />
                         <span className="font-bold">{pair.member1.fullNameAr || pair.member1.firstName}</span>
                         <span className="text-gray-400 text-sm">({pair.member1.id})</span>
@@ -352,7 +353,7 @@ function DuplicatesPageContent() {
 
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${
-                          pair.member2.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'
+                          isMale(pair.member2.gender) ? 'bg-blue-500' : 'bg-pink-500'
                         }`} />
                         <span className="font-bold">{pair.member2.fullNameAr || pair.member2.firstName}</span>
                         <span className="text-gray-400 text-sm">({pair.member2.id})</span>
@@ -395,7 +396,7 @@ function DuplicatesPageContent() {
                           <div
                             key={member.id}
                             className={`p-4 rounded-lg border-2 ${
-                              member.gender === 'Male' ? 'border-blue-200 bg-blue-50' : 'border-pink-200 bg-pink-50'
+                              isMale(member.gender) ? 'border-blue-200 bg-blue-50' : 'border-pink-200 bg-pink-50'
                             }`}
                           >
                             <div className="font-bold text-lg mb-2">

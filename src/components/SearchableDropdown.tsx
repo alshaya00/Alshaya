@@ -219,7 +219,7 @@ export default function SearchableDropdown({
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        member.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
+                        member.gender?.toUpperCase() === 'MALE' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
                       }`}>
                         <User size={20} />
                       </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb } from '@/lib/db';
+import { isMale, isFemale } from '@/lib/utils';
 
 export async function GET() {
   try {
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-      if (nurse.gender !== 'Female') {
+      if (!isFemale(nurse.gender)) {
         return NextResponse.json(
           { success: false, error: 'Nurse (milk mother) should be female' },
           { status: 400 }
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-      if (milkFather.gender !== 'Male') {
+      if (!isMale(milkFather.gender)) {
         return NextResponse.json(
           { success: false, error: 'Milk father should be male' },
           { status: 400 }

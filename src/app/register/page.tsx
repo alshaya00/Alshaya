@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
 import type { FamilyMember } from '@/lib/types';
 import { getFullLineageString } from '@/lib/lineage-utils';
+import { isMale, isFemale } from '@/lib/utils';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
   Users, Lock, ArrowRight, Loader2, X, Search, Phone
@@ -265,7 +266,7 @@ export default function RegisterPage() {
         ...formData,
         parentMemberId: memberId,
         relationshipType: 'CHILD',
-        claimedRelation: `${formData.gender === 'Female' ? 'ابنة' : 'ابن'} ${parentName}`,
+        claimedRelation: `${isFemale(formData.gender) ? 'ابنة' : 'ابن'} ${parentName}`,
       });
     }
     setParentSearchQuery('');
@@ -455,7 +456,7 @@ export default function RegisterPage() {
       const parent = allMembers.find((m) => m.id === formData.parentMemberId);
       if (parent) {
         const parentName = parent.fullNameAr || parent.firstName;
-        const prefix = formData.gender === 'Female' ? 'ابنة' : 'ابن';
+        const prefix = isFemale(formData.gender) ? 'ابنة' : 'ابن';
         const newRelation = `${prefix} ${parentName}`;
         if (formData.claimedRelation !== newRelation) {
           setFormData(prev => ({
@@ -940,24 +941,24 @@ export default function RegisterPage() {
                       الجنس <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-4">
-                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${formData.gender === 'Male' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${isMale(formData.gender) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
                         <input
                           type="radio"
                           name="gender"
                           value="Male"
-                          checked={formData.gender === 'Male'}
+                          checked={isMale(formData.gender)}
                           onChange={handleChange}
                           className="sr-only"
                         />
                         <GenderAvatarInline gender="Male" size="md" />
                         <span className="font-medium text-gray-800">ذكر</span>
                       </label>
-                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${formData.gender === 'Female' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${isFemale(formData.gender) ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
                         <input
                           type="radio"
                           name="gender"
                           value="Female"
-                          checked={formData.gender === 'Female'}
+                          checked={isFemale(formData.gender)}
                           onChange={handleChange}
                           className="sr-only"
                         />

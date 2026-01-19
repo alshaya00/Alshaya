@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { isMale } from '@/lib/utils';
 import {
   ArrowRight,
   Upload,
@@ -459,7 +460,7 @@ function ImportPageContent() {
                     <div
                       key={i}
                       className={`p-3 rounded-lg border-r-4 ${
-                        member.gender === 'Male' ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
+                        isMale(member.gender) ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
                       }`}
                     >
                       <div className="font-bold">{member.fullNameAr || member.firstName}</div>

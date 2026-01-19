@@ -249,7 +249,7 @@ export default function LineageGraphPreview({
         .attr('transform', `translate(${node.x}, ${node.y})`);
 
       const isNew = node.isNewPerson;
-      const isMale = node.gender === 'Male';
+      const isMale = node.gender?.toUpperCase() === 'MALE';
       const nodeWidth = compact ? 60 : 70;
       const nodeHeight = compact ? 45 : 50;
 

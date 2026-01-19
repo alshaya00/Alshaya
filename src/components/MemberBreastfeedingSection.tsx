@@ -97,7 +97,7 @@ export default function MemberBreastfeedingSection({
             <div className="mb-4">
               <h3 className="text-sm font-medium text-teal-700 mb-3 flex items-center gap-2">
                 <Heart size={16} />
-                من أرضع{member.gender === 'Male' ? 'ه' : 'ها'}:
+                من أرضع{member.gender?.toUpperCase() === 'MALE' ? 'ه' : 'ها'}:
               </h3>
               <div className="space-y-3">
                 {breastfeedingData?.milkFamilies.map((milkFamily, index) => (
@@ -170,14 +170,14 @@ export default function MemberBreastfeedingSection({
                               key={sibling.id}
                               href={`/member/${sibling.id}`}
                               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
-                                sibling.gender === 'Male'
+                                sibling.gender?.toUpperCase() === 'MALE'
                                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                                   : 'bg-pink-100 text-pink-700 hover:bg-pink-200'
                               }`}
                             >
                               <GenderAvatar gender={sibling.gender} size="xs" /> {sibling.firstName}
                               <span className="text-xs opacity-75 mr-1">
-                                ({sibling.gender === 'Male' ? 'أخ رضاعة' : 'أخت رضاعة'})
+                                ({sibling.gender?.toUpperCase() === 'MALE' ? 'أخ رضاعة' : 'أخت رضاعة'})
                               </span>
                             </Link>
                           ))}
@@ -220,14 +220,14 @@ export default function MemberBreastfeedingSection({
                       key={record.relationshipId}
                       href={`/member/${record.child.id}`}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
-                        record.child.gender === 'Male'
+                        record.child.gender?.toUpperCase() === 'MALE'
                           ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                           : 'bg-pink-100 text-pink-700 hover:bg-pink-200'
                       }`}
                     >
                       <GenderAvatar gender={record.child.gender} size="xs" /> {record.child.firstName}
                       <span className="text-xs opacity-75 mr-1">
-                        ({record.child.gender === 'Male' ? 'ابن رضاعة' : 'بنت رضاعة'})
+                        ({record.child.gender?.toUpperCase() === 'MALE' ? 'ابن رضاعة' : 'بنت رضاعة'})
                       </span>
                     </Link>
                   )

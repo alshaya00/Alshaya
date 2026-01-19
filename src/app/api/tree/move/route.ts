@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getMemberByIdFromDb, getAllMembersFromDb, updateMemberInDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
+import { isMale } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (newParent.gender !== 'Male') {
+      if (!isMale(newParent.gender)) {
         return NextResponse.json(
           { success: false, message: 'Parent must be male (father)' },
           { status: 400 }
@@ -322,7 +323,7 @@ export async function PUT(request: NextRequest) {
           continue;
         }
 
-        if (newParent.gender !== 'Male') {
+        if (!isMale(newParent.gender)) {
           results.push({ memberId, success: false, error: 'Parent must be male' });
           continue;
         }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { isMale } from '@/lib/utils';
 import {
   ArrowRight,
   Save,
@@ -111,7 +112,7 @@ export default function EditMemberPage() {
 
   const potentialFathers = useMemo(() => {
     return allMembers.filter(m =>
-      m.gender === 'Male' && m.id !== memberId
+      isMale(m.gender) && m.id !== memberId
     ).sort((a, b) => a.generation - b.generation);
   }, [allMembers, memberId]);
 
@@ -491,7 +492,7 @@ export default function EditMemberPage() {
                                   key={gender}
                                   className={`flex-1 p-3 border rounded-lg cursor-pointer transition-colors ${
                                     formData.gender === gender
-                                      ? gender === 'Male'
+                                      ? isMale(gender)
                                         ? 'border-blue-500 bg-blue-50'
                                         : 'border-pink-500 bg-pink-50'
                                       : 'hover:bg-gray-50'
@@ -506,7 +507,7 @@ export default function EditMemberPage() {
                                     className="sr-only"
                                   />
                                   <span className="font-medium">
-                                    {gender === 'Male' ? 'ذكر' : 'أنثى'}
+                                    {isMale(gender) ? 'ذكر' : 'أنثى'}
                                   </span>
                                 </label>
                               ))}
@@ -847,7 +848,7 @@ export default function EditMemberPage() {
                 معاينة
               </h3>
               <div className={`p-4 rounded-lg border-r-4 ${
-                formData.gender === 'Male' ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
+                isMale(formData.gender) ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
               }`}>
                 <div className="font-bold text-lg mb-2">
                   {formData.fullNameAr || formData.firstName || 'بدون اسم'}

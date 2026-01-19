@@ -7,6 +7,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { generateFullNamesFromLineage } from '@/lib/member-registry';
+import { isMale } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -185,7 +186,7 @@ async function handleUpdate(
         );
       }
 
-      if (father.gender !== 'Male') {
+      if (!isMale(father.gender)) {
         return NextResponse.json(
           { success: false, error: 'Father must be male', messageAr: 'يجب أن يكون الوالد ذكراً' },
           { status: 400 }

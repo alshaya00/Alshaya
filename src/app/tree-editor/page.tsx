@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { validateParentChange } from '@/lib/edit-utils';
 import type { FamilyMember, TreeNode } from '@/lib/types';
+import { isMale, isFemale } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface D3Node extends d3.HierarchyPointNode<TreeNode> {
@@ -86,8 +87,8 @@ function buildFamilyTreeFromMembers(members: FamilyMember[]): TreeNode | null {
     generation: 0,
     status: 'Living' as const,
     children: roots,
-    sonsCount: roots.filter(r => r.gender === 'Male').length,
-    daughtersCount: roots.filter(r => r.gender === 'Female').length,
+    sonsCount: roots.filter(r => isMale(r.gender)).length,
+    daughtersCount: roots.filter(r => isFemale(r.gender)).length,
   } as TreeNode;
   
   return virtualRoot;
@@ -279,7 +280,7 @@ export default function TreeEditorPage() {
       nodeEnter.append('circle')
         .attr('r', 0)
         .attr('fill', d => generationColors[(d.data.generation - 1) % 8])
-        .attr('stroke', d => d.data.gender === 'Male' ? '#3B82F6' : '#EC4899')
+        .attr('stroke', d => isMale(d.data.gender) ? '#3B82F6' : '#EC4899')
         .attr('stroke-width', 3);
 
       // Add labels
@@ -677,7 +678,7 @@ export default function TreeEditorPage() {
             {selectedNode ? (
               <div className="flex-1 overflow-auto">
                 <div className={`p-4 ${
-                  selectedNode.gender === 'Male' ? 'bg-blue-50' : 'bg-pink-50'
+                  isMale(selectedNode.gender) ? 'bg-blue-50' : 'bg-pink-50'
                 }`}>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-lg">
@@ -693,9 +694,9 @@ export default function TreeEditorPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <span className={`px-2 py-0.5 rounded ${
-                      selectedNode.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
+                      isMale(selectedNode.gender) ? 'bg-blue-100' : 'bg-pink-100'
                     }`}>
-                      {selectedNode.gender === 'Male' ? 'ذكر' : 'أنثى'}
+                      {isMale(selectedNode.gender) ? 'ذكر' : 'أنثى'}
                     </span>
                     <span className="px-2 py-0.5 bg-gray-100 rounded">
                       الجيل {selectedNode.generation}

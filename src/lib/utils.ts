@@ -93,3 +93,23 @@ export function getStatusBadge(status: string): { text: string; color: string } 
       return { text: status, color: 'bg-gray-100 text-gray-800' };
   }
 }
+
+/**
+ * Gender utility functions for case-insensitive gender comparisons.
+ * Database stores gender as uppercase 'MALE'/'FEMALE'.
+ */
+export function isMale(gender: string | null | undefined): boolean {
+  return gender?.toUpperCase() === 'MALE';
+}
+
+export function isFemale(gender: string | null | undefined): boolean {
+  return gender?.toUpperCase() === 'FEMALE';
+}
+
+export function normalizeGender(gender: string | null | undefined): 'MALE' | 'FEMALE' | null {
+  if (!gender) return null;
+  const upper = gender.toUpperCase();
+  if (upper === 'MALE') return 'MALE';
+  if (upper === 'FEMALE') return 'FEMALE';
+  return null;
+}

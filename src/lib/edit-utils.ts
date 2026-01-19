@@ -1,6 +1,7 @@
 // آل شايع Family Tree - Edit Utilities
 
 import { FamilyMember, ChangeHistory, ValidationResult, ValidationError, TreeValidation } from './types';
+import { isMale } from './utils';
 
 // ============================================
 // VALIDATION
@@ -181,7 +182,7 @@ export function validateParentChange(
 
     // Validate parent is male
     const newParent = allMembers.find(m => m.id === newParentId);
-    if (newParent && newParent.gender !== 'Male') {
+    if (newParent && !isMale(newParent.gender)) {
       return {
         valid: false,
         wouldCreateCycle: false,

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { isMale } from '@/lib/utils';
 import {
   ArrowRight,
   Download,
@@ -603,11 +604,11 @@ function ExportPageContent() {
                       }}
                       className={`px-4 py-2 rounded-lg transition-colors ${
                         filters.genders?.includes(gender)
-                          ? gender === 'Male' ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
+                          ? isMale(gender) ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
                           : 'bg-gray-100 hover:bg-gray-200'
                       }`}
                     >
-                      {gender === 'Male' ? 'ذكر' : 'أنثى'}
+                      {isMale(gender) ? 'ذكر' : 'أنثى'}
                     </button>
                   ))}
                 </div>
@@ -707,7 +708,7 @@ function ExportPageContent() {
                     <div
                       key={member.id}
                       className={`p-3 rounded-lg border-r-4 ${
-                        member.gender === 'Male' ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
+                        isMale(member.gender) ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
                       }`}
                     >
                       <div className="font-bold">{member.fullNameAr || member.firstName}</div>

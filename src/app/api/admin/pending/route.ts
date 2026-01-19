@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { isMale } from '@/lib/utils';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (fatherExists.gender !== 'Male') {
+      if (!isMale(fatherExists.gender)) {
         return NextResponse.json(
           { success: false, message: 'Father must be male', messageAr: 'يجب أن يكون الأب ذكراً' },
           { status: 400 }

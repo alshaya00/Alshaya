@@ -9,6 +9,7 @@ import {
   NameMatchResult,
 } from './arabic-utils';
 import { getLineagePath } from '../lineage-utils';
+import { isMale } from '../utils';
 
 /**
  * Input from the quick-add form
@@ -220,9 +221,7 @@ function getPotentialFathers(
 
   for (const member of members) {
     // Only males can be fathers - females cannot have children under them in the family tree
-    // Handle both 'Male' and 'MALE' formats from database
-    const genderLower = member.gender?.toLowerCase();
-    if (genderLower !== 'male') continue;
+    if (!isMale(member.gender)) continue;
 
     const nameMatch = comprehensiveNameMatch(member.firstName, fatherName);
 

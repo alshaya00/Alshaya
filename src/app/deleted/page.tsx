@@ -15,6 +15,7 @@ import {
   Search,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
+import { isMale } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
@@ -191,12 +192,12 @@ function DeletedMembersContent() {
                     <div className="flex items-start gap-4">
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          member.gender === 'Male' ? 'bg-blue-100' : 'bg-pink-100'
+                          isMale(member.gender) ? 'bg-blue-100' : 'bg-pink-100'
                         }`}
                       >
                         <User
                           className={`w-6 h-6 ${
-                            member.gender === 'Male' ? 'text-blue-600' : 'text-pink-600'
+                            isMale(member.gender) ? 'text-blue-600' : 'text-pink-600'
                           }`}
                         />
                       </div>
