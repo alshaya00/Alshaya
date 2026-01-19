@@ -12,6 +12,7 @@ import MemberStoriesSection from '@/components/MemberStoriesSection';
 import MemberVersionHistory from '@/components/MemberVersionHistory';
 import GenderAvatar from '@/components/GenderAvatar';
 import MemberProfileAvatar from '@/components/MemberProfileAvatar';
+import MemberStatusChanger from '@/components/MemberStatusChanger';
 import {
   User,
   Calendar,
@@ -134,6 +135,17 @@ export default async function MemberPage({ params }: PageProps) {
                   {statusBadge.text}
                 </span>
                 <p className="text-sm text-gray-500 mt-2">الحالة</p>
+                {member.deathYear && member.status === 'Deceased' && (
+                  <p className="text-xs text-gray-400 mt-1">توفي: {member.deathYear}</p>
+                )}
+                <div className="mt-2">
+                  <MemberStatusChanger
+                    memberId={member.id}
+                    currentStatus={member.status}
+                    currentDeathYear={member.deathYear}
+                    birthCalendar={member.birthCalendar}
+                  />
+                </div>
               </div>
             </div>
 

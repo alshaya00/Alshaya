@@ -28,9 +28,7 @@ export function getCurrentHijriYear(): number {
   
   const hijriYear = 30 * n + j - 30 + Math.floor((24 * l3) / 709);
   
-  const hijriYearCorrected = Math.round((gregorianYear - 622) * (33 / 32));
-  
-  return hijriYearCorrected;
+  return hijriYear;
 }
 
 export function calculateAge(birthYear: number | null, birthCalendar?: string | null): number | null {

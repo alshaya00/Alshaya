@@ -30,6 +30,9 @@ interface FormData {
   parentMemberId: string;
   gender: string;
   message: string;
+  birthYear: string;
+  birthCalendar: string;
+  occupation: string;
 }
 
 type JoinPath = 'invite' | 'request' | 'browse' | null;
@@ -56,6 +59,9 @@ export default function RegisterPage() {
     parentMemberId: '',
     gender: '',
     message: '',
+    birthYear: '',
+    birthCalendar: 'HIJRI',
+    occupation: '',
   });
   const [parentSearchQuery, setParentSearchQuery] = useState('');
   const [showParentDropdown, setShowParentDropdown] = useState(false);
@@ -381,6 +387,9 @@ export default function RegisterPage() {
         body: JSON.stringify({
           ...formData,
           otp,
+          birthYear: formData.birthYear ? parseInt(formData.birthYear) : null,
+          birthCalendar: formData.birthCalendar,
+          occupation: formData.occupation || null,
         }),
       });
 
@@ -955,6 +964,48 @@ export default function RegisterPage() {
                         <GenderAvatarInline gender="Female" size="md" />
                         <span className="font-medium text-gray-800">أنثى</span>
                       </label>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        سنة الميلاد (اختياري)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          name="birthYear"
+                          value={formData.birthYear}
+                          onChange={handleChange}
+                          className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          placeholder="مثال: 1410"
+                          min="1300"
+                          max="1500"
+                        />
+                        <select
+                          name="birthCalendar"
+                          value={formData.birthCalendar}
+                          onChange={handleChange}
+                          className="px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                        >
+                          <option value="HIJRI">هجري</option>
+                          <option value="GREGORIAN">ميلادي</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        المهنة (اختياري)
+                      </label>
+                      <input
+                        type="text"
+                        name="occupation"
+                        value={formData.occupation}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="مثال: مهندس، طبيب، تاجر..."
+                      />
                     </div>
                   </div>
 

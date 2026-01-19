@@ -253,6 +253,9 @@ model AccessRequest {
   parentMemberId   String?
   message          String?
   passwordHash     String?
+  birthYear        Int?
+  birthCalendar    String?
+  occupation       String?
   status           String    @default("PENDING")
   reviewedById     String?
   reviewedAt       DateTime?

@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
       relationshipType,
       parentMemberId,
       message,
+      birthYear,
+      birthCalendar,
+      occupation,
     } = body;
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
@@ -269,6 +272,9 @@ export async function POST(request: NextRequest) {
             relationshipType: relationshipType || null,
             parentMemberId: parentMemberId || null,
             message: sanitizeString(message) || null,
+            birthYear: birthYear ? parseInt(birthYear) : null,
+            birthCalendar: birthCalendar || null,
+            occupation: sanitizeString(occupation) || null,
             status: 'APPROVED',
             reviewedAt: new Date(),
             reviewNote: `Auto-approved via phone verification (IP: ${ipAddress})`,
@@ -289,6 +295,9 @@ export async function POST(request: NextRequest) {
             relationshipType: relationshipType || null,
             parentMemberId: parentMemberId || null,
             message: sanitizeString(message) || null,
+            birthYear: birthYear ? parseInt(birthYear) : null,
+            birthCalendar: birthCalendar || null,
+            occupation: sanitizeString(occupation) || null,
             status: 'APPROVED',
             reviewedAt: new Date(),
             reviewNote: `Auto-approved via phone verification (IP: ${ipAddress})`,
