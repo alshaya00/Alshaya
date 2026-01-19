@@ -7,26 +7,24 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getCurrentHijriYear(): number {
   const now = new Date();
-  const gregorianYear = now.getFullYear();
-  const gregorianMonth = now.getMonth() + 1;
-  const gregorianDay = now.getDate();
+  const gYear = now.getFullYear();
+  const gMonth = now.getMonth() + 1;
+  const gDay = now.getDate();
   
-  const a = Math.floor((14 - gregorianMonth) / 12);
-  const y = gregorianYear + 4800 - a;
-  const m = gregorianMonth + 12 * a - 3;
+  // Calculate Julian Day Number for Gregorian date
+  const a = Math.floor((14 - gMonth) / 12);
+  const y = gYear + 4800 - a;
+  const m = gMonth + 12 * a - 3;
   
-  const jd = gregorianDay + Math.floor((153 * m + 2) / 5) + 365 * y + 
+  const jd = gDay + Math.floor((153 * m + 2) / 5) + 365 * y +
              Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
   
-  const l = jd - 1948440 + 10632;
-  const n = Math.floor((l - 1) / 10631);
-  const l2 = l - 10631 * n + 354;
-  const j = Math.floor((10985 - l2) / 5316) * Math.floor((50 * l2) / 17719) +
-            Math.floor(l2 / 5670) * Math.floor((43 * l2) / 15238);
-  const l3 = l2 - Math.floor((30 - j) / 15) * Math.floor((17719 * j + 15) / 50) -
-             Math.floor(j / 16) * Math.floor((15238 * j - 15) / 43) + 29;
+  // Islamic calendar epoch: July 19, 622 CE (Julian day 1948439.5)
+  const islamicEpoch = 1948439.5;
+  const daysSinceEpoch = jd - islamicEpoch;
   
-  const hijriYear = 30 * n + j - 30 + Math.floor((24 * l3) / 709);
+  // Calculate Hijri year (average Islamic year is 354.36667 days)
+  const hijriYear = Math.floor((30 * daysSinceEpoch + 10646) / 10631);
   
   return hijriYear;
 }
