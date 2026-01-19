@@ -137,21 +137,29 @@ export default function QuickAddPage() {
 
   const [errors, setErrors] = useState<Partial<Record<keyof NewMemberData, string>>>({});
 
-  // Load data on mount (requires authentication)
+  // Load data on mount - use public endpoint for unauthenticated users
   useEffect(() => {
     const loadData = async () => {
-      if (!session?.token) {
-        console.log('QuickAdd: No session token, skipping member load');
-        return;
-      }
       try {
-        // Fetch all members from API with auth header
-        const res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`, {
-          headers: {
-            ...getAuthHeader(),
-            'Cache-Control': 'no-cache',
-          },
-        });
+        let res;
+        if (session?.token) {
+          // Authenticated: use protected endpoint with full data
+          res = await fetch(`/api/members?limit=${paginationSettings.defaultFetchLimit}`, {
+            headers: {
+              ...getAuthHeader(),
+              'Cache-Control': 'no-cache',
+            },
+          });
+        } else {
+          // Unauthenticated: use public endpoint (for quick-add feature)
+          console.log('QuickAdd: Using public endpoint for member load');
+          res = await fetch(`/api/members/public?limit=${paginationSettings.defaultFetchLimit}`, {
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
+        }
+        
         if (!res.ok) {
           console.error('QuickAdd: Failed to fetch members, status:', res.status);
           return;

@@ -454,3 +454,28 @@ export function getCoreName(name: string): string {
 
   return normalized.trim();
 }
+
+/**
+ * Strip lineage connectors from search input
+ * Removes بن, بنت, bin, bint from user search queries
+ * Users typically search "عبدالرحمن سعد ناصر" not "عبدالرحمن بن سعد بن ناصر"
+ */
+export function stripConnectors(text: string): string {
+  if (!text) return '';
+  
+  return text
+    // Remove Arabic connectors with surrounding spaces
+    .replace(/\s+بن\s+/g, ' ')
+    .replace(/\s+بنت\s+/g, ' ')
+    // Remove English connectors (case insensitive)
+    .replace(/\s+bin\s+/gi, ' ')
+    .replace(/\s+bint\s+/gi, ' ')
+    // Also handle connectors at start/end
+    .replace(/^بن\s+/g, '')
+    .replace(/^بنت\s+/g, '')
+    .replace(/\s+بن$/g, '')
+    .replace(/\s+بنت$/g, '')
+    // Normalize multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}

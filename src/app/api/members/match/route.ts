@@ -6,6 +6,7 @@ import {
   getMatchExplanation,
   NameInput,
   MatchResult,
+  stripConnectors,
 } from '@/lib/matching';
 
 /**
@@ -36,13 +37,14 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body = await request.json();
 
+    // Strip connectors (بن/بنت/bin/bint) from input - users don't search with these
     const input: NameInput = {
-      firstName: body.firstName?.trim() || '',
-      fatherName: body.fatherName?.trim() || '',
-      grandfatherName: body.grandfatherName?.trim() || undefined,
-      greatGrandfatherName: body.greatGrandfatherName?.trim() || undefined,
-      great2GrandfatherName: body.great2GrandfatherName?.trim() || undefined,
-      great3GrandfatherName: body.great3GrandfatherName?.trim() || undefined,
+      firstName: stripConnectors(body.firstName?.trim() || ''),
+      fatherName: stripConnectors(body.fatherName?.trim() || ''),
+      grandfatherName: body.grandfatherName?.trim() ? stripConnectors(body.grandfatherName.trim()) : undefined,
+      greatGrandfatherName: body.greatGrandfatherName?.trim() ? stripConnectors(body.greatGrandfatherName.trim()) : undefined,
+      great2GrandfatherName: body.great2GrandfatherName?.trim() ? stripConnectors(body.great2GrandfatherName.trim()) : undefined,
+      great3GrandfatherName: body.great3GrandfatherName?.trim() ? stripConnectors(body.great3GrandfatherName.trim()) : undefined,
     };
 
     // Validate input
