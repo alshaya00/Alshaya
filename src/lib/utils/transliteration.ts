@@ -6,7 +6,7 @@ const arabicNameMappings: Record<string, string> = {
   'مساعد': 'Musaed',
   'فوزان': 'Fawzan',
   'عثمان': 'Othman',
-  'شايع': 'Shaye',
+  'شايع': 'Shaya',
   'عبدالاله': 'Abdulilah',
   'البراء': 'Al-Bara',
   'وليد': 'Waleed',
@@ -213,8 +213,8 @@ const arabicNameMappings: Record<string, string> = {
   'ابن': '',
   'آل': 'Al',
   'ال': 'Al',
-  'شايع': 'Shaye',
-  'الشايع': 'Al-Shaye',
+  'شايع': 'Shaya',
+  'الشايع': 'Al-Shaya',
 };
 
 export function transliterateName(arabicName: string): string {

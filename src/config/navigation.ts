@@ -1,4 +1,4 @@
-// Navigation Configuration for Al-Shaye Family Tree
+// Navigation Configuration for Al-Shaya Family Tree
 // Centralized navigation items - edit here to update all menus
 
 import {

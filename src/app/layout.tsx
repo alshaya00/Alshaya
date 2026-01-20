@@ -7,8 +7,8 @@ import { AuthenticatedLayout } from '@/components/AuthenticatedLayout';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
-  title: 'شجرة عائلة آل شايع | Al-Shaye Family Tree',
-  description: 'تطبيق شجرة العائلة لآل شايع - Family Tree Application for Al-Shaye family',
+  title: 'شجرة عائلة آل شايع | Al-Shaya Family Tree',
+  description: 'تطبيق شجرة العائلة لآل شايع - Family Tree Application for Al-Shaya family',
   icons: {
     icon: '/favicon.png',
     shortcut: '/favicon.png',

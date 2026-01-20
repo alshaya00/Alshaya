@@ -82,7 +82,7 @@ function buildFamilyTreeFromMembers(members: FamilyMember[]): TreeNode | null {
     id: 'virtual-root',
     firstName: 'آل شايع',
     fullNameAr: 'آل شايع',
-    fullNameEn: 'Al-Shaye Family',
+    fullNameEn: 'Al-Shaya Family',
     gender: 'Male' as const,
     generation: 0,
     status: 'Living' as const,

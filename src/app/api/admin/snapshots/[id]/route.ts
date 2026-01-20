@@ -73,7 +73,7 @@ export async function GET(
         metadata: {
           exportedAt: new Date().toISOString(),
           exportedBy: user.nameArabic,
-          format: 'AlShayeFamilyTree_Backup_v2',
+          format: 'AlShayaFamilyTree_Backup_v2',
         },
       };
 

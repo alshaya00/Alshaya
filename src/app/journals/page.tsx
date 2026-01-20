@@ -81,7 +81,7 @@ export default function JournalsPage() {
               رحلة عبر الزمن في قصص وذكريات آل شايع
             </p>
             <p className="text-amber-200 text-sm">
-              Family Journal - Stories & Memories of Al-Shaye
+              Family Journal - Stories & Memories of Al-Shaya
             </p>
           </div>
         </div>

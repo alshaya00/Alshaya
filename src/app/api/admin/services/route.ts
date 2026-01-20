@@ -1,5 +1,5 @@
 // API Services Configuration Endpoint
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -220,7 +220,7 @@ export async function PUT(request: NextRequest) {
             </p>
           </div>
         `,
-        text: 'Test email from Al-Shaye Family Tree. If you received this, your email settings are correct.',
+        text: 'Test email from Al-Shaya Family Tree. If you received this, your email settings are correct.',
       });
 
       return NextResponse.json({
@@ -234,7 +234,7 @@ export async function PUT(request: NextRequest) {
     if (type === 'sms') {
       const result = await smsService.sendSms({
         to,
-        message: 'اختبار من شجرة عائلة آل شايع - Test from Al-Shaye Family Tree',
+        message: 'اختبار من شجرة عائلة آل شايع - Test from Al-Shaya Family Tree',
         type: 'NOTIFICATION',
       });
 

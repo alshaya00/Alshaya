@@ -1,5 +1,5 @@
 // Broadcast Service
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 // Handles email broadcasts for meetings, announcements, reminders, and updates
 
 import { prisma } from '@/lib/prisma';

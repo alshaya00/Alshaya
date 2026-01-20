@@ -77,7 +77,7 @@ const mockGatherings: Gathering[] = [
     locationAr: 'ديوانية العائلة، الرياض',
     type: 'eid',
     organizer: {
-      name: 'Mohammed Al-Shaye',
+      name: 'Mohammed Al-Shaya',
       nameAr: 'محمد آل شايع',
     },
     attendees: {
@@ -100,7 +100,7 @@ const mockGatherings: Gathering[] = [
     locationAr: 'ريتز كارلتون، الرياض',
     type: 'wedding',
     organizer: {
-      name: 'Khalid Al-Shaye',
+      name: 'Khalid Al-Shaya',
       nameAr: 'خالد آل شايع',
     },
     attendees: {
@@ -119,11 +119,11 @@ const mockGatherings: Gathering[] = [
     descriptionAr: 'عشاؤنا العائلي الشهري - طعام رائع وصحبة أروع!',
     date: '2025-01-25',
     time: '20:00',
-    location: 'Al-Shaye House',
+    location: 'Al-Shaya House',
     locationAr: 'بيت آل شايع',
     type: 'gathering',
     organizer: {
-      name: 'Fatima Al-Shaye',
+      name: 'Fatima Al-Shaya',
       nameAr: 'فاطمة آل شايع',
     },
     attendees: {
@@ -146,7 +146,7 @@ const mockGatherings: Gathering[] = [
     locationAr: 'مقبرة العائلة والديوانية',
     type: 'memorial',
     organizer: {
-      name: 'Abdullah Al-Shaye',
+      name: 'Abdullah Al-Shaya',
       nameAr: 'عبدالله آل شايع',
     },
     attendees: {
@@ -171,7 +171,7 @@ const mockGatherings: Gathering[] = [
     locationAr: 'نصف القمر',
     type: 'celebration',
     organizer: {
-      name: 'Omar Al-Shaye',
+      name: 'Omar Al-Shaya',
       nameAr: 'عمر آل شايع',
     },
     attendees: {

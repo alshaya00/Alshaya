@@ -1,4 +1,4 @@
-// Theme Configuration for Al-Shaye Family Tree
+// Theme Configuration for Al-Shaya Family Tree
 // Centralized color schemes and styling constants
 
 export interface ColorPalette {
@@ -206,7 +206,7 @@ export const exportStyles = {
   headerGradient: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.primaryLight} 100%)`,
   familyName: {
     ar: 'شجرة آل شايع العائلية',
-    en: 'Al-Shaye Family Tree',
+    en: 'Al-Shaya Family Tree',
   },
 };
 

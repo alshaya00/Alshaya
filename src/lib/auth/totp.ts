@@ -84,7 +84,7 @@ export function verifyTOTP(secret: string, code: string, window: number = 1): bo
 export function generateTOTPUri(
   secret: string,
   email: string,
-  issuer: string = 'Al-Shaye Family Tree'
+  issuer: string = 'Al-Shaya Family Tree'
 ): string {
   const encodedIssuer = encodeURIComponent(issuer);
   const encodedEmail = encodeURIComponent(email);

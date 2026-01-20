@@ -1,4 +1,4 @@
-// Constants Configuration for Al-Shaye Family Tree
+// Constants Configuration for Al-Shaya Family Tree
 // Centralized magic numbers, icons, and static values
 
 // ============================================
@@ -7,9 +7,9 @@
 
 export const familyInfo = {
   nameAr: 'آل شايع',
-  nameEn: 'Al-Shaye',
+  nameEn: 'Al-Shaya',
   fullNameAr: 'شجرة عائلة آل شايع',
-  fullNameEn: 'Al-Shaye Family Tree',
+  fullNameEn: 'Al-Shaya Family Tree',
   taglineAr: 'نحفظ إرثنا، نربط أجيالنا',
   taglineEn: 'Preserving Our Legacy, Connecting Generations',
   foundingYear: 1600, // Approximate founding year

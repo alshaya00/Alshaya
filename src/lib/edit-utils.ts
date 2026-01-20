@@ -393,9 +393,9 @@ function transliterate(arabic: string): string {
     'الجوهرة': 'Al-Jawhara',
     'خلود': 'Khulud',
     'هيا': 'Haya',
-    'آل شايع': 'Al-Shaye',
-    'ال شايع': 'Al-Shaye',
-    'شايع': 'Shaye',
+    'آل شايع': 'Al-Shaya',
+    'ال شايع': 'Al-Shaya',
+    'شايع': 'Shaya',
   };
 
   const trimmed = arabic.trim();

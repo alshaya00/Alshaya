@@ -324,7 +324,7 @@ function InvitePageContent() {
                       value={nameEnglish}
                       onChange={(e) => setNameEnglish(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Ahmed Al-Shaye"
+                      placeholder="Ahmed Al-Shaya"
                       dir="ltr"
                     />
                   </div>

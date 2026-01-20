@@ -1,5 +1,5 @@
 // Auth Module - Main Exports
-// Al-Shaye Family Tree Authentication System
+// Al-Shaya Family Tree Authentication System
 
 export * from './types';
 export * from './password';

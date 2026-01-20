@@ -1,5 +1,5 @@
 // Email Service
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 // Supports multiple providers: Resend (via Replit connector), SendGrid, Mailgun, SMTP
 
 import { prisma } from '@/lib/prisma';
@@ -70,12 +70,12 @@ export type EmailTemplate = typeof EMAIL_TEMPLATES[keyof typeof EMAIL_TEMPLATES]
 function renderTemplate(templateName: string, data: Record<string, unknown>): { subject: string; html: string; text: string } {
   const templates: Record<string, { subject: string; html: string; text: string }> = {
     welcome: {
-      subject: 'مرحباً بك في شجرة عائلة آل شايع - Welcome to Al-Shaye Family Tree',
+      subject: 'مرحباً بك في شجرة عائلة آل شايع - Welcome to Al-Shaya Family Tree',
       html: `
         <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2D5A87 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
             <h1 style="margin: 0; font-size: 28px;">شجرة عائلة آل شايع</h1>
-            <p style="margin: 10px 0 0; opacity: 0.9;">Al-Shaye Family Tree</p>
+            <p style="margin: 10px 0 0; opacity: 0.9;">Al-Shaya Family Tree</p>
           </div>
           <div style="background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
             <h2 style="color: #1E3A5F; margin-top: 0;">مرحباً ${data.name || 'بك'}!</h2>

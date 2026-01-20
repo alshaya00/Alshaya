@@ -1,5 +1,5 @@
 // Automated Backup Service
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 
 import { prisma } from '@/lib/prisma';
 import { emailService } from '@/lib/services/email';

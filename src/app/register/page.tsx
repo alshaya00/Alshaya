@@ -930,7 +930,7 @@ export default function RegisterPage() {
                         value={formData.nameEnglish}
                         onChange={handleChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Ahmed Mohammed Al-Shaye"
+                        placeholder="Ahmed Mohammed Al-Shaya"
                         dir="ltr"
                       />
                     </div>

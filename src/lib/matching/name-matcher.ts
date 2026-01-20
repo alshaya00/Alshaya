@@ -195,7 +195,7 @@ function generateFullNameEn(
   firstName: string,
   gender: 'Male' | 'Female',
   lineage: FamilyMember[],
-  familyName: string = 'Al-Shaye'
+  familyName: string = 'Al-Shaya'
 ): string {
   const parts = [firstName];
 
@@ -444,7 +444,7 @@ export function findMatches(
       input.firstName,
       'Male',
       fullLineage,
-      'Al-Shaye'
+      'Al-Shaya'
     );
 
     // Build candidate

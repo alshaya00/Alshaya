@@ -166,7 +166,7 @@ export async function getUserInfo(
 
   // GitHub requires User-Agent
   if (provider === 'github') {
-    headers['User-Agent'] = 'Al-Shaye-Family-Tree';
+    headers['User-Agent'] = 'Al-Shaya-Family-Tree';
   }
 
   const response = await fetch(config.userInfoUrl, { headers });

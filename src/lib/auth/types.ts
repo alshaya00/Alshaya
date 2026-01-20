@@ -1,4 +1,4 @@
-// Authentication Types for Al-Shaye Family Tree
+// Authentication Types for Al-Shaya Family Tree
 
 // ============================================
 // USER ROLES

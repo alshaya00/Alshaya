@@ -1,5 +1,5 @@
 // React Query hooks for data fetching
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FamilyMember, TreeNode } from '@/lib/types';

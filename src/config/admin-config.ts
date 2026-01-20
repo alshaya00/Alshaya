@@ -1,4 +1,4 @@
-// Admin Configuration for Al-Shaye Family Tree
+// Admin Configuration for Al-Shaya Family Tree
 // Centralized admin defaults, access codes, and credentials
 // SECURITY: All sensitive values MUST be set via environment variables
 

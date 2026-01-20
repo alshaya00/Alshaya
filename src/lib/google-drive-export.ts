@@ -75,7 +75,7 @@ async function getGoogleDriveClient() {
 export async function findOrCreateBackupFolder(): Promise<string> {
   const drive = await getGoogleDriveClient();
   
-  const folderName = 'AlShaye Family Backups';
+  const folderName = 'AlShaya Family Backups';
   
   const response = await drive.files.list({
     q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,

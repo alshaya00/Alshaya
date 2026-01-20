@@ -1,4 +1,4 @@
-// Field Configuration for Al-Shaye Family Tree
+// Field Configuration for Al-Shaya Family Tree
 // Centralized form field definitions for member data
 
 export type FieldType = 'text' | 'number' | 'email' | 'select' | 'textarea' | 'date';
@@ -77,7 +77,7 @@ export const memberFields: FieldDefinition[] = [
     required: true,
     editable: true,
     placeholder: 'آل شايع',
-    placeholderEn: 'Al-Shaye',
+    placeholderEn: 'Al-Shaya',
   },
   {
     key: 'fatherId',

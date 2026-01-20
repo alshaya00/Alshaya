@@ -91,7 +91,7 @@ export interface SheetsExportResult {
   error?: string;
 }
 
-const SPREADSHEET_NAME = 'Al-Shaye Living Registry Snapshot';
+const SPREADSHEET_NAME = 'Al-Shaya Living Registry Snapshot';
 const MAX_SNAPSHOTS = 30;
 
 async function findOrCreateSpreadsheet(): Promise<{ spreadsheetId: string; isNew: boolean }> {

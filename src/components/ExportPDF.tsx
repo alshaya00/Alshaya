@@ -188,7 +188,7 @@ export default function ExportPDF({ className = '' }: ExportPDFProps) {
         <div class="header">
           <div class="logo">🌳</div>
           <h1>شجرة عائلة آل شايع</h1>
-          <p class="subtitle">Al-Shaye Family Tree - التوثيق الرقمي للتراث العائلي</p>
+          <p class="subtitle">Al-Shaya Family Tree - التوثيق الرقمي للتراث العائلي</p>
         </div>
 
         <div class="stats">

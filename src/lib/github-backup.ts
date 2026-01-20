@@ -91,7 +91,7 @@ async function ensureRepoExists(octokit: Octokit, owner: string): Promise<{ owne
     if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
       await octokit.repos.createForAuthenticatedUser({
         name: REPO_NAME,
-        description: 'Al-Shaye Family Tree Encrypted Backups',
+        description: 'Al-Shaya Family Tree Encrypted Backups',
         private: true,
         auto_init: true,
       });

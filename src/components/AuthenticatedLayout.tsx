@@ -66,7 +66,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
         <div className="container mx-auto px-4 text-center">
           <p className="text-lg font-semibold mb-2">شجرة عائلة آل شايع</p>
           <p className="text-sm text-gray-400">
-            Al-Shaye Family Tree Application &copy; {new Date().getFullYear()}
+            Al-Shaya Family Tree Application &copy; {new Date().getFullYear()}
           </p>
         </div>
       </footer>

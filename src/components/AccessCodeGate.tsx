@@ -116,7 +116,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
             <span className="text-5xl">🌳</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-800">شجرة آل شايع</h1>
-          <p className="text-gray-500 mt-2">Al-Shaye Family Tree</p>
+          <p className="text-gray-500 mt-2">Al-Shaya Family Tree</p>
         </div>
 
         {/* Access Card */}

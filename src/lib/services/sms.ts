@@ -1,5 +1,5 @@
 // SMS/OTP Service
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 // Supports multiple providers: Twilio, Vonage, MessageBird
 
 import { prisma } from '@/lib/prisma';
@@ -102,7 +102,7 @@ async function sendViaVonage(config: OtpConfig, options: SendSmsOptions): Promis
       body: JSON.stringify({
         api_key: config.apiKey,
         api_secret: config.apiSecret,
-        from: config.fromNumber || 'AlShaye',
+        from: config.fromNumber || 'AlShaya',
         to: options.to.replace(/[^0-9]/g, ''),
         text: options.message,
       }),
@@ -133,7 +133,7 @@ async function sendViaMessageBird(config: OtpConfig, options: SendSmsOptions): P
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        originator: config.fromNumber || 'AlShaye',
+        originator: config.fromNumber || 'AlShaya',
         recipients: [options.to.replace(/[^0-9]/g, '')],
         body: options.message,
       }),

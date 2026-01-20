@@ -124,7 +124,7 @@ export function Navigation() {
               <span className="text-2xl md:text-3xl" role="img" aria-label="شجرة العائلة">🌳</span>
               <div className="hidden sm:block">
                 <h1 className="text-lg md:text-xl font-bold">شجرة آل شايع</h1>
-                <p className="text-[10px] md:text-xs text-green-200">Al-Shaye Family Tree</p>
+                <p className="text-[10px] md:text-xs text-green-200">Al-Shaya Family Tree</p>
               </div>
             </Link>
 
@@ -435,7 +435,7 @@ export function Navigation() {
                   <span className="text-2xl" role="img" aria-label="شجرة">🌳</span>
                   <div>
                     <h2 className="text-base font-bold">شجرة آل شايع</h2>
-                    <p className="text-xs text-green-200">Al-Shaye Family Tree</p>
+                    <p className="text-xs text-green-200">Al-Shaya Family Tree</p>
                   </div>
                 </div>
                 <button

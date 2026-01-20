@@ -201,7 +201,7 @@ export default function HomePage() {
               شجرة عائلة آل شايع
             </h1>
             <p className="text-xl md:text-2xl text-amber-100 mb-2">
-              Al-Shaye Family Tree
+              Al-Shaya Family Tree
             </p>
             <p className="text-lg text-amber-200 mb-8">
               نحفظ إرثنا، نربط أجيالنا

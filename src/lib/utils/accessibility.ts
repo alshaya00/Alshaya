@@ -1,5 +1,5 @@
 // Accessibility Utilities
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 
 // ============================================
 // FOCUS MANAGEMENT

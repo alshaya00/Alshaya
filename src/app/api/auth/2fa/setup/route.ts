@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     // Generate new secret
     const secret = generateTOTPSecret();
-    const uri = generateTOTPUri(secret, user.email, 'آل شايع - Al-Shaye');
+    const uri = generateTOTPUri(secret, user.email, 'آل شايع - Al-Shaya');
 
     // Store temporary secret (not yet confirmed)
     await prisma.userPermissionOverride.upsert({

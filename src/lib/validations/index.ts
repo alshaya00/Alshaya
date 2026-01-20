@@ -1,5 +1,5 @@
 // Zod Validation Schemas
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 
 import { z } from 'zod';
 

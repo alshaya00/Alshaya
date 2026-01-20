@@ -415,7 +415,7 @@ export async function generateFullNamesFromLineage(
   for (const name of ancestorNames) {
     partsEn.push(`${connectorEn} ${transliterateName(name)}`);
   }
-  partsEn.push('Al Shaye');
+  partsEn.push('Al Shaya');
   
   const fullNameEn = partsEn.join(' ').replace(/\s+/g, ' ').trim();
   

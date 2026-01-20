@@ -1,5 +1,5 @@
 // Rate Limiting Middleware
-// Al-Shaye Family Tree Application
+// Al-Shaya Family Tree Application
 
 import { NextRequest, NextResponse } from 'next/server';
 
