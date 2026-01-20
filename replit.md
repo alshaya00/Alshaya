@@ -1,7 +1,7 @@
-# Al-Shaye Family Tree
+# Al-Shaya Family Tree
 
 ## Overview
-This project is an interactive web application for the Al-Shaye family tree. Its purpose is to digitally preserve and display family history, provide insights through analytics, and facilitate the addition and management of family members. The application aims to be a comprehensive and user-friendly platform, offering features like interactive visualizations, detailed member registries, and robust administrative tools. The business vision is to create a digital legacy for the Al-Shaye family, ensuring their history is accessible and expandable for future generations, fostering connection and understanding within the family.
+This project is an interactive web application for the Al-Shaya family tree. Its purpose is to digitally preserve and display family history, provide insights through analytics, and facilitate the addition and management of family members. The application aims to be a comprehensive and user-friendly platform, offering features like interactive visualizations, detailed member registries, and robust administrative tools. The business vision is to create a digital legacy for the Al-Shaya family, ensuring their history is accessible and expandable for future generations, fostering connection and understanding within the family.
 
 ## User Preferences
 I prefer clear and concise explanations. I value iterative development and expect the agent to ask for confirmation before implementing significant changes. I also prefer detailed explanations for complex architectural decisions.
