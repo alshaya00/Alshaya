@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { isMale } from '@/lib/utils';
+import { isMale, formatMemberId } from '@/lib/utils';
 import {
   ArrowRight,
   Search,
@@ -403,7 +403,7 @@ function DuplicatesPageContent() {
                               {member.fullNameAr || member.firstName}
                             </div>
                             <div className="space-y-1 text-sm">
-                              <div><span className="text-gray-500">الرقم:</span> {member.id}</div>
+                              <div><span className="text-gray-500">الرقم:</span> {formatMemberId(member.id)}</div>
                               <div><span className="text-gray-500">الجيل:</span> {member.generation}</div>
                               <div><span className="text-gray-500">الفرع:</span> {member.branch || '-'}</div>
                               <div><span className="text-gray-500">سنة الميلاد:</span> {member.birthYear || '-'}</div>

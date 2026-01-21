@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
-import { calculateAge, getGenerationColor, getStatusBadge } from '@/lib/utils';
+import { calculateAge, getGenerationColor, getStatusBadge, formatMemberId } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 
 export const dynamic = 'force-dynamic';
@@ -91,7 +91,7 @@ export default async function MemberPage({ params }: PageProps) {
                       : member.firstName}
                   </h1>
                   <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                    {member.id}
+                    {formatMemberId(member.id)}
                   </span>
                 </div>
                 <p className="text-white/80 text-lg">{member.fullNameAr}</p>

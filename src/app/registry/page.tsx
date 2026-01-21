@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import type { FamilyMember } from '@/lib/types';
-import { calculateAge, getGenerationColor, getStatusBadge, isMale } from '@/lib/utils';
+import { calculateAge, getGenerationColor, getStatusBadge, isMale, formatMemberId } from '@/lib/utils';
 import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -318,7 +318,7 @@ function RegistryPageContent() {
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                       }`}
                     >
-                      <td className="p-4 font-mono text-gray-600">{member.id}</td>
+                      <td className="p-4 font-mono text-gray-600">{formatMemberId(member.id)}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <GenderAvatar gender={member.gender} size="sm" />

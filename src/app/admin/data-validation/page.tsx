@@ -15,6 +15,7 @@ import {
   Loader2,
   XCircle,
 } from 'lucide-react';
+import { formatMemberId } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ValidationIssue {
@@ -388,7 +389,7 @@ export default function DataValidationPage() {
                         >
                           {member.fullNameAr || member.firstName}
                         </Link>
-                        <p className="text-xs text-gray-500">{member.id}</p>
+                        <p className="text-xs text-gray-500">{formatMemberId(member.id)}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">

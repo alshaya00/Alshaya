@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, ChevronDown, X, User } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
+import { formatMemberId } from '@/lib/utils';
 
 interface SearchableDropdownProps {
   options: FamilyMember[];
@@ -231,7 +232,7 @@ export default function SearchableDropdown({
                           )}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {member.id} • {member.branch || 'غير محدد'}
+                          {formatMemberId(member.id)} • {member.branch || 'غير محدد'}
                           {member.birthYear && ` • ${member.birthYear}`}
                         </p>
                       </div>

@@ -23,6 +23,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
+import { formatMemberId } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ChangeRecord {
@@ -458,7 +459,7 @@ export default function HistoryPage() {
                 >
                   <option value="">جميع الأعضاء</option>
                   {allMembers.slice(0, 20).map(m => (
-                    <option key={m.id} value={m.id}>{m.firstName} ({m.id})</option>
+                    <option key={m.id} value={m.id}>{m.firstName} ({formatMemberId(m.id)})</option>
                   ))}
                 </select>
 

@@ -29,16 +29,77 @@ export function getCurrentHijriYear(): number {
   return hijriYear;
 }
 
+/**
+ * Unified age calculation that handles both Hijri and Gregorian calendars
+ * with smart detection for incorrectly labeled calendar types.
+ * 
+ * Returns age in Gregorian years for consistency.
+ * 
+ * Smart detection rules:
+ * 1. If calendar is 'HIJRI' but birthYear > current Hijri year (~1447), treat as Gregorian
+ * 2. If calendar is 'GREGORIAN' but birthYear 1300-1500 with age > 150, treat as Hijri
+ */
 export function calculateAge(birthYear: number | null, birthCalendar?: string | null): number | null {
   if (!birthYear) return null;
   
-  const calendarUpper = birthCalendar?.toUpperCase();
+  const currentHijriYear = getCurrentHijriYear();
+  const currentGregorianYear = new Date().getFullYear();
+  const calendarUpper = (birthCalendar || 'GREGORIAN').toUpperCase();
+  
+  // Determine effective calendar with smart detection
+  let effectiveCalendar = calendarUpper;
+  
   if (calendarUpper === 'HIJRI') {
-    const currentHijriYear = getCurrentHijriYear();
-    return currentHijriYear - birthYear;
+    // If birthYear > current Hijri year, it's clearly a Gregorian year stored wrong
+    // Example: 1968 stored as HIJRI → impossible, must be Gregorian
+    if (birthYear > currentHijriYear) {
+      effectiveCalendar = 'GREGORIAN';
+    }
+  } else {
+    // GREGORIAN or undefined
+    // If birthYear 1300-1500 and age would be > 150, likely Hijri
+    if (birthYear >= 1300 && birthYear <= 1500) {
+      const rawAge = currentGregorianYear - birthYear;
+      if (rawAge > 150) {
+        effectiveCalendar = 'HIJRI';
+      }
+    }
   }
   
-  return new Date().getFullYear() - birthYear;
+  // Convert birth year to Gregorian and calculate age in Gregorian years for consistency
+  let gregorianBirthYear: number;
+  if (effectiveCalendar === 'HIJRI') {
+    // Convert Hijri to Gregorian: Gregorian = 622 + (Hijri × 0.97)
+    gregorianBirthYear = Math.round(622 + (birthYear * 0.9697));
+  } else {
+    gregorianBirthYear = birthYear;
+  }
+  
+  return currentGregorianYear - gregorianBirthYear;
+}
+
+/**
+ * Format member ID to ensure 4-digit format (P0001 instead of P1)
+ */
+export function formatMemberId(id: string): string {
+  if (!id) return id;
+  
+  // Handle P-prefixed IDs
+  if (id.startsWith('P')) {
+    const numPart = id.slice(1);
+    const num = parseInt(numPart, 10);
+    if (!isNaN(num)) {
+      return `P${String(num).padStart(4, '0')}`;
+    }
+  }
+  
+  // Handle numeric-only IDs
+  const num = parseInt(id, 10);
+  if (!isNaN(num) && id === String(num)) {
+    return `P${String(num).padStart(4, '0')}`;
+  }
+  
+  return id;
 }
 
 export function formatGeneration(gen: number): string {

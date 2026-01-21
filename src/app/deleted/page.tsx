@@ -15,7 +15,7 @@ import {
   Search,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
-import { isMale } from '@/lib/utils';
+import { isMale, formatMemberId } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
@@ -207,7 +207,7 @@ function DeletedMembersContent() {
                           {member.fullNameAr || member.firstName}
                         </h3>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
-                          <span>رقم: {member.id}</span>
+                          <span>رقم: {formatMemberId(member.id)}</span>
                           <span>الجيل: {member.generation}</span>
                           {member.branch && <span>الفرع: {member.branch}</span>}
                         </div>

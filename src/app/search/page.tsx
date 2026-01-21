@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import type { FamilyMember } from '@/lib/types';
-import { calculateAge, getGenerationColor } from '@/lib/utils';
+import { calculateAge, getGenerationColor, formatMemberId } from '@/lib/utils';
 import { Search as SearchIcon, User, Calendar, MapPin, Eye, X, GitBranch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -332,7 +332,7 @@ function SearchPageContent() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-gray-800">{member.ancestorChain}</span>
-                      <span className="text-xs text-gray-400">({member.id})</span>
+                      <span className="text-xs text-gray-400">({formatMemberId(member.id)})</span>
                     </div>
                     {member.fullNameAr && member.fullNameAr !== member.ancestorChain && (
                       <p className="text-sm text-gray-500">{member.fullNameAr}</p>

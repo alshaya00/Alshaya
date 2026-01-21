@@ -21,6 +21,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
+import { formatMemberId } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 type SortField = keyof FamilyMember;
@@ -445,7 +446,7 @@ export default function MembersTablePage() {
                       className="w-4 h-4 rounded"
                     />
                   </td>
-                  <td className="p-3 font-mono text-sm text-gray-600">{member.id}</td>
+                  <td className="p-3 font-mono text-sm text-gray-600">{formatMemberId(member.id)}</td>
                   <td className="p-3">
                     <div>
                       <p className="font-medium text-gray-800">{member.firstName}</p>

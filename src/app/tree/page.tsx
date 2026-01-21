@@ -12,6 +12,7 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
+import { formatMemberId } from '@/lib/utils';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
@@ -342,7 +343,7 @@ function TreePageContent() {
                   />
                 </div>
                 <p className="font-bold text-sm text-gray-800 truncate">{member.firstName}</p>
-                <p className="text-[10px] text-gray-500">{member.id}</p>
+                <p className="text-[10px] text-gray-500">{formatMemberId(member.id)}</p>
               </button>
             ))}
           </div>
@@ -385,7 +386,7 @@ function TreePageContent() {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800">{member.firstName}</p>
-                    <p className="text-xs text-gray-400">{member.id}</p>
+                    <p className="text-xs text-gray-400">{formatMemberId(member.id)}</p>
                   </div>
                 </div>
               </td>
@@ -466,7 +467,7 @@ function TreePageContent() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-gray-800">{m.firstName}</p>
-                        <p className="text-xs text-gray-400">{m.id} • الجيل {m.generation}</p>
+                        <p className="text-xs text-gray-400">{formatMemberId(m.id)} • الجيل {m.generation}</p>
                       </div>
                     </button>
                   ))}

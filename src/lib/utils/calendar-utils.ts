@@ -51,31 +51,47 @@ export function normalizeToGregorian(year: number | null | undefined, calendar: 
 
 /**
  * Calculate age from birth year, handling both Hijri and Gregorian calendars
- * Includes smart auto-detection: if year is 1300-1500 and stored as Gregorian,
- * it's likely Hijri and will be treated as such to avoid impossible ages (600+ years)
+ * 
+ * Returns age in Gregorian years for consistency across the app.
+ * 
+ * Smart auto-detection rules:
+ * 1. If calendar is 'HIJRI' but birthYear > current Hijri year (~1447), treat as Gregorian
+ *    Example: 1968 stored as HIJRI → impossible, must be Gregorian
+ * 2. If calendar is 'GREGORIAN' but birthYear 1300-1500 with age > 150, treat as Hijri
+ *    Example: 1400 stored as GREGORIAN → 626 years old, must be Hijri
  */
 export function calculateAge(birthYear: number | null | undefined, birthCalendar: string = 'GREGORIAN'): number | null {
   if (!birthYear) return null;
   
-  const currentYear = new Date().getFullYear();
+  const currentGregorianYear = new Date().getFullYear();
+  const currentHijriYear = gregorianToHijri(currentGregorianYear);
+  const calendarUpper = birthCalendar.toUpperCase();
   
-  // Smart auto-detection: years 1300-1500 stored as GREGORIAN are likely Hijri
-  // This prevents showing impossible ages like 658 years
-  let effectiveCalendar = birthCalendar;
-  if (birthCalendar === 'GREGORIAN' && birthYear >= 1300 && birthYear <= 1500) {
-    // Check if treating as Gregorian gives impossible age (>150 years)
-    const rawAge = currentYear - birthYear;
-    if (rawAge > 150) {
-      // Treat as Hijri instead
-      effectiveCalendar = 'HIJRI';
+  // Determine effective calendar with smart detection
+  let effectiveCalendar = calendarUpper;
+  
+  if (calendarUpper === 'HIJRI') {
+    // If birthYear > current Hijri year, it's clearly a Gregorian year stored wrong
+    if (birthYear > currentHijriYear) {
+      effectiveCalendar = 'GREGORIAN';
+    }
+  } else {
+    // GREGORIAN or undefined
+    // If birthYear 1300-1500 and age would be > 150, likely Hijri
+    if (birthYear >= 1300 && birthYear <= 1500) {
+      const rawAge = currentGregorianYear - birthYear;
+      if (rawAge > 150) {
+        effectiveCalendar = 'HIJRI';
+      }
     }
   }
   
+  // Normalize to Gregorian birth year for consistent age calculation
   const gregorianBirthYear = normalizeToGregorian(birthYear, effectiveCalendar);
   
   if (!gregorianBirthYear) return null;
   
-  return currentYear - gregorianBirthYear;
+  return currentGregorianYear - gregorianBirthYear;
 }
 
 /**

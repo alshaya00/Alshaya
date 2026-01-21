@@ -17,6 +17,7 @@ import {
   Info,
   GitMerge,
 } from 'lucide-react';
+import { formatMemberId } from '@/lib/utils';
 
 interface MemberInfo {
   id: string;
@@ -310,7 +311,7 @@ export default function MergeToolPage() {
                     >
                       <div className="font-medium">{member.fullNameAr || member.firstName}</div>
                       <div className="text-sm text-gray-500">
-                        {member.id} - الجيل {member.generation}
+                        {formatMemberId(member.id)} - الجيل {member.generation}
                         {member.branch && ` - ${member.branch}`}
                       </div>
                     </button>
@@ -357,7 +358,7 @@ export default function MergeToolPage() {
                     >
                       <div className="font-medium">{member.fullNameAr || member.firstName}</div>
                       <div className="text-sm text-gray-500">
-                        {member.id} - الجيل {member.generation}
+                        {formatMemberId(member.id)} - الجيل {member.generation}
                         {member.branch && ` - ${member.branch}`}
                       </div>
                     </button>

@@ -16,6 +16,7 @@ import {
   Crop,
 } from 'lucide-react';
 import { imageCategories as configImageCategories } from '@/config/constants';
+import { formatMemberId } from '@/lib/utils';
 import ImageCropper from './ImageCropper';
 
 interface Member {
@@ -552,7 +553,7 @@ export default function ImageUploadForm({
                       className="w-full p-3 text-right hover:bg-gray-50"
                     >
                       <p className="font-medium">{member.fullNameAr || member.firstName}</p>
-                      <p className="text-xs text-gray-500">{member.id}</p>
+                      <p className="text-xs text-gray-500">{formatMemberId(member.id)}</p>
                     </button>
                   ))
                 )}
