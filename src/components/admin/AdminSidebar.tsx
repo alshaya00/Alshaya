@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -36,6 +36,7 @@ import {
   Heart,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItem {
   href: string;
@@ -182,11 +183,74 @@ const adminNavItems: NavItem[] = [
   },
 ];
 
+interface PendingCounts {
+  accessRequests: number;
+  pendingMembers: number;
+  pendingImages: number;
+  pendingStories: number;
+}
+
 export function AdminSidebar() {
   const pathname = usePathname();
   const { isFeatureEnabled } = useFeatureFlags();
+  const { session } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/database']);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [pendingCounts, setPendingCounts] = useState<PendingCounts>({
+    accessRequests: 0,
+    pendingMembers: 0,
+    pendingImages: 0,
+    pendingStories: 0,
+  });
+
+  useEffect(() => {
+    const fetchPendingCounts = async () => {
+      if (!session?.token) return;
+      const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
+      
+      try {
+        const [accessRes, pendingRes, imagesRes, storiesRes] = await Promise.all([
+          fetch('/api/access-requests', { headers }).catch(() => null),
+          fetch('/api/admin/pending', { headers }).catch(() => null),
+          fetch('/api/images/pending', { headers }).catch(() => null),
+          fetch('/api/admin/journals', { headers }).catch(() => null),
+        ]);
+
+        const accessData = accessRes ? await accessRes.json().catch(() => ({})) : {};
+        const pendingData = pendingRes ? await pendingRes.json().catch(() => ({})) : {};
+        const imagesData = imagesRes ? await imagesRes.json().catch(() => ({})) : {};
+        const storiesData = storiesRes ? await storiesRes.json().catch(() => ({})) : {};
+
+        setPendingCounts({
+          accessRequests: accessData.requests?.filter((r: { status: string }) => r.status === 'PENDING').length || 0,
+          pendingMembers: pendingData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0,
+          pendingImages: imagesData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0,
+          pendingStories: storiesData.data?.filter((s: { reviewStatus: string }) => s.reviewStatus === 'PENDING').length || 0,
+        });
+      } catch (error) {
+        console.error('Error fetching pending counts:', error);
+      }
+    };
+
+    fetchPendingCounts();
+    const interval = setInterval(fetchPendingCounts, 60000);
+    return () => clearInterval(interval);
+  }, [session?.token]);
+
+  const getPendingCountForHref = (href: string): number => {
+    switch (href) {
+      case '/admin/access-requests':
+        return pendingCounts.accessRequests;
+      case '/admin/database/pending':
+        return pendingCounts.pendingMembers;
+      case '/admin/images':
+        return pendingCounts.pendingImages;
+      case '/admin/journals':
+        return pendingCounts.pendingStories;
+      default:
+        return 0;
+    }
+  };
 
   // Filter admin nav items based on feature flags
   const filteredAdminNavItems = useMemo(() => {
@@ -262,7 +326,7 @@ export function AdminSidebar() {
             href={item.href}
             onClick={() => setIsMobileOpen(false)}
             className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
+              'flex items-center gap-3 px-4 py-3 rounded-lg transition-all relative',
               depth > 0 && 'mr-6 py-2',
               isItemActive
                 ? depth > 0
@@ -272,12 +336,17 @@ export function AdminSidebar() {
             )}
           >
             <Icon size={depth > 0 ? 18 : 20} />
-            <div className="text-right">
+            <div className="text-right flex-1">
               <span className={cn('block', depth > 0 ? 'text-sm' : 'text-sm font-medium')}>
                 {item.label}
               </span>
               {depth === 0 && <span className="text-xs opacity-70">{item.labelEn}</span>}
             </div>
+            {getPendingCountForHref(item.href) > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {getPendingCountForHref(item.href)}
+              </span>
+            )}
           </Link>
         )}
 
