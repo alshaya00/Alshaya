@@ -77,6 +77,23 @@ export interface DuplicateMatch {
   reasons: string[];
 }
 
+/**
+ * Enhanced duplicate detection with full 4-part name matching (الاسم الرباعي)
+ * 
+ * Scoring breakdown (max 100):
+ * - First name match: 20 points
+ * - Father name match: 15 points  
+ * - Grandfather name match: 15 points
+ * - Great-grandfather name match: 10 points
+ * - Same fatherId (linked): 25 points (bonus)
+ * - Same generation: 5 points
+ * - Same branch: 5 points
+ * - Birth year match: 10 points
+ * - Phone match: 15 points
+ * - Email match: 15 points
+ * 
+ * IMPORTANT: At least 3 name parts must match for high confidence duplicate detection
+ */
 export function findDuplicates(
   newMember: Partial<FamilyMember>,
   existingMembers: FamilyMember[],
@@ -87,65 +104,148 @@ export function findDuplicates(
   for (const existing of existingMembers) {
     let score = 0;
     const reasons: string[] = [];
+    let namePartsMatched = 0; // Track how many name parts match
 
-    // Exact ID match (highest priority)
+    // Exact ID match (highest priority - definite duplicate)
     if (newMember.id && newMember.id === existing.id) {
-      score += 100;
+      score = 100;
       reasons.push('نفس الرقم التعريفي');
+      matches.push({ existingMember: existing, score, reasons });
+      continue;
     }
 
-    // Name matching
+    // ===== NAME MATCHING (الاسم الرباعي) =====
+    
+    // First name (الاسم الأول)
     if (newMember.firstName && existing.firstName) {
-      if (newMember.firstName === existing.firstName) {
-        score += 30;
+      const newFirstNorm = normalizeArabic(newMember.firstName);
+      const existFirstNorm = normalizeArabic(existing.firstName);
+      if (newFirstNorm === existFirstNorm) {
+        score += 20;
+        namePartsMatched++;
         reasons.push('نفس الاسم الأول');
-      } else if (normalizeArabic(newMember.firstName) === normalizeArabic(existing.firstName)) {
-        score += 25;
-        reasons.push('الاسم الأول متشابه');
       }
     }
 
-    // Father matching
-    if (newMember.fatherId && newMember.fatherId === existing.fatherId) {
-      score += 25;
-      reasons.push('نفس الأب');
-    } else if (newMember.fatherName && existing.fatherName) {
-      if (normalizeArabic(newMember.fatherName) === normalizeArabic(existing.fatherName)) {
-        score += 20;
+    // Father name (اسم الأب)
+    if (newMember.fatherName && existing.fatherName) {
+      const newFatherNorm = normalizeArabic(newMember.fatherName);
+      const existFatherNorm = normalizeArabic(existing.fatherName);
+      if (newFatherNorm === existFatherNorm) {
+        score += 15;
+        namePartsMatched++;
         reasons.push('نفس اسم الأب');
       }
     }
 
+    // Grandfather name (اسم الجد)
+    if (newMember.grandfatherName && existing.grandfatherName) {
+      const newGrandNorm = normalizeArabic(newMember.grandfatherName);
+      const existGrandNorm = normalizeArabic(existing.grandfatherName);
+      if (newGrandNorm === existGrandNorm) {
+        score += 15;
+        namePartsMatched++;
+        reasons.push('نفس اسم الجد');
+      }
+    }
+
+    // Great-grandfather name (اسم جد الأب)
+    if (newMember.greatGrandfatherName && existing.greatGrandfatherName) {
+      const newGreatGrandNorm = normalizeArabic(newMember.greatGrandfatherName);
+      const existGreatGrandNorm = normalizeArabic(existing.greatGrandfatherName);
+      if (newGreatGrandNorm === existGreatGrandNorm) {
+        score += 10;
+        namePartsMatched++;
+        reasons.push('نفس اسم جد الأب');
+      }
+    }
+
+    // ===== LINKED DATA MATCHING =====
+    
+    // Same fatherId (direct link - high confidence)
+    if (newMember.fatherId && newMember.fatherId === existing.fatherId) {
+      score += 25;
+      reasons.push('نفس الأب (مرتبط)');
+    }
+
+    // Same generation
+    if (newMember.generation && existing.generation && 
+        newMember.generation === existing.generation) {
+      score += 5;
+      reasons.push('نفس الجيل');
+    }
+
+    // Same branch
+    if (newMember.branch && existing.branch && 
+        newMember.branch === existing.branch) {
+      score += 5;
+      reasons.push('نفس الفرع');
+    }
+
+    // ===== PERSONAL INFO MATCHING =====
+    
     // Birth year matching
     if (newMember.birthYear && existing.birthYear) {
-      if (newMember.birthYear === existing.birthYear) {
-        score += 15;
-        reasons.push('نفس سنة الميلاد');
-      } else if (Math.abs(newMember.birthYear - existing.birthYear) <= 2) {
+      const yearDiff = Math.abs(newMember.birthYear - existing.birthYear);
+      if (yearDiff === 0) {
         score += 10;
+        reasons.push('نفس سنة الميلاد');
+      } else if (yearDiff <= 2) {
+        score += 5;
         reasons.push('سنة الميلاد قريبة');
       }
     }
 
-    // Gender matching
+    // Gender matching (implicit - same names usually same gender)
     if (newMember.gender && newMember.gender === existing.gender) {
-      score += 5;
+      // Small bonus, helps filter out false positives
+      score += 2;
     }
 
-    // Phone matching
+    // Phone matching (strong indicator)
     if (newMember.phone && existing.phone) {
       if (normalizePhone(newMember.phone) === normalizePhone(existing.phone)) {
-        score += 20;
+        score += 15;
         reasons.push('نفس رقم الهاتف');
       }
     }
 
-    // Email matching
+    // Email matching (strong indicator)
     if (newMember.email && existing.email) {
       if (newMember.email.toLowerCase() === existing.email.toLowerCase()) {
-        score += 20;
+        score += 15;
         reasons.push('نفس البريد الإلكتروني');
       }
+    }
+
+    // ===== STRICT QUALITY FILTER =====
+    // CRITICAL: Require MEANINGFUL name matching to prevent false positives
+    // For common names like "محمد بن عبدالله", 2 parts matching is NOT enough
+    
+    // Unique identifiers that can bypass the 3-part rule
+    // Note: fatherId is NOT included - siblings share the same father
+    const hasUniqueIdentifier = reasons.includes('نفس رقم الهاتف') || 
+                                 reasons.includes('نفس البريد الإلكتروني');
+    
+    // For thresholds <= 60%: STRICTLY require 3+ name parts
+    // Only bypass with unique phone/email (not fatherId - siblings share fathers!)
+    if (threshold <= 60) {
+      if (namePartsMatched < 3 && !hasUniqueIdentifier) {
+        // Not enough name matching evidence - skip
+        continue;
+      }
+    }
+    
+    // For thresholds 61-70%: Require 2+ name parts or unique identifier
+    if (threshold > 60 && threshold < 70) {
+      if (namePartsMatched < 2 && !hasUniqueIdentifier) {
+        continue;
+      }
+    }
+    
+    // For thresholds 70%+: Require at least 2 name parts or unique identifier
+    if (threshold >= 70 && namePartsMatched < 2 && !hasUniqueIdentifier) {
+      continue;
     }
 
     // Cap score at 100
