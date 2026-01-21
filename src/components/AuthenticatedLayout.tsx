@@ -139,8 +139,11 @@ function LandingPage() {
           <p className="text-2xl text-emerald-700 font-medium mb-2">
             {familyInfo.taglineAr}
           </p>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-2">
             منصة رقمية متكاملة لتوثيق وحفظ تاريخ {familyInfo.fullNameAr} وربط أفرادها عبر الأجيال
+          </p>
+          <p className="text-gray-500 text-base">
+            الشارخية والعودة والروضة والجنيفي من قرى سدير
           </p>
         </div>
 

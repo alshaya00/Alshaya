@@ -203,8 +203,11 @@ export default function HomePage() {
             <p className="text-xl md:text-2xl text-amber-100 mb-2">
               Al-Shaya Family Tree
             </p>
-            <p className="text-lg text-amber-200 mb-8">
+            <p className="text-lg text-amber-200 mb-2">
               نحفظ إرثنا، نربط أجيالنا
+            </p>
+            <p className="text-base text-amber-100/80 mb-8">
+              الشارخية والعودة والروضة والجنيفي من قرى سدير
             </p>
 
             {/* Stats */}
