@@ -143,11 +143,14 @@ export default function AddMemberGraph({
 
     const hierarchy = d3.hierarchy<TreeNode>(treeData);
     const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([200, 180])
+      .nodeSize([180, 180])
       .separation((a, b) => {
         const depth = a.depth;
-        const baseSep = a.parent === b.parent ? 1.2 : 1.5;
-        return baseSep * (1 + depth * 0.5);
+        if (depth <= 1) {
+          return a.parent === b.parent ? 1.0 : 1.2;
+        } else {
+          return a.parent === b.parent ? 2.8 : 3.5;
+        }
       });
 
     const root = treeLayout(hierarchy);
