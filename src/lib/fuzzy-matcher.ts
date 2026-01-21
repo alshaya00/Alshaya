@@ -27,8 +27,10 @@ export interface FuzzyMatchInput {
   email?: string;
 }
 
-const DUPLICATE_THRESHOLD = 80;
-const HIGH_SIMILARITY_THRESHOLD = 70;
+const DUPLICATE_THRESHOLD = 85;  // Raised for stricter detection
+const HIGH_SIMILARITY_THRESHOLD = 75;  // Raised for better accuracy
+const SIBLING_DUPLICATE_THRESHOLD = 90;  // Very strict for siblings under same parent
+const FULL_NAME_MATCH_THRESHOLD = 80;  // For 4-part name comparison
 
 function levenshteinDistance(str1: string, str2: string): number {
   const m = str1.length;
@@ -121,9 +123,10 @@ export function calculateMemberSimilarity(
   let totalScore = 0;
   let weightSum = 0;
   
+  // IMPROVED WEIGHTS: Give more importance to the full 4-part name (الاسم الرباعي)
   if (input.firstName) {
     const firstNameScore = compareNames(input.firstName, existingMember.firstName);
-    const weight = 30;
+    const weight = 35;  // Increased from 30
     totalScore += firstNameScore * weight;
     weightSum += weight;
     
@@ -135,7 +138,7 @@ export function calculateMemberSimilarity(
   
   if (input.fatherName && existingMember.fatherName) {
     const fatherNameScore = compareNames(input.fatherName, existingMember.fatherName);
-    const weight = 15;
+    const weight = 25;  // Increased from 15 - father name is critical
     totalScore += fatherNameScore * weight;
     weightSum += weight;
     
@@ -160,13 +163,48 @@ export function calculateMemberSimilarity(
   
   if (input.grandfatherName && existingMember.grandfatherName) {
     const grandfatherScore = compareNames(input.grandfatherName, existingMember.grandfatherName);
-    const weight = 10;
+    const weight = 20;  // Increased from 10 - grandfather name is part of الاسم الرباعي
     totalScore += grandfatherScore * weight;
     weightSum += weight;
     
     if (grandfatherScore >= HIGH_SIMILARITY_THRESHOLD) {
       matchReasons.push(`Grandfather name match: ${grandfatherScore}%`);
       matchReasonsAr.push(`تطابق اسم الجد: ${grandfatherScore}%`);
+    }
+  }
+  
+  // FULL 4-PART NAME CHECK (الاسم الرباعي) - includes great-grandfather when available
+  // Priority: 4-part name (with great-grandfather) > 3-part name (fallback)
+  if (input.firstName && input.fatherName && existingMember.fatherName) {
+    let fullInputName = `${input.firstName} ${input.fatherName}`;
+    let fullExistingName = `${existingMember.firstName} ${existingMember.fatherName}`;
+    let partsCount = 2;
+    
+    // Add grandfather if available
+    if (input.grandfatherName && existingMember.grandfatherName) {
+      fullInputName += ` ${input.grandfatherName}`;
+      fullExistingName += ` ${existingMember.grandfatherName}`;
+      partsCount = 3;
+    }
+    
+    // Add great-grandfather if available (true 4-part name)
+    if (partsCount === 3 && existingMember.greatGrandfatherName) {
+      fullExistingName += ` ${existingMember.greatGrandfatherName}`;
+      // Note: input may not have greatGrandfatherName, but we can still compare
+      // The Levenshtein distance will account for the difference
+    }
+    
+    // Only apply full name check if we have at least 3 parts
+    if (partsCount >= 3) {
+      const fullNameScore = calculateStringSimilarity(fullInputName, fullExistingName);
+      
+      if (fullNameScore >= FULL_NAME_MATCH_THRESHOLD) {
+        const weight = partsCount === 3 ? 20 : 25;  // Higher weight for 4-part match
+        totalScore += fullNameScore * weight;
+        weightSum += weight;
+        matchReasons.push(`Full name match (الاسم الرباعي): ${fullNameScore}%`);
+        matchReasonsAr.push(`تطابق الاسم الرباعي الكامل: ${fullNameScore}%`);
+      }
     }
   }
   
@@ -309,12 +347,14 @@ export async function checkBranchDuplicate(
   for (const sibling of siblings) {
     const nameScore = compareNames(firstName, sibling.firstName);
     
-    if (nameScore >= 70) {
+    // VERY STRICT: Siblings under same parent cannot have similar names
+    // Using SIBLING_DUPLICATE_THRESHOLD (90%) to prevent duplicate registrations
+    if (nameScore >= SIBLING_DUPLICATE_THRESHOLD) {
       candidates.push({
         member: sibling,
         similarityScore: nameScore,
-        matchReasons: [`Name similarity: ${nameScore}%`, 'Same parent'],
-        matchReasonsAr: [`تشابه الاسم: ${nameScore}%`, 'نفس الوالد'],
+        matchReasons: [`Name similarity: ${nameScore}%`, 'Same parent - potential duplicate'],
+        matchReasonsAr: [`تشابه الاسم: ${nameScore}%`, 'نفس الوالد - احتمال تكرار'],
       });
     }
   }
@@ -348,9 +388,14 @@ export async function findSimilarPendingMembers(
     birthYear: pendingData.birthYear || undefined,
     gender: pendingData.gender,
   }, {
-    threshold: 70,
+    threshold: HIGH_SIMILARITY_THRESHOLD,  // Use improved threshold
     limit: 5,
   });
 }
 
-export { DUPLICATE_THRESHOLD, HIGH_SIMILARITY_THRESHOLD };
+export { 
+  DUPLICATE_THRESHOLD, 
+  HIGH_SIMILARITY_THRESHOLD,
+  SIBLING_DUPLICATE_THRESHOLD,
+  FULL_NAME_MATCH_THRESHOLD
+};
