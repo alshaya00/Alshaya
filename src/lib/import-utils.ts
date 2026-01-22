@@ -160,11 +160,27 @@ export function findDuplicates(
       }
     }
 
+    // ===== ABSOLUTE DUPLICATE RULE =====
+    // CRITICAL: Same father + Same first name = IMPOSSIBLE to be different people
+    // Parents don't name two children with the same name
+    const sameFatherId = newMember.fatherId && newMember.fatherId === existing.fatherId;
+    const sameFirstName = reasons.includes('نفس الاسم الأول');
+    
+    if (sameFatherId && sameFirstName) {
+      // This is a CONFIRMED duplicate - return immediately with 100%
+      matches.push({ 
+        existingMember: existing, 
+        score: 100, 
+        reasons: ['تكرار مؤكد: نفس الأب ونفس الاسم الأول'] 
+      });
+      continue; // Skip further checks - this is definitive
+    }
+
     // ===== LINKED DATA MATCHING =====
     
-    // Same fatherId (direct link - high confidence)
-    if (newMember.fatherId && newMember.fatherId === existing.fatherId) {
-      score += 25;
+    // Same fatherId (direct link - but NOT enough alone for duplicate)
+    if (sameFatherId) {
+      score += 15; // Reduced from 25 - siblings share fatherId
       reasons.push('نفس الأب (مرتبط)');
     }
 
