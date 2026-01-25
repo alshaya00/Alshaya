@@ -140,9 +140,9 @@ export default function MatchComparisonGraphs({
                 </h4>
               </div>
 
-              {/* Graph - stop propagation to prevent accidental selection on mobile */}
+              {/* Graph - hidden on mobile for better usability, shown on md+ screens */}
               <div 
-                className="p-2"
+                className="hidden md:block p-2"
                 onClick={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
               >
