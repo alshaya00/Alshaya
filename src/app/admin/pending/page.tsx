@@ -912,7 +912,7 @@ export default function AdminPendingPage() {
                   return member ? (
                     <div key={memberId} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center gap-3">
-                        <GenderAvatar gender={member.gender} size={32} />
+                        <GenderAvatar gender={member.gender} size="sm" />
                         <div>
                           <p className="font-medium text-gray-900">{member.firstName}</p>
                           <p className="text-sm text-gray-500">{getFullLineageName(member, allMembers)}</p>

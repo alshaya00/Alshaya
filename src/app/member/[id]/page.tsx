@@ -95,7 +95,7 @@ export default async function MemberPage({ params }: PageProps) {
                   </span>
                 </div>
                 <p className="text-white/80 text-lg">{member.fullNameAr}</p>
-                <p className="text-white/60 text-sm mt-1">{member.fullNameEn}</p>
+                <p className="text-white/60 text-sm mt-1" dir="ltr">{member.fullNameEn}</p>
               </div>
             </div>
           </div>

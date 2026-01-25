@@ -62,6 +62,8 @@ export default function MemberProfileAvatar({
 
   const [step, setStep] = useState<'idle' | 'crop' | 'uploading' | 'success' | 'error'>('idle');
   const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [showEnlarged, setShowEnlarged] = useState(false);
+  const [fullSizePhoto, setFullSizePhoto] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [errorMessage, setErrorMessage] = useState('');
@@ -87,6 +89,7 @@ export default function MemberProfileAvatar({
       const data = await res.json();
       if (data.success && data.photo) {
         setProfilePhoto(data.photo.thumbnailData || data.photo.imageData);
+        setFullSizePhoto(data.photo.imageData || data.photo.thumbnailData);
       }
     } catch (error) {
       console.error('Error loading profile photo:', error);
@@ -94,6 +97,19 @@ export default function MemberProfileAvatar({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showEnlarged) {
+        setShowEnlarged(false);
+      }
+    };
+    
+    if (showEnlarged) {
+      document.addEventListener('keydown', handleEscapeKey);
+      return () => document.removeEventListener('keydown', handleEscapeKey);
+    }
+  }, [showEnlarged]);
 
   const loadGalleryPhotos = async () => {
     setLoadingPhotos(true);
@@ -295,7 +311,11 @@ export default function MemberProfileAvatar({
       <canvas ref={canvasRef} className="hidden" />
 
       <div className="relative group">
-        <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-4 border-white/30`}>
+        <button
+          onClick={() => setShowEnlarged(true)}
+          className={`${sizeClasses[size]} rounded-full overflow-hidden border-4 border-white/30 cursor-pointer hover:border-white/50 transition-all hover:scale-105`}
+          aria-label={`عرض صورة ${memberName}`}
+        >
           {profilePhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -313,11 +333,11 @@ export default function MemberProfileAvatar({
               priority
             />
           )}
-        </div>
+        </button>
 
         {canEdit && (
           <button
-            onClick={() => setShowOptions(true)}
+            onClick={(e) => { e.stopPropagation(); setShowOptions(true); }}
             className="absolute -bottom-1 -right-1 p-2 bg-white rounded-full shadow-lg text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
           >
             <Camera size={16} />
@@ -524,6 +544,43 @@ export default function MemberProfileAvatar({
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showEnlarged && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-pointer" 
+          onClick={() => setShowEnlarged(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`صورة ${memberName}`}
+        >
+          <button
+            onClick={() => setShowEnlarged(false)}
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            aria-label="إغلاق"
+          >
+            <X size={24} />
+          </button>
+          <div className="max-w-md w-full" onClick={e => e.stopPropagation()}>
+            {(fullSizePhoto || profilePhoto) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={fullSizePhoto || profilePhoto || ''}
+                alt={memberName}
+                className="w-full h-auto rounded-2xl shadow-2xl"
+              />
+            ) : (
+              <Image
+                src={defaultAvatar}
+                alt={isMale ? 'صورة ذكر' : 'صورة أنثى'}
+                width={400}
+                height={400}
+                className="w-full h-auto rounded-2xl shadow-2xl"
+              />
+            )}
+            <p className="text-center text-white/80 mt-4 text-lg font-medium">{memberName}</p>
           </div>
         </div>
       )}
