@@ -92,11 +92,13 @@ export default function MemberMiniGraph({
     const centerX = hasMilkFamily ? dimensions.width * 0.35 : dimensions.width * 0.5;
     const milkCenterX = dimensions.width * 0.75;
 
-    // Spacing - increased for better readability
+    // Spacing - optimized for visual hierarchy
+    // Children closer together, grandchildren more spread out
     const nodeWidth = 140;
     const nodeHeight = 95;
     const verticalGap = 140;
-    const horizontalGap = 220;
+    const horizontalGap = 160; // Reduced for children (was 220)
+    const grandchildSpacing = 90; // Increased spacing between grandchildren (was 50)
 
     // ========== BLOOD FAMILY (Left/Center) ==========
 
@@ -181,16 +183,15 @@ export default function MemberMiniGraph({
       childGrandchildren.forEach((gc, gcIndex) => {
         const childNode = nodesList.find(n => n.id === child.id);
         if (childNode) {
-          // Spread grandchildren evenly under their parent
-          const gcSpacing = 50;
-          const gcStartX = (childNode.x || centerX) - ((childGrandchildren.length - 1) * gcSpacing) / 2;
+          // Spread grandchildren with more spacing for better readability
+          const gcStartX = (childNode.x || centerX) - ((childGrandchildren.length - 1) * grandchildSpacing) / 2;
           nodesList.push({
             id: gc.id,
             name: gc.firstName,
             gender: gc.gender as 'Male' | 'Female',
             type: 'grandchild',
             fullNameAr: gc.fullNameAr,
-            x: gcStartX + gcIndex * gcSpacing,
+            x: gcStartX + gcIndex * grandchildSpacing,
             y: grandchildY,
             member: gc,
           });

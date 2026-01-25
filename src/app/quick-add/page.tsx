@@ -299,6 +299,12 @@ export default function QuickAddPage() {
       if (!formData.fatherName.trim()) {
         newErrors.fatherName = 'اسم الأب مطلوب';
       }
+      if (!formData.grandfatherName.trim()) {
+        newErrors.grandfatherName = 'اسم الجد مطلوب';
+      }
+      if (!formData.greatGrandfatherName.trim()) {
+        newErrors.greatGrandfatherName = 'اسم جد الأب مطلوب';
+      }
     }
 
     if (stepNum === 4) {
@@ -699,34 +705,42 @@ export default function QuickAddPage() {
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <User size={18} />
-                      اسم الجد
-                      <span className="text-xs text-gray-400 font-normal">(يحسّن دقة البحث)</span>
+                      اسم الجد <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.grandfatherName}
                       onChange={(e) => updateField('grandfatherName', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-lg focus:outline-none transition-all ${
+                        errors.grandfatherName ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500'
+                      }`}
                       placeholder="مثال: حمد"
                       dir="rtl"
                     />
+                    {errors.grandfatherName && (
+                      <p className="text-red-500 text-sm mt-1">{errors.grandfatherName}</p>
+                    )}
                   </div>
 
                   {/* Great-Grandfather Name */}
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <User size={18} />
-                      اسم جد الأب
-                      <span className="text-xs text-gray-400 font-normal">(اختياري)</span>
+                      اسم جد الأب <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.greatGrandfatherName}
                       onChange={(e) => updateField('greatGrandfatherName', e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-indigo-500 transition-all"
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-lg focus:outline-none transition-all ${
+                        errors.greatGrandfatherName ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500'
+                      }`}
                       placeholder="مثال: شايع"
                       dir="rtl"
                     />
+                    {errors.greatGrandfatherName && (
+                      <p className="text-red-500 text-sm mt-1">{errors.greatGrandfatherName}</p>
+                    )}
                   </div>
 
                   {/* Great2-Grandfather Name (5th ancestor) */}
