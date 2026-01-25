@@ -8,7 +8,8 @@ import SearchableDropdown from '@/components/SearchableDropdown';
 import AddMemberGraph from '@/components/AddMemberGraph';
 import { storageKeys } from '@/config/storage-keys';
 import { paginationSettings, dbSettings } from '@/config/constants';
-import { MatchConfirmation, MatchComparisonGraphs } from '@/components/quick-add';
+import { MatchConfirmation, MatchComparisonGraphs, SearchHelperQuestions, filterByBranch, filterByUncleName } from '@/components/quick-add';
+import type { HelperStep } from '@/components/quick-add';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import GenderAvatar from '@/components/GenderAvatar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +17,7 @@ import {
   PlusCircle,
   Check,
   User,
+  Users,
   Calendar,
   MapPin,
   Briefcase,
@@ -108,6 +110,11 @@ export default function QuickAddPage() {
   const [matchingState, setMatchingState] = useState<MatchingState>('idle');
   const [matchResults, setMatchResults] = useState<MatchCandidate[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<MatchCandidate | null>(null);
+
+  // Helper questions state
+  const [helperStep, setHelperStep] = useState<HelperStep>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [uncleNameFilter, setUncleNameFilter] = useState<string>('');
 
   // Duplicate detection state
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
@@ -368,6 +375,10 @@ export default function QuickAddPage() {
           setMatchingState('found');
         } else {
           setMatchingState('multiple');
+          // Start helper questions flow if multiple matches
+          if (allMatches.length > 2) {
+            setHelperStep('branch');
+          }
         }
       } else {
         setMatchingState('no_match');
@@ -432,6 +443,9 @@ export default function QuickAddPage() {
       setMatchingState('idle');
       setMatchResults([]);
       setSelectedMatch(null);
+      setHelperStep(null);
+      setSelectedBranch(null);
+      setUncleNameFilter('');
     }
     setStep((prev) => Math.max(prev - 1, 1));
   };
@@ -528,6 +542,39 @@ export default function QuickAddPage() {
     setMatchResults([]);
     setSelectedMatch(null);
     setAutoFillData(null);
+    setHelperStep(null);
+    setSelectedBranch(null);
+    setUncleNameFilter('');
+  };
+
+  // Filter match results based on helper answers
+  const getFilteredResults = (): MatchCandidate[] => {
+    let filtered = matchResults;
+    
+    if (selectedBranch) {
+      filtered = filterByBranch(filtered, selectedBranch);
+    }
+    
+    if (uncleNameFilter) {
+      filtered = filterByUncleName(filtered, uncleNameFilter);
+    }
+    
+    return filtered;
+  };
+
+  const filteredResults = getFilteredResults();
+
+  // Helper step navigation
+  const handleHelperNext = () => {
+    if (helperStep === 'branch') {
+      setHelperStep('uncle');
+    } else if (helperStep === 'uncle') {
+      setHelperStep('done');
+    }
+  };
+
+  const handleHelperSkip = () => {
+    setHelperStep('done');
   };
 
   const steps = [
@@ -818,13 +865,84 @@ export default function QuickAddPage() {
 
                 {/* Multiple Matches */}
                 {matchingState === 'multiple' && (
-                  <MatchComparisonGraphs
-                    candidates={matchResults}
-                    newPersonName={formData.firstName}
-                    newPersonGender={formData.gender}
-                    selectedId={selectedMatch?.fatherId}
-                    onSelect={handleSelectMatch}
-                  />
+                  <>
+                    {/* Show helper questions if in helper flow */}
+                    {(helperStep === 'branch' || helperStep === 'uncle') && (
+                      <SearchHelperQuestions
+                        helperStep={helperStep}
+                        matchResults={matchResults}
+                        selectedBranch={selectedBranch}
+                        uncleNameFilter={uncleNameFilter}
+                        onBranchSelect={setSelectedBranch}
+                        onUncleNameChange={setUncleNameFilter}
+                        onNextStep={handleHelperNext}
+                        onSkip={handleHelperSkip}
+                        filteredCount={filteredResults.length}
+                      />
+                    )}
+
+                    {/* Show match results after helper questions or if few matches */}
+                    {(helperStep === 'done' || helperStep === null) && (
+                      <>
+                        {/* Show filter summary if filters applied */}
+                        {(selectedBranch || uncleNameFilter) && (
+                          <div className="bg-indigo-50 rounded-xl p-4 mb-4 border border-indigo-100">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4 text-sm">
+                                {selectedBranch && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg">
+                                    <GitBranch size={14} />
+                                    {selectedBranch === 'ibrahim' && 'فرع إبراهيم'}
+                                    {selectedBranch === 'abdulkarim' && 'فرع عبدالكريم'}
+                                    {selectedBranch === 'fawzan' && 'فرع فوزان'}
+                                  </span>
+                                )}
+                                {uncleNameFilter && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-lg">
+                                    <Users size={14} />
+                                    عم: {uncleNameFilter}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedBranch(null);
+                                  setUncleNameFilter('');
+                                  setHelperStep(matchResults.length > 2 ? 'branch' : null);
+                                }}
+                                className="text-xs text-indigo-600 hover:text-indigo-800"
+                              >
+                                إعادة تعيين الفلاتر
+                              </button>
+                            </div>
+                            <p className="text-xs text-indigo-600 mt-2">
+                              تم تصفية النتائج من {matchResults.length} إلى {filteredResults.length}
+                            </p>
+                          </div>
+                        )}
+
+                        <MatchComparisonGraphs
+                          candidates={filteredResults.length > 0 ? filteredResults : matchResults}
+                          newPersonName={formData.firstName}
+                          newPersonGender={formData.gender}
+                          selectedId={selectedMatch?.fatherId}
+                          onSelect={handleSelectMatch}
+                        />
+
+                        {/* Show option to restart helper if no filtered results */}
+                        {filteredResults.length === 0 && (selectedBranch || uncleNameFilter) && (
+                          <div className="mt-4 text-center bg-amber-50 rounded-xl p-4 border border-amber-200">
+                            <AlertCircle size={24} className="mx-auto text-amber-500 mb-2" />
+                            <p className="text-amber-700 text-sm">
+                              لم يتم العثور على نتائج تطابق الفلاتر المحددة.
+                              <br />
+                              يتم عرض جميع النتائج الأصلية.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
 
                 {/* No Match Found */}

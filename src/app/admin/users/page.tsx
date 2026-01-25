@@ -21,6 +21,7 @@ import {
   UserX,
   UserCheck,
   Link2Off,
+  Link2,
   UserCog,
   Key,
   Trash2,
@@ -82,7 +83,7 @@ export default function AdminUsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{
-    type: 'block' | 'unblock' | 'unlink' | 'promote' | 'reset_password' | 'delete' | 'verify' | 'block_ban';
+    type: 'block' | 'unblock' | 'unlink' | 'promote' | 'reset_password' | 'delete' | 'verify' | 'block_ban' | 'link';
     user: UserData;
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -92,6 +93,27 @@ export default function AdminUsersPage() {
   const [blockEmail, setBlockEmail] = useState(true);
   const [unlinkMember, setUnlinkMember] = useState(false);
   const [duplicatePhoneCount, setDuplicatePhoneCount] = useState(0);
+  const [linkSearchQuery, setLinkSearchQuery] = useState('');
+  const [linkSearchResults, setLinkSearchResults] = useState<Array<{
+    id: string;
+    firstName: string;
+    fullNameAr: string | null;
+    fullNameEn: string | null;
+    fatherName: string | null;
+    generation: number | null;
+    branch: string | null;
+  }>>([]);
+  const [isSearchingMembers, setIsSearchingMembers] = useState(false);
+  const [selectedMemberToLink, setSelectedMemberToLink] = useState<{
+    id: string;
+    firstName: string;
+    fullNameAr: string | null;
+    fullNameEn: string | null;
+    fatherName: string | null;
+    generation: number | null;
+    branch: string | null;
+  } | null>(null);
+  const [linkStep, setLinkStep] = useState<'search' | 'confirm'>('search');
   const limit = 20;
 
   useEffect(() => {
@@ -390,6 +412,76 @@ export default function AdminUsersPage() {
   const openVerifyModal = (user: UserData) => {
     setVerifyNotes('');
     setShowConfirmModal({ type: 'verify', user });
+  };
+
+  const openLinkModal = (user: UserData) => {
+    setLinkSearchQuery('');
+    setLinkSearchResults([]);
+    setSelectedMemberToLink(null);
+    setLinkStep('search');
+    setShowConfirmModal({ type: 'link', user });
+  };
+
+  const searchMembers = async (query: string) => {
+    if (!session?.token || query.length < 2) {
+      setLinkSearchResults([]);
+      return;
+    }
+    setIsSearchingMembers(true);
+
+    try {
+      const res = await fetch(`/api/members?search=${encodeURIComponent(query)}&limit=20`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setLinkSearchResults(data.data || []);
+      } else {
+        setLinkSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Error searching members:', err);
+      setLinkSearchResults([]);
+    } finally {
+      setIsSearchingMembers(false);
+    }
+  };
+
+  const handleLinkUser = async (user: UserData, memberId: string) => {
+    if (!session?.token) return;
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/link`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ memberId }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSuccessMessage(data.messageAr || 'تم ربط المستخدم بالعضو بنجاح');
+        await fetchUsers();
+        setShowConfirmModal(null);
+        setSelectedMemberToLink(null);
+        setLinkSearchQuery('');
+        setLinkSearchResults([]);
+        setLinkStep('search');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.messageAr || 'فشل في ربط المستخدم بالعضو');
+      }
+    } catch (err) {
+      console.error('Error linking user:', err);
+      setError('حدث خطأ في ربط المستخدم بالعضو');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const stats = useMemo(() => ({
@@ -811,6 +903,16 @@ export default function AdminUsersPage() {
                                   فك الارتباط
                                 </button>
                               )}
+                              {!user.linkedMemberId && (
+                                <button
+                                  onClick={() => openLinkModal(user)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="ربط بعضو"
+                                >
+                                  <Link2 className="w-4 h-4" />
+                                  ربط بعضو
+                                </button>
+                              )}
                               {user.status === 'ACTIVE' && (
                                 <button
                                   onClick={() => setShowConfirmModal({ type: 'block', user })}
@@ -1078,8 +1180,169 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      {/* Link Member Modal */}
+      {showConfirmModal?.type === 'link' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-blue-100">
+                <Link2 className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">ربط المستخدم بعضو</h3>
+                <p className="text-gray-500">{showConfirmModal.user.nameArabic}</p>
+              </div>
+            </div>
+
+            {linkStep === 'search' ? (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ابحث عن العضو
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={linkSearchQuery}
+                      onChange={(e) => {
+                        setLinkSearchQuery(e.target.value);
+                        searchMembers(e.target.value);
+                      }}
+                      placeholder="ابحث بالاسم..."
+                      className="w-full pr-10 pl-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {isSearchingMembers && (
+                      <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 animate-spin" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[300px] border rounded-lg">
+                  {linkSearchResults.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500 p-4">
+                      <Users className="w-12 h-12 mb-2 text-gray-300" />
+                      <p className="text-sm">
+                        {linkSearchQuery.length < 2
+                          ? 'أدخل حرفين على الأقل للبحث'
+                          : 'لم يتم العثور على أعضاء'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {linkSearchResults.map((member) => (
+                        <button
+                          key={member.id}
+                          onClick={() => {
+                            setSelectedMemberToLink(member);
+                            setLinkStep('confirm');
+                          }}
+                          className="w-full p-3 text-right hover:bg-blue-50 transition-colors"
+                        >
+                          <p className="font-medium text-gray-900">
+                            {member.fullNameAr || member.firstName}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
+                            {member.fatherName && (
+                              <span>الأب: {member.fatherName}</span>
+                            )}
+                            {member.generation && (
+                              <span className="px-1.5 py-0.5 bg-gray-100 rounded">
+                                الجيل: {member.generation}
+                              </span>
+                            )}
+                            {member.branch && (
+                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                {member.branch}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => {
+                      setShowConfirmModal(null);
+                      setLinkSearchQuery('');
+                      setLinkSearchResults([]);
+                      setSelectedMemberToLink(null);
+                      setLinkStep('search');
+                    }}
+                    className="flex-1 px-4 py-2.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    disabled={isProcessing}
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-blue-900 mb-2">تأكيد الربط</h4>
+                  <p className="text-sm text-blue-700 mb-3">
+                    هل أنت متأكد من ربط المستخدم بهذا العضو؟
+                  </p>
+                  <div className="bg-white rounded-lg p-3 border border-blue-200">
+                    <p className="font-medium text-gray-900">
+                      {selectedMemberToLink?.fullNameAr || selectedMemberToLink?.firstName}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
+                      {selectedMemberToLink?.fatherName && (
+                        <span>الأب: {selectedMemberToLink.fatherName}</span>
+                      )}
+                      {selectedMemberToLink?.generation && (
+                        <span className="px-1.5 py-0.5 bg-gray-100 rounded">
+                          الجيل: {selectedMemberToLink.generation}
+                        </span>
+                      )}
+                      {selectedMemberToLink?.branch && (
+                        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                          {selectedMemberToLink.branch}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setLinkStep('search')}
+                    className="flex-1 px-4 py-2.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    disabled={isProcessing}
+                  >
+                    رجوع
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedMemberToLink) {
+                        handleLinkUser(showConfirmModal.user, selectedMemberToLink.id);
+                      }
+                    }}
+                    disabled={isProcessing}
+                    className="flex-1 px-4 py-2.5 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Link2 className="w-5 h-5" />
+                        تأكيد الربط
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Existing Confirmation Modal */}
-      {showConfirmModal && !['verify', 'block_ban'].includes(showConfirmModal.type) && (
+      {showConfirmModal && !['verify', 'block_ban', 'link'].includes(showConfirmModal.type) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center gap-4 mb-4">
