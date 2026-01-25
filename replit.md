@@ -24,7 +24,8 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **Transactional Approval Pipeline**: Atomic member approval using Prisma SERIALIZABLE transactions.
     -   **Data Integrity Validation**: Comprehensive validation system with 13 checks (generations, parent relationships, circular ancestry, duplicates, etc.).
     -   **Duplicate Detection & Prevention**: Fuzzy matching with Levenshtein distance, real-time warnings, and a public API for duplicate checks.
-    -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data.
+    -   **Generation-Aware Duplicate Detection**: Members with 2+ generation difference are automatically excluded from duplicate detection (similarity capped at 40%, below 85% threshold), preventing false matches for identical names across different generations.
+    -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data. Server-side blocking prevents merges between members with critical generation mismatch (>=2 generations apart).
     -   **Phone Number Normalization**: Centralized utility for normalizing Saudi phone numbers to a standard format (+9665XXXXXXXX) with strict validation.
 -   **Security Hardening**:
     -   API Rate Limiting for public endpoints.
