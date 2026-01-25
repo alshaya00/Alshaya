@@ -97,7 +97,7 @@ export default function MemberMiniGraph({
     const nodeHeight = 95;
     const verticalGap = 140;
     const horizontalGap = 200; // Spacing between children/siblings
-    const grandchildSpacing = 130; // Spacing between grandchildren
+    const grandchildSpacing = 170; // Spacing between grandchildren
 
     // ========== BLOOD FAMILY (Left/Center) ==========
 
