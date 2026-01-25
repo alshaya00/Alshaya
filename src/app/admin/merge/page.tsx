@@ -49,6 +49,7 @@ interface MergePreview {
   warningsAr: string[];
   hasCriticalGenerationMismatch?: boolean;
   generationDifference?: number;
+  hasDifferentFather?: boolean;
 }
 
 interface SearchResult {
@@ -425,7 +426,23 @@ export default function MergeToolPage() {
               معاينة عملية الدمج
             </h2>
 
-            {preview.hasCriticalGenerationMismatch && (
+            {preview.hasDifferentFather && (
+              <div className="bg-red-100 border-4 border-red-600 rounded-lg p-5 mb-4 animate-pulse">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-red-600 text-white rounded-full p-2">
+                    <X size={24} />
+                  </div>
+                  <span className="font-bold text-xl text-red-900">🚫 ممنوع الدمج: آباء مختلفون!</span>
+                </div>
+                <div className="bg-red-200 p-4 rounded-lg text-red-900 text-lg">
+                  <strong>هؤلاء أشخاص مختلفون بالتأكيد!</strong> لديهم آباء مختلفون في قاعدة البيانات.
+                  <br />
+                  <span className="text-base">حتى لو تطابق الاسم 100%، وجود آباء مختلفين يثبت أنهم ليسوا نفس الشخص. الدمج محظور.</span>
+                </div>
+              </div>
+            )}
+
+            {preview.hasCriticalGenerationMismatch && !preview.hasDifferentFather && (
               <div className="bg-red-100 border-2 border-red-500 rounded-lg p-5 mb-4 animate-pulse">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="bg-red-500 text-white rounded-full p-2">
@@ -539,11 +556,16 @@ export default function MergeToolPage() {
             <div className="flex gap-3">
               <button
                 onClick={executeMerge}
-                disabled={isMerging || !mergeReason.trim()}
-                className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+                disabled={isMerging || !mergeReason.trim() || preview.hasDifferentFather || preview.hasCriticalGenerationMismatch}
+                className={`px-6 py-3 text-white rounded-lg flex items-center gap-2 disabled:opacity-50 ${
+                  preview.hasDifferentFather || preview.hasCriticalGenerationMismatch 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+                title={preview.hasDifferentFather ? 'الدمج محظور: آباء مختلفون' : preview.hasCriticalGenerationMismatch ? 'الدمج محظور: فارق كبير في الأجيال' : ''}
               >
                 {isMerging ? <Loader2 className="animate-spin" size={20} /> : <GitMerge size={20} />}
-                تنفيذ الدمج
+                {preview.hasDifferentFather || preview.hasCriticalGenerationMismatch ? 'الدمج محظور' : 'تنفيذ الدمج'}
               </button>
               <button
                 onClick={() => setPreview(null)}

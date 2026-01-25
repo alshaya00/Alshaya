@@ -25,7 +25,11 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **Data Integrity Validation**: Comprehensive validation system with 13 checks (generations, parent relationships, circular ancestry, duplicates, etc.).
     -   **Duplicate Detection & Prevention**: Fuzzy matching with Levenshtein distance, real-time warnings, and a public API for duplicate checks.
     -   **Generation-Aware Duplicate Detection**: Members with 2+ generation difference are automatically excluded from duplicate detection (similarity capped at 40%, below 85% threshold), preventing false matches for identical names across different generations.
-    -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data. Server-side blocking prevents merges between members with critical generation mismatch (>=2 generations apart).
+    -   **Father ID-Based Duplicate Detection**: Members with different fathers (fatherId) are automatically excluded from duplicate detection (similarity capped at 35%, even stricter than generation check). This is the STRONGEST differentiator - if two members have different fathers, they are definitely different people regardless of name similarity.
+    -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data. Server-side blocking prevents merges between members with:
+        - Different fathers (highest priority block)
+        - Critical generation mismatch (>=2 generations apart)
+        - Both members having linked user accounts
     -   **Phone Number Normalization**: Centralized utility for normalizing Saudi phone numbers to a standard format (+9665XXXXXXXX) with strict validation.
 -   **Security Hardening**:
     -   API Rate Limiting for public endpoints.
@@ -39,6 +43,7 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   Tools for managing unregistered members and sending invitations.
     -   **Manual User-Member Linking**: Admin can manually link orphaned user accounts to existing family members via search interface.
     -   **Orphaned Users Report** (`/admin/orphaned`): Dashboard showing users without linked members, with auto-suggested matches based on name similarity.
+    -   **Data Cleanup Tool** (`/admin/data-cleanup`): Dashboard to scan and review potential false duplicates (same name, different fathers/generations). Allows marking pairs as "verified different people" with full audit logging and ability to revert.
 -   **Quick-Add Smart Search**:
     -   Helper questions automatically triggered when multiple matches found.
     -   Branch selection (Ibrahim/Abdulkarim/Fawzan) and uncle name filters to narrow down search results.

@@ -14,6 +14,7 @@ export interface MergePreview {
   linkedAccounts: { userId: string; email: string; nameArabic: string; memberType: 'source' | 'target' }[];
   hasCriticalGenerationMismatch: boolean;
   generationDifference: number;
+  hasDifferentFather: boolean;
 }
 
 export interface MergeConflict {
@@ -94,9 +95,14 @@ export async function generateMergePreview(
     }
   }
 
-  if (source.fatherId !== target.fatherId) {
-    warnings.push('Members have different fathers - this may indicate they are not duplicates');
-    warningsAr.push('الأعضاء لديهم آباء مختلفون - قد يعني ذلك أنهم ليسوا تكرارات');
+  // Check for different fathers - this is a critical blocker
+  const hasDifferentFather = !!(source.fatherId && target.fatherId && source.fatherId !== target.fatherId);
+  if (hasDifferentFather) {
+    warnings.push('⚠️ CRITICAL: Members have DIFFERENT FATHERS - These are DEFINITELY DIFFERENT PEOPLE with the same name! Merge is blocked.');
+    warningsAr.push('⚠️ تحذير خطير: الأعضاء لديهم آباء مختلفون - هؤلاء أشخاص مختلفون بالتأكيد بنفس الاسم! الدمج محظور.');
+  } else if (source.fatherId !== target.fatherId) {
+    warnings.push('Members have different or missing father links');
+    warningsAr.push('الأعضاء لديهم روابط آباء مختلفة أو مفقودة');
   }
 
   if (source.phone && target.phone && source.phone !== target.phone) {
@@ -182,6 +188,7 @@ export async function generateMergePreview(
     linkedAccounts,
     hasCriticalGenerationMismatch,
     generationDifference,
+    hasDifferentFather,
   };
 }
 
@@ -208,6 +215,15 @@ export async function mergeMemberProfiles(
       success: false,
       message: 'Cannot merge: both members have linked user accounts. Unlink one account first.',
       messageAr: 'لا يمكن الدمج: كلا العضوين مرتبطان بحسابات مستخدمين. يرجى فك ارتباط أحد الحسابات أولاً',
+    };
+  }
+
+  // Block merge if members have different fathers (definitely different people with same name)
+  if (preview.hasDifferentFather) {
+    return {
+      success: false,
+      message: `Cannot merge: Members have DIFFERENT FATHERS - These are definitely different people with the same name.`,
+      messageAr: `لا يمكن الدمج: الأعضاء لديهم آباء مختلفون - هؤلاء أشخاص مختلفون بالتأكيد بنفس الاسم.`,
     };
   }
 

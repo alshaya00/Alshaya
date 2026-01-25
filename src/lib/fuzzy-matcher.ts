@@ -172,6 +172,9 @@ export function calculateMemberSimilarity(
     }
   }
   
+  // Father ID comparison - STRONGEST DIFFERENTIATOR
+  // If both have fatherId and they're different = DEFINITELY different people
+  let hasDifferentFather = false;
   if (input.fatherId && existingMember.fatherId) {
     const fatherIdMatch = input.fatherId === existingMember.fatherId;
     const weight = 50;
@@ -182,6 +185,8 @@ export function calculateMemberSimilarity(
     if (fatherIdMatch) {
       matchReasons.push('Same father (linked)');
       matchReasonsAr.push('نفس الأب (مرتبط)');
+    } else {
+      hasDifferentFather = true;
     }
   }
   
@@ -289,7 +294,14 @@ export function calculateMemberSimilarity(
     rawSimilarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
   }
   
-  if (generationComparison.isDifferentPerson) {
+  // FATHER ID DIFFERENTIATION - Strongest differentiator
+  // If both have fatherId and they're different = DEFINITELY different people
+  // This takes priority over generation check
+  if (hasDifferentFather) {
+    rawSimilarityScore = Math.min(rawSimilarityScore, 35);
+    matchReasons.push(`CRITICAL: Different fathers - DEFINITELY DIFFERENT PEOPLE with same name`);
+    matchReasonsAr.push(`تحذير خطير: آباء مختلفون - أشخاص مختلفون بالتأكيد بنفس الاسم`);
+  } else if (generationComparison.isDifferentPerson) {
     rawSimilarityScore = Math.min(rawSimilarityScore, 40);
     matchReasons.push(`CRITICAL: Generation mismatch (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} generations apart) - DIFFERENT PEOPLE with same name`);
     matchReasonsAr.push(`تحذير خطير: اختلاف الجيل (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} أجيال) - أشخاص مختلفون بنفس الاسم`);
