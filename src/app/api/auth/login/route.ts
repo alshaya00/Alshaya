@@ -151,32 +151,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check user status
-    if (user.status === 'PENDING') {
-      await recordLoginHistory(user.id, false, 'PASSWORD', ipAddress, userAgent, 'الحساب بانتظار الموافقة');
-      await logActivity({
-        userId: user.id,
-        userEmail: user.email,
-        userName: user.nameArabic,
-        action: 'LOGIN_FAILED',
-        category: 'AUTH',
-        details: { reason: 'Account pending approval' },
-        ipAddress,
-        userAgent,
-        success: false,
-        errorMessage: 'Account pending approval',
-      });
-
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Your account is pending approval',
-          messageAr: 'حسابك بانتظار الموافقة',
-          pending: true,
-        },
-        { status: 403 }
-      );
-    }
+    // PENDING users can now login - admin will review later
+    // Status check only blocks DISABLED accounts
 
     if (user.status === 'DISABLED') {
       await recordLoginHistory(user.id, false, 'PASSWORD', ipAddress, userAgent, 'الحساب معطل');
