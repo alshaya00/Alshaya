@@ -93,12 +93,11 @@ export default function MemberMiniGraph({
     const milkCenterX = dimensions.width * 0.75;
 
     // Spacing - optimized for visual hierarchy
-    // Children closer together, grandchildren more spread out
     const nodeWidth = 140;
     const nodeHeight = 95;
     const verticalGap = 140;
-    const horizontalGap = 160; // Reduced for children (was 220)
-    const grandchildSpacing = 90; // Increased spacing between grandchildren (was 50)
+    const horizontalGap = 200; // Spacing between children/siblings
+    const grandchildSpacing = 90; // Spacing between grandchildren
 
     // ========== BLOOD FAMILY (Left/Center) ==========
 
