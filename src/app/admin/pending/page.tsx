@@ -5,7 +5,8 @@ import type { FamilyMember } from '@/lib/types';
 import {
   Check, X, Edit2, Clock, User, Filter, Trash2,
   ChevronDown, ChevronRight, AlertCircle, CheckCircle, XCircle,
-  Save, RotateCcw, Search, GitBranch, Users, TreePine, Loader2
+  Save, RotateCcw, Search, GitBranch, Users, TreePine, Loader2,
+  Eye, Link2, UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,6 +90,11 @@ export default function AdminPendingPage() {
     pendingName: string;
     duplicateIds: string[];
   } | null>(null);
+  const [reviewModal, setReviewModal] = useState<{
+    pending: DbPendingMember;
+    parent: FamilyMember | null;
+    children: FamilyMember[];
+  } | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -135,6 +141,52 @@ export default function AdminPendingPage() {
 
   const getMemberById = (id: string): FamilyMember | undefined => {
     return allMembers.find(m => m.id === id);
+  };
+
+  const getChildrenOfParent = useCallback((parentId: string): FamilyMember[] => {
+    return allMembers.filter(m => m.fatherId === parentId);
+  }, [allMembers]);
+
+  const openReviewModal = useCallback((member: DbPendingMember) => {
+    if (member.proposedFatherId) {
+      const parent = getMemberById(member.proposedFatherId) || null;
+      const children = getChildrenOfParent(member.proposedFatherId);
+      setReviewModal({ pending: member, parent, children });
+    } else {
+      setReviewModal({ pending: member, parent: null, children: [] });
+    }
+  }, [getChildrenOfParent]);
+
+  const handleLinkToExisting = async (pendingId: string, targetMemberId: string) => {
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/pending/${pendingId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'merge_update', targetMemberId }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(data.messageAr || 'تم ربط العضو بنجاح');
+        await fetchPendingMembers();
+        setReviewModal(null);
+      } else {
+        alert(data.messageAr || data.message || 'حدث خطأ أثناء الربط');
+      }
+    } catch (error) {
+      console.error('Error linking member:', error);
+      alert('حدث خطأ أثناء الربط. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const filteredMembers = useMemo(() => {
@@ -697,6 +749,16 @@ export default function AdminPendingPage() {
                               <>
                                 {member.reviewStatus === 'PENDING' ? (
                                   <>
+                                    {member.proposedFatherId && (
+                                      <button
+                                        onClick={() => openReviewModal(member)}
+                                        className="p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200"
+                                        title="مراجعة تفصيلية"
+                                        disabled={isProcessing}
+                                      >
+                                        <Eye size={18} />
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() => handleApprove([member.id])}
                                       className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200"
@@ -887,6 +949,206 @@ export default function AdminPendingPage() {
                 >
                   رفض العضو المكرر
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 rounded-t-2xl bg-gradient-to-l from-purple-500 to-purple-600 text-white flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <Eye size={24} />
+                <div>
+                  <h3 className="font-bold text-lg">مراجعة تفصيلية</h3>
+                  <p className="text-purple-100 text-sm">{reviewModal.pending.fullNameAr || reviewModal.pending.firstName}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                  <User size={18} />
+                  بيانات الطلب
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">الاسم:</span>
+                    <span className="font-medium text-gray-800 mr-2">{reviewModal.pending.firstName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">اسم الأب:</span>
+                    <span className="font-medium text-gray-800 mr-2">{reviewModal.pending.fatherName || 'غير محدد'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">الجيل:</span>
+                    <span className="font-medium text-gray-800 mr-2">{reviewModal.pending.generation}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">سنة الميلاد:</span>
+                    <span className="font-medium text-gray-800 mr-2">{reviewModal.pending.birthYear || 'غير محدد'}</span>
+                  </div>
+                  {reviewModal.pending.phone && (
+                    <div>
+                      <span className="text-gray-500">الجوال:</span>
+                      <span className="font-medium text-gray-800 mr-2" dir="ltr">{formatPhoneDisplay(reviewModal.pending.phone)}</span>
+                    </div>
+                  )}
+                  {reviewModal.pending.city && (
+                    <div>
+                      <span className="text-gray-500">المدينة:</span>
+                      <span className="font-medium text-gray-800 mr-2">{reviewModal.pending.city}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {reviewModal.parent && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                  <h4 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                    <TreePine size={18} />
+                    بيانات الأب المقترح
+                  </h4>
+                  <div className="flex items-center gap-4">
+                    <GenderAvatar gender={reviewModal.parent.gender} size="lg" />
+                    <div>
+                      <p className="font-bold text-gray-800">{reviewModal.parent.fullNameAr || reviewModal.parent.firstName}</p>
+                      <p className="text-sm text-gray-500">
+                        المعرف: {reviewModal.parent.id} • الجيل: {reviewModal.parent.generation}
+                        {reviewModal.parent.branch && ` • الفرع: ${reviewModal.parent.branch}`}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {getFullLineageName(reviewModal.parent, allMembers)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {reviewModal.parent && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                  <h4 className="font-bold text-amber-800 mb-3 flex items-center gap-2">
+                    <Users size={18} />
+                    أبناء الأب الحاليون ({reviewModal.children.length})
+                  </h4>
+                  
+                  {reviewModal.children.length === 0 ? (
+                    <p className="text-amber-700 text-sm">لا يوجد أبناء مسجلون حالياً لهذا الأب</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {reviewModal.children.map(child => {
+                        const nameMatch = child.firstName.toLowerCase() === reviewModal.pending.firstName.toLowerCase() ||
+                          (child.fullNameAr && reviewModal.pending.fullNameAr && 
+                           child.fullNameAr.includes(reviewModal.pending.firstName));
+                        const hasLinkedAccount = !!child.phone || !!child.email;
+                        
+                        return (
+                          <div 
+                            key={child.id} 
+                            className={`flex items-center justify-between p-3 rounded-lg ${
+                              nameMatch ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-white border border-amber-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <GenderAvatar gender={child.gender} size="sm" />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-800">{child.firstName}</p>
+                                  {nameMatch && (
+                                    <span className="text-xs px-2 py-0.5 bg-yellow-500 text-white rounded-full">
+                                      اسم مشابه
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  المعرف: {child.id} • 
+                                  {child.status === 'Deceased' ? ' متوفى' : ' على قيد الحياة'}
+                                  {hasLinkedAccount ? (
+                                    <span className="text-green-600 mr-1">• مُسجَّل</span>
+                                  ) : (
+                                    <span className="text-gray-400 mr-1">• غير مُسجَّل</span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {reviewModal.pending.reviewStatus === 'PENDING' && (
+                              <button
+                                onClick={() => handleLinkToExisting(reviewModal.pending.id, child.id)}
+                                disabled={isProcessing}
+                                className="px-3 py-1.5 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1"
+                              >
+                                {isProcessing ? <Loader2 className="animate-spin" size={14} /> : <Link2 size={14} />}
+                                ربط
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {reviewModal.children.some(c => 
+                    c.firstName.toLowerCase() === reviewModal.pending.firstName.toLowerCase()
+                  ) && (
+                    <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+                      <p className="text-yellow-800 text-sm flex items-center gap-2">
+                        <AlertCircle size={16} />
+                        يوجد ابن بنفس الاسم! قد يكون هذا الطلب لنفس الشخص. يمكنك ربط المعلومات بدلاً من إضافة عضو جديد.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!reviewModal.parent && reviewModal.pending.proposedFatherId && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                  <p className="text-red-700 flex items-center gap-2">
+                    <AlertCircle size={18} />
+                    الأب المقترح (المعرف: {reviewModal.pending.proposedFatherId}) غير موجود في الشجرة
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setReviewModal(null)}
+                  className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-100"
+                  disabled={isProcessing}
+                >
+                  إغلاق
+                </button>
+                {reviewModal.pending.reviewStatus === 'PENDING' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        handleApprove([reviewModal.pending.id]);
+                        setReviewModal(null);
+                      }}
+                      disabled={isProcessing}
+                      className="flex-1 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+                      إضافة كعضو جديد
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleReject([reviewModal.pending.id]);
+                        setReviewModal(null);
+                      }}
+                      disabled={isProcessing}
+                      className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isProcessing && <Loader2 className="animate-spin" size={18} />}
+                      رفض
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

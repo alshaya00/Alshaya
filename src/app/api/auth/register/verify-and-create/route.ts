@@ -167,10 +167,114 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ===== AUTO-MATCH: Search for existing child under parent =====
+    // User requirement: "same fatherId + same firstName = impossible to be different people"
+    // Parents don't name two children with the same name in Arab culture
+    // STRICT MATCHING: firstName + gender match, exactly ONE unlinked child matches
+    let autoMatchedMemberId: string | null = null;
+    
+    if (parentMemberId && !relatedMemberId) {
+      const normalizeArabicName = (text: string): string => {
+        return text
+          .replace(/[أإآا]/g, 'ا')
+          .replace(/[ىي]/g, 'ي')
+          .replace(/ة/g, 'ه')
+          .replace(/ؤ/g, 'و')
+          .replace(/ئ/g, 'ي')
+          .replace(/\s+بن\s+/g, ' ')
+          .replace(/\s+بنت\s+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+      };
+      
+      // Extract name parts from input: "محمد بن عبدالله" → ["محمد", "عبدالله"]
+      const inputNameParts = nameArabic.trim()
+        .replace(/\s+بن\s+/g, ' ')
+        .replace(/\s+بنت\s+/g, ' ')
+        .split(/\s+/)
+        .filter(p => p.length > 0);
+      
+      const normalizedInputFirstName = normalizeArabicName(inputNameParts[0] || '');
+      
+      // Get parent info to verify fatherName from child's record
+      const parentInfo = await prisma.familyMember.findUnique({
+        where: { id: parentMemberId },
+        select: { firstName: true }
+      });
+      
+      // Find all children of the selected parent
+      const parentChildren = await prisma.familyMember.findMany({
+        where: {
+          fatherId: parentMemberId,
+          status: { in: ['Living', 'Deceased'] }
+        },
+        select: {
+          id: true,
+          firstName: true,
+          fatherName: true,
+          gender: true,
+        }
+      });
+      
+      // Find matching children with strict criteria
+      const matchingChildren: typeof parentChildren = [];
+      
+      for (const child of parentChildren) {
+        const normalizedChildFirstName = normalizeArabicName(child.firstName);
+        
+        // REQUIRED: firstName must match
+        if (normalizedChildFirstName !== normalizedInputFirstName) continue;
+        
+        // REQUIRED: Gender must match (if provided)
+        if (gender) {
+          const normalizedGender = gender.toLowerCase();
+          const childGender = child.gender?.toLowerCase() || '';
+          const isMaleInput = normalizedGender === 'male' || normalizedGender === 'ذكر';
+          const isFemaleInput = normalizedGender === 'female' || normalizedGender === 'أنثى';
+          const isMaleChild = childGender === 'male' || childGender === 'ذكر';
+          const isFemaleChild = childGender === 'female' || childGender === 'أنثى';
+          
+          if ((isMaleInput && !isMaleChild) || (isFemaleInput && !isFemaleChild)) {
+            continue; // Gender mismatch - skip
+          }
+        }
+        
+        // VERIFY: Child's fatherName should match parent's firstName (consistency check)
+        if (parentInfo && child.fatherName) {
+          const normalizedParentFirstName = normalizeArabicName(parentInfo.firstName);
+          const normalizedChildFatherName = normalizeArabicName(child.fatherName);
+          if (normalizedChildFatherName !== normalizedParentFirstName) {
+            console.log(`Skipping child ${child.id}: fatherName mismatch (expected ${parentInfo.firstName})`);
+            continue; // Data inconsistency - skip
+          }
+        }
+        
+        // Check if this child is already linked to another user
+        const existingLink = await checkMemberLinkedToUser(child.id);
+        if (!existingLink) {
+          matchingChildren.push(child);
+        }
+      }
+      
+      // ONLY auto-match if EXACTLY one unlinked child matches all criteria
+      if (matchingChildren.length === 1) {
+        autoMatchedMemberId = matchingChildren[0].id;
+        console.log(`Auto-matched user to existing member ${autoMatchedMemberId} (exact match: firstName + gender under parent ${parentMemberId})`);
+      } else if (matchingChildren.length > 1) {
+        // This should be rare - same firstName under same parent with same gender
+        console.log(`WARNING: Multiple matching children (${matchingChildren.length}) found under parent ${parentMemberId}, skipping auto-match (requires admin review)`);
+      } else {
+        console.log(`No matching child found under parent ${parentMemberId} for firstName "${inputNameParts[0]}", will create pending request`);
+      }
+    }
+    
+    // Determine final linked member ID
+    const finalLinkedMemberId = relatedMemberId || autoMatchedMemberId || null;
+    
     // Check if the linked member is already linked to another user
-    const targetLinkedMemberId = relatedMemberId || parentMemberId;
-    if (targetLinkedMemberId) {
-      const existingLink = await checkMemberLinkedToUser(targetLinkedMemberId);
+    if (finalLinkedMemberId) {
+      const existingLink = await checkMemberLinkedToUser(finalLinkedMemberId);
       if (existingLink) {
         return NextResponse.json(
           {
@@ -198,7 +302,7 @@ export async function POST(request: NextRequest) {
           role: 'MEMBER',
           status: 'ACTIVE',
           phoneVerified: true,
-          linkedMemberId: relatedMemberId || parentMemberId || null,
+          linkedMemberId: finalLinkedMemberId,
         }
       });
       console.log(`User created successfully: ${user.id}`);
@@ -259,6 +363,10 @@ export async function POST(request: NextRequest) {
         orderBy: { createdAt: 'desc' }
       });
 
+      const reviewNote = autoMatchedMemberId 
+        ? `Auto-matched to existing member ${autoMatchedMemberId} and approved via phone verification (IP: ${ipAddress})`
+        : `Auto-approved via phone verification (IP: ${ipAddress})`;
+      
       if (existingRequest) {
         await prisma.accessRequest.update({
           where: { id: existingRequest.id },
@@ -268,8 +376,8 @@ export async function POST(request: NextRequest) {
             phone: normalizedPhone,
             gender: gender || null,
             claimedRelation: sanitizeString(claimedRelation) || 'Phone Verified Registration',
-            relatedMemberId: relatedMemberId || null,
-            relationshipType: relationshipType || null,
+            relatedMemberId: finalLinkedMemberId || null,
+            relationshipType: autoMatchedMemberId ? 'AUTO_MATCHED' : (relationshipType || null),
             parentMemberId: parentMemberId || null,
             message: sanitizeString(message) || null,
             birthYear: birthYear ? parseInt(birthYear) : null,
@@ -277,7 +385,7 @@ export async function POST(request: NextRequest) {
             occupation: sanitizeString(occupation) || null,
             status: 'APPROVED',
             reviewedAt: new Date(),
-            reviewNote: `Auto-approved via phone verification (IP: ${ipAddress})`,
+            reviewNote,
             userId: user.id,
             approvedRole: 'MEMBER',
           }
@@ -291,8 +399,8 @@ export async function POST(request: NextRequest) {
             phone: normalizedPhone,
             gender: gender || null,
             claimedRelation: sanitizeString(claimedRelation) || 'Phone Verified Registration',
-            relatedMemberId: relatedMemberId || null,
-            relationshipType: relationshipType || null,
+            relatedMemberId: finalLinkedMemberId || null,
+            relationshipType: autoMatchedMemberId ? 'AUTO_MATCHED' : (relationshipType || null),
             parentMemberId: parentMemberId || null,
             message: sanitizeString(message) || null,
             birthYear: birthYear ? parseInt(birthYear) : null,
@@ -300,7 +408,7 @@ export async function POST(request: NextRequest) {
             occupation: sanitizeString(occupation) || null,
             status: 'APPROVED',
             reviewedAt: new Date(),
-            reviewNote: `Auto-approved via phone verification (IP: ${ipAddress})`,
+            reviewNote,
             userId: user.id,
             approvedRole: 'MEMBER',
           }
@@ -326,6 +434,9 @@ export async function POST(request: NextRequest) {
         details: {
           method: 'phone_otp',
           autoApproved: true,
+          autoMatched: !!autoMatchedMemberId,
+          autoMatchedMemberId: autoMatchedMemberId || null,
+          linkedMemberId: finalLinkedMemberId,
         },
         ipAddress,
         userAgent,
