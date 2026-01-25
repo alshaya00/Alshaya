@@ -15,6 +15,7 @@ import {
   Camera,
   UserCheck,
   Link2,
+  Unlink,
   Shield,
   ChevronDown,
   ChevronLeft,
@@ -114,6 +115,12 @@ const adminNavItems: NavItem[] = [
     label: 'الأعضاء غير المسجلين',
     labelEn: 'Unregistered Members',
     icon: UserX,
+  },
+  {
+    href: '/admin/orphaned',
+    label: 'المستخدمون غير المرتبطين',
+    labelEn: 'Orphaned Users',
+    icon: Unlink,
   },
   {
     href: '/admin/images',
