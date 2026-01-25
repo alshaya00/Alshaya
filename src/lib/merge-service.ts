@@ -12,6 +12,8 @@ export interface MergePreview {
   warnings: string[];
   warningsAr: string[];
   linkedAccounts: { userId: string; email: string; nameArabic: string; memberType: 'source' | 'target' }[];
+  hasCriticalGenerationMismatch: boolean;
+  generationDifference: number;
 }
 
 export interface MergeConflict {
@@ -82,8 +84,14 @@ export async function generateMergePreview(
   }
 
   if (source.generation !== target.generation) {
-    warnings.push(`Generation mismatch: source is Gen ${source.generation}, target is Gen ${target.generation}`);
-    warningsAr.push(`اختلاف الجيل: المصدر الجيل ${source.generation}، الهدف الجيل ${target.generation}`);
+    const genDiff = Math.abs(source.generation - target.generation);
+    if (genDiff >= 2) {
+      warnings.push(`⚠️ CRITICAL: Large generation difference (${genDiff} generations apart) - Gen ${source.generation} vs Gen ${target.generation}. These are almost certainly DIFFERENT PEOPLE with the same name!`);
+      warningsAr.push(`⚠️ تحذير خطير: فارق كبير في الأجيال (${genDiff} أجيال) - الجيل ${source.generation} مقابل الجيل ${target.generation}. هؤلاء على الأرجح أشخاص مختلفون بنفس الاسم!`);
+    } else {
+      warnings.push(`Generation mismatch: source is Gen ${source.generation}, target is Gen ${target.generation}`);
+      warningsAr.push(`اختلاف الجيل: المصدر الجيل ${source.generation}، الهدف الجيل ${target.generation}`);
+    }
   }
 
   if (source.fatherId !== target.fatherId) {
@@ -159,6 +167,9 @@ export async function generateMergePreview(
     warningsAr.push('محظور: كلا العضوين مرتبطان بحسابات مستخدمين! يجب فك ارتباط أحد الحسابات قبل الدمج');
   }
 
+  const generationDifference = Math.abs(source.generation - target.generation);
+  const hasCriticalGenerationMismatch = generationDifference >= 2;
+
   return {
     source,
     target,
@@ -169,6 +180,8 @@ export async function generateMergePreview(
     warnings,
     warningsAr,
     linkedAccounts,
+    hasCriticalGenerationMismatch,
+    generationDifference,
   };
 }
 
@@ -195,6 +208,15 @@ export async function mergeMemberProfiles(
       success: false,
       message: 'Cannot merge: both members have linked user accounts. Unlink one account first.',
       messageAr: 'لا يمكن الدمج: كلا العضوين مرتبطان بحسابات مستخدمين. يرجى فك ارتباط أحد الحسابات أولاً',
+    };
+  }
+
+  // Block merge if generation difference is too large (likely different people with same name)
+  if (preview.hasCriticalGenerationMismatch) {
+    return {
+      success: false,
+      message: `Cannot merge: ${preview.generationDifference} generation difference indicates these are different people with the same name. Gen ${preview.source.generation} vs Gen ${preview.target.generation}.`,
+      messageAr: `لا يمكن الدمج: فارق ${preview.generationDifference} أجيال يشير إلى أن هؤلاء أشخاص مختلفون بنفس الاسم. الجيل ${preview.source.generation} مقابل الجيل ${preview.target.generation}.`,
     };
   }
 

@@ -47,6 +47,8 @@ interface MergePreview {
   impactedJournals: number;
   warnings: string[];
   warningsAr: string[];
+  hasCriticalGenerationMismatch?: boolean;
+  generationDifference?: number;
 }
 
 interface SearchResult {
@@ -310,9 +312,12 @@ export default function MergeToolPage() {
                       className="w-full text-right p-3 hover:bg-gray-50 border-b last:border-b-0"
                     >
                       <div className="font-medium">{member.fullNameAr || member.firstName}</div>
-                      <div className="text-sm text-gray-500">
-                        {formatMemberId(member.id)} - الجيل {member.generation}
-                        {member.branch && ` - ${member.branch}`}
+                      <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                        <span>{formatMemberId(member.id)}</span>
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-bold">
+                          الجيل {member.generation}
+                        </span>
+                        {member.branch && <span className="text-gray-400">{member.branch}</span>}
                       </div>
                     </button>
                   ))}
@@ -323,8 +328,11 @@ export default function MergeToolPage() {
               <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
                 <div className="font-medium text-red-800">{selectedSource.fullNameAr}</div>
                 <div className="text-sm text-red-600">{selectedSource.fullNameEn}</div>
-                <div className="text-xs text-red-500 mt-1">
-                  {selectedSource.id} - الجيل {selectedSource.generation}
+                <div className="text-xs text-red-500 mt-1 flex items-center gap-2">
+                  <span>{selectedSource.id}</span>
+                  <span className="bg-red-200 text-red-800 px-2 py-0.5 rounded-full font-bold">
+                    الجيل {selectedSource.generation}
+                  </span>
                 </div>
               </div>
             )}
@@ -357,9 +365,12 @@ export default function MergeToolPage() {
                       className="w-full text-right p-3 hover:bg-gray-50 border-b last:border-b-0"
                     >
                       <div className="font-medium">{member.fullNameAr || member.firstName}</div>
-                      <div className="text-sm text-gray-500">
-                        {formatMemberId(member.id)} - الجيل {member.generation}
-                        {member.branch && ` - ${member.branch}`}
+                      <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                        <span>{formatMemberId(member.id)}</span>
+                        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-bold">
+                          الجيل {member.generation}
+                        </span>
+                        {member.branch && <span className="text-gray-400">{member.branch}</span>}
                       </div>
                     </button>
                   ))}
@@ -370,8 +381,11 @@ export default function MergeToolPage() {
               <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="font-medium text-green-800">{selectedTarget.fullNameAr}</div>
                 <div className="text-sm text-green-600">{selectedTarget.fullNameEn}</div>
-                <div className="text-xs text-green-500 mt-1">
-                  {selectedTarget.id} - الجيل {selectedTarget.generation}
+                <div className="text-xs text-green-500 mt-1 flex items-center gap-2">
+                  <span>{selectedTarget.id}</span>
+                  <span className="bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">
+                    الجيل {selectedTarget.generation}
+                  </span>
                 </div>
               </div>
             )}
@@ -379,7 +393,20 @@ export default function MergeToolPage() {
         </div>
 
         {selectedSource && selectedTarget && !preview && (
-          <div className="flex justify-center mb-6">
+          <div className="flex flex-col items-center mb-6 gap-4">
+            {Math.abs(selectedSource.generation - selectedTarget.generation) >= 2 && (
+              <div className="w-full max-w-xl bg-red-100 border-2 border-red-400 rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-red-800 font-bold mb-2">
+                  <AlertTriangle size={20} />
+                  <span>تحذير: فارق كبير في الأجيال!</span>
+                </div>
+                <p className="text-red-700 text-sm">
+                  العضو المصدر في الجيل {selectedSource.generation} والعضو الهدف في الجيل {selectedTarget.generation}.
+                  <br />
+                  فارق {Math.abs(selectedSource.generation - selectedTarget.generation)} أجيال - هؤلاء على الأرجح أشخاص مختلفون بنفس الاسم!
+                </p>
+              </div>
+            )}
             <button
               onClick={generatePreview}
               disabled={isLoading}
@@ -398,13 +425,32 @@ export default function MergeToolPage() {
               معاينة عملية الدمج
             </h2>
 
-            {preview.warningsAr.length > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="text-yellow-600" size={18} />
-                  <span className="font-medium text-yellow-800">تحذيرات</span>
+            {preview.hasCriticalGenerationMismatch && (
+              <div className="bg-red-100 border-2 border-red-500 rounded-lg p-5 mb-4 animate-pulse">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-red-500 text-white rounded-full p-2">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <span className="font-bold text-xl text-red-800">⚠️ تحذير خطير: فارق كبير في الأجيال!</span>
                 </div>
-                <ul className="list-disc list-inside text-yellow-700 space-y-1">
+                <div className="text-red-800 text-lg mb-3">
+                  <strong>العضو المصدر:</strong> الجيل {preview.source.generation} | <strong>العضو الهدف:</strong> الجيل {preview.target.generation}
+                </div>
+                <div className="bg-red-200 p-3 rounded-lg text-red-900">
+                  <strong>فارق {preview.generationDifference} أجيال!</strong> هؤلاء على الأرجح <strong>أشخاص مختلفون</strong> بنفس الاسم وليسوا تكرارات.
+                  <br />
+                  <span className="text-sm">الرجاء التأكد من أنك تريد فعلاً دمج هذين العضوين قبل المتابعة.</span>
+                </div>
+              </div>
+            )}
+
+            {preview.warningsAr.length > 0 && (
+              <div className={`border rounded-lg p-4 mb-4 ${preview.hasCriticalGenerationMismatch ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className={preview.hasCriticalGenerationMismatch ? 'text-orange-600' : 'text-yellow-600'} size={18} />
+                  <span className={`font-medium ${preview.hasCriticalGenerationMismatch ? 'text-orange-800' : 'text-yellow-800'}`}>تحذيرات إضافية</span>
+                </div>
+                <ul className={`list-disc list-inside space-y-1 ${preview.hasCriticalGenerationMismatch ? 'text-orange-700' : 'text-yellow-700'}`}>
                   {preview.warningsAr.map((warning, idx) => (
                     <li key={idx}>{warning}</li>
                   ))}

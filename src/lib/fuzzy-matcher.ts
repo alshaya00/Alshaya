@@ -25,12 +25,14 @@ export interface FuzzyMatchInput {
   gender?: string;
   phone?: string;
   email?: string;
+  generation?: number;
 }
 
 const DUPLICATE_THRESHOLD = 85;  // Raised for stricter detection
 const HIGH_SIMILARITY_THRESHOLD = 75;  // Raised for better accuracy
 const SIBLING_DUPLICATE_THRESHOLD = 90;  // Very strict for siblings under same parent
 const FULL_NAME_MATCH_THRESHOLD = 80;  // For 4-part name comparison
+const GENERATION_MATCH_WEIGHT = 30;  // High weight for generation matching - crucial for distinguishing identical names
 
 function levenshteinDistance(str1: string, str2: string): number {
   const m = str1.length;
@@ -112,6 +114,28 @@ function compareBirthYears(year1?: number | null, year2?: number | null): number
   if (diff <= 5) return 50;
   if (diff <= 10) return 30;
   return 0;
+}
+
+function compareGenerations(gen1?: number | null, gen2?: number | null): { score: number; penaltyFactor: number; isDifferentPerson: boolean } {
+  if (!gen1 || !gen2) {
+    return { score: 0, penaltyFactor: 1.0, isDifferentPerson: false };
+  }
+  
+  const diff = Math.abs(gen1 - gen2);
+  
+  if (diff === 0) {
+    return { score: 100, penaltyFactor: 1.0, isDifferentPerson: false };
+  }
+  
+  if (diff === 1) {
+    return { score: 50, penaltyFactor: 0.7, isDifferentPerson: false };
+  }
+  
+  if (diff >= 2) {
+    return { score: 0, penaltyFactor: 0.3, isDifferentPerson: true };
+  }
+  
+  return { score: 0, penaltyFactor: 0.5, isDifferentPerson: false };
 }
 
 export function calculateMemberSimilarity(
@@ -254,7 +278,31 @@ export function calculateMemberSimilarity(
     }
   }
   
-  const similarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
+  let rawSimilarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
+  
+  const generationComparison = compareGenerations(input.generation, existingMember.generation);
+  
+  if (input.generation && existingMember.generation) {
+    const genScore = generationComparison.score;
+    totalScore += genScore * GENERATION_MATCH_WEIGHT;
+    weightSum += GENERATION_MATCH_WEIGHT;
+    rawSimilarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
+  }
+  
+  if (generationComparison.isDifferentPerson) {
+    rawSimilarityScore = Math.min(rawSimilarityScore, 40);
+    matchReasons.push(`CRITICAL: Generation mismatch (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} generations apart) - DIFFERENT PEOPLE with same name`);
+    matchReasonsAr.push(`تحذير خطير: اختلاف الجيل (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} أجيال) - أشخاص مختلفون بنفس الاسم`);
+  } else if (generationComparison.score > 0 && generationComparison.score < 100) {
+    rawSimilarityScore = Math.round(rawSimilarityScore * generationComparison.penaltyFactor);
+    matchReasons.push(`Generation difference: input Gen ${input.generation} vs member Gen ${existingMember.generation}`);
+    matchReasonsAr.push(`فارق الجيل: المدخل جيل ${input.generation} مقابل العضو جيل ${existingMember.generation}`);
+  } else if (input.generation && existingMember.generation && generationComparison.score === 100) {
+    matchReasons.push(`Same generation: Gen ${existingMember.generation}`);
+    matchReasonsAr.push(`نفس الجيل: الجيل ${existingMember.generation}`);
+  }
+  
+  const similarityScore = rawSimilarityScore;
   
   return {
     member: existingMember,
@@ -397,5 +445,6 @@ export {
   DUPLICATE_THRESHOLD, 
   HIGH_SIMILARITY_THRESHOLD,
   SIBLING_DUPLICATE_THRESHOLD,
-  FULL_NAME_MATCH_THRESHOLD
+  FULL_NAME_MATCH_THRESHOLD,
+  GENERATION_MATCH_WEIGHT
 };

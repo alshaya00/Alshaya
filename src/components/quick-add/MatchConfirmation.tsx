@@ -130,15 +130,20 @@ export default function MatchConfirmation({
         <p className="text-lg font-bold text-gray-900 leading-relaxed" dir="rtl">
           {generateFullLineageText()}
         </p>
-        <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-1">
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-sm ${
+            candidate.generation <= 4 ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+            candidate.generation <= 6 ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+            candidate.generation <= 8 ? 'bg-green-100 text-green-800 border border-green-200' :
+            'bg-gray-100 text-gray-800 border border-gray-200'
+          }`}>
             <GitBranch size={14} />
-            <span>الجيل {candidate.generation}</span>
-          </div>
+            الجيل {candidate.generation}
+          </span>
           {candidate.branch && (
-            <div className="flex items-center gap-1">
-              <span>الفرع: {candidate.branch}</span>
-            </div>
+            <span className="inline-flex items-center px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-sm border border-amber-200">
+              الفرع: {candidate.branch}
+            </span>
           )}
         </div>
       </div>

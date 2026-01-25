@@ -169,18 +169,21 @@ export default function MatchComparisonGraphs({
                   </span>
                 </div>
 
-                {/* Generation & Branch */}
-                <div className="flex items-center gap-3 text-xs">
-                  <div className="flex items-center gap-1">
-                    <GitBranch size={12} className="text-gray-400" />
-                    <span className="text-gray-500">الجيل:</span>
-                    <span className="font-medium">{candidate.generation}</span>
-                  </div>
+                {/* Generation & Branch - Enhanced display */}
+                <div className="flex items-center gap-2 text-xs flex-wrap">
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-bold ${
+                    candidate.generation <= 4 ? 'bg-purple-100 text-purple-800' :
+                    candidate.generation <= 6 ? 'bg-blue-100 text-blue-800' :
+                    candidate.generation <= 8 ? 'bg-green-100 text-green-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    <GitBranch size={12} />
+                    الجيل {candidate.generation}
+                  </span>
                   {candidate.branch && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-500">الفرع:</span>
-                      <span className="font-medium">{candidate.branch}</span>
-                    </div>
+                    <span className="inline-flex items-center px-2 py-1 bg-amber-50 text-amber-700 rounded-full">
+                      {candidate.branch}
+                    </span>
                   )}
                 </div>
 
