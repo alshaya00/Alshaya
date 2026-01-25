@@ -36,6 +36,12 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   Comprehensive admin interfaces for user management, access requests, invitations, photo album folders, member merging, data validation, and story moderation.
     -   Login history tracking and user login statistics.
     -   Tools for managing unregistered members and sending invitations.
+    -   **Manual User-Member Linking**: Admin can manually link orphaned user accounts to existing family members via search interface.
+    -   **Orphaned Users Report** (`/admin/orphaned`): Dashboard showing users without linked members, with auto-suggested matches based on name similarity.
+-   **Quick-Add Smart Search**:
+    -   Helper questions automatically triggered when multiple matches found.
+    -   Branch selection (Ibrahim/Abdulkarim/Fawzan) and uncle name filters to narrow down search results.
+    -   Fallback to full results when filters yield no matches.
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database.
