@@ -72,9 +72,10 @@ export async function POST(
     }
 
     // Check if the linked member is already linked to another user
-    const linkedMemberId = accessRequest.relatedMemberId || accessRequest.parentMemberId;
-    if (linkedMemberId) {
-      const existingLink = await checkMemberLinkedToUser(linkedMemberId);
+    // IMPORTANT: Only check relatedMemberId (user's own record), NOT parentMemberId
+    // The parent may already be linked to their own user account, which is expected
+    if (accessRequest.relatedMemberId) {
+      const existingLink = await checkMemberLinkedToUser(accessRequest.relatedMemberId);
       if (existingLink) {
         return NextResponse.json(
           { 
@@ -136,7 +137,9 @@ export async function POST(
     });
 
     // Sync user contact info to the linked FamilyMember
-    const memberIdToSync = accessRequest.relatedMemberId || accessRequest.parentMemberId;
+    // IMPORTANT: Only sync to relatedMemberId (the user's own member record), NOT parentMemberId
+    // parentMemberId is the user's parent in the family tree - we should not update their contact info
+    const memberIdToSync = accessRequest.relatedMemberId;
     if (memberIdToSync) {
       try {
         const updateData: Record<string, string | null> = {};
