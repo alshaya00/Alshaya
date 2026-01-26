@@ -48,6 +48,17 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   Helper questions automatically triggered when multiple matches found.
     -   Branch selection (Ibrahim/Abdulkarim/Fawzan) and uncle name filters to narrow down search results.
     -   Fallback to full results when filters yield no matches.
+-   **Registration Uncle Verification**:
+    -   When a user selects their father during registration, a verification step asks for an uncle's name.
+    -   System validates the entered name against the father's actual siblings using fuzzy matching.
+    -   Skip option available for users who cannot provide uncle name.
+    -   Privacy-safe API only returns sibling count (not names) to unauthenticated users.
+    -   Verification state resets when parent selection changes.
+-   **Data Repair Tools**:
+    -   Admin dashboard at `/admin/data-repair` for finding and fixing orphaned members.
+    -   Three repair actions: link user to member, set member's parent, create member for user.
+    -   Full audit logging with before/after state tracking.
+    -   Rollback capability: any repair can be safely reverted using the change ID.
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database.
