@@ -29,6 +29,7 @@ interface FormData {
   relatedMemberId: string;
   relationshipType: string;
   parentMemberId: string;
+  parentPendingId: string;
   gender: string;
   message: string;
   birthYear: string;
@@ -58,6 +59,7 @@ export default function RegisterPage() {
     relatedMemberId: '',
     relationshipType: '',
     parentMemberId: '',
+    parentPendingId: '',
     gender: '',
     message: '',
     birthYear: '',
@@ -96,7 +98,7 @@ export default function RegisterPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members/public?limit=500');
+        const res = await fetch('/api/members/public?limit=500&includePending=true');
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);
@@ -247,7 +249,9 @@ export default function RegisterPage() {
 
   const selectedParent = formData.parentMemberId
     ? allMembers.find((m) => m.id === formData.parentMemberId)
-    : null;
+    : formData.parentPendingId
+      ? allMembers.find((m) => (m as { pendingId?: string }).pendingId === formData.parentPendingId)
+      : null;
 
   const selectedMember = formData.relatedMemberId
     ? allMembers.find((m) => m.id === formData.relatedMemberId)
@@ -275,12 +279,16 @@ export default function RegisterPage() {
   const handleParentSelect = (memberId: string) => {
     const parent = allMembers.find((m) => m.id === memberId);
     if (parent) {
+      const isPending = (parent as { isPending?: boolean; pendingId?: string }).isPending;
+      const pendingId = (parent as { pendingId?: string }).pendingId;
       const parentName = parent.fullNameAr || parent.firstName;
+      
       setFormData({
         ...formData,
-        parentMemberId: memberId,
+        parentMemberId: isPending ? '' : memberId,
+        parentPendingId: isPending && pendingId ? pendingId : '',
         relationshipType: 'CHILD',
-        claimedRelation: `${isFemale(formData.gender) ? 'ابنة' : 'ابن'} ${parentName}`,
+        claimedRelation: `${isFemale(formData.gender) ? 'ابنة' : 'ابن'} ${parentName}${isPending ? ' (قيد المراجعة)' : ''}`,
       });
     }
     setParentSearchQuery('');
@@ -306,7 +314,7 @@ export default function RegisterPage() {
     if (!selectedMember && formData.parentMemberId && !formData.gender) {
       return 'يرجى تحديد الجنس';
     }
-    if (!formData.relatedMemberId && !formData.parentMemberId) {
+    if (!formData.relatedMemberId && !formData.parentMemberId && !formData.parentPendingId) {
       return 'يرجى اختيار اسمك من الشجرة أو تحديد والدك';
     }
     return null;
@@ -322,9 +330,13 @@ export default function RegisterPage() {
       return;
     }
 
-    if (formData.parentMemberId && !uncleVerified) {
+    if (formData.parentMemberId && !formData.parentPendingId && !uncleVerified) {
       await handleStartUncleVerification();
       return;
+    }
+    
+    if (formData.parentPendingId) {
+      setUncleVerified(true);
     }
 
     setIsLoading(true);
@@ -393,6 +405,9 @@ export default function RegisterPage() {
 
   const checkForUncles = async () => {
     if (!formData.parentMemberId) {
+      return { hasSiblings: false };
+    }
+    if (formData.parentPendingId) {
       return { hasSiblings: false };
     }
 
@@ -1279,7 +1294,8 @@ export default function RegisterPage() {
                       {showParentDropdown && filteredParents.length > 0 && (
                         <div className="absolute z-20 w-full mt-2 bg-white border-2 border-amber-200 rounded-xl shadow-xl max-h-60 overflow-auto">
                           {filteredParents.map((parent) => {
-                            const fullLineage = getFullLineageString(parent.id, allMembers);
+                            const isPending = (parent as { isPending?: boolean }).isPending;
+                            const fullLineage = isPending ? null : getFullLineageString(parent.id, allMembers);
                             return (
                               <button
                                 key={parent.id}
@@ -1288,13 +1304,23 @@ export default function RegisterPage() {
                                   e.stopPropagation();
                                   handleParentSelect(parent.id);
                                 }}
-                                className="w-full px-4 py-3 text-right hover:bg-amber-50 border-b border-amber-100 last:border-0 transition-colors"
+                                className={`w-full px-4 py-3 text-right border-b border-amber-100 last:border-0 transition-colors ${
+                                  isPending ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-amber-50'
+                                }`}
                               >
-                                <span className="font-semibold text-gray-900 block">
-                                  {fullLineage || parent.fullNameAr || parent.firstName}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-900">
+                                    {fullLineage || parent.fullNameAr || parent.firstName}
+                                  </span>
+                                  {isPending && (
+                                    <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full">
+                                      قيد المراجعة
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-gray-500 mt-1">
                                   الجيل {parent.generation}{parent.branch ? ` - فرع: ${parent.branch}` : ''}
+                                  {isPending && ' - مُضاف حديثاً'}
                                 </p>
                               </button>
                             );
@@ -1304,17 +1330,40 @@ export default function RegisterPage() {
                     </div>
 
                     {selectedParent && (
-                      <div className="mt-3 p-3 bg-white rounded-xl border-2 border-green-300">
+                      <div className={`mt-3 p-3 bg-white rounded-xl border-2 ${
+                        formData.parentPendingId ? 'border-orange-300' : 'border-green-300'
+                      }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              formData.parentPendingId ? 'bg-orange-500' : 'bg-green-500'
+                            }`}>
                               <Users className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                              <p className="text-sm text-green-600 font-medium">الوالد المحدد</p>
-                              <p className="font-bold text-green-900">
-                                {getFullLineageString(selectedParent.id, allMembers) || selectedParent.fullNameAr || selectedParent.firstName}
+                              <div className="flex items-center gap-2">
+                                <p className={`text-sm font-medium ${
+                                  formData.parentPendingId ? 'text-orange-600' : 'text-green-600'
+                                }`}>الوالد المحدد</p>
+                                {formData.parentPendingId && (
+                                  <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full">
+                                    قيد المراجعة
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`font-bold ${
+                                formData.parentPendingId ? 'text-orange-900' : 'text-green-900'
+                              }`}>
+                                {formData.parentPendingId 
+                                  ? (selectedParent.fullNameAr || selectedParent.firstName)
+                                  : (getFullLineageString(selectedParent.id, allMembers) || selectedParent.fullNameAr || selectedParent.firstName)
+                                }
                               </p>
+                              {formData.parentPendingId && (
+                                <p className="text-xs text-orange-600 mt-1">
+                                  سيتم ربط طلبك بطلب والدك - الموافقة ستكون بالتسلسل
+                                </p>
+                              )}
                             </div>
                           </div>
                           <button
@@ -1323,10 +1372,15 @@ export default function RegisterPage() {
                               setFormData({
                                 ...formData,
                                 parentMemberId: '',
+                                parentPendingId: '',
                                 claimedRelation: '',
                               });
                             }}
-                            className="text-green-600 hover:text-green-800 p-1 hover:bg-green-100 rounded-lg transition-colors"
+                            className={`p-1 rounded-lg transition-colors ${
+                              formData.parentPendingId 
+                                ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-100'
+                                : 'text-green-600 hover:text-green-800 hover:bg-green-100'
+                            }`}
                           >
                             <X className="w-4 h-4" />
                           </button>

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
     const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 1000);
+    const includePending = searchParams.get('includePending') === 'true';
 
     const members = await prisma.familyMember.findMany({
       where: {
@@ -45,12 +46,60 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    let filteredMembers = members;
+    const approvedMembersWithFlag = members.map(m => ({ ...m, isPending: false }));
+
+    let pendingMembersWithFlag: typeof approvedMembersWithFlag = [];
+    if (includePending) {
+      const pendingMembers = await prisma.pendingMember.findMany({
+        where: {
+          reviewStatus: 'PENDING',
+          gender: 'Male',
+        },
+        select: {
+          id: true,
+          firstName: true,
+          fullNameAr: true,
+          fullNameEn: true,
+          generation: true,
+          branch: true,
+          proposedFatherId: true,
+          fatherName: true,
+          grandfatherName: true,
+          gender: true,
+          familyName: true,
+          status: true,
+        },
+        orderBy: { submittedAt: 'desc' },
+      });
+
+      pendingMembersWithFlag = pendingMembers.map(pm => ({
+        id: `pending_${pm.id}`,
+        pendingId: pm.id,
+        firstName: pm.firstName,
+        fullNameAr: pm.fullNameAr,
+        fullNameEn: pm.fullNameEn,
+        generation: pm.generation,
+        branch: pm.branch,
+        fatherId: pm.proposedFatherId,
+        fatherName: pm.fatherName,
+        grandfatherName: pm.grandfatherName,
+        gender: pm.gender,
+        sonsCount: 0,
+        daughtersCount: 0,
+        familyName: pm.familyName,
+        status: pm.status,
+        isPending: true,
+      }));
+    }
+
+    const allMembers = [...approvedMembersWithFlag, ...pendingMembersWithFlag];
+
+    let filteredMembers = allMembers;
     if (query) {
       const normalizedQuery = normalizeArabicSearch(query);
       const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
       
-      filteredMembers = members.filter(member => {
+      filteredMembers = allMembers.filter(member => {
         const normalizedFirstName = normalizeArabicSearch(member.firstName || '');
         const normalizedFullNameAr = normalizeArabicSearch(member.fullNameAr || '');
         const normalizedFullNameEn = (member.fullNameEn || '').toLowerCase();

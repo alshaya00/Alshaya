@@ -190,7 +190,20 @@ export async function approvePendingMemberTransactional(
         }
       }
 
-      return { newMember, pending, newId, calculatedGeneration };
+      // Update linked children: those who registered with this pending member as their parent
+      // Clear their parentPendingId and set their proposedFatherId to the newly created member
+      const linkedChildrenUpdate = await tx.pendingMember.updateMany({
+        where: {
+          parentPendingId: pendingId,
+          reviewStatus: 'PENDING',
+        },
+        data: {
+          parentPendingId: null,
+          proposedFatherId: newId,
+        },
+      });
+
+      return { newMember, pending, newId, calculatedGeneration, linkedChildrenUpdated: linkedChildrenUpdate.count };
     }, {
       maxWait: 10000,
       timeout: 30000,
@@ -207,7 +220,7 @@ export async function approvePendingMemberTransactional(
         targetType: 'FAMILY_MEMBER',
         targetId: result.newId,
         targetName: result.pending.fullNameAr || result.pending.firstName,
-        description: `تمت الموافقة على العضو المعلق وإضافته للشجرة: ${result.pending.firstName}`,
+        description: `تمت الموافقة على العضو المعلق وإضافته للشجرة: ${result.pending.firstName}${result.linkedChildrenUpdated > 0 ? ` (تم تحديث ${result.linkedChildrenUpdated} أبناء معلقين)` : ''}`,
         details: {
           pendingId,
           newMemberId: result.newId,
@@ -215,6 +228,7 @@ export async function approvePendingMemberTransactional(
           fatherId: result.pending.proposedFatherId,
           reviewNote,
           parentChildrenUpdated: !!result.pending.proposedFatherId,
+          linkedChildrenUpdated: result.linkedChildrenUpdated,
           transactionType: 'SERIALIZABLE',
           integrityValidated: true,
         },

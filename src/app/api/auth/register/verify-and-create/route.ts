@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       relatedMemberId,
       relationshipType,
       parentMemberId,
+      parentPendingId,
       message,
       birthYear,
       birthCalendar,
@@ -297,6 +298,48 @@ export async function POST(request: NextRequest) {
           console.error('Error creating new member during registration:', createError);
           // Continue without linking - user can still register, admin can fix later
         }
+      }
+    }
+
+    // Handle conditional registration (parent is pending approval)
+    let pendingMemberCreated = false;
+    let createdPendingMemberId: string | null = null;
+    
+    if (parentPendingId && !relatedMemberId && !autoMatchedMemberId) {
+      // Get parent pending member info
+      const parentPending = await prisma.pendingMember.findUnique({
+        where: { id: parentPendingId },
+        select: { firstName: true, generation: true, branch: true }
+      });
+      
+      if (parentPending) {
+        const inputNameParts = nameArabic.trim()
+          .replace(/\s+بن\s+/g, ' ')
+          .replace(/\s+بنت\s+/g, ' ')
+          .split(/\s+/)
+          .filter((p: string) => p.length > 0);
+        
+        // Create a pending member linked to the parent pending member
+        const pendingMember = await prisma.pendingMember.create({
+          data: {
+            firstName: inputNameParts[0] || sanitizeString(nameArabic).split(' ')[0],
+            fatherName: parentPending.firstName,
+            gender: gender || 'Male',
+            generation: (parentPending.generation || 1) + 1,
+            branch: parentPending.branch || null,
+            phone: normalizedPhone,
+            email: email.toLowerCase(),
+            status: 'Living',
+            parentPendingId: parentPendingId,
+            fullNameAr: sanitizeString(nameArabic),
+            reviewStatus: 'PENDING',
+            submittedVia: 'registration-conditional',
+          }
+        });
+        
+        createdPendingMemberId = pendingMember.id;
+        pendingMemberCreated = true;
+        console.log(`Created conditional pending member ${pendingMember.id} linked to parent pending ${parentPendingId}`);
       }
     }
     

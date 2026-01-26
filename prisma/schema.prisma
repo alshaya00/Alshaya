@@ -525,6 +525,7 @@ model PendingMember {
   greatGrandfatherName String?
   familyName           String    @default("آل شايع")
   proposedFatherId     String?
+  parentPendingId      String?
   gender               String
   birthYear            Int?
   birthCalendar        String    @default("GREGORIAN")
@@ -547,6 +548,7 @@ model PendingMember {
 
   @@index([reviewStatus])
   @@index([branch])
+  @@index([parentPendingId])
 }
 
 model BranchEntryLink {

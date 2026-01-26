@@ -94,6 +94,8 @@ export default function AdminPendingPage() {
     pending: DbPendingMember;
     parent: FamilyMember | null;
     children: FamilyMember[];
+    linkedPendingChildren: DbPendingMember[];
+    parentPending: DbPendingMember | null;
   } | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,26 +157,39 @@ export default function AdminPendingPage() {
   }, [allMembers]);
 
   const openReviewModal = useCallback((member: DbPendingMember) => {
+    const linkedPendingChildren = members.filter(
+      m => (m as { parentPendingId?: string }).parentPendingId === member.id
+    );
+    const parentPendingId = (member as { parentPendingId?: string }).parentPendingId;
+    const parentPending = parentPendingId 
+      ? members.find(m => m.id === parentPendingId) || null 
+      : null;
+    
     if (member.proposedFatherId) {
       const parent = getMemberById(member.proposedFatherId) || null;
       const children = getChildrenOfParent(member.proposedFatherId);
-      setReviewModal({ pending: member, parent, children });
+      setReviewModal({ pending: member, parent, children, linkedPendingChildren, parentPending });
     } else {
-      setReviewModal({ pending: member, parent: null, children: [] });
+      setReviewModal({ pending: member, parent: null, children: [], linkedPendingChildren, parentPending });
     }
-  }, [getChildrenOfParent]);
+  }, [getChildrenOfParent, members]);
 
   useEffect(() => {
     if (reviewModal && reviewModal.pending.proposedFatherId) {
       const updatedChildren = getChildrenOfParent(reviewModal.pending.proposedFatherId);
-      if (updatedChildren.length !== reviewModal.children.length) {
+      const updatedLinkedPendingChildren = members.filter(
+        m => (m as { parentPendingId?: string }).parentPendingId === reviewModal.pending.id
+      );
+      if (updatedChildren.length !== reviewModal.children.length || 
+          updatedLinkedPendingChildren.length !== reviewModal.linkedPendingChildren.length) {
         setReviewModal(prev => prev ? {
           ...prev,
-          children: updatedChildren
+          children: updatedChildren,
+          linkedPendingChildren: updatedLinkedPendingChildren
         } : null);
       }
     }
-  }, [allMembers, reviewModal?.pending.proposedFatherId, getChildrenOfParent]);
+  }, [allMembers, members, reviewModal?.pending.proposedFatherId, reviewModal?.pending.id, getChildrenOfParent]);
 
   const handleLinkToExisting = async (pendingId: string, targetMemberId: string) => {
     if (!session?.token) {
@@ -307,7 +322,11 @@ export default function AdminPendingPage() {
     }
     setIsProcessing(true);
     try {
-      const results = await Promise.all(ids.map(async (id) => {
+      // Process approvals sequentially to ensure parent-first ordering
+      // This is critical for chain approvals where children depend on parent being approved first
+      const results: Array<{ id: string; ok: boolean; data: Record<string, unknown> }> = [];
+      
+      for (const id of ids) {
         const res = await fetch(`/api/admin/pending/${id}`, {
           method: 'POST',
           headers: {
@@ -317,25 +336,31 @@ export default function AdminPendingPage() {
           body: JSON.stringify({ action: 'approve' }),
         });
         const data = await res.json();
-        return { id, ok: res.ok, data };
-      }));
+        results.push({ id, ok: res.ok, data });
+        
+        // If parent approval failed, don't attempt to approve children
+        if (!res.ok && ids.length > 1 && id === ids[0]) {
+          console.log('Parent approval failed, stopping chain approval');
+          break;
+        }
+      }
       
       const failed = results.filter(r => !r.ok);
       if (failed.length > 0) {
-        const duplicateResult = failed.find(f => f.data.isDuplicate && f.data.duplicateIds?.length > 0);
+        const duplicateResult = failed.find(f => f.data.isDuplicate && (f.data.duplicateIds as string[])?.length > 0);
         if (duplicateResult && ids.length === 1) {
           const pending = members.find(m => m.id === duplicateResult.id);
           setDuplicateModal({
             pendingId: duplicateResult.id,
             pendingName: pending?.firstName || 'العضو',
-            duplicateIds: duplicateResult.data.duplicateIds,
+            duplicateIds: duplicateResult.data.duplicateIds as string[],
           });
           setShowConfirmModal(null);
           setIsProcessing(false);
           return;
         }
         
-        const errorMessages = failed.map(f => f.data.messageAr || f.data.message || 'خطأ غير معروف').join('\n');
+        const errorMessages = failed.map(f => (f.data.messageAr as string) || (f.data.message as string) || 'خطأ غير معروف').join('\n');
         alert(`فشل في الموافقة على بعض الأعضاء:\n${errorMessages}`);
       }
       
@@ -774,6 +799,19 @@ export default function AdminPendingPage() {
                                   {statusIcons[member.reviewStatus]}
                                   {statusLabels[member.reviewStatus]}
                                 </span>
+                                {/* Conditional approval indicators */}
+                                {(member as { parentPendingId?: string }).parentPendingId && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300 flex items-center gap-1">
+                                    <Clock size={10} />
+                                    بانتظار الأب
+                                  </span>
+                                )}
+                                {members.some(m => (m as { parentPendingId?: string }).parentPendingId === member.id) && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-300 flex items-center gap-1">
+                                    <Users size={10} />
+                                    له أبناء معلقون
+                                  </span>
+                                )}
                               </div>
                             )}
                             <div className="text-sm text-gray-500 mt-1 space-y-0.5">
@@ -1217,43 +1255,152 @@ export default function AdminPendingPage() {
                   </p>
                 </div>
               )}
+
+              {/* Parent Pending Warning - this member is waiting for their parent to be approved */}
+              {reviewModal.parentPending && (
+                <div className="bg-orange-50 border-2 border-orange-400 rounded-xl p-4 mb-6">
+                  <h4 className="font-bold text-orange-800 mb-3 flex items-center gap-2">
+                    <Clock size={18} />
+                    ⚠️ موافقة مشروطة - في انتظار الأب
+                  </h4>
+                  <p className="text-orange-700 text-sm mb-3">
+                    هذا العضو مرتبط بأب قيد المراجعة. يجب الموافقة على الأب أولاً قبل الموافقة على هذا العضو.
+                  </p>
+                  <div className="flex items-center gap-3 p-3 bg-orange-100 rounded-lg">
+                    <GenderAvatar gender={reviewModal.parentPending.gender} size="sm" />
+                    <div>
+                      <p className="font-medium text-gray-800">
+                        {reviewModal.parentPending.fullNameAr || reviewModal.parentPending.firstName}
+                      </p>
+                      <p className="text-xs text-orange-600">
+                        الأب المعلق • المعرف: {reviewModal.parentPending.id}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setReviewModal(null);
+                        const parentMember = members.find(m => m.id === reviewModal.parentPending?.id);
+                        if (parentMember) openReviewModal(parentMember);
+                      }}
+                      className="mr-auto px-3 py-1.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 flex items-center gap-1"
+                    >
+                      <Eye size={14} />
+                      عرض الأب
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Linked Pending Children - children waiting for this member to be approved */}
+              {reviewModal.linkedPendingChildren.length > 0 && (
+                <div className="bg-purple-50 border-2 border-purple-400 rounded-xl p-4 mb-6">
+                  <h4 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
+                    <Users size={18} />
+                    👶 أبناء في انتظار الموافقة ({reviewModal.linkedPendingChildren.length})
+                  </h4>
+                  <p className="text-purple-700 text-sm mb-3">
+                    هؤلاء الأبناء سجلوا واختاروا هذا العضو كأب. عند الموافقة على هذا العضو، يمكن الموافقة عليهم تلقائياً.
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {reviewModal.linkedPendingChildren.map(child => (
+                      <div 
+                        key={child.id} 
+                        className="flex items-center justify-between p-3 bg-purple-100 rounded-lg border border-purple-300"
+                      >
+                        <div className="flex items-center gap-3">
+                          <GenderAvatar gender={child.gender} size="sm" />
+                          <div>
+                            <p className="font-medium text-gray-800">
+                              {child.fullNameAr || child.firstName}
+                            </p>
+                            <p className="text-xs text-purple-600">
+                              قيد المراجعة • المعرف: {child.id}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setReviewModal(null);
+                            openReviewModal(child);
+                          }}
+                          className="px-3 py-1.5 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600 flex items-center gap-1"
+                        >
+                          <Eye size={14} />
+                          عرض
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-6 border-t bg-gray-50 flex-shrink-0">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setReviewModal(null)}
-                  className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-100"
-                  disabled={isProcessing}
-                >
-                  إغلاق
-                </button>
-                {reviewModal.pending.reviewStatus === 'PENDING' && (
-                  <>
-                    <button
-                      onClick={() => {
-                        handleApprove([reviewModal.pending.id]);
-                        setReviewModal(null);
-                      }}
-                      disabled={isProcessing}
-                      className="flex-1 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
-                      إضافة كعضو جديد
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleReject([reviewModal.pending.id]);
-                        setReviewModal(null);
-                      }}
-                      disabled={isProcessing}
-                      className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isProcessing && <Loader2 className="animate-spin" size={18} />}
-                      رفض
-                    </button>
-                  </>
+              {/* Warning if this member has a pending parent */}
+              {reviewModal.parentPending && reviewModal.pending.reviewStatus === 'PENDING' && (
+                <div className="mb-4 p-3 bg-orange-100 border border-orange-300 rounded-lg">
+                  <p className="text-orange-800 text-sm flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    لا يمكن الموافقة حتى تتم الموافقة على الأب المعلق أولاً
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex flex-col gap-3">
+                {/* Approve with children button - only show if there are linked pending children */}
+                {reviewModal.linkedPendingChildren.length > 0 && 
+                 reviewModal.pending.reviewStatus === 'PENDING' && 
+                 !reviewModal.parentPending && (
+                  <button
+                    onClick={() => {
+                      const allIds = [reviewModal.pending.id, ...reviewModal.linkedPendingChildren.map(c => c.id)];
+                      handleApprove(allIds);
+                      setReviewModal(null);
+                    }}
+                    disabled={isProcessing}
+                    className="w-full py-3 bg-purple-500 text-white font-bold rounded-xl hover:bg-purple-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Users size={18} />}
+                    إضافة مع الأبناء المعلقين ({reviewModal.linkedPendingChildren.length + 1} أعضاء)
+                  </button>
                 )}
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setReviewModal(null)}
+                    className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-100"
+                    disabled={isProcessing}
+                  >
+                    إغلاق
+                  </button>
+                  {reviewModal.pending.reviewStatus === 'PENDING' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleApprove([reviewModal.pending.id]);
+                          setReviewModal(null);
+                        }}
+                        disabled={isProcessing || !!reviewModal.parentPending}
+                        className="flex-1 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                        title={reviewModal.parentPending ? 'يجب الموافقة على الأب أولاً' : ''}
+                      >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+                        {reviewModal.linkedPendingChildren.length > 0 ? 'إضافة هذا فقط' : 'إضافة كعضو جديد'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleReject([reviewModal.pending.id]);
+                          setReviewModal(null);
+                        }}
+                        disabled={isProcessing}
+                        className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isProcessing && <Loader2 className="animate-spin" size={18} />}
+                        رفض
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
