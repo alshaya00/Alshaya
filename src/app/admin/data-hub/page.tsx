@@ -17,7 +17,7 @@ import {
   Archive,
   Wrench,
   Shield,
-  CloudUpload,
+  UploadCloud,
 } from 'lucide-react';
 
 interface DataStats {
@@ -114,7 +114,7 @@ export default function DataHubPage() {
     { href: '/admin/database/snapshots', label: 'النسخ الاحتياطية', labelEn: 'Snapshots', icon: Archive, color: 'bg-purple-500', count: stats.totalBackups },
     { href: '/admin/tools', label: 'أدوات البيانات', labelEn: 'Data Tools', icon: Wrench, color: 'bg-orange-500' },
     { href: '/admin/data-validation', label: 'التحقق من البيانات', labelEn: 'Data Validation', icon: Shield, color: 'bg-red-500', count: stats.dataValidations },
-    { href: '/admin/sync-data', label: 'مزامنة البيانات', labelEn: 'Sync Data', icon: CloudUpload, color: 'bg-cyan-500' },
+    { href: '/admin/sync-data', label: 'مزامنة البيانات', labelEn: 'Sync Data', icon: UploadCloud, color: 'bg-cyan-500' },
   ];
 
   if (isLoading) {
