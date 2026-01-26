@@ -193,7 +193,7 @@ function ImportPageContent() {
         // Generate ID if missing
         if (!member.id) {
           const maxId = Math.max(...existingMembers.map(m => parseInt(m.id.slice(1))));
-          member.id = `P${String(maxId + 1).padStart(3, '0')}`;
+          member.id = `P${String(maxId + 1).padStart(4, '0')}`;
         }
 
         importResults.added.push(member as FamilyMember);

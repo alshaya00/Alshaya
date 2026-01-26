@@ -119,7 +119,7 @@ export default function OtpInput({
             inputMode="numeric"
             pattern="[0-9]*"
             autoComplete={index === 0 ? 'one-time-code' : 'off'}
-            maxLength={6}
+            maxLength={index === 0 ? length : 1}
             value={digit}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}

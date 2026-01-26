@@ -284,7 +284,7 @@ export default function ExcelViewPage() {
 
   // Add new row
   const addNewRow = () => {
-    const newId = `P${String(members.length + 1).padStart(3, '0')}`;
+    const newId = `P${String(members.length + 1).padStart(4, '0')}`;
     const newMember: Member = {
       id: newId,
       firstName: '',

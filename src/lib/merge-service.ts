@@ -336,20 +336,41 @@ export async function mergeMemberProfiles(
 
     await logAuditToDb({
       action: 'MERGE_MEMBERS',
-      entityType: 'family_member',
-      entityId: targetId,
-      performedBy: options.performedBy,
+      targetType: 'FAMILY_MEMBER',
+      targetId: targetId,
+      targetName: `${source.firstName} → ${target.firstName}`,
+      userId: options.performedBy,
+      description: `تم دمج "${source.firstName}" (${sourceId}) في "${target.firstName}" (${targetId})`,
       details: {
         sourceId,
         targetId,
+        sourceName: source.fullNameAr || source.firstName,
+        targetName: target.fullNameAr || target.firstName,
         reason: options.reason,
         childrenUpdated: result.childrenUpdated,
         photosTransferred: result.photosTransferred,
         journalsUpdated: result.journalsUpdated,
         linkedAccountsTransferred: result.linkedAccountsTransferred,
       },
+      previousState: {
+        sourceId,
+        sourceName: source.fullNameAr || source.firstName,
+        sourceGeneration: source.generation,
+      },
+      newState: {
+        targetId,
+        targetName: target.fullNameAr || target.firstName,
+        merged: true,
+      },
       impactedIds: [sourceId, targetId, ...preview.impactedChildren.map(c => c.id)],
-      impactSummary: `Merged ${source.firstName} into ${target.firstName}. Updated ${result.childrenUpdated} children, ${result.photosTransferred} photos, ${result.journalsUpdated} journals, ${result.linkedAccountsTransferred} linked accounts.`,
+      impactSummary: {
+        action: 'merge',
+        childrenUpdated: result.childrenUpdated,
+        photosTransferred: result.photosTransferred,
+        journalsUpdated: result.journalsUpdated,
+        linkedAccountsTransferred: result.linkedAccountsTransferred,
+      },
+      severity: 'WARNING',
     });
 
     return {
