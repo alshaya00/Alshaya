@@ -6,6 +6,7 @@ import { findUserByEmail, logActivity, getSiteSettings, checkMemberLinkedToUser 
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { checkBlocklist } from '@/lib/blocklist';
+import { createMember, MemberInput } from '@/lib/member-registry';
 import crypto from 'crypto';
 
 function sanitizeString(input: string | null | undefined): string {
@@ -265,7 +266,37 @@ export async function POST(request: NextRequest) {
         // This should be rare - same firstName under same parent with same gender
         console.log(`WARNING: Multiple matching children (${matchingChildren.length}) found under parent ${parentMemberId}, skipping auto-match (requires admin review)`);
       } else {
-        console.log(`No matching child found under parent ${parentMemberId} for firstName "${inputNameParts[0]}", will create pending request`);
+        // No matching child found - CREATE A NEW MEMBER for this user
+        console.log(`No matching child found under parent ${parentMemberId} for firstName "${inputNameParts[0]}", creating new member...`);
+        
+        try {
+          const newMemberInput: MemberInput = {
+            firstName: inputNameParts[0] || sanitizeString(nameArabic).split(' ')[0],
+            fatherName: parent?.firstName || undefined,
+            fatherId: parentMemberId,
+            gender: (gender === 'Female' ? 'Female' : 'Male') as 'Male' | 'Female',
+            phone: normalizedPhone,
+            email: email.toLowerCase(),
+            status: 'Living',
+          };
+          
+          const createResult = await createMember(newMemberInput, {
+            skipDuplicateCheck: false,
+            source: 'registration',
+            createdBy: 'system-registration',
+          });
+          
+          if (createResult.success && createResult.member) {
+            autoMatchedMemberId = createResult.member.id;
+            console.log(`Created new member ${autoMatchedMemberId} for registering user under parent ${parentMemberId}`);
+          } else {
+            console.error('Failed to create new member during registration:', createResult.errors);
+            // Continue without linking - user can still register, admin can fix later
+          }
+        } catch (createError) {
+          console.error('Error creating new member during registration:', createError);
+          // Continue without linking - user can still register, admin can fix later
+        }
       }
     }
     
