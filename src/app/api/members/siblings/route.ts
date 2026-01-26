@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { normalizeArabicName } from '@/lib/name-utils';
+import { normalizeArabicName } from '@/lib/lineage-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       where: {
         fatherId: member.fatherId,
         id: { not: memberId },
-        isDeleted: false
+        deletedAt: null
       }
     });
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       where: {
         fatherId: member.fatherId,
         id: { not: memberId },
-        isDeleted: false
+        deletedAt: null
       },
       select: {
         id: true,
