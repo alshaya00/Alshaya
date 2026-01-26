@@ -23,10 +23,16 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **MemberRegistry Service**: Centralized service for member creation, ID generation, lineage building, and duplicate detection, ensuring data consistency.
     -   **Transactional Approval Pipeline**: Atomic member approval using Prisma SERIALIZABLE transactions.
     -   **Data Integrity Validation**: Comprehensive validation system with 13 checks (generations, parent relationships, circular ancestry, duplicates, etc.).
-    -   **Duplicate Detection & Prevention**: Fuzzy matching with Levenshtein distance, real-time warnings, and a public API for duplicate checks.
-    -   **Generation-Aware Duplicate Detection**: Members with 2+ generation difference are automatically excluded from duplicate detection (similarity capped at 40%, below 85% threshold), preventing false matches for identical names across different generations.
-    -   **Father ID-Based Duplicate Detection**: Members with different fathers (fatherId) are automatically excluded from duplicate detection (similarity capped at 35%, even stricter than generation check). This is the STRONGEST differentiator - if two members have different fathers, they are definitely different people regardless of name similarity.
-    -   **Grandfather Name-Based Duplicate Detection**: Members with the same first name and father name but different grandfather names are automatically excluded from duplicate detection (similarity capped at 35%). This prevents false positives like "شايع بن عبدالله بن محمد" vs "شايع بن عبدالله بن عبدالعزيز" which are different people despite sharing first and father names.
+    -   **Simplified Duplicate Detection**: A member is only considered a duplicate if they have the **same fatherId AND same firstName**. This is the only valid duplicate scenario (same person registered twice under the same parent).
+    -   **Father ID-Based Detection**: If two members have different fatherId values, they are NEVER considered duplicates, regardless of how similar their names are. Different fathers = different people.
+    -   **Comprehensive Arabic Name Normalization**: Name comparison includes:
+        - حركات (Tashkeel/Diacritics): فَتْحة، ضَمّة، كَسْرة، سُكون، شدّة، تنوين
+        - همزات (Hamza variations): أ، إ، آ، ٱ، ء → ا
+        - تاء مربوطة (Taa Marbouta): ة → ه
+        - ألف مقصورة (Alef Maqsoura): ى → ي
+        - همزة على واو/ياء: ؤ → و، ئ → ي
+        - تطويل (Kashida): ـ → removed
+        - Common variations: عبد الله = عبدالله
     -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data. Server-side blocking prevents merges between members with:
         - Different fathers (highest priority block)
         - Critical generation mismatch (>=2 generations apart)

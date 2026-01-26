@@ -76,18 +76,50 @@ function calculateStringSimilarity(str1: string, str2: string): number {
   return Math.round(similarity);
 }
 
+/**
+ * Comprehensive Arabic name normalization for accurate comparison
+ * Handles: حركات، همزات، تاء مربوطة، ألف مقصورة، وجميع التنويعات
+ */
 function normalizeArabicName(name: string): string {
   if (!name) return '';
   
   return name
-    .replace(/[\u064B-\u065F]/g, '')
-    .replace(/أ|إ|آ/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
+    // Remove all Arabic diacritics (tashkeel/harakat)
+    // فَتْحة، ضَمّة، كَسْرة، سُكون، شدّة، تنوين
+    .replace(/[\u064B-\u065F\u0670]/g, '')  // Fatha, Damma, Kasra, Sukun, Shadda, Tanween, Superscript Alef
+    
+    // Normalize all Hamza variations to plain Alef
+    // أ، إ، آ، ٱ → ا
+    .replace(/[أإآٱ]/g, 'ا')
+    
+    // Normalize Hamza on Waw and Ya
+    // ؤ → و، ئ → ي، ء (standalone hamza) → remove
     .replace(/ؤ/g, 'و')
     .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '')  // Remove standalone hamza
+    
+    // Normalize Taa Marbouta to Haa
+    // ة → ه
+    .replace(/ة/g, 'ه')
+    
+    // Normalize Alef Maqsoura to Ya
+    // ى → ي
+    .replace(/ى/g, 'ي')
+    
+    // Normalize Alef with Madda
+    // آ → اا (already handled above with أإآٱ → ا)
+    
+    // Remove Tatweel (kashida) - التطويل
+    .replace(/ـ/g, '')
+    
+    // Normalize common name variations
+    // عبدالله = عبد الله
+    .replace(/عبد\s+ال/g, 'عبدال')
+    
+    // Remove extra spaces and trim
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    .toLowerCase();
 }
 
 function compareNames(name1: string, name2: string): number {
@@ -138,216 +170,90 @@ function compareGenerations(gen1?: number | null, gen2?: number | null): { score
   return { score: 0, penaltyFactor: 0.5, isDifferentPerson: false };
 }
 
+/**
+ * SIMPLIFIED DUPLICATE DETECTION
+ * 
+ * التكرار الحقيقي = نفس الأب (fatherId) + نفس الاسم الأول
+ * 
+ * Rules:
+ * 1. If fatherId is different = NOT a duplicate (0% match for duplicate purposes)
+ * 2. If fatherId is the same + firstName is similar = DUPLICATE
+ * 3. Name similarity uses comprehensive Arabic normalization
+ * 4. Phone/Email matches are still considered for finding existing members
+ */
 export function calculateMemberSimilarity(
   input: FuzzyMatchInput,
   existingMember: FamilyMember
 ): MatchCandidate {
   const matchReasons: string[] = [];
   const matchReasonsAr: string[] = [];
-  let totalScore = 0;
-  let weightSum = 0;
   
-  // IMPROVED WEIGHTS: Give more importance to the full 4-part name (الاسم الرباعي)
+  // CORE DUPLICATE LOGIC: Same fatherId + Same firstName = Duplicate
+  // If fatherId is different, they are DEFINITELY different people
+  
+  const hasSameFather = !!(input.fatherId && existingMember.fatherId && input.fatherId === existingMember.fatherId);
+  const hasDifferentFather = !!(input.fatherId && existingMember.fatherId && input.fatherId !== existingMember.fatherId);
+  
+  // Calculate firstName similarity with improved Arabic normalization
+  let firstNameScore = 0;
   if (input.firstName) {
-    const firstNameScore = compareNames(input.firstName, existingMember.firstName);
-    const weight = 35;  // Increased from 30
-    totalScore += firstNameScore * weight;
-    weightSum += weight;
-    
-    if (firstNameScore >= HIGH_SIMILARITY_THRESHOLD) {
-      matchReasons.push(`First name match: ${firstNameScore}%`);
-      matchReasonsAr.push(`تطابق الاسم الأول: ${firstNameScore}%`);
-    }
+    firstNameScore = compareNames(input.firstName, existingMember.firstName);
   }
   
-  if (input.fatherName && existingMember.fatherName) {
-    const fatherNameScore = compareNames(input.fatherName, existingMember.fatherName);
-    const weight = 25;  // Increased from 15 - father name is critical
-    totalScore += fatherNameScore * weight;
-    weightSum += weight;
-    
-    if (fatherNameScore >= HIGH_SIMILARITY_THRESHOLD) {
-      matchReasons.push(`Father name match: ${fatherNameScore}%`);
-      matchReasonsAr.push(`تطابق اسم الأب: ${fatherNameScore}%`);
-    }
-  }
-  
-  // Father ID comparison - STRONGEST DIFFERENTIATOR
-  // If both have fatherId and they're different = DEFINITELY different people
-  let hasDifferentFather = false;
-  if (input.fatherId && existingMember.fatherId) {
-    const fatherIdMatch = input.fatherId === existingMember.fatherId;
-    const weight = 50;
-    const score = fatherIdMatch ? 100 : 0;
-    totalScore += score * weight;
-    weightSum += weight;
-    
-    if (fatherIdMatch) {
-      matchReasons.push('Same father (linked)');
-      matchReasonsAr.push('نفس الأب (مرتبط)');
-    } else {
-      hasDifferentFather = true;
-    }
-  }
-  
-  if (input.grandfatherName && existingMember.grandfatherName) {
-    const grandfatherScore = compareNames(input.grandfatherName, existingMember.grandfatherName);
-    const weight = 20;  // Increased from 10 - grandfather name is part of الاسم الرباعي
-    totalScore += grandfatherScore * weight;
-    weightSum += weight;
-    
-    if (grandfatherScore >= HIGH_SIMILARITY_THRESHOLD) {
-      matchReasons.push(`Grandfather name match: ${grandfatherScore}%`);
-      matchReasonsAr.push(`تطابق اسم الجد: ${grandfatherScore}%`);
-    }
-  }
-  
-  // FULL 4-PART NAME CHECK (الاسم الرباعي) - includes great-grandfather when available
-  // Priority: 4-part name (with great-grandfather) > 3-part name (fallback)
-  if (input.firstName && input.fatherName && existingMember.fatherName) {
-    let fullInputName = `${input.firstName} ${input.fatherName}`;
-    let fullExistingName = `${existingMember.firstName} ${existingMember.fatherName}`;
-    let partsCount = 2;
-    
-    // Add grandfather if available
-    if (input.grandfatherName && existingMember.grandfatherName) {
-      fullInputName += ` ${input.grandfatherName}`;
-      fullExistingName += ` ${existingMember.grandfatherName}`;
-      partsCount = 3;
-    }
-    
-    // Add great-grandfather if available (true 4-part name)
-    if (partsCount === 3 && existingMember.greatGrandfatherName) {
-      fullExistingName += ` ${existingMember.greatGrandfatherName}`;
-      // Note: input may not have greatGrandfatherName, but we can still compare
-      // The Levenshtein distance will account for the difference
-    }
-    
-    // Only apply full name check if we have at least 3 parts
-    if (partsCount >= 3) {
-      const fullNameScore = calculateStringSimilarity(fullInputName, fullExistingName);
-      
-      if (fullNameScore >= FULL_NAME_MATCH_THRESHOLD) {
-        const weight = partsCount === 3 ? 20 : 25;  // Higher weight for 4-part match
-        totalScore += fullNameScore * weight;
-        weightSum += weight;
-        matchReasons.push(`Full name match (الاسم الرباعي): ${fullNameScore}%`);
-        matchReasonsAr.push(`تطابق الاسم الرباعي الكامل: ${fullNameScore}%`);
-      }
-    }
-  }
-  
-  if (input.birthYear && existingMember.birthYear) {
-    const birthYearScore = compareBirthYears(input.birthYear, existingMember.birthYear);
-    const weight = 15;
-    totalScore += birthYearScore * weight;
-    weightSum += weight;
-    
-    if (birthYearScore >= 70) {
-      matchReasons.push(`Birth year match: ${existingMember.birthYear}`);
-      matchReasonsAr.push(`تطابق سنة الميلاد: ${existingMember.birthYear}`);
-    }
-  }
-  
-  if (input.gender && existingMember.gender) {
-    const genderMatch = input.gender === existingMember.gender;
-    const weight = 5;
-    const score = genderMatch ? 100 : 0;
-    totalScore += score * weight;
-    weightSum += weight;
-  }
-
-  if (input.phone && existingMember.phone) {
-    const normalizedInputPhone = input.phone.replace(/\D/g, '').slice(-9);
-    const normalizedMemberPhone = existingMember.phone.replace(/\D/g, '').slice(-9);
-    const phoneMatch = normalizedInputPhone === normalizedMemberPhone && normalizedInputPhone.length >= 9;
-    
-    if (phoneMatch) {
-      const weight = 50;
-      totalScore += 100 * weight;
-      weightSum += weight;
-      matchReasons.push('Phone number match');
-      matchReasonsAr.push('تطابق رقم الهاتف');
-    }
-  }
-
-  if (input.email && existingMember.email) {
-    const emailMatch = input.email.toLowerCase().trim() === existingMember.email.toLowerCase().trim();
-    
-    if (emailMatch) {
-      const weight = 40;
-      totalScore += 100 * weight;
-      weightSum += weight;
-      matchReasons.push('Email match');
-      matchReasonsAr.push('تطابق البريد الإلكتروني');
-    }
-  }
-  
-  let rawSimilarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
-  
-  const generationComparison = compareGenerations(input.generation, existingMember.generation);
-  
-  if (input.generation && existingMember.generation) {
-    const genScore = generationComparison.score;
-    totalScore += genScore * GENERATION_MATCH_WEIGHT;
-    weightSum += GENERATION_MATCH_WEIGHT;
-    rawSimilarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
-  }
-  
-  // GRANDFATHER NAME DIFFERENTIATION - Strong differentiator
-  // ONLY applies when first name AND father name are similar but grandfather names are different
-  // This catches cases like "شايع بن عبدالله بن محمد" vs "شايع بن عبدالله بن عبدالعزيز"
-  let hasDifferentGrandfather = false;
-  if (input.firstName && input.fatherName && existingMember.fatherName && 
-      input.grandfatherName && existingMember.grandfatherName) {
-    const firstNameSimilarity = compareNames(input.firstName, existingMember.firstName);
-    const fatherNameSimilarity = compareNames(input.fatherName, existingMember.fatherName);
-    const grandfatherSimilarity = compareNames(input.grandfatherName, existingMember.grandfatherName);
-    
-    // Only check grandfather if first and father names are highly similar (potential duplicate scenario)
-    if (firstNameSimilarity >= HIGH_SIMILARITY_THRESHOLD && 
-        fatherNameSimilarity >= HIGH_SIMILARITY_THRESHOLD && 
-        grandfatherSimilarity < HIGH_SIMILARITY_THRESHOLD) {
-      // First and father match, but grandfather is different = DIFFERENT people
-      hasDifferentGrandfather = true;
-    }
-  }
-  
-  // FATHER ID DIFFERENTIATION - Strongest differentiator
-  // If both have fatherId and they're different = DEFINITELY different people
-  // This takes priority over generation check
+  // RULE 1: Different fatherId = NOT a duplicate (regardless of name similarity)
   if (hasDifferentFather) {
-    rawSimilarityScore = Math.min(rawSimilarityScore, 35);
-    matchReasons.push(`CRITICAL: Different fathers - DEFINITELY DIFFERENT PEOPLE with same name`);
-    matchReasonsAr.push(`تحذير خطير: آباء مختلفون - أشخاص مختلفون بالتأكيد بنفس الاسم`);
-  } else if (hasDifferentGrandfather) {
-    // Different grandfather = different family line, even if first name and father name match
-    rawSimilarityScore = Math.min(rawSimilarityScore, 35);
-    matchReasons.push(`CRITICAL: Different grandfathers - DIFFERENT PEOPLE with same name and father name`);
-    matchReasonsAr.push(`تحذير خطير: أجداد مختلفون - أشخاص مختلفون بنفس الاسم واسم الأب`);
-  } else if (generationComparison.isDifferentPerson) {
-    rawSimilarityScore = Math.min(rawSimilarityScore, 40);
-    matchReasons.push(`CRITICAL: Generation mismatch (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} generations apart) - DIFFERENT PEOPLE with same name`);
-    matchReasonsAr.push(`تحذير خطير: اختلاف الجيل (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} أجيال) - أشخاص مختلفون بنفس الاسم`);
-  } else if (generationComparison.score > 0 && generationComparison.score < 100) {
-    rawSimilarityScore = Math.round(rawSimilarityScore * generationComparison.penaltyFactor);
-    matchReasons.push(`Generation difference: input Gen ${input.generation} vs member Gen ${existingMember.generation}`);
-    matchReasonsAr.push(`فارق الجيل: المدخل جيل ${input.generation} مقابل العضو جيل ${existingMember.generation}`);
-  } else if (input.generation && existingMember.generation && generationComparison.score === 100) {
-    matchReasons.push(`Same generation: Gen ${existingMember.generation}`);
-    matchReasonsAr.push(`نفس الجيل: الجيل ${existingMember.generation}`);
+    return {
+      member: existingMember,
+      similarityScore: 0,  // Not a duplicate candidate
+      matchReasons: ['Different fathers - not a duplicate'],
+      matchReasonsAr: ['آباء مختلفون - ليس تكرار'],
+    };
   }
   
-  const similarityScore = rawSimilarityScore;
+  // RULE 2: Same fatherId + Similar firstName = DUPLICATE (sibling with same name)
+  if (hasSameFather) {
+    if (firstNameScore >= SIBLING_DUPLICATE_THRESHOLD) {
+      matchReasons.push(`Same father + Same name: ${firstNameScore}%`);
+      matchReasonsAr.push(`نفس الأب + نفس الاسم: ${firstNameScore}%`);
+      matchReasons.push('DUPLICATE: Same person registered twice under same parent');
+      matchReasonsAr.push('تكرار: نفس الشخص مسجل مرتين تحت نفس الوالد');
+      
+      return {
+        member: existingMember,
+        similarityScore: firstNameScore,
+        matchReasons,
+        matchReasonsAr,
+      };
+    } else {
+      // Same father but different first name = different siblings, not duplicate
+      return {
+        member: existingMember,
+        similarityScore: firstNameScore,
+        matchReasons: [`Same father, different name: ${firstNameScore}%`],
+        matchReasonsAr: [`نفس الأب، اسم مختلف: ${firstNameScore}%`],
+      };
+    }
+  }
   
+  // RULE 3: No fatherId available = CANNOT determine duplicate
+  // Without fatherId, we cannot know if two people with the same name are duplicates
+  // Return 0 similarity to prevent false positive duplicates
   return {
     member: existingMember,
-    similarityScore,
-    matchReasons,
-    matchReasonsAr,
+    similarityScore: 0,
+    matchReasons: ['Cannot determine duplicate without fatherId'],
+    matchReasonsAr: ['لا يمكن تحديد التكرار بدون معرف الأب'],
   };
 }
 
+/**
+ * SIMPLIFIED DUPLICATE DETECTION
+ * 
+ * A duplicate ONLY exists when:
+ * - Same fatherId + Same firstName (90%+ similarity)
+ * 
+ * This function ONLY returns duplicates, not similar members from other families.
+ */
 export async function findPotentialDuplicates(
   input: FuzzyMatchInput,
   options?: {
@@ -356,11 +262,24 @@ export async function findPotentialDuplicates(
     excludeIds?: string[];
   }
 ): Promise<FuzzyMatchResult> {
-  const threshold = options?.threshold ?? HIGH_SIMILARITY_THRESHOLD;
+  const threshold = options?.threshold ?? SIBLING_DUPLICATE_THRESHOLD;  // Use 90% for duplicates
   const limit = options?.limit ?? 10;
   const excludeIds = options?.excludeIds ?? [];
   
+  // RULE: Duplicates can ONLY exist among siblings (same fatherId)
+  // If no fatherId provided, we cannot determine duplicates
+  if (!input.fatherId) {
+    return {
+      hasMatches: false,
+      candidates: [],
+      highestScore: 0,
+      isDuplicate: false,
+    };
+  }
+  
+  // Only search among siblings (same father)
   const whereClause: Record<string, unknown> = {
+    fatherId: input.fatherId,
     deletedAt: null,
   };
   
@@ -368,30 +287,23 @@ export async function findPotentialDuplicates(
     whereClause.id = { notIn: excludeIds };
   }
   
-  if (input.fatherId) {
-    whereClause.fatherId = input.fatherId;
-  }
-  
-  let members = await prisma.familyMember.findMany({
+  const siblings = await prisma.familyMember.findMany({
     where: whereClause,
-    take: 500,
   });
-  
-  if (members.length === 0 && input.fatherId) {
-    delete whereClause.fatherId;
-    members = await prisma.familyMember.findMany({
-      where: whereClause,
-      take: 500,
-    });
-  }
   
   const candidates: MatchCandidate[] = [];
   
-  for (const member of members) {
-    const matchResult = calculateMemberSimilarity(input, member);
+  for (const sibling of siblings) {
+    // Compare only firstName with comprehensive Arabic normalization
+    const firstNameScore = compareNames(input.firstName || '', sibling.firstName);
     
-    if (matchResult.similarityScore >= threshold) {
-      candidates.push(matchResult);
+    if (firstNameScore >= threshold) {
+      candidates.push({
+        member: sibling,
+        similarityScore: firstNameScore,
+        matchReasons: [`Same father + Same name: ${firstNameScore}%`, 'DUPLICATE: Same person registered twice'],
+        matchReasonsAr: [`نفس الأب + نفس الاسم: ${firstNameScore}%`, 'تكرار: نفس الشخص مسجل مرتين'],
+      });
     }
   }
   
@@ -404,7 +316,7 @@ export async function findPotentialDuplicates(
     hasMatches: topCandidates.length > 0,
     candidates: topCandidates,
     highestScore,
-    isDuplicate: highestScore >= DUPLICATE_THRESHOLD,
+    isDuplicate: highestScore >= SIBLING_DUPLICATE_THRESHOLD,
   };
 }
 
@@ -451,10 +363,14 @@ export async function checkBranchDuplicate(
     hasMatches: candidates.length > 0,
     candidates,
     highestScore,
-    isDuplicate: highestScore >= DUPLICATE_THRESHOLD,
+    isDuplicate: highestScore >= SIBLING_DUPLICATE_THRESHOLD,  // Consistent 90% threshold
   };
 }
 
+/**
+ * Find similar pending members - uses simplified duplicate logic
+ * Only returns true duplicates: same fatherId + same firstName (90%+)
+ */
 export async function findSimilarPendingMembers(
   pendingId: string,
   pendingData: {
@@ -472,7 +388,7 @@ export async function findSimilarPendingMembers(
     birthYear: pendingData.birthYear || undefined,
     gender: pendingData.gender,
   }, {
-    threshold: HIGH_SIMILARITY_THRESHOLD,  // Use improved threshold
+    threshold: SIBLING_DUPLICATE_THRESHOLD,  // Use 90% for duplicate detection
     limit: 5,
   });
 }
