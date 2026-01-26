@@ -294,6 +294,18 @@ export function calculateMemberSimilarity(
     rawSimilarityScore = weightSum > 0 ? Math.round(totalScore / weightSum) : 0;
   }
   
+  // GRANDFATHER NAME DIFFERENTIATION - Strong differentiator
+  // If first name and father name match but grandfather names are different = DIFFERENT people
+  // This catches cases like "شايع بن عبدالله بن محمد" vs "شايع بن عبدالله بن عبدالعزيز"
+  let hasDifferentGrandfather = false;
+  if (input.grandfatherName && existingMember.grandfatherName) {
+    const grandfatherSimilarity = compareNames(input.grandfatherName, existingMember.grandfatherName);
+    // If grandfather names are significantly different (less than 60% similar)
+    if (grandfatherSimilarity < 60) {
+      hasDifferentGrandfather = true;
+    }
+  }
+  
   // FATHER ID DIFFERENTIATION - Strongest differentiator
   // If both have fatherId and they're different = DEFINITELY different people
   // This takes priority over generation check
@@ -301,6 +313,11 @@ export function calculateMemberSimilarity(
     rawSimilarityScore = Math.min(rawSimilarityScore, 35);
     matchReasons.push(`CRITICAL: Different fathers - DEFINITELY DIFFERENT PEOPLE with same name`);
     matchReasonsAr.push(`تحذير خطير: آباء مختلفون - أشخاص مختلفون بالتأكيد بنفس الاسم`);
+  } else if (hasDifferentGrandfather) {
+    // Different grandfather = different family line, even if first name and father name match
+    rawSimilarityScore = Math.min(rawSimilarityScore, 35);
+    matchReasons.push(`CRITICAL: Different grandfathers - DIFFERENT PEOPLE with same name and father name`);
+    matchReasonsAr.push(`تحذير خطير: أجداد مختلفون - أشخاص مختلفون بنفس الاسم واسم الأب`);
   } else if (generationComparison.isDifferentPerson) {
     rawSimilarityScore = Math.min(rawSimilarityScore, 40);
     matchReasons.push(`CRITICAL: Generation mismatch (${Math.abs((input.generation || 0) - (existingMember.generation || 0))} generations apart) - DIFFERENT PEOPLE with same name`);
