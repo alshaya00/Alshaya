@@ -66,6 +66,24 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   Three repair actions: link user to member, set member's parent, create member for user.
     -   Full audit logging with before/after state tracking.
     -   Rollback capability: any repair can be safely reverted using the change ID.
+-   **Conditional Approval System**:
+    -   Allows family members to register even when their parent is pending approval.
+    -   Uses `parentPendingId` field to link conditional pending members to their pending parent.
+    -   Father search includes pending members with "قيد المراجعة" badges when `includePending=true`.
+    -   Registration flow allows selecting pending parents with orange visual indicators.
+    -   Uncle verification is skipped for conditional registrations (pending parents).
+    -   **Sequential Chain Approval**: When a parent is approved, linked children's `parentPendingId` is cleared and their `proposedFatherId` is set to the newly created member.
+    -   **Admin Review Enhancements**:
+        - Review modal shows linked pending children and parent pending warnings.
+        - "Approve with children" button for bulk chain approval (processes parent first, then children sequentially).
+        - Approval is blocked if member's parent is still pending.
+        - Visual badges in list view: "بانتظار الأب" (waiting for father) and "له أبناء معلقون" (has pending children).
+    -   **Conditional Approvals Admin Page** (`/admin/conditional-approvals`):
+        - Dashboard showing all conditional pending members with chain visualization.
+        - Statistics: total conditional, pending parents, children waiting.
+        - Link/unlink tools to manually modify parent-child relationships.
+        - Circular reference detection prevents invalid chains.
+        - Full audit logging for all link/unlink operations.
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database.
