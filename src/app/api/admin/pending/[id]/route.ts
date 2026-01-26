@@ -86,7 +86,7 @@ export async function POST(
     const body = await request.json();
     const { action, reviewNote, overrideDuplicateCheck } = body;
 
-    if (!action || !['approve', 'reject', 'merge_update'].includes(action)) {
+    if (!action || !['approve', 'reject', 'merge_update', 'restore'].includes(action)) {
       return NextResponse.json(
         { success: false, message: 'Invalid action', messageAr: 'الإجراء غير صالح' },
         { status: 400 }
@@ -104,7 +104,16 @@ export async function POST(
       );
     }
 
-    if (pending.reviewStatus !== 'PENDING') {
+    // For restore action, member must be REJECTED
+    if (action === 'restore') {
+      if (pending.reviewStatus !== 'REJECTED') {
+        return NextResponse.json(
+          { success: false, message: 'Only rejected members can be restored', messageAr: 'يمكن استعادة الطلبات المرفوضة فقط' },
+          { status: 400 }
+        );
+      }
+    } else if (pending.reviewStatus !== 'PENDING') {
+      // For other actions, member must be PENDING
       return NextResponse.json(
         { success: false, message: 'Already processed', messageAr: 'تمت المعالجة مسبقاً' },
         { status: 400 }
@@ -225,6 +234,58 @@ export async function POST(
         success: true,
         message: 'Pending member rejected',
         messageAr: 'تم رفض العضو المعلق',
+      });
+    }
+
+    if (action === 'restore') {
+      await prisma.pendingMember.update({
+        where: { id: params.id },
+        data: {
+          reviewStatus: 'PENDING',
+          reviewedBy: null,
+          reviewedAt: null,
+          reviewNotes: null,
+        },
+      });
+
+      await logActivity({
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.nameArabic,
+        action: 'PENDING_MEMBER_RESTORED',
+        category: 'MEMBER',
+        targetType: 'PENDING_MEMBER',
+        targetId: params.id,
+        targetName: pending.fullNameAr || pending.firstName,
+        details: { previousStatus: 'REJECTED' },
+        ipAddress,
+        userAgent,
+        success: true,
+      });
+
+      try {
+        await logAuditToDb({
+          action: 'PENDING_RESTORE',
+          severity: 'INFO',
+          userId: user.id,
+          userName: user.email,
+          userRole: user.role,
+          targetType: 'PENDING_MEMBER',
+          targetId: params.id,
+          targetName: pending.fullNameAr || pending.firstName,
+          description: `تم استعادة العضو المعلق: ${pending.firstName}`,
+          details: { previousStatus: 'REJECTED' },
+          previousState: pending as unknown as Record<string, unknown>,
+          success: true,
+        });
+      } catch (auditError) {
+        console.error('Audit logging failed:', auditError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Pending member restored',
+        messageAr: 'تم استعادة الطلب للمراجعة',
       });
     }
 

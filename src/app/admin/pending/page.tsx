@@ -395,6 +395,37 @@ export default function AdminPendingPage() {
     }
   };
 
+  const handleRestore = async (id: string) => {
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/pending/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(data.messageAr || 'تم استعادة الطلب للمراجعة');
+        await fetchPendingMembers();
+      } else {
+        alert(data.messageAr || data.message || 'حدث خطأ أثناء الاستعادة');
+      }
+    } catch (error) {
+      console.error('Error restoring member:', error);
+      alert('حدث خطأ أثناء الاستعادة. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleReject = async (ids: string[]) => {
     if (!session?.token) {
       alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
@@ -809,6 +840,16 @@ export default function AdminPendingPage() {
                                     </button>
                                   </>
                                 ) : null}
+                                {member.reviewStatus === 'REJECTED' && (
+                                  <button
+                                    onClick={() => handleRestore(member.id)}
+                                    className="p-2 bg-amber-100 text-amber-600 rounded-lg hover:bg-amber-200 flex items-center gap-1"
+                                    title="استعادة للمراجعة"
+                                    disabled={isProcessing}
+                                  >
+                                    <RotateCcw size={18} />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleEdit(member)}
                                   className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
