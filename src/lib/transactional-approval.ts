@@ -28,6 +28,7 @@ export interface ApprovalContext {
   userEmail: string;
   userRole: string;
   reviewNote?: string;
+  overrideDuplicateCheck?: boolean;
 }
 
 type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -35,7 +36,7 @@ type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' 
 export async function approvePendingMemberTransactional(
   context: ApprovalContext
 ): Promise<ApprovalResult> {
-  const { pendingId, userId, userEmail, userRole, reviewNote } = context;
+  const { pendingId, userId, userEmail, userRole, reviewNote, overrideDuplicateCheck } = context;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -65,14 +66,17 @@ export async function approvePendingMemberTransactional(
         }
       }
 
-      const duplicates = await checkForDuplicates({
-        firstName: pending.firstName,
-        fatherId: pending.proposedFatherId || undefined,
-        fatherName: pending.fatherName || undefined,
-      }, tx);
+      // Skip duplicate check if admin explicitly overrides
+      if (!overrideDuplicateCheck) {
+        const duplicates = await checkForDuplicates({
+          firstName: pending.firstName,
+          fatherId: pending.proposedFatherId || undefined,
+          fatherName: pending.fatherName || undefined,
+        }, tx);
 
-      if (duplicates.isDuplicate) {
-        throw new Error(`DUPLICATE_FOUND: ${duplicates.existingMembers.map(m => m.id).join(', ')}`);
+        if (duplicates.isDuplicate) {
+          throw new Error(`DUPLICATE_FOUND: ${duplicates.existingMembers.map(m => m.id).join(', ')}`);
+        }
       }
 
       const newId = await generateNextMemberId(tx);

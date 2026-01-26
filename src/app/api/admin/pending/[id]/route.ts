@@ -84,7 +84,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { action, reviewNote } = body;
+    const { action, reviewNote, overrideDuplicateCheck } = body;
 
     if (!action || !['approve', 'reject', 'merge_update'].includes(action)) {
       return NextResponse.json(
@@ -121,6 +121,7 @@ export async function POST(
         userEmail: user.email,
         userRole: user.role,
         reviewNote,
+        overrideDuplicateCheck: overrideDuplicateCheck === true,
       });
 
       if (!result.success) {

@@ -363,6 +363,38 @@ export default function AdminPendingPage() {
     }
   };
 
+  const handleOverrideApprove = async (pendingId: string) => {
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/pending/${pendingId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'approve', overrideDuplicateCheck: true }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(data.messageAr || 'تم إضافة العضو بنجاح');
+        await fetchPendingMembers();
+        setDuplicateModal(null);
+      } else {
+        alert(data.messageAr || data.message || 'حدث خطأ أثناء الإضافة');
+      }
+    } catch (error) {
+      console.error('Error approving member with override:', error);
+      alert('حدث خطأ أثناء الإضافة. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleReject = async (ids: string[]) => {
     if (!session?.token) {
       alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
@@ -931,24 +963,34 @@ export default function AdminPendingPage() {
                 })}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3">
                 <button
-                  onClick={() => setDuplicateModal(null)}
-                  className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50"
+                  onClick={() => handleOverrideApprove(duplicateModal.pendingId)}
                   disabled={isProcessing}
+                  className="w-full py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  إلغاء
+                  {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+                  تجاوز وإضافة كعضو جديد
                 </button>
-                <button
-                  onClick={() => {
-                    handleReject([duplicateModal.pendingId]);
-                    setDuplicateModal(null);
-                  }}
-                  disabled={isProcessing}
-                  className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 disabled:opacity-50"
-                >
-                  رفض العضو المكرر
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDuplicateModal(null)}
+                    className="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50"
+                    disabled={isProcessing}
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleReject([duplicateModal.pendingId]);
+                      setDuplicateModal(null);
+                    }}
+                    disabled={isProcessing}
+                    className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 disabled:opacity-50"
+                  >
+                    رفض العضو المكرر
+                  </button>
+                </div>
               </div>
             </div>
           </div>
