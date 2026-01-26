@@ -37,7 +37,7 @@ interface FormData {
 }
 
 type JoinPath = 'invite' | 'request' | 'browse' | null;
-type PhoneStep = 'form' | 'verify' | 'complete';
+type PhoneStep = 'form' | 'uncle_verify' | 'verify' | 'complete';
 
 const RELATIONSHIP_TYPES = relationshipTypes;
 
@@ -78,6 +78,20 @@ export default function RegisterPage() {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpExpiresIn, setOtpExpiresIn] = useState<number>(0);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  const [uncleName, setUncleName] = useState('');
+  const [uncleError, setUncleError] = useState<string | null>(null);
+  const [uncleVerified, setUncleVerified] = useState(false);
+  const [hasSiblings, setHasSiblings] = useState(true);
+  const [lastVerifiedParentId, setLastVerifiedParentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (formData.parentMemberId !== lastVerifiedParentId) {
+      setUncleVerified(false);
+      setUncleName('');
+      setUncleError(null);
+    }
+  }, [formData.parentMemberId, lastVerifiedParentId]);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -308,6 +322,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (formData.parentMemberId && !uncleVerified) {
+      await handleStartUncleVerification();
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -367,6 +386,116 @@ export default function RegisterPage() {
       setResendCooldown(60);
     } catch {
       setOtpError('حدث خطأ أثناء إرسال رمز التحقق');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkForUncles = async () => {
+    if (!formData.parentMemberId) {
+      return { hasSiblings: false };
+    }
+
+    try {
+      const response = await fetch(`/api/members/siblings?memberId=${formData.parentMemberId}`);
+      const data = await response.json();
+      return { 
+        hasSiblings: data.hasSiblings || false,
+        count: data.count || 0
+      };
+    } catch {
+      return { hasSiblings: false };
+    }
+  };
+
+  const handleStartUncleVerification = async () => {
+    setError(null);
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setIsLoading(true);
+
+    const uncleCheck = await checkForUncles();
+    setHasSiblings(uncleCheck.hasSiblings);
+
+    if (!uncleCheck.hasSiblings) {
+      await proceedToOtpStep();
+    } else {
+      setPhoneStep('uncle_verify');
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyUncle = async () => {
+    if (!uncleName.trim()) {
+      setUncleError('يرجى إدخال اسم أحد أعمامك');
+      return;
+    }
+
+    setIsLoading(true);
+    setUncleError(null);
+
+    try {
+      const response = await fetch('/api/members/siblings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: formData.parentMemberId,
+          uncleName: uncleName.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.valid) {
+        setUncleVerified(true);
+        setLastVerifiedParentId(formData.parentMemberId);
+        await proceedToOtpStep();
+      } else {
+        setUncleError(data.message || 'اسم العم/العمة غير صحيح');
+      }
+    } catch {
+      setUncleError('حدث خطأ أثناء التحقق');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSkipUncleVerification = async () => {
+    setIsLoading(true);
+    await proceedToOtpStep();
+  };
+
+  const proceedToOtpStep = async () => {
+    try {
+      const response = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: formData.phone,
+          countryCode: formData.countryCode,
+          purpose: 'REGISTRATION',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'فشل في إرسال رمز التحقق');
+        setPhoneStep('form');
+        return;
+      }
+
+      setPhoneStep('verify');
+      setOtpExpiresIn(data.expiresIn || 600);
+      setResendCooldown(60);
+    } catch {
+      setError('حدث خطأ أثناء إرسال رمز التحقق');
+      setPhoneStep('form');
     } finally {
       setIsLoading(false);
     }
@@ -497,6 +626,116 @@ export default function RegisterPage() {
               </Link>
             </div>
           </div>
+        </div>
+      </GuestOnly>
+    );
+  }
+
+  if (phoneStep === 'uncle_verify') {
+    const selectedParentForVerify = formData.parentMemberId
+      ? allMembers.find((m) => m.id === formData.parentMemberId)
+      : null;
+
+    return (
+      <GuestOnly redirectTo="/">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-purple-700" dir="rtl">
+          <header className="py-6 px-4">
+            <div className="max-w-7xl mx-auto flex justify-between items-center">
+              <Link href="/" className="flex items-center gap-2">
+                <span className="text-2xl">🌳</span>
+                <span className="text-xl font-bold text-white">آل شايع</span>
+              </Link>
+              <div className="text-white text-sm">
+                الخطوة 2: المطابقة
+              </div>
+            </div>
+          </header>
+
+          <div className="bg-indigo-700 py-4 px-4 text-white text-center">
+            <h1 className="text-xl font-bold">الخطوة 2: المطابقة</h1>
+            <p className="text-indigo-200 text-sm mt-1">تأكيد مكانك في شجرة العائلة</p>
+          </div>
+
+          <main className="max-w-lg mx-auto px-4 py-8">
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                  <Users className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">ما اسم أحد أعمامك؟</h2>
+                  <p className="text-gray-600 mt-1">
+                    أي عم من أعمامك (إخوة والدك) يساعدنا في التأكد
+                  </p>
+                </div>
+              </div>
+
+              {selectedParentForVerify && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-sm text-gray-500">الوالد المحدد:</p>
+                  <p className="font-semibold text-gray-900">{selectedParentForVerify.fullNameAr || selectedParentForVerify.firstName}</p>
+                </div>
+              )}
+
+              {uncleError && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-red-800 font-medium">{uncleError}</p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <input
+                  type="text"
+                  value={uncleName}
+                  onChange={(e) => setUncleName(e.target.value)}
+                  placeholder="مثال: سعد، عبدالله، محمد..."
+                  className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSkipUncleVerification}
+                  disabled={isLoading}
+                  className="px-6 py-4 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                  تخطي
+                </button>
+                <button
+                  onClick={handleVerifyUncle}
+                  disabled={isLoading || !uncleName.trim()}
+                  className="flex-1 py-4 px-6 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      جاري التحقق...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-5 h-5" />
+                      تأكيد
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  setPhoneStep('form');
+                  setUncleName('');
+                  setUncleError(null);
+                  setUncleVerified(false);
+                }}
+                className="w-full mt-4 text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                الرجوع للنموذج
+              </button>
+            </div>
+          </main>
         </div>
       </GuestOnly>
     );
