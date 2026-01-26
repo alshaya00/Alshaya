@@ -26,6 +26,7 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **Duplicate Detection & Prevention**: Fuzzy matching with Levenshtein distance, real-time warnings, and a public API for duplicate checks.
     -   **Generation-Aware Duplicate Detection**: Members with 2+ generation difference are automatically excluded from duplicate detection (similarity capped at 40%, below 85% threshold), preventing false matches for identical names across different generations.
     -   **Father ID-Based Duplicate Detection**: Members with different fathers (fatherId) are automatically excluded from duplicate detection (similarity capped at 35%, even stricter than generation check). This is the STRONGEST differentiator - if two members have different fathers, they are definitely different people regardless of name similarity.
+    -   **Grandfather Name-Based Duplicate Detection**: Members with the same first name and father name but different grandfather names are automatically excluded from duplicate detection (similarity capped at 35%). This prevents false positives like "شايع بن عبدالله بن محمد" vs "شايع بن عبدالله بن عبدالعزيز" which are different people despite sharing first and father names.
     -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data. Server-side blocking prevents merges between members with:
         - Different fathers (highest priority block)
         - Critical generation mismatch (>=2 generations apart)

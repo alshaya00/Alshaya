@@ -295,13 +295,20 @@ export function calculateMemberSimilarity(
   }
   
   // GRANDFATHER NAME DIFFERENTIATION - Strong differentiator
-  // If first name and father name match but grandfather names are different = DIFFERENT people
+  // ONLY applies when first name AND father name are similar but grandfather names are different
   // This catches cases like "شايع بن عبدالله بن محمد" vs "شايع بن عبدالله بن عبدالعزيز"
   let hasDifferentGrandfather = false;
-  if (input.grandfatherName && existingMember.grandfatherName) {
+  if (input.firstName && input.fatherName && existingMember.fatherName && 
+      input.grandfatherName && existingMember.grandfatherName) {
+    const firstNameSimilarity = compareNames(input.firstName, existingMember.firstName);
+    const fatherNameSimilarity = compareNames(input.fatherName, existingMember.fatherName);
     const grandfatherSimilarity = compareNames(input.grandfatherName, existingMember.grandfatherName);
-    // If grandfather names are significantly different (less than 60% similar)
-    if (grandfatherSimilarity < 60) {
+    
+    // Only check grandfather if first and father names are highly similar (potential duplicate scenario)
+    if (firstNameSimilarity >= HIGH_SIMILARITY_THRESHOLD && 
+        fatherNameSimilarity >= HIGH_SIMILARITY_THRESHOLD && 
+        grandfatherSimilarity < HIGH_SIMILARITY_THRESHOLD) {
+      // First and father match, but grandfather is different = DIFFERENT people
       hasDifferentGrandfather = true;
     }
   }
