@@ -115,20 +115,27 @@ export default function AdminPendingPage() {
     }
   }, [session?.token]);
 
+  const fetchAllMembers = useCallback(async () => {
+    if (!session?.token) return;
+    try {
+      const res = await fetch('/api/members?limit=500', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAllMembers(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching all members:', error);
+    }
+  }, [session?.token]);
+
   useEffect(() => {
     async function fetchData() {
       if (!session?.token) return;
       setIsLoading(true);
       try {
-        const [membersRes] = await Promise.all([
-          fetch('/api/members?limit=500', {
-            headers: { Authorization: `Bearer ${session.token}` },
-          }),
-        ]);
-        if (membersRes.ok) {
-          const data = await membersRes.json();
-          setAllMembers(data.data || []);
-        }
+        await fetchAllMembers();
         await fetchPendingMembers();
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -137,7 +144,7 @@ export default function AdminPendingPage() {
       }
     }
     fetchData();
-  }, [session?.token, fetchPendingMembers]);
+  }, [session?.token, fetchPendingMembers, fetchAllMembers]);
 
   const getMemberById = (id: string): FamilyMember | undefined => {
     return allMembers.find(m => m.id === id);
@@ -156,6 +163,18 @@ export default function AdminPendingPage() {
       setReviewModal({ pending: member, parent: null, children: [] });
     }
   }, [getChildrenOfParent]);
+
+  useEffect(() => {
+    if (reviewModal && reviewModal.pending.proposedFatherId) {
+      const updatedChildren = getChildrenOfParent(reviewModal.pending.proposedFatherId);
+      if (updatedChildren.length !== reviewModal.children.length) {
+        setReviewModal(prev => prev ? {
+          ...prev,
+          children: updatedChildren
+        } : null);
+      }
+    }
+  }, [allMembers, reviewModal?.pending.proposedFatherId, getChildrenOfParent]);
 
   const handleLinkToExisting = async (pendingId: string, targetMemberId: string) => {
     if (!session?.token) {
@@ -320,6 +339,7 @@ export default function AdminPendingPage() {
         alert(`فشل في الموافقة على بعض الأعضاء:\n${errorMessages}`);
       }
       
+      await fetchAllMembers();
       await fetchPendingMembers();
       setSelectedIds(new Set());
       setShowConfirmModal(null);
@@ -350,6 +370,7 @@ export default function AdminPendingPage() {
       
       if (res.ok) {
         alert(data.messageAr || 'تم تحديث معلومات العضو بنجاح');
+        await fetchAllMembers();
         await fetchPendingMembers();
         setDuplicateModal(null);
       } else {
@@ -382,6 +403,7 @@ export default function AdminPendingPage() {
       
       if (res.ok) {
         alert(data.messageAr || 'تم إضافة العضو بنجاح');
+        await fetchAllMembers();
         await fetchPendingMembers();
         setDuplicateModal(null);
       } else {
