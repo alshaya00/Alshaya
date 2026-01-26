@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
         try {
           const newMemberInput: MemberInput = {
             firstName: inputNameParts[0] || sanitizeString(nameArabic).split(' ')[0],
-            fatherName: parent?.firstName || undefined,
+            fatherName: parentInfo?.firstName || undefined,
             fatherId: parentMemberId,
             gender: (gender === 'Female' ? 'Female' : 'Male') as 'Male' | 'Female',
             phone: normalizedPhone,
