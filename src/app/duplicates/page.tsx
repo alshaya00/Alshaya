@@ -116,7 +116,7 @@ function DuplicatesPageContent() {
 
   const [merging, setMerging] = useState<string | null>(null);
 
-  const mergePair = async (index: number, keepMemberId: string) => {
+  const mergePair = async (index: number, keepMemberId: string, force: boolean = false) => {
     const pair = duplicatePairs[index];
     const keepMember = keepMemberId === pair.member1.id ? pair.member1 : pair.member2;
     const removeMember = keepMemberId === pair.member1.id ? pair.member2 : pair.member1;
@@ -133,15 +133,24 @@ function DuplicatesPageContent() {
         body: JSON.stringify({
           reason: `تم الدمج مع العضو ${keepMember.fullNameAr || keepMember.firstName} (${keepMember.id})`,
           mergedIntoId: keepMember.id,
+          force,
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (data.success) {
         updateStatus(index, 'MERGED');
         setAllMembers(prev => prev.filter(m => m.id !== removeMember.id));
+      } else if (data.warning && data.hasChildren) {
+        const confirmMsg = `${removeMember.fullNameAr || removeMember.firstName} لديه ${data.childrenCount} أبناء:\n${data.childrenNames?.join('، ')}\n\nسيتم نقل الأبناء إلى ${keepMember.fullNameAr || keepMember.firstName}.\n\nهل تريد المتابعة؟`;
+        if (confirm(confirmMsg)) {
+          await mergePair(index, keepMemberId, true);
+        }
+      } else if (data.linkedUser) {
+        alert(`لا يمكن حذف هذا العضو لأنه مرتبط بحساب المستخدم "${data.linkedUser.name}".\n\nيجب فك ارتباط الحساب أولاً من صفحة إدارة المستخدمين.`);
       } else {
-        const err = await res.json();
-        alert(`فشل الدمج: ${err.error || 'خطأ غير معروف'}`);
+        alert(`فشل الدمج: ${data.messageAr || data.message || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error merging:', error);
