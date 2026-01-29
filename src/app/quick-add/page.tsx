@@ -12,6 +12,7 @@ import { MatchConfirmation, MatchComparisonGraphs, SearchHelperQuestions, filter
 import type { HelperStep } from '@/components/quick-add';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import GenderAvatar from '@/components/GenderAvatar';
+import PhoneInput from '@/components/PhoneInput';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   PlusCircle,
@@ -56,6 +57,7 @@ interface NewMemberData {
   city: string;
   occupation: string;
   phone: string;
+  countryCode: string;
   email: string;
   biography: string;
 }
@@ -138,6 +140,7 @@ export default function QuickAddPage() {
     city: '',
     occupation: '',
     phone: '',
+    countryCode: '+966',
     email: '',
     biography: '',
   });
@@ -473,7 +476,7 @@ export default function QuickAddPage() {
       generation: autoFillData?.generation || 1,
       branch: autoFillData?.branch || undefined,
       fullNameAr: autoFillData?.fullNamePreview || `${formData.firstName} آل شايع`,
-      phone: formData.phone || undefined,
+      phone: formData.phone ? `${formData.countryCode}${formData.phone}` : undefined,
       city: formData.city || undefined,
       occupation: formData.occupation || undefined,
       email: formData.email || undefined,
@@ -501,6 +504,7 @@ export default function QuickAddPage() {
           city: '',
           occupation: '',
           phone: '',
+          countryCode: '+966',
           email: '',
           biography: '',
         });
@@ -533,6 +537,7 @@ export default function QuickAddPage() {
       city: '',
       occupation: '',
       phone: '',
+      countryCode: '+966',
       email: '',
       biography: '',
     });
@@ -1160,23 +1165,17 @@ export default function QuickAddPage() {
 
                   {/* Phone */}
                   <div>
-                    <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
-                      <Phone size={18} />
-                      رقم الهاتف {validation?.requirePhone && <span className="text-red-500">*</span>}
-                    </label>
-                    <input
-                      type="tel"
+                    <PhoneInput
                       value={formData.phone}
-                      onChange={(e) => updateField('phone', e.target.value)}
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-all ${
-                        errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-indigo-500'
-                      }`}
-                      placeholder="+966..."
-                      dir="ltr"
+                      onChange={(phone, countryCode) => {
+                        updateField('phone', phone);
+                        updateField('countryCode', countryCode);
+                      }}
+                      countryCode={formData.countryCode}
+                      label={`رقم الهاتف${validation?.requirePhone ? '' : ''}`}
+                      required={validation?.requirePhone}
+                      error={errors.phone}
                     />
-                    {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                    )}
                   </div>
                 </div>
 

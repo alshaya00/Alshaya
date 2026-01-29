@@ -4,7 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
-import { Key, Check, X, Mail, Lock, User, Phone, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Key, Check, X, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
+import PhoneInput from '@/components/PhoneInput';
 
 interface LinkedMemberInfo {
   id: string;
@@ -42,6 +43,7 @@ function InvitePageContent() {
   const [nameArabic, setNameArabic] = useState('');
   const [nameEnglish, setNameEnglish] = useState('');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+966');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -133,7 +135,7 @@ function InvitePageContent() {
           password,
           nameArabic,
           nameEnglish,
-          phone,
+          phone: phone ? `${countryCode}${phone}` : '',
         }),
       });
 
@@ -329,20 +331,15 @@ function InvitePageContent() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Phone className="w-4 h-4 inline ml-1" />
-                      رقم الهاتف (اختياري)
-                    </label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="+966 5XX XXX XXXX"
-                      dir="ltr"
-                    />
-                  </div>
+                  <PhoneInput
+                    value={phone}
+                    onChange={(newPhone, newCountryCode) => {
+                      setPhone(newPhone);
+                      setCountryCode(newCountryCode);
+                    }}
+                    countryCode={countryCode}
+                    label="رقم الهاتف (اختياري)"
+                  />
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -425,6 +422,7 @@ function InvitePageContent() {
                       setNameArabic('');
                       setNameEnglish('');
                       setPhone('');
+                      setCountryCode('+966');
                     }}
                     className="w-full py-2 text-gray-600 hover:text-gray-800 text-sm"
                   >

@@ -12,7 +12,6 @@ import {
   CheckCircle,
   User,
   Users,
-  Phone,
   Mail,
   MapPin,
   Calendar,
@@ -24,7 +23,9 @@ import {
   RefreshCw,
   Eye,
   AlertCircle,
+  Phone,
 } from 'lucide-react';
+import PhoneInput from '@/components/PhoneInput';
 import {
   validateEdit,
   validateParentChange,
@@ -772,17 +773,13 @@ export default function EditMemberPage() {
                         <>
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الهاتف
-                              </label>
-                              <input
-                                type="tel"
-                                value={formData.phone || ''}
-                                onChange={(e) => updateField('phone', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('phone') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                                dir="ltr"
+                              <PhoneInput
+                                value={(formData.phone || '').replace(/^\+\d+/, '')}
+                                onChange={(newPhone, newCountryCode) => {
+                                  updateField('phone', newPhone ? `${newCountryCode}${newPhone}` : '');
+                                }}
+                                countryCode={(formData.phone || '').match(/^\+\d+/)?.[0] || '+966'}
+                                label="الهاتف"
                               />
                             </div>
                             <div>

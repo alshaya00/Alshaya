@@ -79,7 +79,13 @@ export default function PhoneInput({
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPhone = e.target.value.replace(/[^\d]/g, '');
+    let newPhone = e.target.value.replace(/[^\d]/g, '');
+    
+    // Remove leading zero automatically for Saudi numbers
+    if (selectedCountry.code === '+966' && newPhone.startsWith('0')) {
+      newPhone = newPhone.substring(1);
+    }
+    
     setPhone(newPhone);
     onChange(newPhone, selectedCountry.code);
   };
@@ -143,11 +149,14 @@ export default function PhoneInput({
 
         <input
           type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
           value={phone}
           onChange={handlePhoneChange}
           placeholder={placeholder}
           disabled={disabled}
           dir="ltr"
+          autoComplete="tel-national"
           className={`flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-left ${
             disabled ? 'bg-gray-100 opacity-50 cursor-not-allowed' : ''
           } ${error ? 'border-red-500' : ''}`}

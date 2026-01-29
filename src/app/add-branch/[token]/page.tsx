@@ -16,6 +16,7 @@ import {
   TreePine, Clock, AlertCircle, X, Eye, Send, Edit2, Trash2,
   CheckCircle, Users, GitBranch, Info, List, Maximize2, Loader2
 } from 'lucide-react';
+import PhoneInput from '@/components/PhoneInput';
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
 import { getYearRange, CalendarType } from '@/lib/utils/hijri-calendar';
@@ -198,6 +199,7 @@ export default function BranchEntryPage() {
   const [birthYear, setBirthYear] = useState('');
   const [birthCalendar, setBirthCalendar] = useState<CalendarType>('HIJRI');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+966');
   const [city, setCity] = useState('');
 
   // UI state
@@ -419,7 +421,7 @@ export default function BranchEntryPage() {
           generation: autoFill.generation,
           branch: autoFill.branch,
           fullNameAr: autoFill.fullNameAr,
-          phone: phone.trim() || undefined,
+          phone: phone.trim() ? `${countryCode}${phone.trim()}` : undefined,
           city: city.trim() || undefined,
           status: 'Living',
           submittedVia: token,
@@ -442,7 +444,7 @@ export default function BranchEntryPage() {
         fatherName: autoFill.fatherName,
         gender,
         birthYear: birthYear ? parseInt(birthYear) : undefined,
-        phone: phone.trim() || undefined,
+        phone: phone.trim() ? `${countryCode}${phone.trim()}` : undefined,
         city: city.trim() || undefined,
         generation: autoFill.generation,
         branch: autoFill.branch,
@@ -461,6 +463,7 @@ export default function BranchEntryPage() {
       setBirthYear('');
       setBirthCalendar('GREGORIAN');
       setPhone('');
+      setCountryCode('+966');
       setCity('');
 
       setTimeout(() => {
@@ -503,7 +506,15 @@ export default function BranchEntryPage() {
     setGender(member.gender);
     setBirthYear(member.birthYear?.toString() || '');
     setBirthCalendar((member as any).birthCalendar || 'GREGORIAN');
-    setPhone(member.phone || '');
+    const existingPhone = member.phone || '';
+    const phoneMatch = existingPhone.match(/^(\+\d+)(.*)$/);
+    if (phoneMatch) {
+      setCountryCode(phoneMatch[1]);
+      setPhone(phoneMatch[2]);
+    } else {
+      setCountryCode('+966');
+      setPhone(existingPhone);
+    }
     setCity(member.city || '');
   };
 
@@ -533,7 +544,7 @@ export default function BranchEntryPage() {
           generation: autoFill.generation,
           branch: autoFill.branch,
           fullNameAr: autoFill.fullNameAr,
-          phone: phone.trim() || undefined,
+          phone: phone.trim() ? `${countryCode}${phone.trim()}` : undefined,
           city: city.trim() || undefined,
           status: 'Living',
           submittedVia: token,
@@ -556,7 +567,7 @@ export default function BranchEntryPage() {
         fatherName: autoFill.fatherName,
         gender,
         birthYear: birthYear ? parseInt(birthYear) : undefined,
-        phone: phone.trim() || undefined,
+        phone: phone.trim() ? `${countryCode}${phone.trim()}` : undefined,
         city: city.trim() || undefined,
         generation: autoFill.generation,
         branch: autoFill.branch,
@@ -578,6 +589,7 @@ export default function BranchEntryPage() {
       setBirthYear('');
       setBirthCalendar('GREGORIAN');
       setPhone('');
+      setCountryCode('+966');
       setCity('');
     } catch (error) {
       console.error('Error updating pending member:', error);
@@ -1127,16 +1139,14 @@ export default function BranchEntryPage() {
                   })()}
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600 mb-1 block">
-                    رقم الجوال <span className="text-gray-400">(اختياري)</span>
-                  </label>
-                  <input
-                    type="tel"
+                  <PhoneInput
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
-                    placeholder="05xxxxxxxx"
-                    dir="ltr"
+                    onChange={(newPhone, newCountryCode) => {
+                      setPhone(newPhone);
+                      setCountryCode(newCountryCode);
+                    }}
+                    countryCode={countryCode}
+                    label="رقم الجوال (اختياري)"
                   />
                 </div>
               </div>
@@ -1183,6 +1193,7 @@ export default function BranchEntryPage() {
                     setFirstName('');
                     setBirthYear('');
                     setPhone('');
+                    setCountryCode('+966');
                     setCity('');
                   }}
                   className="w-full py-3 border-2 border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50"
