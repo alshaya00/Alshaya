@@ -131,7 +131,7 @@ function DuplicatesPageContent() {
           Authorization: `Bearer ${session?.token}`,
         },
         body: JSON.stringify({
-          reason: `تم الدمج مع العضو ${keepMember.fullNameAr || keepMember.firstName} (${keepMember.id})`,
+          reason: `تم الدمج مع العضو ${keepMember.fullNameAr || keepMember.firstName} (${formatMemberId(keepMember.id)})`,
           mergedIntoId: keepMember.id,
           force,
         }),
@@ -355,7 +355,7 @@ function DuplicatesPageContent() {
                           isMale(pair.member1.gender) ? 'bg-blue-500' : 'bg-pink-500'
                         }`} />
                         <span className="font-bold">{pair.member1.fullNameAr || pair.member1.firstName}</span>
-                        <span className="text-gray-400 text-sm">({pair.member1.id})</span>
+                        <span className="text-gray-400 text-sm">({formatMemberId(pair.member1.id)})</span>
                       </div>
 
                       <AlertTriangle className="w-4 h-4 text-yellow-500" />
@@ -365,7 +365,7 @@ function DuplicatesPageContent() {
                           isMale(pair.member2.gender) ? 'bg-blue-500' : 'bg-pink-500'
                         }`} />
                         <span className="font-bold">{pair.member2.fullNameAr || pair.member2.firstName}</span>
-                        <span className="text-gray-400 text-sm">({pair.member2.id})</span>
+                        <span className="text-gray-400 text-sm">({formatMemberId(pair.member2.id)})</span>
                       </div>
                     </div>
 
@@ -468,7 +468,7 @@ function DuplicatesPageContent() {
                                     ) : (
                                       <Check className="w-4 h-4" />
                                     )}
-                                    احتفظ بـ {pair.member1.firstName} ({pair.member1.id})
+                                    احتفظ بـ {pair.member1.firstName} ({formatMemberId(pair.member1.id)})
                                   </button>
                                   <button
                                     onClick={() => mergePair(realIndex, pair.member2.id)}
@@ -480,7 +480,7 @@ function DuplicatesPageContent() {
                                     ) : (
                                       <Check className="w-4 h-4" />
                                     )}
-                                    احتفظ بـ {pair.member2.firstName} ({pair.member2.id})
+                                    احتفظ بـ {pair.member2.firstName} ({formatMemberId(pair.member2.id)})
                                   </button>
                                 </div>
                                 <span className="text-xs text-gray-500">* يمكن استعادة العضو المحذوف من صفحة &quot;المحذوفين مؤخراً&quot;</span>
@@ -495,14 +495,14 @@ function DuplicatesPageContent() {
                             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
                           >
                             <Eye className="w-4 h-4" />
-                            عرض {pair.member1.firstName} ({pair.member1.id})
+                            عرض {pair.member1.firstName} ({formatMemberId(pair.member1.id)})
                           </Link>
                           <Link
                             href={`/member/${pair.member2.id}`}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
                           >
                             <Eye className="w-4 h-4" />
-                            عرض {pair.member2.firstName} ({pair.member2.id})
+                            عرض {pair.member2.firstName} ({formatMemberId(pair.member2.id)})
                           </Link>
                         </div>
                       )}
