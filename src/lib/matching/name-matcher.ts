@@ -19,8 +19,8 @@ export interface NameInput {
   fatherName: string;         // اسم الأب - Father's first name
   grandfatherName?: string;   // اسم الجد - Grandfather's first name
   greatGrandfatherName?: string; // اسم جد الأب - Great-grandfather's first name
-  great2GrandfatherName?: string; // جد الجد الثالث - 5th ancestor
-  great3GrandfatherName?: string; // جد الجد الرابع - 6th ancestor
+  great2GrandfatherName?: string; // الجد الخامس - 5th ancestor
+  great3GrandfatherName?: string; // الجد السادس - 6th ancestor
 }
 
 /**
@@ -623,10 +623,10 @@ export function getMatchExplanation(candidate: MatchCandidate): {
   if (g2gm) {
     if (g2gm.matchResult.isMatch) {
       details.push(`5th ancestor name "${g2gm.inputName}" confirmed as "${g2gm.matchedName}"`);
-      detailsAr.push(`اسم جد الجد الثالث "${g2gm.inputName}" مؤكد كـ "${g2gm.matchedName}"`);
+      detailsAr.push(`اسم الجد الخامس "${g2gm.inputName}" مؤكد كـ "${g2gm.matchedName}"`);
     } else {
       details.push(`5th ancestor name "${g2gm.inputName}" does not match "${g2gm.matchedName}"`);
-      detailsAr.push(`اسم جد الجد الثالث "${g2gm.inputName}" لا يتطابق مع "${g2gm.matchedName}"`);
+      detailsAr.push(`اسم الجد الخامس "${g2gm.inputName}" لا يتطابق مع "${g2gm.matchedName}"`);
     }
   }
 
@@ -635,10 +635,10 @@ export function getMatchExplanation(candidate: MatchCandidate): {
   if (g3gm) {
     if (g3gm.matchResult.isMatch) {
       details.push(`6th ancestor name "${g3gm.inputName}" confirmed as "${g3gm.matchedName}"`);
-      detailsAr.push(`اسم جد الجد الرابع "${g3gm.inputName}" مؤكد كـ "${g3gm.matchedName}"`);
+      detailsAr.push(`اسم الجد السادس "${g3gm.inputName}" مؤكد كـ "${g3gm.matchedName}"`);
     } else {
       details.push(`6th ancestor name "${g3gm.inputName}" does not match "${g3gm.matchedName}"`);
-      detailsAr.push(`اسم جد الجد الرابع "${g3gm.inputName}" لا يتطابق مع "${g3gm.matchedName}"`);
+      detailsAr.push(`اسم الجد السادس "${g3gm.inputName}" لا يتطابق مع "${g3gm.matchedName}"`);
     }
   }
 

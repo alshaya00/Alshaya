@@ -794,8 +794,8 @@ export default function QuickAddPage() {
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <User size={18} />
-                      جد الجد الثالث
-                      <span className="text-xs text-gray-400 font-normal">(اختياري - الجد الخامس)</span>
+                      الجد الخامس
+                      <span className="text-xs text-gray-400 font-normal">(اختياري)</span>
                     </label>
                     <input
                       type="text"
@@ -811,8 +811,8 @@ export default function QuickAddPage() {
                   <div>
                     <label className="flex items-center gap-2 font-bold text-gray-700 mb-2">
                       <User size={18} />
-                      جد الجد الرابع
-                      <span className="text-xs text-gray-400 font-normal">(اختياري - الجد السادس)</span>
+                      الجد السادس
+                      <span className="text-xs text-gray-400 font-normal">(اختياري)</span>
                     </label>
                     <input
                       type="text"
