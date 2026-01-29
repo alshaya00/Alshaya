@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
 import { calculateAge, getGenerationColor, getStatusBadge, formatMemberId } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import { getMemberPrivacySetting } from '@/lib/auth/db-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,6 +14,7 @@ import MemberVersionHistory from '@/components/MemberVersionHistory';
 import GenderAvatar from '@/components/GenderAvatar';
 import MemberProfileAvatar from '@/components/MemberProfileAvatar';
 import MemberStatusChanger from '@/components/MemberStatusChanger';
+import MemberPersonalInfoSection from '@/components/MemberPersonalInfoSection';
 import {
   User,
   Calendar,
@@ -56,6 +58,9 @@ export default async function MemberPage({ params }: PageProps) {
   const subBranchAncestor = member.subBranchId
     ? allMembers.find((m) => m.id === member.subBranchId)
     : null;
+
+  // Fetch privacy setting from server to avoid exposing data in HTML
+  const hidePersonalInfo = await getMemberPrivacySetting(member.id);
 
   return (
     <div className="min-h-screen py-8 bg-gray-100">
@@ -181,40 +186,14 @@ export default async function MemberPage({ params }: PageProps) {
             <MemberPhotoSection memberId={member.id} memberName={member.firstName} />
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                  <User className="text-blue-500" size={20} />
-                  المعلومات الشخصية
-                </h3>
-                <div className="space-y-3">
-                  {member.city && (
-                    <div className="flex items-center gap-3">
-                      <MapPin className="text-gray-400" size={18} />
-                      <span className="text-gray-600">{member.city}</span>
-                    </div>
-                  )}
-                  {member.occupation && (
-                    <div className="flex items-center gap-3">
-                      <Briefcase className="text-gray-400" size={18} />
-                      <span className="text-gray-600">{member.occupation}</span>
-                    </div>
-                  )}
-                  {member.phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="text-gray-400" size={18} />
-                      <span className="text-gray-600" dir="ltr">
-                        {formatPhoneDisplay(member.phone)}
-                      </span>
-                    </div>
-                  )}
-                  {member.email && (
-                    <div className="flex items-center gap-3">
-                      <Mail className="text-gray-400" size={18} />
-                      <span className="text-gray-600">{member.email}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <MemberPersonalInfoSection
+                memberId={member.id}
+                city={hidePersonalInfo ? null : member.city}
+                occupation={hidePersonalInfo ? null : member.occupation}
+                phone={hidePersonalInfo ? null : member.phone}
+                email={hidePersonalInfo ? null : member.email}
+                serverHidePersonalInfo={hidePersonalInfo}
+              />
 
               <div className="bg-gray-50 rounded-xl p-4">
                 <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">

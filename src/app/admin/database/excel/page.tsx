@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { memberFields } from '@/config/fields';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatMemberId } from '@/lib/utils';
 
 // Use centralized field definitions from config
 const MEMBER_FIELDS = memberFields;
@@ -1092,7 +1093,7 @@ export default function ExcelViewPage() {
                           }
                         >
                           <td className="p-2">{index + 1}</td>
-                          <td className="p-2">{member.id}</td>
+                          <td className="p-2">{formatMemberId(member.id)}</td>
                           <td className="p-2">{member.firstName}</td>
                           <td className="p-2">{member.gender?.toUpperCase() === 'MALE' ? 'ذكر' : 'أنثى'}</td>
                           <td className="p-2">{member.generation}</td>

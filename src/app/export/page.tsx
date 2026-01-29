@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { isMale } from '@/lib/utils';
+import { isMale, formatMemberId } from '@/lib/utils';
 import {
   ArrowRight,
   Download,
@@ -713,7 +713,7 @@ function ExportPageContent() {
                     >
                       <div className="font-bold">{member.fullNameAr || member.firstName}</div>
                       <div className="text-sm text-gray-500">
-                        {member.id} | الجيل {member.generation} | {member.branch}
+                        {formatMemberId(member.id)} | الجيل {member.generation} | {member.branch}
                       </div>
                     </div>
                   ))}

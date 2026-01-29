@@ -153,6 +153,7 @@ model User {
   verifiedBy           String?
   verifierName         String?
   verificationNotes    String?
+  hidePersonalInfo     Boolean        @default(false)
   accessRequest        AccessRequest?
   activityLogs         ActivityLog[]
   invitesSent          Invite[]       @relation("InviteSender")

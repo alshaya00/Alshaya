@@ -1,6 +1,7 @@
 // آل شايع Family Tree - Export Utilities
 
 import { FamilyMember, ExportField, ExportOptions, TreeNode } from './types';
+import { formatMemberId } from './utils';
 
 // ============================================
 // EXPORT FIELD DEFINITIONS
@@ -267,7 +268,7 @@ export function exportToReadableText(members: FamilyMember[]): string {
           const statusIcon = member.status === 'Living' ? '🟢' : '⚫';
 
           lines.push(`  ${genderIcon} ${member.fullNameAr || member.firstName}`);
-          lines.push(`     رقم: ${member.id} │ الفرع: ${member.branch || '-'}`);
+          lines.push(`     رقم: ${formatMemberId(member.id)} │ الفرع: ${member.branch || '-'}`);
 
           if (member.birthYear) {
             lines.push(`     الميلاد: ${member.birthYear}${member.status === 'Deceased' ? ` - الوفاة: ${member.deathYear || '؟'}` : ''}`);
@@ -305,7 +306,7 @@ export function exportToReadableText(members: FamilyMember[]): string {
     const genderIcon = node.gender?.toUpperCase() === 'MALE' ? '♂' : '♀';
     const statusIcon = node.status === 'Living' ? '' : ' ✝';
 
-    lines.push(`${prefix}${connector}${genderIcon} ${node.fullNameAr || node.firstName} (${node.id})${statusIcon}`);
+    lines.push(`${prefix}${connector}${genderIcon} ${node.fullNameAr || node.firstName} (${formatMemberId(node.id)})${statusIcon}`);
 
     const childPrefix = prefix + (isLast ? '    ' : '│   ');
     node.children.forEach((child, index) => {
@@ -357,7 +358,7 @@ export function exportToHTML(
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="color: ${genderColor}; font-weight: bold;">${node.gender?.toUpperCase() === 'MALE' ? '♂' : '♀'}</span>
           <span class="${statusClass}">${node.fullNameAr || node.firstName}</span>
-          <span style="color: #9CA3AF; font-size: 12px;">(${node.id})</span>
+          <span style="color: #9CA3AF; font-size: 12px;">(${formatMemberId(node.id)})</span>
           ${node.status === 'Deceased' ? '<span style="color: #9CA3AF;">✝</span>' : ''}
         </div>
         ${node.children.length > 0 ? `
@@ -518,7 +519,7 @@ export function exportToHTML(
               .map(member => `
                 <div class="member-card ${member.gender.toLowerCase()} ${member.status === 'Deceased' ? 'deceased' : ''}">
                   <div class="member-name">${member.fullNameAr || member.firstName}</div>
-                  <div class="member-id">${member.id} │ ${member.branch || 'الأصل'}</div>
+                  <div class="member-id">${formatMemberId(member.id)} │ ${member.branch || 'الأصل'}</div>
                   <div class="member-details">
                     ${member.birthYear ? `الميلاد: ${member.birthYear}` : ''}
                     ${member.status === 'Deceased' ? ' │ متوفى' : ''}

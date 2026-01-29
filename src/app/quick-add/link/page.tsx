@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FamilyMember } from '@/lib/types';
 import { paginationSettings } from '@/config/constants';
+import { formatMemberId } from '@/lib/utils';
 import {
   Link as LinkIcon,
   Copy,
@@ -207,7 +208,7 @@ export default function QuickAddLinkGenerator() {
                                     بن {member.fatherName}
                                   </span>
                                 )}
-                                <span className="text-xs text-gray-400 mr-2">({member.id})</span>
+                                <span className="text-xs text-gray-400 mr-2">({formatMemberId(member.id)})</span>
                               </div>
                               {selectedFatherId === member.id && (
                                 <Check size={16} className="text-emerald-600" />

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { validateParentChange } from '@/lib/edit-utils';
 import type { FamilyMember, TreeNode } from '@/lib/types';
-import { isMale, isFemale } from '@/lib/utils';
+import { isMale, isFemale, formatMemberId } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface D3Node extends d3.HierarchyPointNode<TreeNode> {
@@ -827,7 +827,7 @@ export default function TreeEditorPage() {
                           .sort((a, b) => (a.generation || 0) - (b.generation || 0))
                           .map(m => (
                             <option key={m.id} value={m.id}>
-                              {m.firstName} - الجيل {m.generation} ({m.id})
+                              {m.firstName} - الجيل {m.generation} ({formatMemberId(m.id)})
                             </option>
                           ))
                         }

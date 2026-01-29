@@ -72,7 +72,7 @@ export default function ImageUploadForm({
   isFamilyAlbum = false,
 }: ImageUploadFormProps) {
   const { session } = useAuth();
-  const isAdmin = session?.user?.role === 'admin';
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN';
   
   const [formData, setFormData] = useState<FormData>({
     imageData: '',

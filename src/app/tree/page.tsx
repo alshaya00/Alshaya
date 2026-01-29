@@ -272,7 +272,7 @@ function TreePageContent() {
               )}
             </div>
             <p className="text-xs text-gray-500 truncate">
-              {node.id} • {node.branch || 'الأصل'}
+              {formatMemberId(node.id)} • {node.branch || 'الأصل'}
               {node.birthYear && ` • ${node.birthYear}`}
             </p>
           </div>
@@ -583,7 +583,7 @@ function TreePageContent() {
                   />
                 </div>
                 <h3 className="text-xl font-bold mt-3 text-gray-800">{selectedMember.firstName}</h3>
-                <p className="text-sm text-gray-500">{selectedMember.id}</p>
+                <p className="text-sm text-gray-500">{formatMemberId(selectedMember.id)}</p>
               </div>
 
               {/* Full Name */}
@@ -675,7 +675,7 @@ function TreePageContent() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <p className="text-sm text-gray-500 mt-2">{selectedMember.id}</p>
+                  <p className="text-sm text-gray-500 mt-2">{formatMemberId(selectedMember.id)}</p>
                 </div>
 
                 {/* Full Name */}

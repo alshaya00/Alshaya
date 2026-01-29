@@ -5,6 +5,7 @@ import { sanitizeString } from '@/lib/sanitize';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
+import { formatMemberId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -98,13 +99,16 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const query = search.toLowerCase();
-      members = members.filter(m =>
-        m.firstName.toLowerCase().includes(query) ||
-        m.fullNameAr?.toLowerCase().includes(query) ||
-        m.id.toLowerCase().includes(query) ||
-        m.city?.toLowerCase().includes(query) ||
-        m.occupation?.toLowerCase().includes(query)
-      );
+      const normalizedQuery = formatMemberId(query).toLowerCase();
+      members = members.filter(m => {
+        const normalizedId = formatMemberId(m.id).toLowerCase();
+        return m.firstName.toLowerCase().includes(query) ||
+          m.fullNameAr?.toLowerCase().includes(query) ||
+          m.id.toLowerCase().includes(query) ||
+          normalizedId.includes(normalizedQuery) ||
+          m.city?.toLowerCase().includes(query) ||
+          m.occupation?.toLowerCase().includes(query);
+      });
     }
 
     // Pagination

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { isMale } from '@/lib/utils';
+import { isMale, formatMemberId } from '@/lib/utils';
 import {
   ArrowRight,
   Upload,
@@ -465,7 +465,7 @@ function ImportPageContent() {
                     >
                       <div className="font-bold">{member.fullNameAr || member.firstName}</div>
                       <div className="text-sm text-gray-500">
-                        {member.id} | الجيل {member.generation} | {member.branch || 'بدون فرع'}
+                        {formatMemberId(member.id)} | الجيل {member.generation} | {member.branch || 'بدون فرع'}
                       </div>
                     </div>
                   ))}

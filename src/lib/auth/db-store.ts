@@ -1153,3 +1153,22 @@ export async function checkMemberLinkedToUser(
 // ============================================
 
 export { verifyPasswordHash as verifyPassword };
+
+// ============================================
+// PRIVACY SETTINGS
+// ============================================
+
+/**
+ * Get the privacy setting for a member (hidePersonalInfo)
+ * Returns true if the member's linked user has privacy enabled
+ */
+export async function getMemberPrivacySetting(memberId: string): Promise<boolean> {
+  await initializeStore();
+
+  const user = await prisma.user.findFirst({
+    where: { linkedMemberId: memberId },
+    select: { hidePersonalInfo: true }
+  });
+
+  return user?.hidePersonalInfo ?? false;
+}
