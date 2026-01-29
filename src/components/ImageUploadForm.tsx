@@ -14,10 +14,13 @@ import {
   AlertCircle,
   Folder as FolderIcon,
   Crop,
+  Plus,
+  Save,
 } from 'lucide-react';
 import { imageCategories as configImageCategories } from '@/config/constants';
 import { formatMemberId } from '@/lib/utils';
 import ImageCropper from './ImageCropper';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Member {
   id: string;
@@ -68,6 +71,9 @@ export default function ImageUploadForm({
   defaultCategory = 'memory',
   isFamilyAlbum = false,
 }: ImageUploadFormProps) {
+  const { session } = useAuth();
+  const isAdmin = session?.user?.role === 'admin';
+  
   const [formData, setFormData] = useState<FormData>({
     imageData: '',
     category: defaultCategory,
@@ -95,6 +101,9 @@ export default function ImageUploadForm({
   const [showCropper, setShowCropper] = useState(false);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [showNewFolderForm, setShowNewFolderForm] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,6 +133,45 @@ export default function ImageUploadForm({
       }
     } catch (error) {
       console.error('Error loading folders:', error);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim() || !session?.token) return;
+    
+    setIsCreatingFolder(true);
+    try {
+      const res = await fetch('/api/admin/folders', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({
+          nameAr: newFolderName.trim(),
+          name: newFolderName.trim(),
+          color: '#10b981',
+          icon: 'Calendar',
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        await loadFolders();
+        if (data.folder?.id) {
+          setFormData(prev => ({ ...prev, folderId: data.folder.id }));
+        }
+        setNewFolderName('');
+        setShowNewFolderForm(false);
+      } else {
+        const error = await res.json();
+        setErrorMessage(error.messageAr || 'فشل في إنشاء الألبوم');
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      setErrorMessage('حدث خطأ في إنشاء الألبوم');
+    } finally {
+      setIsCreatingFolder(false);
     }
   };
 
@@ -465,37 +513,91 @@ export default function ImageUploadForm({
         </div>
 
         {/* Folder Selection */}
-        {folders.length > 0 && (
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-              <FolderIcon className="w-4 h-4" />
-              المجلد
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {folders.map((folder) => (
-                <button
-                  key={folder.id}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, folderId: folder.id }))}
-                  className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-                    formData.folderId === folder.id
-                      ? 'text-white border-transparent'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  style={{
-                    backgroundColor: formData.folderId === folder.id ? folder.color : undefined,
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+            <FolderIcon className="w-4 h-4" />
+            الألبوم
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {folders.map((folder) => (
+              <button
+                key={folder.id}
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, folderId: folder.id }))}
+                className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
+                  formData.folderId === folder.id
+                    ? 'text-white border-transparent'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                style={{
+                  backgroundColor: formData.folderId === folder.id ? folder.color : undefined,
+                }}
+              >
+                <span
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: folder.color }}
+                />
+                {folder.nameAr}
+              </button>
+            ))}
+            {/* Add New Album Button - Only for Admins */}
+            {isAdmin && !showNewFolderForm && (
+              <button
+                type="button"
+                onClick={() => setShowNewFolderForm(true)}
+                className="px-4 py-2 rounded-lg border-2 border-dashed border-emerald-300 text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                ألبوم جديد
+              </button>
+            )}
+            {isAdmin && showNewFolderForm && (
+              <div className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="اسم الألبوم (مثال: عيد 2024)"
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-48 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCreateFolder();
+                    } else if (e.key === 'Escape') {
+                      setShowNewFolderForm(false);
+                      setNewFolderName('');
+                    }
                   }}
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateFolder}
+                  disabled={!newFolderName.trim() || isCreatingFolder}
+                  className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="حفظ"
                 >
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: folder.color }}
-                  />
-                  {folder.nameAr}
+                  {isCreatingFolder ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                 </button>
-              ))}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewFolderForm(false);
+                    setNewFolderName('');
+                  }}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                  title="إلغاء"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Category Selection */}
         <div>
