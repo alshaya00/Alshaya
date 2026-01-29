@@ -107,7 +107,19 @@ function DuplicatesPageContent() {
     );
   };
 
-  // Update pair status
+  // Update pair status by member IDs (more reliable than index)
+  const updateStatusByIds = (member1Id: string, member2Id: string, status: DuplicatePair['status']) => {
+    setDuplicatePairs(prev =>
+      prev.map(pair => 
+        (pair.member1.id === member1Id && pair.member2.id === member2Id) ||
+        (pair.member1.id === member2Id && pair.member2.id === member1Id)
+          ? { ...pair, status } 
+          : pair
+      )
+    );
+  };
+
+  // Legacy update by index (kept for compatibility)
   const updateStatus = (index: number, status: DuplicatePair['status']) => {
     setDuplicatePairs(prev =>
       prev.map((pair, i) => i === index ? { ...pair, status } : pair)
@@ -116,8 +128,7 @@ function DuplicatesPageContent() {
 
   const [merging, setMerging] = useState<string | null>(null);
 
-  const mergePair = async (index: number, keepMemberId: string, force: boolean = false) => {
-    const pair = duplicatePairs[index];
+  const mergePair = async (pair: DuplicatePair, keepMemberId: string, force: boolean = false): Promise<boolean> => {
     const keepMember = keepMemberId === pair.member1.id ? pair.member1 : pair.member2;
     const removeMember = keepMemberId === pair.member1.id ? pair.member2 : pair.member1;
 
@@ -140,21 +151,27 @@ function DuplicatesPageContent() {
       const data = await res.json();
 
       if (data.success) {
-        updateStatus(index, 'MERGED');
+        // Use ID-based update for reliable state update
+        updateStatusByIds(pair.member1.id, pair.member2.id, 'MERGED');
         setAllMembers(prev => prev.filter(m => m.id !== removeMember.id));
+        return true;
       } else if (data.warning && data.hasChildren) {
         const confirmMsg = `${removeMember.fullNameAr || removeMember.firstName} لديه ${data.childrenCount} أبناء:\n${data.childrenNames?.join('، ')}\n\nسيتم نقل الأبناء إلى ${keepMember.fullNameAr || keepMember.firstName}.\n\nهل تريد المتابعة؟`;
         if (confirm(confirmMsg)) {
-          await mergePair(index, keepMemberId, true);
+          return await mergePair(pair, keepMemberId, true);
         }
+        return false;
       } else if (data.linkedUser) {
         alert(`لا يمكن حذف هذا العضو لأنه مرتبط بحساب المستخدم "${data.linkedUser.name}".\n\nيجب فك ارتباط الحساب أولاً من صفحة إدارة المستخدمين.`);
+        return false;
       } else {
         alert(`فشل الدمج: ${data.messageAr || data.message || 'خطأ غير معروف'}`);
+        return false;
       }
     } catch (error) {
       console.error('Error merging:', error);
       alert('حدث خطأ أثناء عملية الدمج');
+      return false;
     } finally {
       setMerging(null);
     }
@@ -459,7 +476,7 @@ function DuplicatesPageContent() {
                                 <span className="text-sm text-gray-600 font-medium">اختر العضو للاحتفاظ به (العضو الآخر سيحذف):</span>
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={() => mergePair(realIndex, pair.member1.id)}
+                                    onClick={() => mergePair(pair, pair.member1.id)}
                                     disabled={merging !== null}
                                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
                                   >
@@ -471,7 +488,7 @@ function DuplicatesPageContent() {
                                     احتفظ بـ {pair.member1.firstName} ({formatMemberId(pair.member1.id)})
                                   </button>
                                   <button
-                                    onClick={() => mergePair(realIndex, pair.member2.id)}
+                                    onClick={() => mergePair(pair, pair.member2.id)}
                                     disabled={merging !== null}
                                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
                                   >
