@@ -342,7 +342,6 @@ export default function JournalDetailPage({ params }: { params: { id: string } }
                 <User className="w-7 h-7 text-amber-700" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">كتبها</p>
                 <p className="font-semibold text-gray-800">{journal.authorName}</p>
                 <p className="text-xs text-gray-400">
                   {new Date(journal.createdAt).toLocaleDateString('ar-SA', {
