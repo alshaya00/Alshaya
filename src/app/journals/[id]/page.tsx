@@ -335,24 +335,6 @@ export default function JournalDetailPage({ params }: { params: { id: string } }
             </div>
           )}
 
-          {/* Author Info */}
-          <div className="bg-gradient-to-l from-amber-50 to-white rounded-2xl shadow-lg border border-amber-100 p-6 mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-amber-200 rounded-full flex items-center justify-center">
-                <User className="w-7 h-7 text-amber-700" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-800">{journal.authorName}</p>
-                <p className="text-xs text-gray-400">
-                  {new Date(journal.createdAt).toLocaleDateString('ar-SA', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Related Journals */}
           {relatedJournals.length > 0 && (
