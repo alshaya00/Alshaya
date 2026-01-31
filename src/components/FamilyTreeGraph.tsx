@@ -105,31 +105,78 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // D3 tree layout - optimized spacing for better organization
+  // D3 tree layout with vertical sibling stacking to reduce horizontal spread
   const { nodes, links } = useMemo(() => {
     if (!treeData) return { nodes: [], links: [] };
 
     const hierarchy = d3.hierarchy<TreeNode>(treeData);
     
-    // Smaller node sizes for tighter, more organized layout
-    const nodeWidth = isMobile ? 100 : 120;
-    const nodeHeight = isMobile ? 100 : 120;
+    // Configuration for stacking
+    const SIBLINGS_PER_COLUMN = 5; // Stack 5 siblings vertically before new column
+    const nodeWidth = isMobile ? 80 : 100;
+    const nodeHeight = isMobile ? 70 : 80;
+    const verticalGap = isMobile ? 50 : 60; // Gap between stacked siblings
+    const columnGap = isMobile ? 100 : 120; // Gap between sibling columns
+    const generationGap = isMobile ? 180 : 220; // Gap between generations
     
+    // First, run standard tree layout
     const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([nodeWidth, nodeHeight])
+      .nodeSize([nodeWidth, generationGap])
       .separation((a, b) => {
-        // Tighter separation for better organization
         if (a.parent === b.parent) {
-          return 1.0; // Siblings close together
+          // Siblings - minimal separation since we'll reposition them
+          return 0.8;
         }
-        return 1.3; // Non-siblings slightly further
+        return 1.5;
       });
 
     const root = treeLayout(hierarchy);
-    const nodes = root.descendants() as unknown as D3TreeNode[];
-    const links = root.links() as unknown as { source: D3TreeNode; target: D3TreeNode }[];
+    const allNodes = root.descendants() as unknown as D3TreeNode[];
+    const allLinks = root.links() as unknown as { source: D3TreeNode; target: D3TreeNode }[];
 
-    return { nodes, links };
+    // Post-process: Stack siblings vertically in groups
+    // Group nodes by parent
+    const nodesByParent = new Map<string | null, D3TreeNode[]>();
+    allNodes.forEach(node => {
+      const parentId = node.parent?.data?.id || null;
+      if (!nodesByParent.has(parentId)) {
+        nodesByParent.set(parentId, []);
+      }
+      nodesByParent.get(parentId)!.push(node);
+    });
+
+    // Reposition siblings in vertical stacks
+    nodesByParent.forEach((siblings, parentId) => {
+      if (siblings.length <= 1) return; // No stacking needed for single child
+      
+      // Sort siblings by their original x position to maintain order
+      siblings.sort((a, b) => a.x - b.x);
+      
+      // Calculate number of columns needed
+      const numColumns = Math.ceil(siblings.length / SIBLINGS_PER_COLUMN);
+      
+      // Find center x of the sibling group
+      const centerX = siblings.reduce((sum, n) => sum + n.x, 0) / siblings.length;
+      
+      // Calculate total width of all columns
+      const totalWidth = (numColumns - 1) * columnGap;
+      const startX = centerX - totalWidth / 2;
+      
+      // Position each sibling
+      siblings.forEach((sibling, index) => {
+        const columnIndex = Math.floor(index / SIBLINGS_PER_COLUMN);
+        const rowIndex = index % SIBLINGS_PER_COLUMN;
+        
+        // New x position based on column
+        sibling.x = startX + columnIndex * columnGap;
+        
+        // Offset y position for stacking within column
+        // First sibling in each column stays at generation level, others stack below
+        sibling.y = sibling.y + rowIndex * verticalGap;
+      });
+    });
+
+    return { nodes: allNodes, links: allLinks };
   }, [treeData, isMobile]);
 
   // Initialize D3 zoom behavior
@@ -238,16 +285,17 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     onSelectMember(userNode.data);
   }, [currentUserId, dimensions, nodes, onSelectMember]);
 
-  // Generate orthogonal (right-angled) path for links - clearer for family trees
+  // Generate smooth curved path for links - handles stacked sibling layout
   const generateLinkPath = (source: D3TreeNode, target: D3TreeNode) => {
-    const sourceY = source.y + 50; // Start from bottom of parent card
-    const targetY = target.y - 50; // End at top of child card
-    const midY = (sourceY + targetY) / 2; // Horizontal connector at midpoint
-
+    const sourceY = source.y + 40; // Start from bottom of parent card
+    const targetY = target.y - 40; // End at top of child card
+    
+    // Use bezier curve for smoother connections
+    const midY = (sourceY + targetY) / 2;
+    
+    // For stacked layouts, use curved paths that look cleaner
     return `M ${source.x} ${sourceY}
-            L ${source.x} ${midY}
-            L ${target.x} ${midY}
-            L ${target.x} ${targetY}`;
+            C ${source.x} ${midY}, ${target.x} ${midY}, ${target.x} ${targetY}`;
   };
 
   const getGenColors = (gen: number) => {
@@ -435,20 +483,20 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
                 {/* Source connection point (bottom of parent) */}
                 <circle
                   cx={link.source.x}
-                  cy={link.source.y + 50}
-                  r={5}
+                  cy={link.source.y + 40}
+                  r={4}
                   fill={getNodeColors(link.source.data).primary}
                   stroke="white"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                 />
                 {/* Target connection point (top of child) */}
                 <circle
                   cx={link.target.x}
-                  cy={link.target.y - 50}
-                  r={5}
+                  cy={link.target.y - 40}
+                  r={4}
                   fill={getNodeColors(link.target.data).primary}
                   stroke="white"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                 />
               </g>
             ))}
