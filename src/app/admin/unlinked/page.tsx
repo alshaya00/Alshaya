@@ -237,7 +237,8 @@ export default function AdminUnlinkedPage() {
           </div>
 
           {showFilters && (
-            <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4">
+{/* Branch filter hidden - not in use
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">الفرع</label>
                 <select
@@ -251,6 +252,7 @@ export default function AdminUnlinkedPage() {
                   ))}
                 </select>
               </div>
+*/}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">الجيل</label>
                 <select
