@@ -75,7 +75,7 @@ export default function PublicTreePage() {
     });
 
     const sortChildren = (node: TreeNodeData) => {
-      node.children.sort((a, b) => (a.birthYear || 0) - (b.birthYear || 0));
+      node.children.sort((a, b) => a.id.localeCompare(b.id));
       node.children.forEach(sortChildren);
     };
     roots.forEach(sortChildren);
