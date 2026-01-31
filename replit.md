@@ -51,6 +51,19 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **Manual User-Member Linking**: Admin can manually link orphaned user accounts to existing family members via search interface.
     -   **Orphaned Users Report** (`/admin/orphaned`): Dashboard showing users without linked members, with auto-suggested matches based on name similarity.
     -   **Data Cleanup Tool** (`/admin/data-cleanup`): Dashboard to scan and review potential false duplicates (same name, different fathers/generations). Allows marking pairs as "verified different people" with full audit logging and ability to revert.
+-   **CRM-Style Members Hub** (`/admin/members-hub`):
+    -   **Smart Data Issue Detection**: Automatic detection of duplicates, orphaned members, missing data, generation inconsistencies, and pending reviews.
+    -   **Issue Severity System**: Issues categorized as HIGH (duplicates, orphaned), MEDIUM (inconsistencies, pending), LOW (missing data).
+    -   **Quick Action Buttons**: Each issue type has appropriate action (Merge, Set Parent, Edit, Fix Generation, Review).
+    -   **Three-Tab Interface**: Overview (stats + alerts), Members Table (CRM-style), Issues List (auto-detected).
+    -   **Advanced Members Table**: Filterable by gender, generation, status, branch, and data health. Shows issue badges inline.
+    -   **Paginated API**: Data issues API supports pagination and type filtering for performance.
+-   **Comprehensive Member Edit Modal**:
+    -   **All Fields Editable**: firstName, fatherName, gender, generation, status, branch, birthYear, birthCalendar (Hijri/Gregorian), deathYear, deathCalendar, phone, email, city, occupation, biography.
+    -   **Calendar Type Selection**: Supports both Hijri and Gregorian calendars for birth and death dates.
+    -   **Change History Tab**: Shows all previous changes with field-level before/after values, user who made change, and timestamp.
+    -   **Dependency-Aware Revert**: When reverting a change, system checks for later changes that might be affected and warns admin before proceeding.
+    -   **Revert API** (`/api/members/[id]/revert`): Validates change conflicts, logs all reverts to audit trail.
 -   **Quick-Add Smart Search**:
     -   Helper questions automatically triggered when multiple matches found.
     -   Branch selection (Ibrahim/Abdulkarim/Fawzan) and uncle name filters to narrow down search results.
