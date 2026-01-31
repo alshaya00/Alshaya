@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, GitBranch, Calendar, MapPin } from 'lucide-react';
-import ExportPDF from '@/components/ExportPDF';
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
 
@@ -150,10 +149,6 @@ export default function DashboardPage() {
           </h1>
           <p className="text-gray-600 mt-2">Advanced Analytics Dashboard</p>
 
-          {/* Export Button */}
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <ExportPDF />
-          </div>
         </div>
 
         {/* KPI Cards */}
