@@ -607,6 +607,9 @@ export async function getStatistics() {
       generations: 0,
       branches: [],
       generationBreakdown: [],
+      registeredUsers: 0,
+      recentRegistrations: 0,
+      newestMembers: [],
     };
   }
 
@@ -632,6 +635,34 @@ export async function getStatistics() {
     };
   });
 
+  let registeredUsers = 0;
+  try {
+    const usersResult = await prisma.user.count({ where: { status: 'ACTIVE' } });
+    registeredUsers = usersResult;
+  } catch {
+    registeredUsers = 0;
+  }
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentRegistrations = members.filter(m => {
+    if (!m.createdAt) return false;
+    return new Date(m.createdAt) >= thirtyDaysAgo;
+  }).length;
+
+  const newestMembers = [...members]
+    .filter(m => m.createdAt)
+    .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+    .slice(0, 5)
+    .map(m => ({
+      id: m.id,
+      firstName: m.firstName,
+      gender: m.gender,
+      generation: m.generation,
+      branch: m.branch,
+      createdAt: m.createdAt,
+    }));
+
   return {
     totalMembers,
     males,
@@ -639,6 +670,9 @@ export async function getStatistics() {
     generations,
     branches: branchCounts,
     generationBreakdown,
+    registeredUsers,
+    recentRegistrations,
+    newestMembers,
   };
 }
 

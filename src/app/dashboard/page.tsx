@@ -6,6 +6,15 @@ import ExportPDF from '@/components/ExportPDF';
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
 
+interface NewestMember {
+  id: string;
+  firstName: string;
+  gender: string;
+  generation: number;
+  branch: string | null;
+  createdAt: string;
+}
+
 interface Statistics {
   totalMembers: number;
   males: number;
@@ -19,6 +28,9 @@ interface Statistics {
     females: number;
     percentage: number;
   }[];
+  registeredUsers: number;
+  recentRegistrations: number;
+  newestMembers: NewestMember[];
 }
 
 interface FamilyMember {
@@ -40,6 +52,9 @@ export default function DashboardPage() {
     generations: 0,
     branches: [],
     generationBreakdown: [],
+    registeredUsers: 0,
+    recentRegistrations: 0,
+    newestMembers: [],
   });
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,7 +157,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-8">
           <div className="stat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-5 rounded-2xl shadow-lg">
             <div className="text-3xl mb-2">👥</div>
             <div className="text-3xl font-bold">{stats.totalMembers}</div>
@@ -166,7 +181,10 @@ export default function DashboardPage() {
             <div className="text-3xl font-bold">{stats.generations}</div>
             <div className="text-green-100 text-sm mt-1">الأجيال</div>
           </div>
+        </div>
 
+        {/* Secondary Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="stat-card bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-5 rounded-2xl shadow-lg">
             <div className="text-3xl mb-2">💚</div>
             <div className="text-3xl font-bold">{livingMembers}</div>
@@ -177,6 +195,18 @@ export default function DashboardPage() {
             <div className="text-3xl mb-2">🕊️</div>
             <div className="text-3xl font-bold">{deceasedMembers}</div>
             <div className="text-gray-100 text-sm mt-1">متوفين</div>
+          </div>
+
+          <div className="stat-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-5 rounded-2xl shadow-lg">
+            <div className="text-3xl mb-2">📱</div>
+            <div className="text-3xl font-bold">{stats.registeredUsers}</div>
+            <div className="text-purple-100 text-sm mt-1">المستخدمين المسجلين</div>
+          </div>
+
+          <div className="stat-card bg-gradient-to-br from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-lg">
+            <div className="text-3xl mb-2">📈</div>
+            <div className="text-3xl font-bold">{stats.recentRegistrations}</div>
+            <div className="text-amber-100 text-sm mt-1">تسجيلات آخر 30 يوم</div>
           </div>
         </div>
 
@@ -318,7 +348,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Gender Ratio */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
             نسبة الرجال إلى النساء
           </h2>
@@ -349,6 +379,37 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Newest Members */}
+        {stats.newestMembers && stats.newestMembers.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Users className="text-indigo-600" size={24} />
+              أحدث الأعضاء المضافين
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {stats.newestMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-3 p-3 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100"
+                >
+                  <GenderAvatar gender={member.gender === 'Male' ? 'Male' : 'Female'} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 truncate">{member.firstName}</p>
+                    <p className="text-xs text-gray-500">
+                      الجيل {member.generation} {member.branch && `- ${member.branch}`}
+                    </p>
+                    {member.createdAt && (
+                      <p className="text-xs text-indigo-600">
+                        {new Date(member.createdAt).toLocaleDateString('ar-SA')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
