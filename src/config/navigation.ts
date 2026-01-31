@@ -20,7 +20,7 @@ export interface NavItem {
 export const mainNavItems: NavItem[] = [
   { href: '/', label: 'الرئيسية', labelEn: 'Home', icon: Home },
   { href: '/tree', label: 'الشجرة', labelEn: 'Tree', icon: TreePine },
-  { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
+  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Statistics', icon: BarChart3 },
   { href: '/journals', label: 'السجل التاريخي', labelEn: 'Journals', icon: BookOpen },
   { href: '/registry', label: 'الأعضاء', labelEn: 'Registry', icon: Users },
 ];
@@ -38,8 +38,6 @@ export const mobileNavItems: NavItem[] = [
 export const moreNavItems: NavItem[] = [
   { href: '/search', label: 'البحث', labelEn: 'Search', icon: Search },
   { href: '/quick-add', label: 'إضافة عضو', labelEn: 'Add Member', icon: PlusCircle },
-  { href: '/dashboard', label: 'الإحصائيات', labelEn: 'Statistics', icon: BarChart3 },
-  { href: '/branches', label: 'الفروع', labelEn: 'Branches', icon: GitBranch },
   { href: '/tree-editor', label: 'محرر الشجرة', labelEn: 'Tree Editor', icon: Edit, permission: 'edit_member' },
   { href: '/export', label: 'تصدير', labelEn: 'Export', icon: Download, permission: 'export_data' },
   { href: '/import', label: 'استيراد', labelEn: 'Import', icon: Upload, permission: 'import_data' },
