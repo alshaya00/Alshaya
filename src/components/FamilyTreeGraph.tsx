@@ -40,6 +40,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
   const containerRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [dimensions, setDimensions] = useState({ width: 1200, height: 700 });
+  const [isMobile, setIsMobile] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(0.5);
   const [hoveredNode, setHoveredNode] = useState<TreeNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -94,7 +95,8 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setDimensions({ width: Math.max(width, 600), height: Math.max(height, 500) });
+        setDimensions({ width: Math.max(width, 300), height: Math.max(height, 400) });
+        setIsMobile(width < 768);
       }
     };
 
@@ -103,20 +105,24 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // D3 tree layout
+  // D3 tree layout - optimized spacing for better organization
   const { nodes, links } = useMemo(() => {
     if (!treeData) return { nodes: [], links: [] };
 
     const hierarchy = d3.hierarchy<TreeNode>(treeData);
+    
+    // Smaller node sizes for tighter, more organized layout
+    const nodeWidth = isMobile ? 100 : 120;
+    const nodeHeight = isMobile ? 100 : 120;
+    
     const treeLayout = d3.tree<TreeNode>()
-      .nodeSize([180, 180])
+      .nodeSize([nodeWidth, nodeHeight])
       .separation((a, b) => {
-        const depth = a.depth;
-        if (depth <= 1) {
-          return a.parent === b.parent ? 1.0 : 1.2;
-        } else {
-          return a.parent === b.parent ? 2.8 : 3.5;
+        // Tighter separation for better organization
+        if (a.parent === b.parent) {
+          return 1.0; // Siblings close together
         }
+        return 1.3; // Non-siblings slightly further
       });
 
     const root = treeLayout(hierarchy);
@@ -124,7 +130,7 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     const links = root.links() as unknown as { source: D3TreeNode; target: D3TreeNode }[];
 
     return { nodes, links };
-  }, [treeData]);
+  }, [treeData, isMobile]);
 
   // Initialize D3 zoom behavior
   useEffect(() => {
@@ -144,17 +150,18 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Set initial transform - center the tree
+    // Set initial transform - center the tree with better initial zoom
+    const initialScale = isMobile ? 0.6 : 0.7;
     const initialTransform = d3.zoomIdentity
-      .translate(dimensions.width / 2, 80)
-      .scale(0.5);
+      .translate(dimensions.width / 2, isMobile ? 60 : 80)
+      .scale(initialScale);
 
     svg.call(zoom.transform, initialTransform);
 
     return () => {
       svg.on('.zoom', null);
     };
-  }, [dimensions.width, dimensions.height]);
+  }, [dimensions.width, dimensions.height, isMobile]);
 
   // Zoom control functions
   const handleZoomIn = useCallback(() => {
@@ -172,11 +179,12 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
   const handleResetView = useCallback(() => {
     if (!svgRef.current || !zoomRef.current) return;
     const svg = d3.select(svgRef.current);
+    const resetScale = isMobile ? 0.6 : 0.7;
     const resetTransform = d3.zoomIdentity
-      .translate(dimensions.width / 2, 80)
-      .scale(0.5);
+      .translate(dimensions.width / 2, isMobile ? 60 : 80)
+      .scale(resetScale);
     svg.transition().duration(500).call(zoomRef.current.transform, resetTransform);
-  }, [dimensions.width]);
+  }, [dimensions.width, isMobile]);
 
   const handleFitToScreen = useCallback(() => {
     if (!svgRef.current || !zoomRef.current || nodes.length === 0) return;
@@ -265,69 +273,69 @@ export default function FamilyTreeGraph({ members, onSelectMember, highlightedId
   }, [colorMode, branchColorMap]);
 
   return (
-    <div ref={containerRef} className="relative w-full h-[700px] bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-lg">
-      {/* Controls */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border p-2">
+    <div ref={containerRef} className="relative w-full h-[500px] md:h-[600px] lg:h-[700px] bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 rounded-xl md:rounded-2xl overflow-hidden border border-gray-200 md:border-2 shadow-lg">
+      {/* Controls - Compact on mobile */}
+      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex flex-col gap-1 md:gap-2 bg-white/95 backdrop-blur-sm rounded-lg md:rounded-xl shadow-lg border p-1.5 md:p-2">
         <button
           onClick={handleZoomIn}
-          className="p-2.5 hover:bg-green-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+          className="p-1.5 md:p-2.5 hover:bg-green-50 rounded-md md:rounded-lg transition-all duration-200 active:scale-95"
           title="تكبير"
         >
-          <ZoomIn size={20} className="text-gray-600" />
+          <ZoomIn className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
         </button>
         <button
           onClick={handleZoomOut}
-          className="p-2.5 hover:bg-green-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+          className="p-1.5 md:p-2.5 hover:bg-green-50 rounded-md md:rounded-lg transition-all duration-200 active:scale-95"
           title="تصغير"
         >
-          <ZoomOut size={20} className="text-gray-600" />
+          <ZoomOut className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
         </button>
         <div className="w-full h-px bg-gray-200" />
         <button
           onClick={handleResetView}
-          className="p-2.5 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+          className="p-1.5 md:p-2.5 hover:bg-blue-50 rounded-md md:rounded-lg transition-all duration-200 active:scale-95"
           title="إعادة ضبط"
         >
-          <Home size={20} className="text-gray-600" />
+          <Home className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
         </button>
         <button
           onClick={handleFitToScreen}
-          className="p-2.5 hover:bg-purple-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+          className="p-1.5 md:p-2.5 hover:bg-purple-50 rounded-md md:rounded-lg transition-all duration-200 active:scale-95"
           title="ملائمة الشاشة"
         >
-          <Maximize2 size={20} className="text-gray-600" />
+          <Maximize2 className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
         </button>
-        {/* Find Me Button - Fix #3 */}
+        {/* Find Me Button */}
         {currentUserId && (
           <>
             <div className="w-full h-px bg-gray-200" />
             <button
               onClick={handleFindMe}
-              className="p-2.5 hover:bg-amber-50 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 bg-amber-100"
-              title="اعثر علي - Find Me"
+              className="p-1.5 md:p-2.5 hover:bg-amber-50 rounded-md md:rounded-lg transition-all duration-200 active:scale-95 bg-amber-100"
+              title="اعثر علي"
             >
-              <Star size={20} className="text-amber-600" />
+              <Star className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
             </button>
           </>
         )}
         <div className="w-full h-px bg-gray-200" />
         <button
           onClick={() => setColorMode(colorMode === 'generation' ? 'lineage' : 'generation')}
-          className={`p-2.5 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+          className={`p-1.5 md:p-2.5 rounded-md md:rounded-lg transition-all duration-200 active:scale-95 ${
             colorMode === 'lineage' ? 'bg-indigo-100 hover:bg-indigo-200' : 'hover:bg-gray-100'
           }`}
           title={colorMode === 'generation' ? 'تلوين حسب السلالة' : 'تلوين حسب الجيل'}
         >
           {colorMode === 'generation' ? (
-            <GitBranch size={20} className="text-gray-600" />
+            <GitBranch className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
           ) : (
-            <Layers size={20} className="text-indigo-600" />
+            <Layers className="w-4 h-4 md:w-5 md:h-5 text-indigo-600" />
           )}
         </button>
       </div>
 
-      {/* Zoom indicator */}
-      <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg border text-sm font-medium text-gray-700">
+      {/* Zoom indicator - Smaller on mobile */}
+      <div className="absolute top-2 right-2 md:top-4 md:right-4 z-20 bg-white/95 backdrop-blur-sm px-2 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl shadow-lg border text-xs md:text-sm font-medium text-gray-700">
         {Math.round(currentZoom * 100)}%
       </div>
 
