@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PhoneInput from '@/components/PhoneInput';
 import OtpInput from '@/components/OtpInput';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import { formatMemberId } from '@/lib/utils';
 
 type PhoneStep = 'form' | 'otp';
 
@@ -375,7 +376,7 @@ export default function AccountSettingsPage() {
             {user?.linkedMemberId && (
               <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
                 <User className="w-4 h-4 text-gray-400" />
-                <span>مرتبط بالعضو: {user.linkedMemberId}</span>
+                <span>مرتبط بالعضو: {formatMemberId(user.linkedMemberId)}</span>
               </div>
             )}
           </div>
