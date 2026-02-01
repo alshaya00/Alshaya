@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import MemberEditModal from '@/components/MemberEditModal';
 import GenderAvatar from '@/components/GenderAvatar';
+import { formatMemberId } from '@/lib/utils';
 import {
   Users,
   AlertTriangle,
@@ -197,12 +198,16 @@ export default function MembersHubPage() {
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
+      const normalizedQuery = formatMemberId(query).toLowerCase();
       result = result.filter(
-        (m) =>
-          m.id.toLowerCase().includes(query) ||
-          m.firstName.toLowerCase().includes(query) ||
-          (m.fullNameAr && m.fullNameAr.toLowerCase().includes(query)) ||
-          (m.phone && m.phone.includes(query))
+        (m) => {
+          const normalizedId = formatMemberId(m.id).toLowerCase();
+          return normalizedId.includes(normalizedQuery) ||
+            m.id.toLowerCase().includes(query) ||
+            m.firstName.toLowerCase().includes(query) ||
+            (m.fullNameAr && m.fullNameAr.toLowerCase().includes(query)) ||
+            (m.phone && m.phone.includes(query));
+        }
       );
     }
 
