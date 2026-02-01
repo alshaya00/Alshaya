@@ -423,7 +423,7 @@ export function Navigation() {
 
           {/* Menu Panel */}
           <aside
-            className="lg:hidden fixed top-0 right-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out overflow-hidden"
+            className="lg:hidden fixed top-0 right-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-label="القائمة الرئيسية"
@@ -471,7 +471,7 @@ export function Navigation() {
             </div>
 
             {/* Menu Items */}
-            <nav className="p-3 h-[calc(100vh-180px)] overflow-y-auto" aria-label="القائمة الرئيسية">
+            <nav className="p-3 flex-1 overflow-y-auto pb-20" aria-label="القائمة الرئيسية">
               <div className="mb-3">
                 <p className="text-xs text-gray-400 px-3 mb-2" id="main-nav-label">التنقل الرئيسي</p>
                 <ul role="list" aria-labelledby="main-nav-label" className="space-y-1">
