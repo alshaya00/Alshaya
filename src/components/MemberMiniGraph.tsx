@@ -7,6 +7,7 @@ import { FamilyMember, MilkFamily } from '@/lib/types';
 import { ZoomIn, ZoomOut, Maximize2, Home } from 'lucide-react';
 import { relationshipColors, genderColors } from '@/config/theme';
 import { GenderAvatarInline } from './GenderAvatar';
+import { formatMemberId } from '@/lib/utils';
 
 interface MemberMiniGraphProps {
   person: FamilyMember;
@@ -654,7 +655,7 @@ export default function MemberMiniGraph({
               <div>
                 <p className="font-bold text-gray-800 text-sm">{hoveredNode.name}</p>
                 {hoveredNode.member && (
-                  <p className="text-xs text-gray-400">{hoveredNode.member.id}</p>
+                  <p className="text-xs text-gray-400">{formatMemberId(hoveredNode.member.id)}</p>
                 )}
               </div>
             </div>

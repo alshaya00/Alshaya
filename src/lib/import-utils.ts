@@ -1,7 +1,7 @@
 // آل شايع Family Tree - Import & Merge Utilities
 
 import { FamilyMember, ImportConflict, FieldConflict, ValidationResult, ValidationError } from './types';
-import { isMale } from './utils';
+import { isMale, formatMemberId } from './utils';
 
 // ============================================
 // VALIDATION
@@ -32,7 +32,7 @@ export function validateMember(member: Partial<FamilyMember>, existingMembers: F
     if (!father) {
       warnings.push({
         field: 'fatherId',
-        message: `الأب ${member.fatherId} غير موجود`,
+        message: `الأب ${formatMemberId(member.fatherId!)} غير موجود`,
         suggestion: 'سيتم إنشاء كعضو مستقل'
       });
     } else if (!isMale(father.gender)) {

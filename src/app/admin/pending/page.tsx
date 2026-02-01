@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
 import { identifyBranchForPendingMember, getFullLineageString } from '@/lib/lineage-utils';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import { formatMemberId } from '@/lib/utils';
 
 type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -1207,7 +1208,7 @@ export default function AdminPendingPage() {
                                   )}
                                 </div>
                                 <p className="text-xs text-gray-500">
-                                  المعرف: {child.id} • 
+                                  المعرف: {formatMemberId(child.id)} • 
                                   {child.status === 'Deceased' ? ' متوفى' : ' على قيد الحياة'}
                                   {hasLinkedAccount ? (
                                     <span className="text-green-600 mr-1">• مُسجَّل</span>
@@ -1314,7 +1315,7 @@ export default function AdminPendingPage() {
                               {child.fullNameAr || child.firstName}
                             </p>
                             <p className="text-xs text-purple-600">
-                              قيد المراجعة • المعرف: {child.id}
+                              قيد المراجعة • المعرف: {formatMemberId(child.id)}
                             </p>
                           </div>
                         </div>

@@ -178,7 +178,7 @@ export default function ExcelViewPage() {
       if (member.fatherId) {
         const fatherExists = data.some(m => m.id === member.fatherId);
         if (!fatherExists) {
-          errors.push({ row: rowIndex, field: 'fatherId', message: `الأب غير موجود: ${member.fatherId}`, severity: 'warning' });
+          errors.push({ row: rowIndex, field: 'fatherId', message: `الأب غير موجود: ${formatMemberId(member.fatherId as string)}`, severity: 'warning' });
         }
       }
 
@@ -519,7 +519,7 @@ export default function ExcelViewPage() {
       // Check for duplicates
       const existingMember = members.find(m => m.id === member.id);
       if (existingMember) {
-        errors.push({ row: rowIndex, field: 'id', message: `المعرف موجود مسبقاً: ${member.id}`, severity: 'warning' });
+        errors.push({ row: rowIndex, field: 'id', message: `المعرف موجود مسبقاً: ${formatMemberId(member.id)}`, severity: 'warning' });
       }
 
       // Validate data types

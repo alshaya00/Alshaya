@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { formatMemberId } from './utils';
 
 export interface ValidationIssue {
   memberId: string;
@@ -114,8 +115,8 @@ export async function validateParentRelationships(): Promise<ValidationResult> {
       issues.push({
         memberId: member.id,
         memberName: member.firstName,
-        issue: `Father ID '${member.fatherId}' does not exist in the database.`,
-        issueAr: `معرف الأب '${member.fatherId}' غير موجود في قاعدة البيانات.`,
+        issue: `Father ID '${formatMemberId(member.fatherId!)}' does not exist in the database.`,
+        issueAr: `معرف الأب '${formatMemberId(member.fatherId!)}' غير موجود في قاعدة البيانات.`,
         severity: 'error',
         details: {
           invalidFatherId: member.fatherId,
@@ -305,8 +306,8 @@ export async function validateDeletedReferences(): Promise<ValidationResult> {
         issues.push({
           memberId: member.id,
           memberName: member.firstName,
-          issue: `Father ID '${member.fatherId}' (${deletedFather.firstName}) is soft-deleted. This is an orphaned reference.`,
-          issueAr: `معرف الأب '${member.fatherId}' (${deletedFather.firstName}) محذوف. هذا مرجع يتيم يحتاج إلى تنظيف.`,
+          issue: `Father ID '${formatMemberId(member.fatherId!)}' (${deletedFather.firstName}) is soft-deleted. This is an orphaned reference.`,
+          issueAr: `معرف الأب '${formatMemberId(member.fatherId!)}' (${deletedFather.firstName}) محذوف. هذا مرجع يتيم يحتاج إلى تنظيف.`,
           severity: 'warning',
           details: {
             deletedFatherId: member.fatherId,
@@ -1317,8 +1318,8 @@ export async function validateSingleMember(memberId: string): Promise<Validation
       issues.push({
         memberId: member.id,
         memberName: member.firstName,
-        issue: `Father ${member.fatherId} not found`,
-        issueAr: `الأب ${member.fatherId} غير موجود`,
+        issue: `Father ${formatMemberId(member.fatherId!)} not found`,
+        issueAr: `الأب ${formatMemberId(member.fatherId!)} غير موجود`,
         severity: 'error',
         details: { fatherId: member.fatherId },
       });

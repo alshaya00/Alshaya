@@ -3,6 +3,26 @@ import { prisma } from '@/lib/prisma';
 import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 
+/**
+ * Extract the numeric part from a member ID for comparison
+ */
+function extractIdNumber(id: string): number | null {
+  if (!id) return null;
+  const cleaned = id.toLowerCase().replace(/^p/, '');
+  const num = parseInt(cleaned, 10);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Check if a search query matches a member ID
+ */
+function matchesMemberId(memberId: string, searchQuery: string): boolean {
+  const memberNum = extractIdNumber(memberId);
+  const searchNum = extractIdNumber(searchQuery);
+  if (memberNum === null || searchNum === null) return false;
+  return memberNum === searchNum;
+}
+
 function normalizeArabic(text: string): string {
   return text
     .replace(/[أإآا]/g, 'ا')
@@ -56,12 +76,19 @@ export async function GET(request: NextRequest) {
 
     const members = await getAllMembersFromDb();
     const normalizedQuery = normalizeArabic(query);
+    // Check if query looks like an ID
+    const looksLikeId = /^p?\d+$/i.test(query.trim());
+    
     const matchingMembers = members
-      .filter(m =>
-        normalizeArabic(m.firstName).includes(normalizedQuery) ||
-        normalizeArabic(m.fullNameAr || '').includes(normalizedQuery) ||
-        m.id.toLowerCase().includes(query)
-      )
+      .filter(m => {
+        // For ID-like queries, use normalized ID matching
+        if (looksLikeId && matchesMemberId(m.id, query.trim())) {
+          return true;
+        }
+        return normalizeArabic(m.firstName).includes(normalizedQuery) ||
+          normalizeArabic(m.fullNameAr || '').includes(normalizedQuery) ||
+          m.id.toLowerCase().includes(query);
+      })
       .slice(0, limit);
 
     for (const member of matchingMembers) {

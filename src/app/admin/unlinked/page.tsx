@@ -8,6 +8,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import GenderAvatar from '@/components/GenderAvatar';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import { formatMemberId } from '@/lib/utils';
 
 interface UnlinkedMember {
   id: string;
@@ -329,7 +330,7 @@ export default function AdminUnlinkedPage() {
                         {member.lineageBranchName && (
                           <span>الفرع: {member.lineageBranchName}</span>
                         )}
-                        <span className="text-xs text-gray-400">#{member.id.slice(0, 8)}</span>
+                        <span className="text-xs text-gray-400">#{formatMemberId(member.id)}</span>
                       </div>
                       
                       <div className="mt-2 flex flex-wrap gap-3">
