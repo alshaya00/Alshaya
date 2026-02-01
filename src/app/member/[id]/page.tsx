@@ -81,15 +81,15 @@ export default async function MemberPage({ params }: PageProps) {
                 : 'bg-gradient-to-l from-pink-500 to-pink-600'
             } text-white`}
           >
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 text-center md:text-right">
               <MemberProfileAvatar 
                 memberId={member.id} 
                 memberName={member.firstName} 
                 gender={member.gender} 
                 size="2xl" 
               />
-              <div>
-                <div className="flex items-center gap-3 mb-2">
+              <div className="w-full">
+                <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold">
                     {member.fatherName 
                       ? `${member.firstName} بن ${member.fatherName}`

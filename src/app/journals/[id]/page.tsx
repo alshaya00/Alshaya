@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowRight, Clock, MapPin, User, Users, Eye, Share2,
   BookOpen, ChevronLeft, Scroll, Tent, Star,
-  Heart, FileText, Feather, TreePine, Loader2, AlertCircle
+  Heart, FileText, Feather, TreePine, Loader2, AlertCircle, Pencil
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
@@ -28,11 +29,14 @@ const categoryColors: Record<JournalCategoryType, { bg: string; text: string; bo
 
 export default function JournalDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { user } = useAuth();
   const [journal, setJournal] = useState<FamilyJournal | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedJournals, setRelatedJournals] = useState<FamilyJournal[]>([]);
   const [showShareMenu, setShowShareMenu] = useState(false);
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
     fetchJournal();
@@ -159,27 +163,41 @@ export default function JournalDetailPage({ params }: { params: { id: string } }
           <span>العودة</span>
         </Link>
 
-        {/* Share Button */}
-        <div className="absolute top-4 left-4">
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md text-gray-700 hover:bg-white transition-colors"
-          >
-            <Share2 className="w-4 h-4" />
-            <span>مشاركة</span>
-          </button>
-
-          {/* Share Menu */}
-          {showShareMenu && (
-            <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-100 py-2 min-w-[150px]">
-              <button
-                onClick={copyLink}
-                className="w-full px-4 py-2 text-right text-sm text-gray-700 hover:bg-gray-50"
-              >
-                نسخ الرابط
-              </button>
-            </div>
+        {/* Action Buttons */}
+        <div className="absolute top-4 left-4 flex items-center gap-2">
+          {/* Edit Button (Admin only) */}
+          {isAdmin && (
+            <Link
+              href={`/journals/${params.id}/edit`}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg shadow-md hover:bg-amber-600 transition-colors"
+            >
+              <Pencil className="w-4 h-4" />
+              <span>تعديل</span>
+            </Link>
           )}
+
+          {/* Share Button */}
+          <div className="relative">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md text-gray-700 hover:bg-white transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>مشاركة</span>
+            </button>
+
+            {/* Share Menu */}
+            {showShareMenu && (
+              <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-100 py-2 min-w-[150px]">
+                <button
+                  onClick={copyLink}
+                  className="w-full px-4 py-2 text-right text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  نسخ الرابط
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

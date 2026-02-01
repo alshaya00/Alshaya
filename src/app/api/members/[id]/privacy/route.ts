@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 
+function extractIdNumber(id: string): number | null {
+  if (!id) return null;
+  const cleaned = id.toLowerCase().replace(/^p/, '');
+  const num = parseInt(cleaned, 10);
+  return isNaN(num) ? null : num;
+}
+
+function matchesMemberId(memberId: string, searchId: string): boolean {
+  const memberNum = extractIdNumber(memberId);
+  const searchNum = extractIdNumber(searchId);
+  if (memberNum === null || searchNum === null) return false;
+  return memberNum === searchNum;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -9,10 +23,11 @@ export async function GET(
   try {
     const memberId = params.id;
     
-    const user = await prisma.user.findFirst({
-      where: { linkedMemberId: memberId },
-      select: { hidePersonalInfo: true },
+    const users = await prisma.user.findMany({
+      where: { linkedMemberId: { not: null } },
+      select: { linkedMemberId: true, hidePersonalInfo: true },
     });
+    const user = users.find(u => u.linkedMemberId && matchesMemberId(u.linkedMemberId, memberId));
 
     return NextResponse.json({
       hidePersonalInfo: user?.hidePersonalInfo || false,
@@ -61,7 +76,7 @@ export async function PUT(
       );
     }
 
-    const isOwner = currentUser.linkedMemberId === memberId;
+    const isOwner = currentUser.linkedMemberId ? matchesMemberId(currentUser.linkedMemberId, memberId) : false;
     const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
     if (!isOwner && !isAdmin) {
@@ -74,9 +89,10 @@ export async function PUT(
     const body = await request.json();
     const { hidePersonalInfo } = body;
 
-    const targetUser = await prisma.user.findFirst({
-      where: { linkedMemberId: memberId },
+    const allLinkedUsers = await prisma.user.findMany({
+      where: { linkedMemberId: { not: null } },
     });
+    const targetUser = allLinkedUsers.find(u => u.linkedMemberId && matchesMemberId(u.linkedMemberId, memberId));
 
     if (!targetUser) {
       return NextResponse.json(

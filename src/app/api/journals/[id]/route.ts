@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { safeJsonParseArray } from '@/lib/utils/safe-json';
 import { sanitizeString } from '@/lib/sanitize';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token) return null;
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+  return user;
+}
+
+function isAdmin(user: { role: string } | null): boolean {
+  return user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+}
 
 // GET /api/journals/[id] - Get a single journal
 export async function GET(
@@ -53,12 +69,21 @@ export async function GET(
   }
 }
 
-// PUT /api/journals/[id] - Update a journal
+// PUT /api/journals/[id] - Update a journal (Admin only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Admin authorization check
+    const user = await getAuthUser(request);
+    if (!isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'غير مصرح لك بالتعديل', errorEn: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     const body = await request.json();
 
@@ -129,12 +154,21 @@ export async function PUT(
   }
 }
 
-// DELETE /api/journals/[id] - Delete a journal
+// DELETE /api/journals/[id] - Delete a journal (Admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Admin authorization check
+    const user = await getAuthUser(request);
+    if (!isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: 'غير مصرح لك بالحذف', errorEn: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
 
     // Check if journal exists
