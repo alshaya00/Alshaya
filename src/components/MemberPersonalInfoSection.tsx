@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import { 
   User, 
   MapPin, 
@@ -11,7 +12,8 @@ import {
   Eye, 
   EyeOff,
   Loader2,
-  Lock
+  Lock,
+  CheckCircle
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 
@@ -33,9 +35,11 @@ export default function MemberPersonalInfoSection({
   serverHidePersonalInfo = false,
 }: MemberPersonalInfoSectionProps) {
   const { session, isLoading: authLoading } = useAuth();
+  const toast = useToast();
   const [hideInfo, setHideInfo] = useState(serverHidePersonalInfo);
   const [isLoading, setIsLoading] = useState(!serverHidePersonalInfo);
   const [isSaving, setIsSaving] = useState(false);
+  const [justToggled, setJustToggled] = useState(false);
   const [personalInfo, setPersonalInfo] = useState<{
     city?: string | null;
     occupation?: string | null;
@@ -103,6 +107,8 @@ export default function MemberPersonalInfoSection({
     if (!session?.token || !canToggle) return;
     
     setIsSaving(true);
+    const newHideState = !hideInfo;
+    
     try {
       const res = await fetch(`/api/members/${memberId}/privacy`, {
         method: 'PUT',
@@ -110,14 +116,25 @@ export default function MemberPersonalInfoSection({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.token}`,
         },
-        body: JSON.stringify({ hidePersonalInfo: !hideInfo }),
+        body: JSON.stringify({ hidePersonalInfo: newHideState }),
       });
       
       if (res.ok) {
-        setHideInfo(!hideInfo);
+        setHideInfo(newHideState);
+        setJustToggled(true);
+        setTimeout(() => setJustToggled(false), 2000);
+        
+        if (newHideState) {
+          toast.success('تم إخفاء المعلومات الشخصية', 'Personal info is now hidden');
+        } else {
+          toast.success('تم إظهار المعلومات الشخصية', 'Personal info is now visible');
+        }
+      } else {
+        toast.error('فشل في تحديث الإعدادات', 'Failed to update privacy settings');
       }
     } catch (error) {
       console.error('Error updating privacy:', error);
+      toast.error('حدث خطأ أثناء تحديث الإعدادات', 'An error occurred');
     } finally {
       setIsSaving(false);
     }
@@ -140,21 +157,23 @@ export default function MemberPersonalInfoSection({
           <button
             onClick={togglePrivacy}
             disabled={isSaving}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all duration-300 ${
               hideInfo
-                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
-            } disabled:opacity-50`}
-            title={hideInfo ? 'المعلومات مخفية عن الآخرين' : 'المعلومات ظاهرة للجميع'}
+                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 border-2 border-orange-300'
+                : 'bg-green-100 text-green-700 hover:bg-green-200 border-2 border-green-300'
+            } ${justToggled ? 'scale-110 ring-2 ring-offset-2 ring-green-400' : ''} disabled:opacity-50 active:scale-95`}
+            title={hideInfo ? 'اضغط لإظهار المعلومات للآخرين' : 'اضغط لإخفاء المعلومات عن الآخرين'}
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : justToggled ? (
+              <CheckCircle size={16} className="text-green-600" />
             ) : hideInfo ? (
               <EyeOff size={16} />
             ) : (
               <Eye size={16} />
             )}
-            <span>{hideInfo ? 'مخفية' : 'ظاهرة'}</span>
+            <span className="font-medium">{hideInfo ? 'مخفية' : 'ظاهرة'}</span>
           </button>
         )}
       </div>
