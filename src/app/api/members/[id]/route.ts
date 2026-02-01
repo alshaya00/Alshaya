@@ -8,6 +8,7 @@ import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { generateFullNamesFromLineage } from '@/lib/member-registry';
 import { isMale } from '@/lib/utils';
+import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -216,7 +217,7 @@ async function handleUpdate(
       fullNameAr: body.fullNameAr,
       fullNameEn: body.fullNameEn,
       phone: body.phone,
-      city: body.city,
+      city: body.city ? normalizeCityWithCorrection(body.city) : body.city,
       status: body.status,
       photoUrl: body.photoUrl,
       biography: body.biography,

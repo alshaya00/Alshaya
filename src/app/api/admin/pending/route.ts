@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { isMale } from '@/lib/utils';
+import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
         fullNameAr: body.fullNameAr,
         fullNameEn: body.fullNameEn,
         phone: body.phone,
-        city: body.city,
+        city: body.city ? normalizeCityWithCorrection(body.city) : body.city,
         status: body.status || 'Living',
         occupation: body.occupation,
         email: body.email,

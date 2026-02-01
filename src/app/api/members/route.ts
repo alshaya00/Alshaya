@@ -6,6 +6,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { formatMemberId } from '@/lib/utils';
+import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
       fullNameAr: sanitizeString(body.fullNameAr),
       fullNameEn: sanitizeString(body.fullNameEn),
       phone: sanitizeString(body.phone),
-      city: sanitizeString(body.city),
+      city: normalizeCityWithCorrection(sanitizeString(body.city) || ''),
       status: body.status === 'Deceased' ? 'Deceased' : 'Living',
       photoUrl: sanitizeString(body.photoUrl),
       biography: sanitizeString(body.biography),

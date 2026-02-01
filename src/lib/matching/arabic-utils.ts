@@ -558,3 +558,177 @@ export function stripConnectors(text: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/**
+ * Common city typos and their corrections
+ * Maps common misspellings to correct city names
+ */
+const CITY_TYPO_CORRECTIONS: Record<string, string> = {
+  'الريتض': 'الرياض',
+  'الرىاض': 'الرياض',
+  'الريض': 'الرياض',
+  'ريتض': 'الرياض',
+  'رياض': 'الرياض',
+  'الجده': 'جدة',
+  'جده': 'جدة',
+  'الدمتم': 'الدمام',
+  'دمام': 'الدمام',
+  'المكه': 'مكة المكرمة',
+  'مكه': 'مكة المكرمة',
+  'مكة': 'مكة المكرمة',
+  'مكه المكرمه': 'مكة المكرمة',
+  'المدينه': 'المدينة المنورة',
+  'المدينة': 'المدينة المنورة',
+  'المدينه المنوره': 'المدينة المنورة',
+  'الكويط': 'الكويت',
+  'كويت': 'الكويت',
+  'البحرين': 'البحرين',
+  'بحرين': 'البحرين',
+  'الخبر': 'الخبر',
+  'خبر': 'الخبر',
+  'القصيم': 'القصيم',
+  'قصيم': 'القصيم',
+  'بريده': 'بريدة',
+  'بريدة': 'بريدة',
+  'عنيزه': 'عنيزة',
+  'حايل': 'حائل',
+  'حاىل': 'حائل',
+  'تبوك': 'تبوك',
+  'ابها': 'أبها',
+  'الطايف': 'الطائف',
+  'الطائف': 'الطائف',
+  'طائف': 'الطائف',
+  'نجران': 'نجران',
+  'جازان': 'جازان',
+  'جيزان': 'جازان',
+  'الاحساء': 'الأحساء',
+  'الاحسا': 'الأحساء',
+  'الهفوف': 'الهفوف',
+  'هفوف': 'الهفوف',
+  'الظهران': 'الظهران',
+  'ظهران': 'الظهران',
+  'يانبع': 'ينبع',
+  'ينبوع': 'ينبع',
+  'روضه سدير': 'روضة سدير',
+  'روضة سدير': 'روضة سدير',
+};
+
+/**
+ * Normalize Arabic city name
+ * - Removes diacritics
+ * - Normalizes character variants (ي/ى, ة/ه, etc.)
+ * - Removes extra whitespace
+ * - Does NOT apply typo corrections (use normalizeCityWithCorrection for that)
+ */
+export function normalizeCity(city: string): string {
+  if (!city) return '';
+  
+  let normalized = city.trim();
+  
+  // Remove diacritics
+  normalized = normalized.replace(ARABIC_DIACRITICS, '');
+  
+  // Remove tatweel
+  normalized = normalized.replace(ARABIC_TATWEEL, '');
+  
+  // Normalize alef variants
+  for (const [variant, canonical] of Object.entries(ALEF_VARIANTS)) {
+    normalized = normalized.replace(new RegExp(variant, 'g'), canonical);
+  }
+  
+  // Normalize yeh variants
+  for (const [variant, canonical] of Object.entries(YEH_VARIANTS)) {
+    normalized = normalized.replace(new RegExp(variant, 'g'), canonical);
+  }
+  
+  // Normalize taa marbuta
+  for (const [variant, canonical] of Object.entries(TAA_MARBUTA)) {
+    normalized = normalized.replace(new RegExp(variant, 'g'), canonical);
+  }
+  
+  // Normalize kaf variants
+  for (const [variant, canonical] of Object.entries(KAF_VARIANTS)) {
+    normalized = normalized.replace(new RegExp(variant, 'g'), canonical);
+  }
+  
+  // Normalize whitespace
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+  
+  return normalized;
+}
+
+/**
+ * Normalize city name and apply typo corrections
+ * Use this when saving user input to ensure consistent city names
+ */
+export function normalizeCityWithCorrection(city: string): string {
+  if (!city) return '';
+  
+  // First normalize the basic characters
+  let normalized = normalizeCity(city);
+  
+  // Check for typo corrections (case-insensitive using normalized form)
+  const normalizedLower = normalized.toLowerCase();
+  
+  // First check exact match in typo corrections
+  if (CITY_TYPO_CORRECTIONS[normalized]) {
+    return CITY_TYPO_CORRECTIONS[normalized];
+  }
+  
+  // Check normalized versions of typo keys
+  for (const [typo, correct] of Object.entries(CITY_TYPO_CORRECTIONS)) {
+    const normalizedTypo = normalizeCity(typo);
+    if (normalizedTypo === normalized || normalizedTypo === normalizedLower) {
+      return correct;
+    }
+  }
+  
+  return normalized;
+}
+
+/**
+ * Check if two city names are equivalent
+ * Uses normalization to compare cities
+ */
+export function areCitiesEquivalent(city1: string, city2: string): boolean {
+  if (!city1 || !city2) return false;
+  
+  const normalized1 = normalizeCity(city1);
+  const normalized2 = normalizeCity(city2);
+  
+  return normalized1 === normalized2;
+}
+
+/**
+ * Get all unique normalized cities from a list
+ * Groups cities by their normalized form and returns the most common spelling
+ */
+export function getUniqueCities(cities: string[]): Map<string, { canonical: string; count: number; variants: string[] }> {
+  const cityMap = new Map<string, { canonical: string; count: number; variants: string[] }>();
+  
+  for (const city of cities) {
+    if (!city) continue;
+    
+    const normalized = normalizeCity(city);
+    const existing = cityMap.get(normalized);
+    
+    if (existing) {
+      existing.count++;
+      if (!existing.variants.includes(city)) {
+        existing.variants.push(city);
+      }
+      // Use the most common spelling as canonical
+      if (city === existing.canonical) {
+        // Already canonical
+      }
+    } else {
+      cityMap.set(normalized, {
+        canonical: city,
+        count: 1,
+        variants: [city]
+      });
+    }
+  }
+  
+  return cityMap;
+}
