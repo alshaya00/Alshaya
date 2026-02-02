@@ -82,12 +82,15 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
 -   **Name Fix Tool** (`/admin/fix-names`):
     -   Admin tool to scan and repair member name issues.
     -   Detects Arabic characters in English names (transliteration failures).
-    -   Detects incomplete lineage chains (missing ancestor names).
-    -   Uses `generateFullNamesFromLineage()` to regenerate names from fatherId chain traversal.
+    -   Detects incomplete lineage chains (missing ancestor names in fullNameAr/fullNameEn).
+    -   Detects missing individual ancestor fields (fatherName, grandfatherName, greatGrandfatherName).
+    -   Uses `generateFullNamesFromLineage()` to regenerate display names from fatherId chain traversal.
+    -   Uses `getAncestorNamesFromLineage()` to extract individual ancestor names from chain.
     -   Preview mode shows before/after changes before execution.
     -   Bulk fix option for all affected members.
     -   Works for both root members (no fatherId) and members with complete lineage.
-    -   Transactional approval now uses `generateFullNamesFromLineage()` to prevent future issues.
+    -   Dashboard alert shows count of members needing name fixes with quick link to tool.
+    -   **Transactional Approval Enhancement**: Now extracts fatherName/grandfatherName/greatGrandfatherName from actual fatherId chain (not user-entered data) to ensure complete ancestor information for new members.
 -   **Gallery with Video Support**:
     -   Photo gallery supports both images and videos (MP4, WebM, MOV).
     -   Video files up to 50MB, images up to 5MB.
