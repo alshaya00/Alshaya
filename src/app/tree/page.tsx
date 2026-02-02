@@ -35,7 +35,7 @@ function TreePageContent() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members?limit=500', {
+        const res = await fetch('/api/members?limit=2000', {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',

@@ -136,7 +136,7 @@ export default function MembersHubPage() {
     try {
       const [statsRes, membersRes, pendingRes, issuesRes] = await Promise.all([
         fetch('/api/statistics', { headers }),
-        fetch('/api/members?limit=500', { headers }),
+        fetch('/api/members?limit=2000', { headers }),
         fetch('/api/admin/pending', { headers }),
         fetch('/api/admin/data-issues?limit=200', { headers }),
       ]);

@@ -116,7 +116,7 @@ export default function ExcelViewPage() {
     
     const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
     try {
-      const res = await fetch('/api/members?limit=500', { headers });
+      const res = await fetch('/api/members?limit=2000', { headers });
       
       if (!res.ok) {
         console.error('API error:', res.status, res.statusText);

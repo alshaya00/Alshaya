@@ -66,7 +66,7 @@ export default function DashboardPage() {
         const statsData = await statsRes.json();
         setStats(statsData);
 
-        const membersRes = await fetch('/api/members?limit=500', { headers });
+        const membersRes = await fetch('/api/members?limit=2000', { headers });
         if (membersRes.ok) {
           const membersData = await membersRes.json();
           setAllMembers(membersData.data || []);

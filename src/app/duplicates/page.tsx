@@ -55,7 +55,7 @@ function DuplicatesPageContent() {
     async function fetchData() {
       try {
         const [membersRes, flagsRes] = await Promise.all([
-          fetch('/api/members?limit=500', {
+          fetch('/api/members?limit=2000', {
             headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
           }),
           fetch('/api/admin/duplicate-flags', {

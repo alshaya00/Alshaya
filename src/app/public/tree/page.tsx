@@ -29,7 +29,7 @@ export default function PublicTreePage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members/public?limit=500', {
+        const res = await fetch('/api/members/public?limit=2000', {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',

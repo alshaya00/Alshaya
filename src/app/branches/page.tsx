@@ -75,7 +75,7 @@ function BranchesPageContent() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members?limit=500', {
+        const res = await fetch('/api/members?limit=2000', {
           headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
         });
         if (res.ok) {

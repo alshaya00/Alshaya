@@ -34,7 +34,7 @@ function RegistryPageContent() {
       if (authLoading) return;
 
       try {
-        const res = await fetch('/api/members?limit=500', {
+        const res = await fetch('/api/members?limit=2000', {
           headers: {
             ...getAuthHeader(),
           },

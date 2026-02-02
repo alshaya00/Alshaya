@@ -74,7 +74,7 @@ export default function EditMemberPage() {
         const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
         const [memberRes, allRes] = await Promise.all([
           fetch(`/api/members/${memberId}`, { headers }),
-          fetch('/api/members?limit=500', { headers })
+          fetch('/api/members?limit=2000', { headers })
         ]);
         
         if (memberRes.status === 401) {

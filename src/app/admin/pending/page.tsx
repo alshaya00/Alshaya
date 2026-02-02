@@ -121,7 +121,7 @@ export default function AdminPendingPage() {
   const fetchAllMembers = useCallback(async () => {
     if (!session?.token) return;
     try {
-      const res = await fetch('/api/members?limit=500', {
+      const res = await fetch('/api/members?limit=2000', {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       if (res.ok) {

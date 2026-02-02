@@ -98,7 +98,7 @@ export default function RegisterPage() {
   useEffect(() => {
     async function fetchMembers() {
       try {
-        const res = await fetch('/api/members/public?limit=500&includePending=true');
+        const res = await fetch('/api/members/public?limit=2000&includePending=true');
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);

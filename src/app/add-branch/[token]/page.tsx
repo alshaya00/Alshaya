@@ -220,7 +220,7 @@ export default function BranchEntryPage() {
     async function fetchData() {
       try {
         const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
-        const res = await fetch('/api/members?limit=500', { headers });
+        const res = await fetch('/api/members?limit=2000', { headers });
         if (res.ok) {
           const data = await res.json();
           setAllMembers(data.data || []);

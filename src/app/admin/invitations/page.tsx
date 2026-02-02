@@ -87,7 +87,7 @@ export default function AdminInvitationsPage() {
   const fetchMembers = useCallback(async () => {
     if (!session?.token) return;
     try {
-      const res = await fetch('/api/members/public?limit=500');
+      const res = await fetch('/api/members/public?limit=2000');
       if (res.ok) {
         const data = await res.json();
         setMembers(data.data || []);

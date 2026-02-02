@@ -108,7 +108,7 @@ export default function TreeEditorPage() {
         // Try authenticated endpoint first for full data access
         if (session?.token) {
           const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
-          const res = await fetch('/api/members?limit=500', { headers });
+          const res = await fetch('/api/members?limit=2000', { headers });
           if (res.ok) {
             const data = await res.json();
             setAllMembers(data.data || []);

@@ -155,7 +155,7 @@ export default function ToolsPage() {
   const loadStats = async () => {
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      const membersRes = await fetch('/api/members?limit=500', { headers });
+      const membersRes = await fetch('/api/members?limit=2000', { headers });
       const membersData = await membersRes.json();
       const members = membersData.data || [];
 
@@ -214,7 +214,7 @@ export default function ToolsPage() {
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     const userForAudit = session?.user ? { id: session.user.id, name: session.user.nameArabic, role: session.user.role } : null;
     try {
-      const membersRes = await fetch('/api/members?limit=500', { headers });
+      const membersRes = await fetch('/api/members?limit=2000', { headers });
       const membersData = await membersRes.json();
       const members = membersData.data || [];
 
@@ -278,7 +278,7 @@ export default function ToolsPage() {
       { name: 'فحص اتصال قاعدة البيانات', check: async () => ({ passed: true }) },
       { name: 'التحقق من سلامة العلاقات', check: async () => {
         const checkHeaders: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
-        const res = await fetch('/api/members?limit=500', { headers: checkHeaders });
+        const res = await fetch('/api/members?limit=2000', { headers: checkHeaders });
         const data = await res.json();
         const members = data.data || [];
         const orphans = members.filter((m: { fatherId: string | null }) =>
