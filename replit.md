@@ -79,6 +79,15 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   Three repair actions: link user to member, set member's parent, create member for user.
     -   Full audit logging with before/after state tracking.
     -   Rollback capability: any repair can be safely reverted using the change ID.
+-   **Name Fix Tool** (`/admin/fix-names`):
+    -   Admin tool to scan and repair member name issues.
+    -   Detects Arabic characters in English names (transliteration failures).
+    -   Detects incomplete lineage chains (missing ancestor names).
+    -   Uses `generateFullNamesFromLineage()` to regenerate names from fatherId chain traversal.
+    -   Preview mode shows before/after changes before execution.
+    -   Bulk fix option for all affected members.
+    -   Works for both root members (no fatherId) and members with complete lineage.
+    -   Transactional approval now uses `generateFullNamesFromLineage()` to prevent future issues.
 -   **Gallery with Video Support**:
     -   Photo gallery supports both images and videos (MP4, WebM, MOV).
     -   Video files up to 50MB, images up to 5MB.
