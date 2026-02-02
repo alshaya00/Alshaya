@@ -34,29 +34,52 @@ interface DuplicatePair {
   status: 'PENDING' | 'CONFIRMED' | 'NOT_DUPLICATE' | 'MERGED';
 }
 
+interface ExcludedPair {
+  member1Id: string;
+  member2Id: string;
+  pairKey: string;
+  member1Name?: string;
+  member2Name?: string;
+  resolution?: string;
+  resolvedAt?: string;
+}
+
 function DuplicatesPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [excludedPairs, setExcludedPairs] = useState<ExcludedPair[]>([]);
+  const [savingStatus, setSavingStatus] = useState<string | null>(null);
   const { session } = useAuth();
 
   useEffect(() => {
-    async function fetchMembers() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/members?limit=500', {
-          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const [membersRes, flagsRes] = await Promise.all([
+          fetch('/api/members?limit=500', {
+            headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+          }),
+          fetch('/api/admin/duplicate-flags', {
+            headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+          })
+        ]);
+        
+        if (membersRes.ok) {
+          const data = await membersRes.json();
           setAllMembers(data.data || []);
         }
+        
+        if (flagsRes.ok) {
+          const flagsData = await flagsRes.json();
+          setExcludedPairs(flagsData.excludedPairs || []);
+        }
       } catch (error) {
-        console.error('Error fetching members:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
     }
     if (session?.token) {
-      fetchMembers();
+      fetchData();
     }
   }, [session?.token]);
 
@@ -65,6 +88,10 @@ function DuplicatesPageContent() {
   const [duplicatePairs, setDuplicatePairs] = useState<DuplicatePair[]>([]);
   const [expandedPairs, setExpandedPairs] = useState<number[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  const excludedPairKeys = useMemo(() => {
+    return new Set(excludedPairs.map(p => p.pairKey));
+  }, [excludedPairs]);
 
   const scanForDuplicates = () => {
     setIsScanning(true);
@@ -81,7 +108,7 @@ function DuplicatesPageContent() {
         for (const match of matches) {
           const pairKey = [member.id, match.existingMember.id].sort().join('-');
 
-          if (!processedPairs.has(pairKey)) {
+          if (!processedPairs.has(pairKey) && !excludedPairKeys.has(pairKey)) {
             processedPairs.add(pairKey);
             pairs.push({
               member1: member,
@@ -98,6 +125,79 @@ function DuplicatesPageContent() {
       setDuplicatePairs(pairs);
       setIsScanning(false);
     }, 100);
+  };
+
+  const markAsNotDuplicate = async (pair: DuplicatePair) => {
+    const pairKey = [pair.member1.id, pair.member2.id].sort().join('-');
+    setSavingStatus(pairKey);
+    try {
+      const res = await fetch('/api/admin/data-cleanup/resolve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          member1Id: pair.member1.id,
+          member2Id: pair.member2.id,
+          action: 'mark_not_duplicate',
+          reason: 'Verified as different people via duplicate scanner'
+        }),
+      });
+
+      if (res.ok) {
+        const sortedIds = [pair.member1.id, pair.member2.id].sort();
+        const pairKey = sortedIds.join('-');
+        setExcludedPairs(prev => [...prev, {
+          member1Id: sortedIds[0],
+          member2Id: sortedIds[1],
+          pairKey,
+          member1Name: pair.member1.fullNameAr || pair.member1.firstName,
+          member2Name: pair.member2.fullNameAr || pair.member2.firstName,
+          resolvedAt: new Date().toISOString()
+        }]);
+        updateStatusByIds(pair.member1.id, pair.member2.id, 'NOT_DUPLICATE');
+      } else {
+        const error = await res.json();
+        alert(error.errorAr || error.error || 'فشل في حفظ القرار');
+      }
+    } catch (error) {
+      console.error('Error marking as not duplicate:', error);
+      alert('فشل في حفظ القرار');
+    } finally {
+      setSavingStatus(null);
+    }
+  };
+
+  const revertNotDuplicate = async (excludedPair: ExcludedPair) => {
+    setSavingStatus(excludedPair.pairKey);
+    try {
+      const res = await fetch('/api/admin/data-cleanup/resolve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          member1Id: excludedPair.member1Id,
+          member2Id: excludedPair.member2Id,
+          action: 'revert'
+        }),
+      });
+
+      if (res.ok) {
+        setExcludedPairs(prev => prev.filter(p => p.pairKey !== excludedPair.pairKey));
+        updateStatusByIds(excludedPair.member1Id, excludedPair.member2Id, 'PENDING');
+      } else {
+        const error = await res.json();
+        alert(error.errorAr || error.error || 'فشل في التراجع');
+      }
+    } catch (error) {
+      console.error('Error reverting:', error);
+      alert('فشل في التراجع');
+    } finally {
+      setSavingStatus(null);
+    }
   };
 
   // Toggle expansion
@@ -190,7 +290,8 @@ function DuplicatesPageContent() {
     confirmed: duplicatePairs.filter(p => p.status === 'CONFIRMED').length,
     notDuplicate: duplicatePairs.filter(p => p.status === 'NOT_DUPLICATE').length,
     merged: duplicatePairs.filter(p => p.status === 'MERGED').length,
-  }), [duplicatePairs]);
+    excluded: excludedPairs.length,
+  }), [duplicatePairs, excludedPairs]);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-red-600 bg-red-100';
@@ -276,8 +377,8 @@ function DuplicatesPageContent() {
         </div>
 
         {/* Stats */}
-        {duplicatePairs.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        {(duplicatePairs.length > 0 || excludedPairs.length > 0) && (
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <div className="bg-white rounded-lg p-4 text-center shadow-sm">
               <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
               <div className="text-sm text-gray-500">إجمالي</div>
@@ -297,6 +398,46 @@ function DuplicatesPageContent() {
             <div className="bg-blue-50 rounded-lg p-4 text-center shadow-sm">
               <div className="text-2xl font-bold text-blue-600">{stats.merged}</div>
               <div className="text-sm text-gray-500">تم الدمج</div>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-4 text-center shadow-sm">
+              <div className="text-2xl font-bold text-purple-600">{stats.excluded}</div>
+              <div className="text-sm text-gray-500">تم استبعاده</div>
+            </div>
+          </div>
+        )}
+
+        {/* Excluded Pairs Section */}
+        {excludedPairs.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">الأزواج المستبعدة</h3>
+                <p className="text-sm text-gray-500">هذه الأزواج تم تأكيد أنهم أشخاص مختلفون ولن تظهر في الفحص</p>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {excludedPairs.map((pair) => (
+                <div key={pair.pairKey} className="flex items-center justify-between bg-purple-50 rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-purple-600" />
+                    <span className="text-gray-700">
+                      {pair.member1Name || pair.member1Id} ↔ {pair.member2Name || pair.member2Id}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => revertNotDuplicate(pair)}
+                    disabled={savingStatus === pair.pairKey}
+                    className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 disabled:opacity-50"
+                  >
+                    {savingStatus === pair.pairKey ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )}
+                    تراجع
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -458,15 +599,22 @@ function DuplicatesPageContent() {
                           </button>
 
                           <button
-                            onClick={() => updateStatus(realIndex, 'NOT_DUPLICATE')}
+                            onClick={() => markAsNotDuplicate(pair)}
+                            disabled={savingStatus === [pair.member1.id, pair.member2.id].sort().join('-') || pair.status === 'NOT_DUPLICATE'}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                               pair.status === 'NOT_DUPLICATE'
                                 ? 'bg-green-600 text-white'
-                                : 'bg-green-100 hover:bg-green-200 text-green-700'
+                                : savingStatus === [pair.member1.id, pair.member2.id].sort().join('-')
+                                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                                  : 'bg-green-100 hover:bg-green-200 text-green-700'
                             }`}
                           >
-                            <CheckCircle className="w-4 h-4" />
-                            ليس تكرار
+                            {savingStatus === [pair.member1.id, pair.member2.id].sort().join('-') ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            {pair.status === 'NOT_DUPLICATE' ? 'تم التأكيد' : 'ليس تكرار'}
                           </button>
 
                           {pair.status === 'CONFIRMED' && (
