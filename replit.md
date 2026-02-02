@@ -51,6 +51,13 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **Manual User-Member Linking**: Admin can manually link orphaned user accounts to existing family members via search interface.
     -   **Orphaned Users Report** (`/admin/orphaned`): Dashboard showing users without linked members, with auto-suggested matches based on name similarity.
     -   **Data Cleanup Tool** (`/admin/data-cleanup`): Dashboard to scan and review potential false duplicates (same name, different fathers/generations). Allows marking pairs as "verified different people" with full audit logging and ability to revert.
+-   **Duplicate Detection & Resolution** (`/duplicates`):
+    -   Scan for potential duplicate members based on name similarity (adjustable threshold 40-90%).
+    -   **Persistent Exclusion**: When marking pairs as "ليس تكرار" (not duplicate), decision is saved to `DuplicateFlag` table with status `VERIFIED_DIFFERENT`.
+    -   **Automatic Filtering**: Excluded pairs are fetched on page load and filtered out from scan results.
+    -   **Revert Functionality**: Admin can undo exclusion via "تراجع" button, which removes the flag and restores the pair to scan results.
+    -   **Excluded Pairs Section**: Purple-themed section shows all previously excluded pairs with option to revert.
+    -   **Stats Dashboard**: Shows counts for pending, confirmed, not-duplicate, merged, and excluded pairs.
 -   **CRM-Style Members Hub** (`/admin/members-hub`):
     -   **Smart Data Issue Detection**: Automatic detection of duplicates, orphaned members, missing data, generation inconsistencies, and pending reviews.
     -   **Issue Severity System**: Issues categorized as HIGH (duplicates, orphaned), MEDIUM (inconsistencies, pending), LOW (missing data).
