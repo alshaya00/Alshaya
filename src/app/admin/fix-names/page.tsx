@@ -298,6 +298,46 @@ export default function FixNamesPage() {
           <Play className="w-4 h-4" />
           معاينة إصلاح الكل
         </button>
+        <button
+          onClick={async () => {
+            if (!session?.token) return;
+            if (!confirm(`هل أنت متأكد من إصلاح ${issues.length} عضو؟ سيتم تحديث أسماء الأجداد المفقودة تلقائياً.`)) return;
+            
+            setError(null);
+            setSuccess(null);
+            setIsProcessing(true);
+            
+            try {
+              const res = await fetch('/api/admin/fix-lineage', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.token}`,
+                },
+                body: JSON.stringify({ fixAll: true, preview: false }),
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+                setSuccess(`✅ تم إصلاح ${data.changedCount} عضو بنجاح!`);
+                await fetchIssues();
+              } else {
+                const errorData = await res.json();
+                setError(errorData.messageAr || 'فشل في التنفيذ');
+              }
+            } catch (err) {
+              console.error('Error executing:', err);
+              setError('حدث خطأ في الاتصال بالخادم');
+            } finally {
+              setIsProcessing(false);
+            }
+          }}
+          disabled={isProcessing || issues.length === 0}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 font-bold"
+        >
+          {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          ⚡ إصلاح فوري للكل ({issues.length})
+        </button>
       </div>
 
       {showPreview && previewResults.length > 0 && (
