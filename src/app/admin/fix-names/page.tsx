@@ -20,9 +20,10 @@ interface Issue {
   generation: number;
   currentFullNameAr: string | null;
   currentFullNameEn: string | null;
-  issueType: 'arabic_in_english' | 'incomplete_lineage' | 'both';
+  issueType: 'arabic_in_english' | 'incomplete_lineage' | 'missing_ancestor_names' | 'multiple';
   expectedAncestors: number;
   actualAncestors: number;
+  missingFields?: string[];
 }
 
 interface PreviewResult {
@@ -33,6 +34,11 @@ interface PreviewResult {
   oldFullNameEn: string | null;
   newFullNameEn: string;
   changed: boolean;
+  ancestorNamesUpdated?: {
+    fatherName?: { old: string | null; new: string | null };
+    grandfatherName?: { old: string | null; new: string | null };
+    greatGrandfatherName?: { old: string | null; new: string | null };
+  };
 }
 
 export default function FixNamesPage() {
@@ -43,7 +49,7 @@ export default function FixNamesPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [summary, setSummary] = useState({ arabicInEnglish: 0, incompleteLineage: 0 });
+  const [summary, setSummary] = useState({ arabicInEnglish: 0, incompleteLineage: 0, missingAncestorNames: 0 });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPreview, setShowPreview] = useState(false);
 
@@ -60,7 +66,7 @@ export default function FixNamesPage() {
       if (res.ok) {
         const data = await res.json();
         setIssues(data.issues || []);
-        setSummary(data.summary || { arabicInEnglish: 0, incompleteLineage: 0 });
+        setSummary(data.summary || { arabicInEnglish: 0, incompleteLineage: 0, missingAncestorNames: 0 });
       } else {
         const errorData = await res.json();
         setError(errorData.messageAr || 'فشل في جلب البيانات');
@@ -174,8 +180,11 @@ export default function FixNamesPage() {
         return 'نص عربي في الاسم الإنجليزي';
       case 'incomplete_lineage':
         return 'سلسلة نسب ناقصة';
+      case 'missing_ancestor_names':
+        return 'أسماء الأجداد مفقودة';
+      case 'multiple':
       case 'both':
-        return 'كلا المشكلتين';
+        return 'مشاكل متعددة';
       default:
         return type;
     }
@@ -187,6 +196,9 @@ export default function FixNamesPage() {
         return 'bg-red-100 text-red-800';
       case 'incomplete_lineage':
         return 'bg-orange-100 text-orange-800';
+      case 'missing_ancestor_names':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'multiple':
       case 'both':
         return 'bg-purple-100 text-purple-800';
       default:
@@ -228,7 +240,7 @@ export default function FixNamesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg border p-4">
           <div className="text-3xl font-bold text-red-600">{summary.arabicInEnglish}</div>
           <div className="text-sm text-gray-600">نص عربي في الاسم الإنجليزي</div>
@@ -236,6 +248,10 @@ export default function FixNamesPage() {
         <div className="bg-white rounded-lg border p-4">
           <div className="text-3xl font-bold text-orange-600">{summary.incompleteLineage}</div>
           <div className="text-sm text-gray-600">سلسلة نسب ناقصة</div>
+        </div>
+        <div className="bg-white rounded-lg border p-4">
+          <div className="text-3xl font-bold text-yellow-600">{summary.missingAncestorNames}</div>
+          <div className="text-sm text-gray-600">أسماء الأجداد مفقودة</div>
         </div>
         <div className="bg-white rounded-lg border p-4">
           <div className="text-3xl font-bold text-blue-600">{issues.length}</div>
@@ -312,6 +328,34 @@ export default function FixNamesPage() {
                     <div className="text-green-600 text-xs" dir="ltr">{result.newFullNameEn}</div>
                   </div>
                 </div>
+                {result.ancestorNamesUpdated && Object.keys(result.ancestorNamesUpdated).length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="font-medium text-gray-500 mb-2">تحديثات أسماء الأجداد:</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                      {result.ancestorNamesUpdated.fatherName && (
+                        <div className="bg-blue-50 p-2 rounded">
+                          <div className="font-medium text-blue-800">اسم الأب:</div>
+                          <div className="text-red-600 line-through">{result.ancestorNamesUpdated.fatherName.old || '-'}</div>
+                          <div className="text-green-600">{result.ancestorNamesUpdated.fatherName.new}</div>
+                        </div>
+                      )}
+                      {result.ancestorNamesUpdated.grandfatherName && (
+                        <div className="bg-blue-50 p-2 rounded">
+                          <div className="font-medium text-blue-800">اسم الجد:</div>
+                          <div className="text-red-600 line-through">{result.ancestorNamesUpdated.grandfatherName.old || '-'}</div>
+                          <div className="text-green-600">{result.ancestorNamesUpdated.grandfatherName.new}</div>
+                        </div>
+                      )}
+                      {result.ancestorNamesUpdated.greatGrandfatherName && (
+                        <div className="bg-blue-50 p-2 rounded">
+                          <div className="font-medium text-blue-800">اسم جد الأب:</div>
+                          <div className="text-red-600 line-through">{result.ancestorNamesUpdated.greatGrandfatherName.old || '-'}</div>
+                          <div className="text-green-600">{result.ancestorNamesUpdated.greatGrandfatherName.new}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -350,13 +394,14 @@ export default function FixNamesPage() {
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الجيل</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">نوع المشكلة</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الأجداد (فعلي/متوقع)</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الحقول المفقودة</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الاسم الإنجليزي الحالي</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {issues.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                     <Check className="w-12 h-12 mx-auto mb-2 text-green-500" />
                     لا توجد مشاكل في الأسماء
                   </td>
@@ -394,6 +439,21 @@ export default function FixNamesPage() {
                       <span className={issue.actualAncestors < issue.expectedAncestors ? 'text-red-600 font-medium' : ''}>
                         {issue.actualAncestors}/{issue.expectedAncestors}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {issue.missingFields && issue.missingFields.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {issue.missingFields.map((field) => (
+                            <span key={field} className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
+                              {field === 'fatherName' ? 'الأب' : 
+                               field === 'grandfatherName' ? 'الجد' : 
+                               field === 'greatGrandfatherName' ? 'جد الأب' : field}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate" dir="ltr">
                       {issue.currentFullNameEn}
