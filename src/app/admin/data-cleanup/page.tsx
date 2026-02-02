@@ -14,6 +14,8 @@ import {
   UserX,
   GitBranch,
   Check,
+  MapPin,
+  Sparkles,
 } from 'lucide-react';
 import { formatMemberId } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,6 +54,21 @@ interface Summary {
 
 type FilterType = 'all' | 'different_fathers' | 'generation_gap';
 
+interface CityDuplicate {
+  normalized: string;
+  canonical: string;
+  count: number;
+  variants: string[];
+  needsCorrection: boolean;
+}
+
+interface CityChange {
+  memberId: string;
+  memberName: string;
+  oldCity: string;
+  newCity: string;
+}
+
 export default function DataCleanupPage() {
   const { session } = useAuth();
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
@@ -62,6 +79,14 @@ export default function DataCleanupPage() {
   const [resolvingPair, setResolvingPair] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  
+  const [cityDuplicates, setCityDuplicates] = useState<CityDuplicate[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [cityCleanupResult, setCityCleanupResult] = useState<string | null>(null);
+  const [cityError, setCityError] = useState<string | null>(null);
+  const [isCleaningCities, setIsCleaningCities] = useState(false);
+  const [cityPreviewChanges, setCityPreviewChanges] = useState<CityChange[]>([]);
+  const [showCityPreview, setShowCityPreview] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!session?.token) return;
@@ -150,6 +175,99 @@ export default function DataCleanupPage() {
       }
       return next;
     });
+  };
+
+  const fetchCityDuplicates = async () => {
+    if (!session?.token) return;
+    
+    setCityLoading(true);
+    setCityError(null);
+    setCityCleanupResult(null);
+    setShowCityPreview(false);
+    setCityPreviewChanges([]);
+    
+    try {
+      const response = await fetch('/api/admin/city-cleanup', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      
+      if (!response.ok) throw new Error('فشل في جلب بيانات المدن');
+      
+      const data = await response.json();
+      if (data.success) {
+        setCityDuplicates(data.duplicates || []);
+      }
+    } catch (err) {
+      setCityError(err instanceof Error ? err.message : 'حدث خطأ');
+    } finally {
+      setCityLoading(false);
+    }
+  };
+
+  const fetchCityPreview = async () => {
+    if (!session?.token) return;
+    
+    setCityLoading(true);
+    setCityError(null);
+    
+    try {
+      const response = await fetch('/api/admin/city-cleanup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'normalize', dryRun: true }),
+      });
+      
+      if (!response.ok) throw new Error('فشل في جلب معاينة التغييرات');
+      
+      const data = await response.json();
+      if (data.success) {
+        setCityPreviewChanges(data.changes || []);
+        setShowCityPreview(true);
+      }
+    } catch (err) {
+      setCityError(err instanceof Error ? err.message : 'حدث خطأ');
+    } finally {
+      setCityLoading(false);
+    }
+  };
+
+  const handleCityCleanup = async () => {
+    if (!session?.token) return;
+    if (!confirm('هل أنت متأكد من تنفيذ التنظيف؟ سيتم تحديث جميع السجلات المعروضة.')) return;
+    
+    setIsCleaningCities(true);
+    setCityError(null);
+    setCityCleanupResult(null);
+    
+    try {
+      const response = await fetch('/api/admin/city-cleanup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ action: 'normalize', dryRun: false }),
+      });
+      
+      if (!response.ok) throw new Error('فشل في تنظيف المدن');
+      
+      const data = await response.json();
+      if (data.success) {
+        setCityCleanupResult(`تم تحديث ${data.updated} سجل بنجاح`);
+        setShowCityPreview(false);
+        setCityPreviewChanges([]);
+        await fetchCityDuplicates();
+      } else {
+        throw new Error(data.error || 'فشل في التنظيف');
+      }
+    } catch (err) {
+      setCityError(err instanceof Error ? err.message : 'حدث خطأ');
+    } finally {
+      setIsCleaningCities(false);
+    }
   };
 
   const filteredGroups = groups.filter(g => {
@@ -415,6 +533,146 @@ export default function DataCleanupPage() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">تنظيف أسماء المدن</h2>
+              <p className="text-sm text-gray-500">توحيد الأسماء المكررة بسبب المسافات أو الأخطاء الإملائية</p>
+            </div>
+          </div>
+          <button
+            onClick={fetchCityDuplicates}
+            disabled={cityLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+          >
+            {cityLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            <span>فحص المدن</span>
+          </button>
+        </div>
+
+        {cityError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+            <XCircle className="w-5 h-5 text-red-500" />
+            <span className="text-red-700">{cityError}</span>
+          </div>
+        )}
+
+        {cityCleanupResult && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="text-green-700">{cityCleanupResult}</span>
+          </div>
+        )}
+
+        {showCityPreview && cityPreviewChanges.length > 0 ? (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-blue-800 mb-2">معاينة التغييرات ({cityPreviewChanges.length} سجل)</h3>
+                  <div className="max-h-48 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-blue-700 border-b border-blue-200">
+                        <tr>
+                          <th className="text-right py-1 px-2">الاسم</th>
+                          <th className="text-right py-1 px-2">من</th>
+                          <th className="text-right py-1 px-2">إلى</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-blue-800">
+                        {cityPreviewChanges.slice(0, 20).map((change, idx) => (
+                          <tr key={idx} className="border-b border-blue-100">
+                            <td className="py-1 px-2">{change.memberName}</td>
+                            <td className="py-1 px-2 text-red-600 line-through">&quot;{change.oldCity}&quot;</td>
+                            <td className="py-1 px-2 text-green-600">&quot;{change.newCity}&quot;</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {cityPreviewChanges.length > 20 && (
+                      <p className="text-xs text-blue-500 mt-2">... و {cityPreviewChanges.length - 20} سجل آخر</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowCityPreview(false); setCityPreviewChanges([]); }}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                <span>إلغاء</span>
+              </button>
+              <button
+                onClick={handleCityCleanup}
+                disabled={isCleaningCities}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+              >
+                {isCleaningCities ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-5 h-5" />
+                )}
+                <span>تنفيذ التنظيف</span>
+              </button>
+            </div>
+          </div>
+        ) : cityDuplicates.length > 0 ? (
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-yellow-800 mb-1">وجدنا {cityDuplicates.length} مدينة تحتاج تنظيف</h3>
+                  <ul className="text-sm text-yellow-700 space-y-1">
+                    {cityDuplicates.map((city, idx) => (
+                      <li key={idx}>
+                        <span className="font-medium">{city.canonical}</span>
+                        {city.variants.length > 1 && (
+                          <span className="text-yellow-600"> (صيغ مختلفة: {city.variants.join('، ')})</span>
+                        )}
+                        <span className="text-yellow-500"> - {city.count} سجل</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={fetchCityPreview}
+              disabled={cityLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+            >
+              {cityLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Sparkles className="w-5 h-5" />
+              )}
+              <span>معاينة التغييرات</span>
+            </button>
+          </div>
+        ) : cityLoading ? (
+          <div className="text-center py-8 text-gray-500">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+            <p>جاري فحص المدن...</p>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>اضغط &quot;فحص المدن&quot; للبحث عن المدن المكررة</p>
           </div>
         )}
       </div>
