@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     // Validate pagination params
     const page = Math.max(1, parseInt(pageParam || '1') || 1);
-    const limit = Math.min(500, Math.max(1, parseInt(limitParam || '100') || 100));
+    const limit = Math.min(2000, Math.max(1, parseInt(limitParam || '100') || 100));
 
     // Get all members from database
     let members = await getAllMembersFromDb();
