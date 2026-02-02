@@ -130,6 +130,11 @@ export default function AdminDashboardPage() {
       const accessReqRes = await fetch('/api/access-requests', { headers });
       const accessReqData = await accessReqRes.json().catch(() => ({ requests: [] }));
 
+      // Load name issues count
+      const nameIssuesRes = await fetch('/api/admin/fix-lineage', { headers });
+      const nameIssuesData = await nameIssuesRes.json().catch(() => ({ issuesCount: 0 }));
+      const nameIssuesCount = nameIssuesData.issuesCount || 0;
+
       const pendingApprovals = pendingData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0;
       const duplicatesCount = duplicatesData.duplicates?.filter((d: { status: string }) => d.status === 'PENDING').length || 0;
       const pendingImages = pendingImagesData.pending?.filter((p: { reviewStatus: string }) => p.reviewStatus === 'PENDING').length || 0;
@@ -222,6 +227,20 @@ export default function AdminDashboardPage() {
           icon: <Camera className="w-5 h-5" />,
           color: 'bg-red-500',
           priority: 'low',
+        });
+      }
+
+      if (nameIssuesCount > 0) {
+        actions.push({
+          id: 'name_issues',
+          type: 'pending_member',
+          title: 'أعضاء يحتاجون إصلاح الأسماء',
+          description: `${nameIssuesCount} عضو لديهم مشاكل في سلسلة النسب أو الأسماء`,
+          count: nameIssuesCount,
+          href: '/admin/fix-names',
+          icon: <Wrench className="w-5 h-5" />,
+          color: 'bg-amber-500',
+          priority: 'medium',
         });
       }
 

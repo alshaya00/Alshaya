@@ -183,6 +183,49 @@ export async function buildLineageInfo(
   };
 }
 
+export interface AncestorNames {
+  fatherName: string | null;
+  grandfatherName: string | null;
+  greatGrandfatherName: string | null;
+}
+
+export async function getAncestorNamesFromLineage(
+  fatherId: string | null | undefined,
+  tx?: TransactionClient
+): Promise<AncestorNames> {
+  const emptyResult: AncestorNames = {
+    fatherName: null,
+    grandfatherName: null,
+    greatGrandfatherName: null,
+  };
+
+  if (!fatherId) {
+    return emptyResult;
+  }
+
+  const client = tx || prisma;
+  const ancestors: string[] = [];
+  let currentId: string | null = fatherId;
+
+  for (let i = 0; i < 3 && currentId; i++) {
+    const ancestor = await client.familyMember.findUnique({
+      where: { id: currentId },
+      select: { firstName: true, fatherId: true },
+    });
+
+    if (!ancestor) break;
+
+    ancestors.push(ancestor.firstName);
+    currentId = ancestor.fatherId;
+  }
+
+  return {
+    fatherName: ancestors[0] || null,
+    grandfatherName: ancestors[1] || null,
+    greatGrandfatherName: ancestors[2] || null,
+  };
+}
+
 export async function checkForDuplicates(
   input: { firstName: string; fatherId?: string; fatherName?: string },
   tx?: TransactionClient
