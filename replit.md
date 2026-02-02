@@ -79,6 +79,13 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   Three repair actions: link user to member, set member's parent, create member for user.
     -   Full audit logging with before/after state tracking.
     -   Rollback capability: any repair can be safely reverted using the change ID.
+-   **Gallery with Video Support**:
+    -   Photo gallery supports both images and videos (MP4, WebM, MOV).
+    -   Video files up to 50MB, images up to 5MB.
+    -   Videos display with play button overlay in gallery grid.
+    -   Lightbox plays videos with full controls.
+    -   All gallery views (family, all, timeline) include isVideo flag for consistent rendering.
+    -   Videos stored as base64 in imageData field (same as images).
 -   **Conditional Approval System**:
     -   Allows family members to register even when their parent is pending approval.
     -   Uses `parentPendingId` field to link conditional pending members to their pending parent.
