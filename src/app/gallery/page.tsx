@@ -16,7 +16,13 @@ import {
   Loader2,
   ArrowRight,
   Folder as FolderIcon,
+  Play,
+  Video,
 } from 'lucide-react';
+
+function isVideoMedia(data?: string): boolean {
+  return data?.startsWith('data:video/') || false;
+}
 import ImageUploadForm from '@/components/ImageUploadForm';
 
 interface Photo {
@@ -34,6 +40,7 @@ interface Photo {
   isFamilyAlbum?: boolean;
   uploadedByName: string;
   createdAt: string;
+  isVideo?: boolean;
 }
 
 interface Folder {
@@ -406,15 +413,28 @@ export default function GalleryPage() {
                       return (
                         <div
                           key={photo.id}
-                          className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                          className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => openPhoto(photo, globalIndex)}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={photo.thumbnailData || photo.imageData}
-                            alt={photo.titleAr || photo.title || 'صورة'}
-                            className="w-full h-full object-cover"
-                          />
+                          {(photo.isVideo || isVideoMedia(photo.imageData)) ? (
+                            <>
+                              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                <Video className="w-12 h-12 text-gray-400" />
+                              </div>
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-10 h-10 bg-purple-600/90 rounded-full flex items-center justify-center">
+                                  <Play className="w-5 h-5 text-white ml-0.5" />
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={photo.thumbnailData || photo.imageData}
+                              alt={photo.titleAr || photo.title || 'صورة'}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
                         </div>
                       );
                     })}
@@ -448,12 +468,30 @@ export default function GalleryPage() {
                       className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer"
                       onClick={() => openPhoto(photo, index)}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={photo.thumbnailData || photo.imageData}
-                        alt={photo.titleAr || photo.title || 'صورة'}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      />
+                      {(photo.isVideo || isVideoMedia(photo.imageData)) ? (
+                        <>
+                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                            <Video className="w-16 h-16 text-gray-400" />
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-14 h-14 bg-purple-600/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <Play className="w-7 h-7 text-white ml-1" />
+                            </div>
+                          </div>
+                          <div className="absolute top-2 left-2">
+                            <span className="px-2 py-0.5 rounded text-xs bg-purple-600 text-white">
+                              فيديو
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={photo.thumbnailData || photo.imageData}
+                          alt={photo.titleAr || photo.title || 'صورة'}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform">
                         {(photo.titleAr || photo.title) && (
@@ -466,11 +504,13 @@ export default function GalleryPage() {
                           {photo.year && <span>{photo.year}</span>}
                         </div>
                       </div>
-                      <div className="absolute top-2 right-2">
-                        <span className={`px-2 py-0.5 rounded text-xs ${categoryInfo.color}`}>
-                          {categoryInfo.label}
-                        </span>
-                      </div>
+                      {!(photo.isVideo || isVideoMedia(photo.imageData)) && (
+                        <div className="absolute top-2 right-2">
+                          <span className={`px-2 py-0.5 rounded text-xs ${categoryInfo.color}`}>
+                            {categoryInfo.label}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -521,12 +561,21 @@ export default function GalleryPage() {
               </button>
             )}
 
-            {/* Image */}
+            {/* Media (Image or Video) */}
             <div className="max-w-5xl max-h-[80vh] mx-4">
               {loadingFullImage ? (
                 <div className="flex items-center justify-center">
                   <Loader2 className="w-12 h-12 animate-spin text-white" />
                 </div>
+              ) : (selectedPhoto.isVideo || isVideoMedia(fullImageData || selectedPhoto.imageData)) ? (
+                <video
+                  src={fullImageData || selectedPhoto.imageData}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[80vh] object-contain"
+                >
+                  متصفحك لا يدعم عرض الفيديو
+                </video>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

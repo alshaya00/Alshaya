@@ -2,18 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 
-function extractIdNumber(id: string): number | null {
-  if (!id) return null;
-  const cleaned = id.toLowerCase().replace(/^p/, '');
-  const num = parseInt(cleaned, 10);
-  return isNaN(num) ? null : num;
+function normalizeId(id: string): string {
+  if (!id) return '';
+  const cleaned = id.trim().toUpperCase();
+  // Extract numeric part and normalize
+  const numMatch = cleaned.match(/^P?(\d+)$/i);
+  if (numMatch) {
+    const num = parseInt(numMatch[1], 10);
+    return `P${num.toString().padStart(4, '0')}`;
+  }
+  return cleaned;
 }
 
 function matchesMemberId(memberId: string, searchId: string): boolean {
-  const memberNum = extractIdNumber(memberId);
-  const searchNum = extractIdNumber(searchId);
-  if (memberNum === null || searchNum === null) return false;
-  return memberNum === searchNum;
+  if (!memberId || !searchId) return false;
+  const norm1 = normalizeId(memberId);
+  const norm2 = normalizeId(searchId);
+  if (norm1 === norm2) return true;
+  const num1 = parseInt(memberId.replace(/^p/i, ''), 10);
+  const num2 = parseInt(searchId.replace(/^p/i, ''), 10);
+  if (!isNaN(num1) && !isNaN(num2)) {
+    return num1 === num2;
+  }
+  return memberId.toLowerCase() === searchId.toLowerCase();
 }
 
 export async function GET(
@@ -95,6 +106,7 @@ export async function PUT(
     const targetUser = allLinkedUsers.find(u => u.linkedMemberId && matchesMemberId(u.linkedMemberId, memberId));
 
     if (!targetUser) {
+      console.error(`Privacy API: No user linked to member ${memberId}. Total linked users: ${allLinkedUsers.length}`);
       return NextResponse.json(
         { error: 'No user linked to this member', errorAr: 'لا يوجد مستخدم مرتبط بهذا العضو' },
         { status: 404 }

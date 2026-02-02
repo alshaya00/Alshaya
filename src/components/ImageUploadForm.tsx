@@ -16,6 +16,8 @@ import {
   Crop,
   Plus,
   Save,
+  Video,
+  Play,
 } from 'lucide-react';
 import { imageCategories as configImageCategories } from '@/config/constants';
 import { formatMemberId } from '@/lib/utils';
@@ -59,9 +61,12 @@ interface FormData {
   uploaderEmail: string;
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB for videos
 const MAX_DIMENSION = 1200;
 const COMPRESSION_QUALITY = 0.8;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 export default function ImageUploadForm({
   memberId,
@@ -104,6 +109,7 @@ export default function ImageUploadForm({
   const [showNewFolderForm, setShowNewFolderForm] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [isVideoFile, setIsVideoFile] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -225,30 +231,45 @@ export default function ImageUploadForm({
   }, []);
 
   const handleFileSelect = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setErrorMessage('يرجى اختيار ملف صورة فقط');
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+    
+    if (!isImage && !isVideo) {
+      setErrorMessage('يرجى اختيار ملف صورة أو فيديو (PNG, JPG, GIF, MP4, WebM, MOV)');
       return;
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      setErrorMessage('حجم الملف أكبر من 5 ميجابايت');
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+    if (file.size > maxSize) {
+      const maxMB = maxSize / 1024 / 1024;
+      setErrorMessage(`حجم الملف أكبر من ${maxMB} ميجابايت`);
       return;
     }
 
     setErrorMessage('');
+    setIsVideoFile(isVideo);
 
     try {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const imageData = e.target?.result as string;
-        setSourceImage(imageData);
-        setOriginalImage(imageData);
-        setShowCropper(true);
+        const mediaData = e.target?.result as string;
+        
+        if (isVideo) {
+          // For videos, skip cropping and set preview directly
+          setPreview(mediaData);
+          setFormData((prev) => ({ ...prev, imageData: mediaData }));
+          setSourceImage(null);
+        } else {
+          // For images, show cropper
+          setSourceImage(mediaData);
+          setOriginalImage(mediaData);
+          setShowCropper(true);
+        }
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      setErrorMessage('فشل في معالجة الصورة');
-      console.error('Error processing image:', error);
+      setErrorMessage('فشل في معالجة الملف');
+      console.error('Error processing file:', error);
     }
   };
 
@@ -391,6 +412,7 @@ export default function ImageUploadForm({
   const removeImage = () => {
     setPreview(null);
     setSourceImage(null);
+    setIsVideoFile(false);
     setFormData((prev) => ({ ...prev, imageData: '' }));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -441,7 +463,7 @@ export default function ImageUploadForm({
     <div className="bg-white rounded-xl shadow-lg">
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between">
-        <h3 className="text-xl font-bold text-gray-800">رفع صورة جديدة</h3>
+        <h3 className="text-xl font-bold text-gray-800">رفع صورة أو فيديو</h3>
         {onCancel && (
           <button onClick={onCancel} className="p-2 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />
@@ -467,7 +489,7 @@ export default function ImageUploadForm({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/mp4,video/webm,video/quicktime"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleFileSelect(file);
@@ -475,21 +497,39 @@ export default function ImageUploadForm({
                 className="hidden"
               />
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-2">اسحب الصورة هنا أو اضغط للاختيار</p>
+              <p className="text-gray-600 mb-2">اسحب الصورة أو الفيديو هنا أو اضغط للاختيار</p>
               <p className="text-sm text-gray-400">
-                PNG, JPG, GIF حتى 5 ميجابايت
+                صور: PNG, JPG, GIF (حتى 5 ميجابايت) | فيديو: MP4, WebM, MOV (حتى 50 ميجابايت)
               </p>
             </div>
           ) : (
             <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={preview}
-                alt="معاينة"
-                className={`w-full h-64 object-contain bg-gray-100 rounded-xl ${formData.category === 'profile' ? 'rounded-full mx-auto max-w-64' : ''}`}
-              />
+              {isVideoFile ? (
+                <div className="relative">
+                  <video
+                    src={preview}
+                    controls
+                    className="w-full h-64 object-contain bg-gray-900 rounded-xl"
+                  >
+                    متصفحك لا يدعم عرض الفيديو
+                  </video>
+                  <div className="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                    <Video className="w-3 h-3" />
+                    فيديو
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={preview}
+                    alt="معاينة"
+                    className={`w-full h-64 object-contain bg-gray-100 rounded-xl ${formData.category === 'profile' ? 'rounded-full mx-auto max-w-64' : ''}`}
+                  />
+                </>
+              )}
               <div className="absolute top-2 right-2 flex gap-2">
-                {sourceImage && (
+                {sourceImage && !isVideoFile && (
                   <button
                     type="button"
                     onClick={handleReCrop}
@@ -503,7 +543,7 @@ export default function ImageUploadForm({
                   type="button"
                   onClick={removeImage}
                   className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                  title="إزالة الصورة"
+                  title="إزالة"
                 >
                   <X className="w-4 h-4" />
                 </button>

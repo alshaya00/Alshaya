@@ -57,7 +57,20 @@ export async function GET(request: NextRequest) {
     // Timeline view
     if (view === 'timeline') {
       const timeline = await getPhotoTimeline({ limit: 3 });
-      return NextResponse.json({ timeline });
+      // Normalize timeline photos to include isVideo flag
+      const normalizedTimeline = timeline.map(item => ({
+        ...item,
+        photos: item.photos.map(photo => {
+          const isVideo = photo.imageData?.startsWith('data:video/') || false;
+          return {
+            ...photo,
+            thumbnailData: photo.thumbnailData || (isVideo ? undefined : photo.imageData),
+            imageData: isVideo ? photo.imageData : undefined,
+            isVideo,
+          };
+        }),
+      }));
+      return NextResponse.json({ timeline: normalizedTimeline });
     }
 
     // Family album only
@@ -70,19 +83,24 @@ export async function GET(request: NextRequest) {
         offset,
       });
 
-      const photosWithThumbnails = result.photos.map(photo => ({
-        id: photo.id,
-        thumbnailData: photo.thumbnailData || photo.imageData,
-        category: photo.category,
-        title: photo.title,
-        titleAr: photo.titleAr,
-        caption: photo.caption,
-        captionAr: photo.captionAr,
-        year: photo.year,
-        folderId: photo.folderId,
-        uploadedByName: photo.uploadedByName,
-        createdAt: photo.createdAt,
-      }));
+      const photosWithThumbnails = result.photos.map(photo => {
+        const isVideo = photo.imageData?.startsWith('data:video/') || false;
+        return {
+          id: photo.id,
+          thumbnailData: photo.thumbnailData || (isVideo ? undefined : photo.imageData),
+          imageData: isVideo ? photo.imageData : undefined, // Include full data only for videos
+          category: photo.category,
+          title: photo.title,
+          titleAr: photo.titleAr,
+          caption: photo.caption,
+          captionAr: photo.captionAr,
+          year: photo.year,
+          folderId: photo.folderId,
+          uploadedByName: photo.uploadedByName,
+          createdAt: photo.createdAt,
+          isVideo,
+        };
+      });
 
       return NextResponse.json({
         photos: photosWithThumbnails,
@@ -101,21 +119,26 @@ export async function GET(request: NextRequest) {
       offset,
     });
 
-    const photosWithThumbnails = result.photos.map(photo => ({
-      id: photo.id,
-      thumbnailData: photo.thumbnailData || photo.imageData,
-      category: photo.category,
-      title: photo.title,
-      titleAr: photo.titleAr,
-      caption: photo.caption,
-      captionAr: photo.captionAr,
-      year: photo.year,
-      memberId: photo.memberId,
-      folderId: photo.folderId,
-      isFamilyAlbum: photo.isFamilyAlbum,
-      uploadedByName: photo.uploadedByName,
-      createdAt: photo.createdAt,
-    }));
+    const photosWithThumbnails = result.photos.map(photo => {
+      const isVideo = photo.imageData?.startsWith('data:video/') || false;
+      return {
+        id: photo.id,
+        thumbnailData: photo.thumbnailData || (isVideo ? undefined : photo.imageData),
+        imageData: isVideo ? photo.imageData : undefined,
+        category: photo.category,
+        title: photo.title,
+        titleAr: photo.titleAr,
+        caption: photo.caption,
+        captionAr: photo.captionAr,
+        year: photo.year,
+        memberId: photo.memberId,
+        folderId: photo.folderId,
+        isFamilyAlbum: photo.isFamilyAlbum,
+        uploadedByName: photo.uploadedByName,
+        createdAt: photo.createdAt,
+        isVideo,
+      };
+    });
 
     return NextResponse.json({
       photos: photosWithThumbnails,

@@ -6,7 +6,8 @@ import sharp from 'sharp';
 const IS_REPLIT = !!process.env.REPL_ID;
 
 // Maximum file size - lower on Replit to avoid memory issues
-const MAX_FILE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024; // 2MB on Replit, 5MB elsewhere
+const MAX_IMAGE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024; // 2MB on Replit, 5MB elsewhere
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB for videos
 
 // Thumbnail settings - smaller on Replit
 const THUMBNAIL_MAX_SIZE = IS_REPLIT ? 150 : 200;
@@ -17,8 +18,10 @@ if (IS_REPLIT) {
   sharp.concurrency(1); // Single-threaded to reduce memory usage
 }
 
-// Allowed image types
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+// Allowed media types
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 
 // Image categories
 const VALID_CATEGORIES = ['profile', 'memory', 'document', 'historical'];
@@ -47,28 +50,33 @@ function getClientIP(request: NextRequest): string {
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
-function validateBase64Image(dataUrl: string): { valid: boolean; error?: string; type?: string; size?: number } {
-  // Check if it's a valid data URL
-  const match = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+function validateBase64Media(dataUrl: string): { valid: boolean; error?: string; type?: string; size?: number; isVideo?: boolean } {
+  // Check if it's a valid data URL for image or video
+  const match = dataUrl.match(/^data:((image|video)\/[a-zA-Z0-9]+);base64,(.+)$/);
   if (!match) {
-    return { valid: false, error: 'Invalid image format. Must be a base64 data URL.' };
+    return { valid: false, error: 'صيغة الملف غير صحيحة' };
   }
 
   const mimeType = match[1];
-  const base64Data = match[2];
+  const mediaType = match[2]; // 'image' or 'video'
+  const base64Data = match[3];
+  const isVideo = mediaType === 'video';
 
   // Check mime type
   if (!ALLOWED_TYPES.includes(mimeType)) {
-    return { valid: false, error: `Invalid image type: ${mimeType}. Allowed types: ${ALLOWED_TYPES.join(', ')}` };
+    return { valid: false, error: `صيغة غير مدعومة: ${mimeType}` };
   }
 
   // Calculate approximate file size
   const size = Math.ceil((base64Data.length * 3) / 4);
-  if (size > MAX_FILE_SIZE) {
-    return { valid: false, error: `Image too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` };
+  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+  
+  if (size > maxSize) {
+    const maxMB = maxSize / 1024 / 1024;
+    return { valid: false, error: `حجم الملف كبير جداً. الحد الأقصى ${maxMB} ميجابايت` };
   }
 
-  return { valid: true, type: mimeType, size };
+  return { valid: true, type: mimeType, size, isVideo };
 }
 
 function sanitizeString(str: string | undefined): string | undefined {
@@ -154,14 +162,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate image
-    const imageValidation = validateBase64Image(body.imageData);
-    if (!imageValidation.valid) {
+    // Validate media (image or video)
+    const mediaValidation = validateBase64Media(body.imageData);
+    if (!mediaValidation.valid) {
       return NextResponse.json(
-        { error: imageValidation.error, errorAr: 'صورة غير صالحة' },
+        { error: mediaValidation.error, errorAr: mediaValidation.error },
         { status: 400 }
       );
     }
+    
+    const isVideo = mediaValidation.isVideo || false;
 
     // Validate category
     if (body.category && !VALID_CATEGORIES.includes(body.category)) {
@@ -195,13 +205,16 @@ export async function POST(request: NextRequest) {
       uploadedBy = 'authenticated';
     }
 
-    // Generate thumbnail
-    const thumbnailData = await generateThumbnail(body.imageData);
+    // Generate thumbnail (only for images, not videos)
+    let thumbnailData: string | undefined;
+    if (!isVideo) {
+      thumbnailData = await generateThumbnail(body.imageData);
+    }
 
     // Prepare the input
     const input: CreatePendingImageInput = {
       imageData: body.imageData,
-      thumbnailData,
+      thumbnailData: thumbnailData || '', // For videos, no thumbnail
       category: body.category || 'memory',
       title: sanitizeString(body.title),
       titleAr: sanitizeString(body.titleAr),
@@ -221,16 +234,18 @@ export async function POST(request: NextRequest) {
     // Create the pending image
     const pendingImage = await createPendingImage(input);
 
+    const mediaType = isVideo ? 'فيديو' : 'صورة';
     return NextResponse.json({
       success: true,
-      message: 'Image uploaded successfully and is pending approval',
-      messageAr: 'تم رفع الصورة بنجاح وهي بانتظار الموافقة',
+      message: isVideo ? 'Video uploaded successfully and is pending approval' : 'Image uploaded successfully and is pending approval',
+      messageAr: `تم رفع ال${mediaType} بنجاح وهو بانتظار الموافقة`,
       pendingImage: {
         id: pendingImage.id,
         category: pendingImage.category,
         title: pendingImage.title,
         reviewStatus: pendingImage.reviewStatus,
         uploadedAt: pendingImage.uploadedAt,
+        isVideo,
       },
     }, { status: 201 });
 
