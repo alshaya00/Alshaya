@@ -8,7 +8,7 @@ import {
   buildLineageInfo,
   validateParent,
   updateParentChildrenCount,
-  generateFullNames,
+  generateFullNamesFromLineage,
   checkForDuplicates,
 } from './member-registry';
 import type { FamilyMember as PrismaFamilyMember } from '@prisma/client';
@@ -89,13 +89,16 @@ export async function approvePendingMemberTransactional(
       const calculatedGeneration = generationResult.generation;
       const lineageInfo = await buildLineageInfo(pending.proposedFatherId, tx);
 
-      const fullNames = generateFullNames({
-        firstName: pending.firstName,
-        fatherName: pending.fatherName,
-        grandfatherName: pending.grandfatherName,
-        familyName: pending.familyName || 'آل شايع',
-        gender: pending.gender as 'Male' | 'Female',
-      });
+      // Use lineage-based name generation to ensure complete ancestor chain
+      const fullNames = await generateFullNamesFromLineage(
+        newId,
+        {
+          firstName: pending.firstName,
+          gender: (pending.gender as 'Male' | 'Female') || 'Male',
+          fatherId: pending.proposedFatherId,
+        },
+        tx
+      );
 
       const newMember = await tx.familyMember.create({
         data: {
