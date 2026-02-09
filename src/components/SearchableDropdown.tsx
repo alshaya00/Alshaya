@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, ChevronDown, X, User } from 'lucide-react';
 import type { FamilyMember } from '@/lib/types';
 import { formatMemberId } from '@/lib/utils';
+import { smartMemberFilter } from '@/lib/search-utils';
 
 interface SearchableDropdownProps {
   options: FamilyMember[];
@@ -33,24 +34,7 @@ export default function SearchableDropdown({
   // Filter options based on search query
   const filteredOptions = useMemo(() => {
     if (!searchQuery.trim()) return options;
-
-    const query = searchQuery.toLowerCase();
-    return options.filter((member) => {
-      const searchFields = [
-        member.id,
-        member.firstName,
-        member.fullNameAr,
-        member.fullNameEn,
-        member.branch,
-        member.city,
-        `الجيل ${member.generation}`,
-        `Gen ${member.generation}`,
-      ].filter(Boolean);
-
-      return searchFields.some((field) =>
-        field?.toLowerCase().includes(query)
-      );
-    });
+    return smartMemberFilter(options, searchQuery, { limit: options.length });
   }, [options, searchQuery]);
 
   // Group options by generation

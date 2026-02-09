@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import GenderAvatar from '@/components/GenderAvatar';
 import Image from 'next/image';
+import { normalizeForSearch } from '@/lib/search-utils';
 
 function SearchPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
@@ -70,32 +71,7 @@ function SearchPageContent() {
     }));
   }, [allMembers, membersMap]);
 
-  // Normalize Arabic text for flexible matching
-  const normalizeArabic = (text: string): string => {
-    if (!text) return '';
-    return text
-      // Remove diacritics (tashkeel)
-      .replace(/[\u064B-\u065F\u0670]/g, '')
-      // Normalize alef variations (أ إ آ ا)
-      .replace(/[أإآا]/g, 'ا')
-      // Normalize ya variations (ي ى)
-      .replace(/[ىي]/g, 'ي')
-      // Normalize ta marbuta to ha (ة → ه)
-      .replace(/ة/g, 'ه')
-      // Normalize hamza variations
-      .replace(/ؤ/g, 'و')
-      .replace(/ئ/g, 'ي')
-      .replace(/ء/g, '')
-      // Remove common connectors for flexible matching
-      .replace(/\s+بن\s+/g, ' ')
-      .replace(/\s+بنت\s+/g, ' ')
-      .replace(/\s+ال/g, ' ')
-      .replace(/^ال/, '')
-      // Normalize spaces
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
-  };
+  const normalizeArabic = normalizeForSearch;
 
   // Calculate similarity score between two strings (0-1)
   const calculateSimilarity = (str1: string, str2: string): number => {
@@ -120,8 +96,9 @@ function SearchPageContent() {
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
 
-    const normalizedQuery = normalizeArabic(query);
-    const queryTerms = normalizedQuery.split(/\s+/).filter(t => t.length > 0);
+    const normalizedQuery = normalizeForSearch(query);
+    const stopWords = ['بن', 'بنت', 'bin', 'bint', 'ibn', 'al', 'ال', 'آل'];
+    const queryTerms = normalizedQuery.split(/\s+/).filter(t => t.length > 0 && !stopWords.includes(t));
     
     // Score each member based on match quality
     const scoredResults = membersWithAncestry.map((m) => {

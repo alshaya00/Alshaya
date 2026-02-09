@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PhoneInput from '@/components/PhoneInput';
 import OtpInput from '@/components/OtpInput';
 import { GenderAvatarInline } from '@/components/GenderAvatar';
+import { smartMemberFilter } from '@/lib/search-utils';
 
 interface FormData {
   email: string;
@@ -191,192 +192,13 @@ export default function RegisterPage() {
     }
   }, [otpExpiresIn]);
 
-  const normalizeArabic = (text: string): string => {
-    return text
-      .replace(/[أإآا]/g, 'ا')
-      .replace(/[ىي]/g, 'ي')
-      .replace(/ة/g, 'ه')
-      .replace(/ؤ/g, 'و')
-      .replace(/ئ/g, 'ي')
-      .replace(/\s+بن\s+/g, ' ')
-      .replace(/\s+بنت\s+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
-  };
+  const filteredMembers = useMemo(() => {
+    return smartMemberFilter(allMembers, searchQuery, { limit: 15 });
+  }, [searchQuery, allMembers]);
 
-  const filteredMembers = (() => {
-    if (!searchQuery || searchQuery.length < 2) return [];
-
-    const upperQuery = searchQuery.trim().toUpperCase();
-    if (/^P\d+$/.test(upperQuery)) {
-      const found = allMembers.filter(m => m.id.toUpperCase() === upperQuery);
-      if (found.length > 0) return found;
-    }
-
-    const normalizedQuery = normalizeArabic(searchQuery);
-    const stopWords = ['بن', 'بنت', 'bin', 'bint', 'al', 'ال'];
-    const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0 && !stopWords.includes(p));
-    if (queryParts.length === 0) return [];
-    const primaryName = queryParts[0];
-
-    const scored = allMembers.map((m) => {
-      const normalizedFirstName = normalizeArabic(m.firstName || '');
-      const normalizedFatherName = normalizeArabic(m.fatherName || '');
-      const normalizedGrandfatherName = normalizeArabic(m.grandfatherName || '');
-      const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
-      const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
-
-      let score = 0;
-
-      if (normalizedFirstName === primaryName) {
-        score += 100;
-      } else if (normalizedFirstName.startsWith(primaryName)) {
-        score += 80;
-      } else if (normalizedFirstName.includes(primaryName)) {
-        score += 50;
-      }
-
-      if (queryParts.length > 1) {
-        const lineageNames = queryParts.slice(1);
-        let lineageMatched = 0;
-        for (const part of lineageNames) {
-          let partMatched = false;
-          if (normalizedFatherName === part) {
-            score += 60;
-            partMatched = true;
-          } else if (normalizedFatherName.includes(part)) {
-            score += 40;
-            partMatched = true;
-          }
-          if (normalizedGrandfatherName === part) {
-            score += 35;
-            partMatched = true;
-          } else if (normalizedGrandfatherName.includes(part)) {
-            score += 25;
-            partMatched = true;
-          }
-          if (!partMatched && normalizedFullNameAr.includes(part)) {
-            score += 15;
-            partMatched = true;
-          }
-          if (partMatched) lineageMatched++;
-        }
-        if (lineageMatched === 0) {
-          score = Math.floor(score * 0.3);
-        }
-      }
-
-      if (score === 0) {
-        if (normalizedFatherName === primaryName || normalizedGrandfatherName === primaryName) {
-          score = 5;
-        } else if (normalizedFullNameAr.includes(primaryName) || normalizedFullNameEn.includes(primaryName) || m.id.toLowerCase().includes(primaryName)) {
-          score = 3;
-        }
-      }
-
-      return { member: m, score };
-    }).filter(({ score }) => score > 0);
-
-    scored.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return (a.member.generation || 0) - (b.member.generation || 0);
-    });
-
-    return scored.slice(0, 15).map(({ member }) => member);
-  })();
-
-  const filteredParents = (() => {
-    if (!parentSearchQuery || parentSearchQuery.length < 2) return [];
-    
-    // Check if searching by ID directly (e.g., P333)
-    const upperQuery = parentSearchQuery.trim().toUpperCase();
-    if (/^P\d+$/.test(upperQuery)) {
-      const found = allMembers.filter(m => m.id.toUpperCase() === upperQuery);
-      if (found.length > 0) return found;
-    }
-    
-    const normalizedQuery = normalizeArabic(parentSearchQuery);
-    const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
-    
-    // The FIRST word is the father's first name - prioritize matching this
-    const fatherFirstName = queryParts[0];
-    
-    // Score and filter members - prioritize firstName, fatherName, branch matches
-    const scored = allMembers.map((m) => {
-      const normalizedFirstName = normalizeArabic(m.firstName || '');
-      const normalizedFatherName = normalizeArabic(m.fatherName || '');
-      const normalizedGrandfatherName = normalizeArabic(m.grandfatherName || '');
-      const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
-      const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
-      const normalizedBranch = normalizeArabic(m.branch || '');
-      
-      let score = 0;
-      
-      // Strong match: firstName exactly matches or starts with search
-      if (normalizedFirstName === fatherFirstName) {
-        score += 100; // Exact firstName match
-      } else if (normalizedFirstName.startsWith(fatherFirstName)) {
-        score += 80; // Prefix match
-      } else if (normalizedFirstName.includes(fatherFirstName)) {
-        score += 50; // Partial match
-      }
-      
-      // Check if lineage matches (subsequent query parts)
-      if (queryParts.length > 1) {
-        const lineageNames = queryParts.slice(1);
-        for (const part of lineageNames) {
-          // High priority: fatherName match (second word often is father's name)
-          if (normalizedFatherName === part) {
-            score += 60; // Exact fatherName match - very important
-          } else if (normalizedFatherName.includes(part)) {
-            score += 40; // Partial fatherName match
-          }
-          
-          // Medium priority: grandfatherName match
-          if (normalizedGrandfatherName === part) {
-            score += 35;
-          } else if (normalizedGrandfatherName.includes(part)) {
-            score += 25;
-          }
-          
-          // Branch match bonus
-          if (normalizedBranch.includes(part)) {
-            score += 30;
-          }
-          
-          // General lineage match
-          if (normalizedFullNameAr.includes(part)) {
-            score += 15;
-          }
-        }
-      }
-      
-      // Fallback: any match in full name or ID
-      if (score === 0) {
-        const matchesAny = queryParts.some(part => 
-          normalizedFirstName.includes(part) ||
-          normalizedFatherName.includes(part) ||
-          normalizedFullNameAr.includes(part) ||
-          normalizedFullNameEn.includes(part) ||
-          normalizedBranch.includes(part) ||
-          m.id.toLowerCase().includes(part)
-        );
-        if (matchesAny) score = 10;
-      }
-      
-      return { member: m, score };
-    }).filter(({ score }) => score > 0);
-    
-    // Sort by score descending, then by generation (lower generations first - closer to user)
-    scored.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      // Lower generation = closer family member, more likely to be the father
-      return (a.member.generation || 0) - (b.member.generation || 0);
-    });
-    
-    return scored.slice(0, 30).map(({ member }) => member);
-  })();
+  const filteredParents = useMemo(() => {
+    return smartMemberFilter(allMembers, parentSearchQuery, { limit: 30 });
+  }, [parentSearchQuery, allMembers]);
 
   const selectedParent = formData.parentMemberId
     ? allMembers.find((m) => m.id === formData.parentMemberId)

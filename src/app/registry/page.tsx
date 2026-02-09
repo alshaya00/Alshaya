@@ -10,6 +10,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import { AlertTriangle } from 'lucide-react';
 import GenderAvatar from '@/components/GenderAvatar';
+import { smartMemberFilter } from '@/lib/search-utils';
 
 type SortField = 'id' | 'firstName' | 'generation' | 'birthYear';
 type SortOrder = 'asc' | 'desc';
@@ -59,16 +60,8 @@ function RegistryPageContent() {
   const filteredAndSortedMembers = useMemo(() => {
     let result = [...allMembers];
 
-    // Search filter
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (m) =>
-          m.firstName.toLowerCase().includes(term) ||
-          m.fullNameAr?.toLowerCase().includes(term) ||
-          m.fullNameEn?.toLowerCase().includes(term) ||
-          m.id.toLowerCase().includes(term)
-      );
+      result = smartMemberFilter(result, searchTerm, { limit: result.length });
     }
 
     // Gender filter

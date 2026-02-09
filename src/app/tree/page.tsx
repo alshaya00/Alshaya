@@ -13,6 +13,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
 import { formatMemberId } from '@/lib/utils';
+import { smartMemberFilter } from '@/lib/search-utils';
 
 type ViewMode = 'tree' | 'generations' | 'list' | 'graph';
 
@@ -118,15 +119,8 @@ function TreePageContent() {
     return Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
   }, [displayMembers]);
 
-  // Search functionality
   const searchResults = useMemo(() => {
-    if (searchTerm.length < 2) return [];
-    const term = searchTerm.toLowerCase();
-    return allMembers.filter(m =>
-      m.firstName.toLowerCase().includes(term) ||
-      m.fullNameAr?.toLowerCase().includes(term) ||
-      m.id.toLowerCase().includes(term)
-    ).slice(0, 10);
+    return smartMemberFilter(allMembers, searchTerm, { limit: 10 });
   }, [searchTerm, allMembers]);
 
   const toggleNode = (id: string) => {
@@ -466,8 +460,8 @@ function TreePageContent() {
                         />
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-gray-800">{m.firstName}</p>
-                        <p className="text-xs text-gray-400">{formatMemberId(m.id)} • الجيل {m.generation}</p>
+                        <p className="font-medium text-gray-800">{m.fullNameAr || m.firstName}</p>
+                        <p className="text-xs text-gray-400">{formatMemberId(m.id)} • الجيل {m.generation} {m.branch ? `• ${m.branch}` : ''}</p>
                       </div>
                     </button>
                   ))}

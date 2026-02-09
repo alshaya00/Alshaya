@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+import { smartMemberSearch, normalizeForSearch } from '@/lib/search-utils';
 
 /**
  * Extract the numeric part from a member ID for comparison
@@ -21,19 +22,6 @@ function matchesMemberId(memberId: string, searchQuery: string): boolean {
   const searchNum = extractIdNumber(searchQuery);
   if (memberNum === null || searchNum === null) return false;
   return memberNum === searchNum;
-}
-
-function normalizeArabic(text: string): string {
-  return text
-    .replace(/[أإآا]/g, 'ا')
-    .replace(/[ىي]/g, 'ي')
-    .replace(/[ةه]/g, 'ه')
-    .replace(/ؤ/g, 'و')
-    .replace(/ئ/g, 'ي')
-    .replace(/ء/g, '')
-    .replace(/[\u064B-\u0652]/g, '')
-    .toLowerCase()
-    .trim();
 }
 
 async function getAuthUser(request: NextRequest) {
@@ -75,21 +63,10 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     const members = await getAllMembersFromDb();
-    const normalizedQuery = normalizeArabic(query);
-    // Check if query looks like an ID
-    const looksLikeId = /^p?\d+$/i.test(query.trim());
+    const normalizedQuery = normalizeForSearch(query);
     
-    const matchingMembers = members
-      .filter(m => {
-        // For ID-like queries, use normalized ID matching
-        if (looksLikeId && matchesMemberId(m.id, query.trim())) {
-          return true;
-        }
-        return normalizeArabic(m.firstName).includes(normalizedQuery) ||
-          normalizeArabic(m.fullNameAr || '').includes(normalizedQuery) ||
-          m.id.toLowerCase().includes(query);
-      })
-      .slice(0, limit);
+    const matchingMembers = smartMemberSearch(members, query, { limit })
+      .map(r => r.item);
 
     for (const member of matchingMembers) {
       suggestions.push({
@@ -103,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     const branches = [...new Set(members.map(m => m.branch).filter(Boolean))];
     const matchingBranches = branches
-      .filter(b => normalizeArabic(b || '').includes(normalizedQuery))
+      .filter(b => normalizeForSearch(b || '').includes(normalizedQuery))
       .slice(0, 3);
 
     for (const branch of matchingBranches) {
@@ -117,7 +94,7 @@ export async function GET(request: NextRequest) {
 
     const cities = [...new Set(members.map(m => m.city).filter(Boolean))];
     const matchingCities = cities
-      .filter(c => normalizeArabic(c || '').includes(normalizedQuery))
+      .filter(c => normalizeForSearch(c || '').includes(normalizedQuery))
       .slice(0, 3);
 
     for (const city of matchingCities) {
