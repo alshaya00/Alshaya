@@ -13,6 +13,7 @@ import {
 import { getPermissionsForRole, validatePermissionMatrix } from '@/lib/auth/permissions';
 import { PermissionMatrix } from '@/lib/auth/types';
 import { getSystemConfig, getFeatureFlags, getValidationRules, getDisplaySettings } from '@/lib/settings';
+export const dynamic = "force-dynamic";
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {

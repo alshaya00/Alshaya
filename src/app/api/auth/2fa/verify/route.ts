@@ -9,6 +9,7 @@ import {
 import { verifyTOTP, verifyBackupCode } from '@/lib/auth/totp';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/db-store';
 import { emailService } from '@/lib/services/email';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

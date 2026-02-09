@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { safeJsonParseArray } from '@/lib/utils/safe-json';
 import { sanitizeString } from '@/lib/sanitize';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 // GET /api/journals - Get all journals with filters
 export async function GET(request: NextRequest) {

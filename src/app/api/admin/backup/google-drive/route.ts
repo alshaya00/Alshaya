@@ -7,6 +7,7 @@ import {
   isGoogleDriveConnected 
 } from '@/lib/google-drive-export';
 import { sendBackupNotification } from '@/lib/backup-notifications';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

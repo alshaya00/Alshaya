@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RateLimitConfig } from '@/lib/rate-limit';
+export const dynamic = "force-dynamic";
 
 const validateRateLimiter: RateLimitConfig = {
   windowMs: 60000,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { findPotentialDuplicates, checkBranchDuplicate, FuzzyMatchInput } from '@/lib/fuzzy-matcher';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

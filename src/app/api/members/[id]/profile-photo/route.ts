@@ -3,6 +3,7 @@ import { setProfilePhoto, getProfilePhoto, getMemberPhotoById } from '@/lib/db/i
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

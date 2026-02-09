@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkBranchDuplicate } from '@/lib/fuzzy-matcher';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

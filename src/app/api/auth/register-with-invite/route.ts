@@ -5,6 +5,7 @@ import { logActivity, getSiteSettings, checkMemberLinkedToUser } from '@/lib/aut
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
 import { normalizePhone } from '@/lib/phone-utils';
+export const dynamic = "force-dynamic";
 
 function sanitizeString(input: string | null | undefined): string {
   if (!input) return '';

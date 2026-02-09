@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+export const dynamic = "force-dynamic";
 
 async function getAdminUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

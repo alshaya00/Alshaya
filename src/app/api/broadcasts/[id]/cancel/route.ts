@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService } from '@/lib/services/broadcast';
+export const dynamic = "force-dynamic";
 
 // POST /api/broadcasts/[id]/cancel - Cancel a scheduled broadcast
 export async function POST(

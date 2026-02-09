@@ -4,6 +4,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { normalizePhone } from '@/lib/phone-utils';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

@@ -11,6 +11,7 @@ import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
 import { normalizePhone } from '@/lib/phone-utils';
+export const dynamic = "force-dynamic";
 
 // Sanitize string input
 function sanitizeString(input: string | null | undefined): string {

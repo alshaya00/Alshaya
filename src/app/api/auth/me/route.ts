@@ -5,6 +5,7 @@ import {
   updateSessionActivity,
 } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {

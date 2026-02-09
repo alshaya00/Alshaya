@@ -9,6 +9,7 @@ import { logAuditToDb } from '@/lib/db-audit';
 import { generateFullNamesFromLineage } from '@/lib/member-registry';
 import { isMale, normalizeMemberId } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

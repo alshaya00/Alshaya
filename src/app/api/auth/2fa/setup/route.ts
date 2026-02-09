@@ -6,6 +6,7 @@ import {
   logActivity,
 } from '@/lib/auth/db-store';
 import {
+export const dynamic = "force-dynamic";
   generateTOTPSecret,
   generateTOTPUri,
   verifyTOTP,

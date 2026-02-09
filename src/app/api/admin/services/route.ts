@@ -7,6 +7,7 @@ import { apiServiceConfigSchema, validateInput, formatZodErrors } from '@/lib/va
 import { emailService } from '@/lib/services/email';
 import { smsService } from '@/lib/services/sms';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+export const dynamic = "force-dynamic";
 
 // Helper to get authenticated admin user from request
 async function getAuthAdmin(request: NextRequest) {

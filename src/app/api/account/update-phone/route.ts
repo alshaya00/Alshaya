@@ -8,6 +8,7 @@ import {
 import { normalizePhone, isValidSaudiPhone } from '@/lib/phone-utils';
 import { sendVerification, checkVerification } from '@/lib/otp-service';
 import { prisma } from '@/lib/prisma';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

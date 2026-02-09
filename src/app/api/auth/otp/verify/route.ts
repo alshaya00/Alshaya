@@ -3,6 +3,7 @@ import { checkVerification, normalizePhoneNumber, findUserByPhone } from '@/lib/
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

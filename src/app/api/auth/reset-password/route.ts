@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+export const dynamic = "force-dynamic";
 
 // GET - Validate token
 export async function GET(request: NextRequest) {

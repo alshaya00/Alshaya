@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { prisma } from '@/lib/prisma';
 import { invalidateConfigCache } from '@/lib/settings';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

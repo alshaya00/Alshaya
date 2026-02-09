@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllMembersFromDb } from '@/lib/db';
 import {
+export const dynamic = "force-dynamic";
   findMatches,
   validateInput,
   getMatchExplanation,

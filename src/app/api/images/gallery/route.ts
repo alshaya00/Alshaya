@@ -6,6 +6,7 @@ import {
   getImageStats,
 } from '@/lib/db/images';
 import { prisma } from '@/lib/prisma';
+export const dynamic = "force-dynamic";
 
 // GET - Get family gallery or all photos
 export async function GET(request: NextRequest) {

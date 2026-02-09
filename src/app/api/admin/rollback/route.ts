@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { randomUUID } from 'crypto';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {

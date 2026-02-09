@@ -12,6 +12,7 @@ import {
 } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/auth/types';
+export const dynamic = "force-dynamic";
 
 // SECURITY: Generate cryptographically secure temporary password
 function generateSecureTempPassword(): string {

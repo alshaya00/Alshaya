@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
+export const dynamic = "force-dynamic";
 
 function normalizeOccupation(occ: string): string {
   let normalized = occ.trim().replace(/\s+/g, ' ');

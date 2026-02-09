@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb } from '@/lib/db';
 import { isMale, isFemale, normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 // GET /api/breastfeeding/[id] - Get a single breastfeeding relationship
 export async function GET(

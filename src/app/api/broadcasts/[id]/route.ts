@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService } from '@/lib/services/broadcast';
+export const dynamic = "force-dynamic";
 
 // GET /api/broadcasts/[id] - Get a specific broadcast
 export async function GET(

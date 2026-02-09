@@ -4,6 +4,7 @@ import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/db-sto
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { approvePendingMemberTransactional } from '@/lib/transactional-approval';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

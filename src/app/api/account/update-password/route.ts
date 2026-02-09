@@ -6,6 +6,7 @@ import {
   logActivity,
 } from '@/lib/auth/db-store';
 import { verifyPassword, validatePassword } from '@/lib/auth/password';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

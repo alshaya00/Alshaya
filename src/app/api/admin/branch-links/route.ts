@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 // Helper to get authenticated admin user from request
 async function getAuthAdmin(request: NextRequest) {

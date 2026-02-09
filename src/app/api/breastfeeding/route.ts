@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb } from '@/lib/db';
 import { isMale, isFemale } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

@@ -5,6 +5,7 @@ import { sendVerification, checkVerification } from '@/lib/otp-service';
 import { updateUserPassword, deleteUserSessions, logActivity } from '@/lib/auth/db-store';
 import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+export const dynamic = "force-dynamic";
 
 // POST - Send OTP for password reset
 export async function POST(request: NextRequest) {

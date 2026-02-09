@@ -4,6 +4,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { isMale, normalizeMemberId } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
+export const dynamic = "force-dynamic";
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {

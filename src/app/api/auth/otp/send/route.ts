@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendVerification, normalizePhoneNumber, findUserByPhone, OtpChannel } from '@/lib/otp-service';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService, RSVPResponse } from '@/lib/services/broadcast';
+export const dynamic = "force-dynamic";
 
 // GET /api/broadcasts/[id]/rsvp - Handle RSVP via email link
 export async function GET(

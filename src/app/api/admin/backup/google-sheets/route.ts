@@ -4,6 +4,7 @@ import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { exportLivingRegistryToSheets, isGoogleSheetsConnected, getSpreadsheetInfo } from '@/lib/google-sheets-export';
 import { logAuditToDb } from '@/lib/db-audit';
 import { sendBackupNotification } from '@/lib/backup-notifications';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

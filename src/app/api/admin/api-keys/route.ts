@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { encrypt, decrypt, encryptApiKey, isEncrypted } from '@/lib/encryption';
+export const dynamic = "force-dynamic";
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {

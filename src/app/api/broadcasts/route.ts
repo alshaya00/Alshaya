@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService, BroadcastType, BroadcastStatus, TargetAudience } from '@/lib/services/broadcast';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+export const dynamic = "force-dynamic";
 
 // Helper to get authenticated user from request
 async function getAuthUser(request: NextRequest) {

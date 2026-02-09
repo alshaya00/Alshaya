@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { broadcastService } from '@/lib/services/broadcast';
+export const dynamic = "force-dynamic";
 
 // POST /api/broadcasts/[id]/send - Send a broadcast
 export async function POST(

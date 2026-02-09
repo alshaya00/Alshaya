@@ -4,6 +4,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { prisma } from '@/lib/prisma';
 import sharp from 'sharp';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 const IS_REPLIT = !!process.env.REPL_ID;
 const MAX_FILE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024;

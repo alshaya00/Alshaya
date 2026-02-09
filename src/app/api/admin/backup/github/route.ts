@@ -7,6 +7,7 @@ import {
 } from '@/lib/github-backup';
 import { prisma } from '@/lib/prisma';
 import { sendBackupNotification } from '@/lib/backup-notifications';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

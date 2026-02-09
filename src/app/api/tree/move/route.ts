@@ -5,6 +5,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getMemberByIdFromDb, getAllMembersFromDb, updateMemberInDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
 import { isMale, normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');

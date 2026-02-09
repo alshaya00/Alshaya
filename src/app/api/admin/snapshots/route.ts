@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+export const dynamic = "force-dynamic";
 
 // Use dedicated Prisma client to avoid mock pattern
 const prisma = new PrismaClient();

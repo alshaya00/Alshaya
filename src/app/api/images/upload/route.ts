@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createPendingImage, type CreatePendingImageInput } from '@/lib/db/images';
 import sharp from 'sharp';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 // Replit-compatible: Lower memory limits for constrained environments
 const IS_REPLIT = !!process.env.REPL_ID;

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb } from '@/lib/db';
 import { MilkFamily, MilkSibling } from '@/lib/types';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 // GET /api/members/[id]/breastfeeding - Get breastfeeding relationships for a member
 // Returns milk families with milk mother, milk father, and milk siblings

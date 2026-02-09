@@ -12,6 +12,7 @@ import {
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { prisma } from '@/lib/prisma';
+export const dynamic = "force-dynamic";
 
 async function recordLoginHistory(
   userId: string,

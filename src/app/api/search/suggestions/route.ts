@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { smartMemberSearch, normalizeForSearch } from '@/lib/search-utils';
+export const dynamic = "force-dynamic";
 
 /**
  * Extract the numeric part from a member ID for comparison

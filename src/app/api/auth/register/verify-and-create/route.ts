@@ -9,6 +9,7 @@ import { checkBlocklist } from '@/lib/blocklist';
 import { createMember, MemberInput } from '@/lib/member-registry';
 import crypto from 'crypto';
 import { normalizeMemberId } from '@/lib/utils';
+export const dynamic = "force-dynamic";
 
 function sanitizeString(input: string | null | undefined): string {
   if (!input) return '';

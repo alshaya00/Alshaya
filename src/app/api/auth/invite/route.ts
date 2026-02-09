@@ -15,6 +15,7 @@ import { getPermissionsForRole, getAssignableRoles } from '@/lib/auth/permission
 import { UserRole } from '@/lib/auth/types';
 import { hashPassword, validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
+export const dynamic = "force-dynamic";
 
 // Sanitize string input
 function sanitizeString(input: string | null | undefined): string {
