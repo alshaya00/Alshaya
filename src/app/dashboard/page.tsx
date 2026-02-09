@@ -87,7 +87,8 @@ export default function DashboardPage() {
   const membersByCity = allMembers
     .filter((m) => m.city)
     .reduce((acc, m) => {
-      acc[m.city!] = (acc[m.city!] || 0) + 1;
+      const normalizedCity = m.city!.trim().replace(/\s+/g, ' ');
+      acc[normalizedCity] = (acc[normalizedCity] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -95,15 +96,23 @@ export default function DashboardPage() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
-  const membersByOccupation = allMembers
-    .filter((m) => m.occupation)
-    .reduce((acc, m) => {
-      acc[m.occupation!] = (acc[m.occupation!] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  const normalizeOccupation = (occ: string) => {
+    return occ.trim().replace(/\s+/g, ' ').replace(/ه\b/g, 'ة');
+  };
 
-  const topOccupations = Object.entries(membersByOccupation)
-    .sort(([, a], [, b]) => b - a)
+  const occupationMap: Record<string, { count: number; displayName: string }> = {};
+  allMembers
+    .filter((m) => m.occupation)
+    .forEach((m) => {
+      const normalized = normalizeOccupation(m.occupation!);
+      if (!occupationMap[normalized]) {
+        occupationMap[normalized] = { count: 0, displayName: m.occupation!.trim() };
+      }
+      occupationMap[normalized].count++;
+    });
+
+  const topOccupations = Object.values(occupationMap)
+    .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
   // Calculate age distribution
@@ -324,14 +333,14 @@ export default function DashboardPage() {
               المهن الشائعة
             </h2>
             <div className="space-y-2">
-              {topOccupations.map(([occupation, count]) => (
+              {topOccupations.map((occ) => (
                 <div
-                  key={occupation}
+                  key={occ.displayName}
                   className="flex items-center justify-between p-2 bg-purple-50 rounded-lg"
                 >
-                  <span className="text-sm">{occupation}</span>
+                  <span className="text-sm">{occ.displayName}</span>
                   <span className="px-2 py-0.5 bg-purple-500 text-white rounded-full text-xs">
-                    {count}
+                    {occ.count}
                   </span>
                 </div>
               ))}

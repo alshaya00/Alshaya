@@ -12,7 +12,14 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50" dir="rtl">
-          {user && (
+          {!user ? (
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-r-transparent"></div>
+                <p className="mt-4 text-gray-600">جاري تحميل البيانات...</p>
+              </div>
+            </div>
+          ) : (
             <div className="space-y-6">
               {/* Profile Card */}
               <div className="bg-white shadow-sm border-b border-gray-200 overflow-hidden">
@@ -54,8 +61,8 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm text-gray-500">الدور</p>
                         <p className="font-medium text-gray-900">
-                          {ROLE_LABELS[user.role].ar}
-                          <span className="text-gray-400 text-sm mr-2">({ROLE_LABELS[user.role].en})</span>
+                          {ROLE_LABELS[user.role]?.ar || user.role || 'غير محدد'}
+                          <span className="text-gray-400 text-sm mr-2">({ROLE_LABELS[user.role]?.en || user.role || 'Unknown'})</span>
                         </p>
                       </div>
                     </div>
@@ -78,7 +85,7 @@ export default function ProfilePage() {
                               user.status === 'PENDING' ? 'bg-yellow-500' :
                               'bg-red-500'
                             }`} />
-                            {STATUS_LABELS[user.status].ar}
+                            {STATUS_LABELS[user.status]?.ar || user.status || 'غير محدد'}
                           </span>
                         </p>
                       </div>
