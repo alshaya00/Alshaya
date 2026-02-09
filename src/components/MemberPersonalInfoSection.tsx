@@ -16,6 +16,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import { normalizeMemberId } from '@/lib/utils';
 
 interface MemberPersonalInfoSectionProps {
   memberId: string;
@@ -23,7 +24,7 @@ interface MemberPersonalInfoSectionProps {
   occupation?: string | null;
   phone?: string | null;
   email?: string | null;
-  serverHidePersonalInfo?: boolean; // Privacy setting from server (prevents data exposure in HTML)
+  serverHidePersonalInfo?: boolean;
 }
 
 export default function MemberPersonalInfoSection({
@@ -47,7 +48,9 @@ export default function MemberPersonalInfoSection({
     email?: string | null;
   } | null>(null);
 
-  const isOwner = session?.user?.linkedMemberId === memberId;
+  const normalizedLinkedId = normalizeMemberId(session?.user?.linkedMemberId);
+  const normalizedMemberId = normalizeMemberId(memberId);
+  const isOwner = normalizedLinkedId === normalizedMemberId || session?.user?.linkedMemberId === memberId;
   const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN';
   const stillLoading = isLoading || authLoading;
   const canViewInfo = !stillLoading && (isOwner || isAdmin || !hideInfo);

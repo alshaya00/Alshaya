@@ -30,7 +30,8 @@ export async function GET(
 
     const memberId = normalizeMemberId(params.id) || params.id;
 
-    const isOwner = user.linkedMemberId === memberId;
+    const normalizedLinkedId = normalizeMemberId(user.linkedMemberId);
+    const isOwner = normalizedLinkedId === memberId || user.linkedMemberId === memberId;
     const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
 
     if (!isOwner && !isAdmin) {

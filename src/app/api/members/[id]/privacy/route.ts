@@ -11,7 +11,12 @@ export async function GET(
     const memberId = normalizeMemberId(params.id) || params.id;
     
     const linkedUser = await prisma.user.findFirst({
-      where: { linkedMemberId: memberId },
+      where: {
+        OR: [
+          { linkedMemberId: memberId },
+          { linkedMemberId: params.id },
+        ],
+      },
       select: { hidePersonalInfo: true },
     });
 
@@ -59,7 +64,8 @@ export async function PUT(
 
     const memberId = normalizeMemberId(params.id) || params.id;
 
-    const isOwner = currentUser.linkedMemberId === memberId;
+    const normalizedLinkedId = normalizeMemberId(currentUser.linkedMemberId);
+    const isOwner = normalizedLinkedId === memberId || currentUser.linkedMemberId === memberId;
     const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
     if (!isOwner && !isAdmin) {
@@ -73,7 +79,12 @@ export async function PUT(
     const { hidePersonalInfo } = body;
 
     const targetUser = await prisma.user.findFirst({
-      where: { linkedMemberId: memberId },
+      where: {
+        OR: [
+          { linkedMemberId: memberId },
+          { linkedMemberId: params.id },
+        ],
+      },
     });
 
     if (!targetUser) {

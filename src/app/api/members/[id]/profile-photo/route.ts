@@ -64,7 +64,8 @@ export async function PUT(
     const memberId = normalizeMemberId(params.id) || params.id;
     const permissions = getPermissionsForRole(user.role);
     const isAdmin = permissions.manage_all_members || permissions.edit_any_member;
-    const isOwner = user.linkedMemberId === memberId;
+    const normalizedLinkedId = normalizeMemberId(user.linkedMemberId);
+    const isOwner = normalizedLinkedId === memberId || user.linkedMemberId === memberId;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(

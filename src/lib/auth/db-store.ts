@@ -1164,9 +1164,16 @@ export { verifyPasswordHash as verifyPassword };
  */
 export async function getMemberPrivacySetting(memberId: string): Promise<boolean> {
   await initializeStore();
+  const { normalizeMemberId } = await import('@/lib/utils');
+  const normalizedId = normalizeMemberId(memberId);
 
   const user = await prisma.user.findFirst({
-    where: { linkedMemberId: memberId },
+    where: {
+      OR: [
+        { linkedMemberId: memberId },
+        ...(normalizedId && normalizedId !== memberId ? [{ linkedMemberId: normalizedId }] : []),
+      ],
+    },
     select: { hidePersonalInfo: true }
   });
 
