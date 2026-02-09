@@ -24,6 +24,7 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
 -   **Registration Duplicate Prevention**: Real-time duplicate checks during user registration to prevent exact matches.
 -   **CRM-Style Members Hub**: A dashboard (`/admin/members-hub`) that automatically detects and prioritizes data issues (duplicates, orphaned members, missing data, generation inconsistencies) with quick action buttons for resolution.
 -   **Comprehensive Member Edit Modal**: Allows editing of all member fields, supports both Hijri and Gregorian calendars, includes a change history tab with revert capabilities.
+-   **Smart Member Search** (`src/lib/search-utils.ts`): Shared search utility used across all search interfaces (tree, public tree, registry, registration, admin dropdowns, search page, suggestions API). Features: comprehensive Arabic normalization (diacritics, alef/ya/ta marbuta/hamza/kaf variants, compound عبد names), stop-word stripping (بن/بنت/bin/bint), multi-word scoring (first name 100pts > father 60pts > grandfather 35pts > lineage 15pts), lineage penalty for false positives, English name and branch bonuses, ID matching.
 -   **Quick-Add Smart Search**: Helper questions and filters to narrow down search results when adding members.
 -   **Registration Uncle Verification**: A step during registration to verify the selected father by asking for an uncle's name, using fuzzy matching against the father's siblings.
 -   **Data Quality Dashboard** (`/admin/data-quality`):
