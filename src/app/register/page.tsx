@@ -9,7 +9,7 @@ import { getFullLineageString } from '@/lib/lineage-utils';
 import { isMale, isFemale } from '@/lib/utils';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
-  Users, Lock, ArrowRight, Loader2, X, Search, Phone
+  Users, Lock, ArrowRight, Loader2, X, Search, Phone, AlertTriangle, AlertCircle
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,6 +87,19 @@ export default function RegisterPage() {
   const [hasSiblings, setHasSiblings] = useState(true);
   const [lastVerifiedParentId, setLastVerifiedParentId] = useState<string | null>(null);
 
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    hasPotentialDuplicates: boolean;
+    highestScore: number;
+    isDuplicate: boolean;
+    candidates: Array<{
+      id: string;
+      firstName: string;
+      fullNameAr: string | null;
+      similarityScore: number;
+    }>;
+  } | null>(null);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+
   useEffect(() => {
     if (formData.parentMemberId !== lastVerifiedParentId) {
       setUncleVerified(false);
@@ -94,6 +107,60 @@ export default function RegisterPage() {
       setUncleError(null);
     }
   }, [formData.parentMemberId, lastVerifiedParentId]);
+
+  useEffect(() => {
+    if (!formData.nameArabic || !formData.parentMemberId) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    const firstName = formData.nameArabic.trim().split(/\s+/)[0];
+    if (!firstName) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    setIsCheckingDuplicate(true);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/duplicate-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName,
+            fatherId: formData.parentMemberId,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.hasPotentialDuplicates) {
+            setDuplicateWarning({
+              hasPotentialDuplicates: data.hasPotentialDuplicates,
+              highestScore: data.highestScore,
+              isDuplicate: data.isDuplicate,
+              candidates: data.candidates || [],
+            });
+          } else {
+            setDuplicateWarning(null);
+          }
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch (error) {
+        console.error('Error checking duplicates:', error);
+        setDuplicateWarning(null);
+      } finally {
+        setIsCheckingDuplicate(false);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      setIsCheckingDuplicate(false);
+    };
+  }, [formData.nameArabic, formData.parentMemberId]);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -316,6 +383,9 @@ export default function RegisterPage() {
     }
     if (!formData.relatedMemberId && !formData.parentMemberId && !formData.parentPendingId) {
       return 'يرجى اختيار اسمك من الشجرة أو تحديد والدك';
+    }
+    if (duplicateWarning?.isDuplicate) {
+      return 'يوجد عضو مسجل بنفس الاسم تحت نفس الأب. يرجى التواصل مع المسؤول إذا كنت تعتقد أن هذا خطأ.';
     }
     return null;
   };
@@ -1189,6 +1259,71 @@ export default function RegisterPage() {
                       />
                     </div>
                   </div>
+
+                  {isCheckingDuplicate && (
+                    <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>جاري التحقق من التكرار...</span>
+                    </div>
+                  )}
+
+                  {duplicateWarning?.hasPotentialDuplicates && (
+                    <div className={`mb-4 p-4 rounded-xl border-2 ${
+                      duplicateWarning.isDuplicate
+                        ? 'bg-red-50 border-red-300'
+                        : 'bg-orange-50 border-orange-300'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        {duplicateWarning.isDuplicate ? (
+                          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <p className={`font-semibold ${
+                            duplicateWarning.isDuplicate ? 'text-red-800' : 'text-orange-800'
+                          }`}>
+                            {duplicateWarning.isDuplicate
+                              ? '⚠️ يوجد عضو مسجل بنفس الاسم تحت نفس الأب'
+                              : '⚠️ يوجد أعضاء بأسماء مشابهة'}
+                          </p>
+                          {duplicateWarning.isDuplicate && (
+                            <p className="text-sm text-red-700 mt-1">
+                              قد يكون لديك حساب بالفعل. يرجى التواصل مع المسؤول.
+                            </p>
+                          )}
+                          <div className="mt-3 space-y-2">
+                            {duplicateWarning.candidates.map((candidate) => (
+                              <div
+                                key={candidate.id}
+                                className={`flex items-center justify-between p-2 rounded-lg ${
+                                  duplicateWarning.isDuplicate ? 'bg-red-100' : 'bg-orange-100'
+                                }`}
+                              >
+                                <span className={`text-sm font-medium ${
+                                  duplicateWarning.isDuplicate ? 'text-red-900' : 'text-orange-900'
+                                }`}>
+                                  {candidate.fullNameAr || candidate.firstName}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  duplicateWarning.isDuplicate
+                                    ? 'bg-red-200 text-red-800'
+                                    : 'bg-orange-200 text-orange-800'
+                                }`}>
+                                  {Math.round(candidate.similarityScore * 100)}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {!duplicateWarning.isDuplicate && (
+                            <p className="text-sm text-orange-700 mt-2">
+                              إذا كنت شخصاً مختلفاً، يمكنك المتابعة
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -58,6 +58,18 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
     -   **Revert Functionality**: Admin can undo exclusion via "تراجع" button, which removes the flag and restores the pair to scan results.
     -   **Excluded Pairs Section**: Purple-themed section shows all previously excluded pairs with option to revert.
     -   **Stats Dashboard**: Shows counts for pending, confirmed, not-duplicate, merged, and excluded pairs.
+-   **Advanced Duplicate Scanner** (`/admin/duplicate-scanner`):
+    -   **3-Level Detection System**: EXACT (same name+father+gender, blocked), SUSPICIOUS (85%+ similarity, warning), POTENTIAL (same name+generation+branch, logged).
+    -   **Batch Scan API** (`/api/admin/duplicate-scan`): Scans all active members at once with Arabic name normalization and Levenshtein similarity.
+    -   **3-Tab Interface**: Scan (auto-detect), Pending (awaiting review), History (resolved pairs).
+    -   **Side-by-Side Comparison**: Color-coded field comparison (green=match, red=differ, yellow=one empty).
+    -   **In-Page Merge Flow**: Preview conflicts, auto-select source/target by data completeness, confirm merge with audit trail.
+    -   **Excludes Verified Pairs**: Automatically filters out pairs already marked as VERIFIED_DIFFERENT.
+-   **Registration Duplicate Prevention**:
+    -   Real-time duplicate check when user enters name + selects father during registration.
+    -   Calls `/api/duplicate-check` with debounced requests.
+    -   Exact matches (100%): Red warning, submission blocked, user directed to contact admin.
+    -   Similar matches: Orange warning with candidate list, submission allowed.
 -   **CRM-Style Members Hub** (`/admin/members-hub`):
     -   **Smart Data Issue Detection**: Automatic detection of duplicates, orphaned members, missing data, generation inconsistencies, and pending reviews.
     -   **Issue Severity System**: Issues categorized as HIGH (duplicates, orphaned), MEDIUM (inconsistencies, pending), LOW (missing data).
