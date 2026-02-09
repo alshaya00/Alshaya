@@ -205,22 +205,86 @@ export default function RegisterPage() {
       .toLowerCase();
   };
 
-  const filteredMembers = allMembers.filter((m) => {
-    if (!searchQuery || searchQuery.length < 2) return false;
+  const filteredMembers = (() => {
+    if (!searchQuery || searchQuery.length < 2) return [];
+
+    const upperQuery = searchQuery.trim().toUpperCase();
+    if (/^P\d+$/.test(upperQuery)) {
+      const found = allMembers.filter(m => m.id.toUpperCase() === upperQuery);
+      if (found.length > 0) return found;
+    }
+
     const normalizedQuery = normalizeArabic(searchQuery);
-    const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0);
-    
-    const normalizedFirstName = normalizeArabic(m.firstName || '');
-    const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
-    const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
-    
-    return queryParts.every(part => 
-      normalizedFirstName.includes(part) ||
-      normalizedFullNameAr.includes(part) ||
-      normalizedFullNameEn.includes(part) ||
-      m.id.toLowerCase().includes(part)
-    );
-  }).slice(0, 15);
+    const stopWords = ['بن', 'بنت', 'bin', 'bint', 'al', 'ال'];
+    const queryParts = normalizedQuery.split(' ').filter(p => p.length > 0 && !stopWords.includes(p));
+    if (queryParts.length === 0) return [];
+    const primaryName = queryParts[0];
+
+    const scored = allMembers.map((m) => {
+      const normalizedFirstName = normalizeArabic(m.firstName || '');
+      const normalizedFatherName = normalizeArabic(m.fatherName || '');
+      const normalizedGrandfatherName = normalizeArabic(m.grandfatherName || '');
+      const normalizedFullNameAr = normalizeArabic(m.fullNameAr || '');
+      const normalizedFullNameEn = (m.fullNameEn || '').toLowerCase();
+
+      let score = 0;
+
+      if (normalizedFirstName === primaryName) {
+        score += 100;
+      } else if (normalizedFirstName.startsWith(primaryName)) {
+        score += 80;
+      } else if (normalizedFirstName.includes(primaryName)) {
+        score += 50;
+      }
+
+      if (queryParts.length > 1) {
+        const lineageNames = queryParts.slice(1);
+        let lineageMatched = 0;
+        for (const part of lineageNames) {
+          let partMatched = false;
+          if (normalizedFatherName === part) {
+            score += 60;
+            partMatched = true;
+          } else if (normalizedFatherName.includes(part)) {
+            score += 40;
+            partMatched = true;
+          }
+          if (normalizedGrandfatherName === part) {
+            score += 35;
+            partMatched = true;
+          } else if (normalizedGrandfatherName.includes(part)) {
+            score += 25;
+            partMatched = true;
+          }
+          if (!partMatched && normalizedFullNameAr.includes(part)) {
+            score += 15;
+            partMatched = true;
+          }
+          if (partMatched) lineageMatched++;
+        }
+        if (lineageMatched === 0) {
+          score = Math.floor(score * 0.3);
+        }
+      }
+
+      if (score === 0) {
+        if (normalizedFatherName === primaryName || normalizedGrandfatherName === primaryName) {
+          score = 5;
+        } else if (normalizedFullNameAr.includes(primaryName) || normalizedFullNameEn.includes(primaryName) || m.id.toLowerCase().includes(primaryName)) {
+          score = 3;
+        }
+      }
+
+      return { member: m, score };
+    }).filter(({ score }) => score > 0);
+
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (a.member.generation || 0) - (b.member.generation || 0);
+    });
+
+    return scored.slice(0, 15).map(({ member }) => member);
+  })();
 
   const filteredParents = (() => {
     if (!parentSearchQuery || parentSearchQuery.length < 2) return [];
