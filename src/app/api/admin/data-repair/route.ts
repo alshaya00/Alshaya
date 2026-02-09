@@ -4,6 +4,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/audit';
 import { v4 as uuidv4 } from 'uuid';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
+    if (body.newFatherId) body.newFatherId = normalizeMemberId(body.newFatherId) || body.newFatherId;
+    if (body.fatherId) body.fatherId = normalizeMemberId(body.fatherId) || body.fatherId;
     const { action } = body;
     const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
     const changeId = uuidv4();

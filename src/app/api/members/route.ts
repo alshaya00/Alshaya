@@ -5,7 +5,7 @@ import { sanitizeString } from '@/lib/sanitize';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
-import { formatMemberId } from '@/lib/utils';
+import { formatMemberId, normalizeMemberId } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 
 export const dynamic = 'force-dynamic';
@@ -192,6 +192,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.fatherId) body.fatherId = normalizeMemberId(body.fatherId) || body.fatherId;
 
     // Sanitize input fields to prevent XSS
     const sanitizedFirstName = sanitizeString(body.firstName);

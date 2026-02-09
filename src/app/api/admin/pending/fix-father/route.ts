@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { logAuditToDb } from '@/lib/db-audit';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAdminUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const checkId = searchParams.get('check');
+    const checkId = normalizeMemberId(searchParams.get('check')) || searchParams.get('check');
 
     if (checkId) {
       const result = await resolveMergeChain(checkId);

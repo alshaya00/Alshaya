@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb } from '@/lib/db';
 import { MilkFamily, MilkSibling } from '@/lib/types';
+import { normalizeMemberId } from '@/lib/utils';
 
 // GET /api/members/[id]/breastfeeding - Get breastfeeding relationships for a member
 // Returns milk families with milk mother, milk father, and milk siblings
@@ -10,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const member = await getMemberByIdFromDb(memberId);
 
     if (!member) {

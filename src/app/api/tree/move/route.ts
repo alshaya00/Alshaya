@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getMemberByIdFromDb, getAllMembersFromDb, updateMemberInDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
-import { isMale } from '@/lib/utils';
+import { isMale, normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
+    if (body.newParentId) body.newParentId = normalizeMemberId(body.newParentId) || body.newParentId;
     const { memberId, newParentId, updateGenerations = true } = body;
 
     if (!memberId) {
@@ -284,6 +286,13 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { moves } = body;
+
+    if (Array.isArray(moves)) {
+      for (const move of moves) {
+        if (move.memberId) move.memberId = normalizeMemberId(move.memberId) || move.memberId;
+        if (move.newParentId) move.newParentId = normalizeMemberId(move.newParentId) || move.newParentId;
+      }
+    }
 
     if (!Array.isArray(moves) || moves.length === 0) {
       return NextResponse.json(

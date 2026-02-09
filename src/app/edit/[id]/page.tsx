@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { isMale } from '@/lib/utils';
+import { isMale, normalizeMemberId } from '@/lib/utils';
 import {
   ArrowRight,
   Save,
@@ -44,7 +44,7 @@ export default function EditMemberPage() {
   const { session } = useAuth();
   const params = useParams();
   const router = useRouter();
-  const memberId = params.id as string;
+  const memberId = normalizeMemberId(params.id as string) || (params.id as string);
 
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [originalMember, setOriginalMember] = useState<FamilyMember | null>(null);

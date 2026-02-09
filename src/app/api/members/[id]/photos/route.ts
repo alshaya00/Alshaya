@@ -3,6 +3,7 @@ import { createMemberPhoto, setProfilePhoto } from '@/lib/db/images';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { prisma } from '@/lib/prisma';
 import sharp from 'sharp';
+import { normalizeMemberId } from '@/lib/utils';
 
 const IS_REPLIT = !!process.env.REPL_ID;
 const MAX_FILE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
@@ -145,7 +146,7 @@ export async function POST(
       );
     }
 
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
 
     const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
 

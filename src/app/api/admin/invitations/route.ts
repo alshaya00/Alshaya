@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import crypto from 'crypto';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const linkedMemberId = searchParams.get('linkedMemberId');
+    const linkedMemberId = normalizeMemberId(searchParams.get('linkedMemberId')) || searchParams.get('linkedMemberId');
 
     const where: Record<string, unknown> = {};
     if (status && ['ACTIVE', 'USED', 'EXPIRED', 'REVOKED'].includes(status)) {
@@ -127,6 +128,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.linkedMemberId) body.linkedMemberId = normalizeMemberId(body.linkedMemberId) || body.linkedMemberId;
     const { linkedMemberId, linkedMemberName, expiresAt, maxUses, note } = body;
 
     const expirationDate = expiresAt 

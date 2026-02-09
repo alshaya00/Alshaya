@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMemberPhotos, getProfilePhoto, getPhotoTimeline } from '@/lib/db/images';
+import { normalizeMemberId } from '@/lib/utils';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { memberId: string } }
 ) {
   try {
-    const { memberId } = params;
+    const memberId = normalizeMemberId(params.memberId) || params.memberId;
     const { searchParams } = new URL(request.url);
 
     const category = searchParams.get('category');

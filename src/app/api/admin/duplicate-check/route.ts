@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findPotentialDuplicates, checkBranchDuplicate, FuzzyMatchInput } from '@/lib/fuzzy-matcher';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.fatherId) body.fatherId = normalizeMemberId(body.fatherId) || body.fatherId;
     const { firstName, fatherName, grandfatherName, fatherId, birthYear, gender, checkType } = body;
 
     if (!firstName) {

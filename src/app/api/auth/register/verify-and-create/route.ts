@@ -8,6 +8,7 @@ import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } fr
 import { checkBlocklist } from '@/lib/blocklist';
 import { createMember, MemberInput } from '@/lib/member-registry';
 import crypto from 'crypto';
+import { normalizeMemberId } from '@/lib/utils';
 
 function sanitizeString(input: string | null | undefined): string {
   if (!input) return '';
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.relatedMemberId) body.relatedMemberId = normalizeMemberId(body.relatedMemberId) || body.relatedMemberId;
+    if (body.parentMemberId) body.parentMemberId = normalizeMemberId(body.parentMemberId) || body.parentMemberId;
     const {
       email,
       password,

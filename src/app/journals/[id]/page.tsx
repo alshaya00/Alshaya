@@ -9,6 +9,7 @@ import {
   Heart, FileText, Feather, TreePine, Loader2, AlertCircle, Pencil
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeMemberId } from '@/lib/utils';
 import { JOURNAL_CATEGORIES, type JournalCategoryType, type FamilyJournal } from '@/lib/types';
 
 const categoryIcons: Record<JournalCategoryType, React.ReactNode> = {
@@ -28,6 +29,7 @@ const categoryColors: Record<JournalCategoryType, { bg: string; text: string; bo
 };
 
 export default function JournalDetailPage({ params }: { params: { id: string } }) {
+  const journalId = normalizeMemberId(params.id) || params.id;
   const router = useRouter();
   const { user } = useAuth();
   const [journal, setJournal] = useState<FamilyJournal | null>(null);
@@ -40,13 +42,13 @@ export default function JournalDetailPage({ params }: { params: { id: string } }
 
   useEffect(() => {
     fetchJournal();
-  }, [params.id]);
+  }, [journalId]);
 
   const fetchJournal = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/journals/${params.id}`);
+      const response = await fetch(`/api/journals/${journalId}`);
       const data = await response.json();
 
       if (data.success) {

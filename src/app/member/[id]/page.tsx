@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
-import { calculateAge, getGenerationColor, getStatusBadge, formatMemberId } from '@/lib/utils';
+import { calculateAge, getGenerationColor, getStatusBadge, formatMemberId, normalizeMemberId } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 import { getMemberPrivacySetting } from '@/lib/auth/db-store';
 
@@ -34,8 +34,9 @@ interface PageProps {
 }
 
 export default async function MemberPage({ params }: PageProps) {
+  const id = normalizeMemberId(params.id) || params.id;
   const allMembers = await getAllMembersFromDb();
-  const member = allMembers.find((m) => m.id === params.id);
+  const member = allMembers.find((m) => m.id === id);
 
   if (!member) {
     notFound();

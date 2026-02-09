@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
+import { normalizeMemberId } from '@/lib/utils';
 
 function normalizeId(id: string): string {
   if (!id) return '';
@@ -32,7 +33,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     
     const users = await prisma.user.findMany({
       where: { linkedMemberId: { not: null } },
@@ -74,7 +75,7 @@ export async function PUT(
       );
     }
 
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const currentUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { linkedMemberId: true, role: true },

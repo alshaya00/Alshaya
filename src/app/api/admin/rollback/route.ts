@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { randomUUID } from 'crypto';
+import { normalizeMemberId } from '@/lib/utils';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('memberId');
+    const memberId = normalizeMemberId(searchParams.get('memberId')) || searchParams.get('memberId');
     const batchId = searchParams.get('batchId');
     const limit = parseInt(searchParams.get('limit') || '50');
 

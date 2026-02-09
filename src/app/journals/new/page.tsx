@@ -8,6 +8,7 @@ import {
   Plus, X, Calendar, MapPin, User, Users, BookOpen, Scroll,
   Tent, Heart, Feather, TreePine, Info
 } from 'lucide-react';
+import { normalizeMemberId } from '@/lib/utils';
 import { JOURNAL_CATEGORIES, type JournalCategoryType } from '@/lib/types';
 
 interface FormData {
@@ -33,7 +34,7 @@ interface FormData {
 export default function NewJournalPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedMemberId = searchParams.get('memberId');
+  const preselectedMemberId = normalizeMemberId(searchParams.get('memberId')) || searchParams.get('memberId');
   const preselectedMemberName = searchParams.get('memberName');
 
   const [formData, setFormData] = useState<FormData>({

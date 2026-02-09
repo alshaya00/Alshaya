@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkBranchDuplicate } from '@/lib/fuzzy-matcher';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
+import { normalizeMemberId } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.fatherId) body.fatherId = normalizeMemberId(body.fatherId) || body.fatherId;
     const { firstName, fatherId } = body;
 
     if (!firstName || !fatherId) {

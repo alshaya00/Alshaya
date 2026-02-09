@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { getAllMembersFromDb } from '@/lib/db';
+import { normalizeMemberId } from '@/lib/utils';
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,7 @@ export async function GET(
       );
     }
 
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const currentUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { linkedMemberId: true, role: true },

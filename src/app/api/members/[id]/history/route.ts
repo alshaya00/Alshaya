@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -39,7 +40,7 @@ export async function GET(
       );
     }
 
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');

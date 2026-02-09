@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { setProfilePhoto, getProfilePhoto, getMemberPhotoById } from '@/lib/db/images';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -23,7 +24,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const profilePhoto = await getProfilePhoto(memberId);
 
     if (!profilePhoto) {
@@ -60,7 +61,7 @@ export async function PUT(
       );
     }
 
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const permissions = getPermissionsForRole(user.role);
     const isAdmin = permissions.manage_all_members || permissions.edit_any_member;
     const isOwner = user.linkedMemberId === memberId;

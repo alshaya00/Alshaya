@@ -7,7 +7,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { generateFullNamesFromLineage } from '@/lib/member-registry';
-import { isMale } from '@/lib/utils';
+import { isMale, normalizeMemberId } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 
 async function getAuthUser(request: NextRequest) {
@@ -97,7 +97,8 @@ export async function GET(
       );
     }
 
-    const member = await getMemberByIdFromDb(params.id);
+    const id = normalizeMemberId(params.id) || params.id;
+    const member = await getMemberByIdFromDb(id);
 
     if (!member) {
       return NextResponse.json(
@@ -145,7 +146,8 @@ async function handleUpdate(
       );
     }
 
-    const member = await getMemberByIdFromDb(params.id);
+    const id = normalizeMemberId(params.id) || params.id;
+    const member = await getMemberByIdFromDb(id);
 
     if (!member) {
       return NextResponse.json(
@@ -171,7 +173,7 @@ async function handleUpdate(
     }
 
     if (body.fatherId) {
-      const isDescendant = await checkIsDescendant(body.fatherId, params.id);
+      const isDescendant = await checkIsDescendant(body.fatherId, id);
       if (isDescendant) {
         return NextResponse.json(
           { success: false, error: 'Cannot set a descendant as parent (would create cycle)' },
@@ -244,7 +246,7 @@ async function handleUpdate(
         const newGender = (updateData.gender as 'Male' | 'Female') || member.gender;
         const newFatherId = updateData.fatherId !== undefined ? (updateData.fatherId as string | null) : member.fatherId;
         
-        const fullNames = await generateFullNamesFromLineage(params.id, {
+        const fullNames = await generateFullNamesFromLineage(id, {
           firstName: newFirstName,
           gender: newGender,
           fatherId: newFatherId,
@@ -259,7 +261,7 @@ async function handleUpdate(
 
     const originalMember = { ...member };
 
-    const updatedMember = await updateMemberInDb(params.id, updateData);
+    const updatedMember = await updateMemberInDb(id, updateData);
     
     if (!updatedMember) {
       return NextResponse.json(
@@ -269,7 +271,7 @@ async function handleUpdate(
     }
 
     recordChangeHistory(
-      params.id,
+      id,
       originalMember,
       updateData,
       body.changedBy || 'system',
@@ -284,7 +286,7 @@ async function handleUpdate(
         userName: user.email,
         userRole: user.role,
         targetType: 'MEMBER',
-        targetId: params.id,
+        targetId: id,
         targetName: updatedMember.fullNameAr || updatedMember.firstName,
         description: `تم تحديث بيانات العضو: ${updatedMember.firstName}`,
         previousState: originalMember as unknown as Record<string, unknown>,
@@ -350,7 +352,8 @@ export async function DELETE(
       );
     }
 
-    const member = await getMemberByIdFromDb(params.id);
+    const id = normalizeMemberId(params.id) || params.id;
+    const member = await getMemberByIdFromDb(id);
 
     if (!member) {
       return NextResponse.json(
@@ -359,7 +362,7 @@ export async function DELETE(
       );
     }
 
-    const children = await getChildrenFromDb(params.id);
+    const children = await getChildrenFromDb(id);
     if (children.length > 0) {
       return NextResponse.json(
         {
@@ -371,7 +374,7 @@ export async function DELETE(
       );
     }
 
-    const deleted = await deleteMemberFromDb(params.id);
+    const deleted = await deleteMemberFromDb(id);
     if (!deleted) {
       return NextResponse.json(
         { success: false, error: 'Failed to delete member' },
@@ -387,7 +390,7 @@ export async function DELETE(
         userName: user.email,
         userRole: user.role,
         targetType: 'MEMBER',
-        targetId: params.id,
+        targetId: id,
         targetName: member.fullNameAr || member.firstName,
         description: `تم حذف العضو: ${member.firstName}`,
         previousState: member as unknown as Record<string, unknown>,

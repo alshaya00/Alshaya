@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb } from '@/lib/db';
-import { isMale, isFemale } from '@/lib/utils';
+import { isMale, isFemale, normalizeMemberId } from '@/lib/utils';
 
 // GET /api/breastfeeding/[id] - Get a single breastfeeding relationship
 export async function GET(
@@ -9,8 +9,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = normalizeMemberId(params.id) || params.id;
     const relationship = await prisma.breastfeedingRelationship.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         child: true,
         nurse: true,
@@ -44,8 +45,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = normalizeMemberId(params.id) || params.id;
     const existingRelationship = await prisma.breastfeedingRelationship.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingRelationship) {
@@ -100,7 +102,7 @@ export async function PUT(
     }
 
     const updatedRelationship = await prisma.breastfeedingRelationship.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nurseId: nurseId !== undefined ? (nurseId || null) : existingRelationship.nurseId,
         externalNurseName: externalNurseName !== undefined ? (externalNurseName || null) : existingRelationship.externalNurseName,
@@ -136,8 +138,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = normalizeMemberId(params.id) || params.id;
     const existingRelationship = await prisma.breastfeedingRelationship.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingRelationship) {
@@ -148,7 +151,7 @@ export async function DELETE(
     }
 
     await prisma.breastfeedingRelationship.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({

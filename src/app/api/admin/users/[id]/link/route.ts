@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -42,6 +43,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
     const { memberId } = body;
 
     if (!memberId) {

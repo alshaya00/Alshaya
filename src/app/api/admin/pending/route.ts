@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { isMale } from '@/lib/utils';
+import { isMale, normalizeMemberId } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 
 // Helper to get auth user from request
@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    if (body.proposedFatherId) body.proposedFatherId = normalizeMemberId(body.proposedFatherId) || body.proposedFatherId;
 
     if (!body.firstName || !body.firstName.trim()) {
       return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeMemberId } from '@/lib/utils';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import crypto from 'crypto';
@@ -204,6 +205,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
     const { memberId, sendVia } = body;
 
     if (!memberId) {

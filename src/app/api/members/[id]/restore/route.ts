@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -29,8 +30,9 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
     }
 
+    const id = normalizeMemberId(params.id) || params.id;
     const member = await prisma.familyMember.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!member) {
@@ -42,7 +44,7 @@ export async function POST(
     }
 
     await prisma.familyMember.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         deletedAt: null,
         deletedBy: null,
@@ -52,7 +54,7 @@ export async function POST(
 
     await prisma.changeHistory.create({
       data: {
-        memberId: params.id,
+        memberId: id,
         fieldName: 'deletedAt',
         oldValue: member.deletedAt.toISOString(),
         newValue: null,

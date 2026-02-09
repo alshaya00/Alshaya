@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -37,7 +38,7 @@ export async function POST(
       );
     }
 
-    const memberId = params.id;
+    const memberId = normalizeMemberId(params.id) || params.id;
     const body = await request.json();
     const { changeId, revertData, checkOnly } = body;
 

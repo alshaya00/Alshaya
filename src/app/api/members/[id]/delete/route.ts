@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -29,11 +30,12 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
     }
 
+    const id = normalizeMemberId(params.id) || params.id;
     const body = await request.json();
     const { reason, mergedIntoId, force } = body;
 
     const member = await prisma.familyMember.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!member) {
@@ -49,8 +51,8 @@ export async function POST(
       where: {
         status: 'PENDING',
         OR: [
-          { sourceMemberId: params.id },
-          { targetMemberId: params.id },
+          { sourceMemberId: id },
+          { targetMemberId: id },
         ],
       },
     });
@@ -66,7 +68,7 @@ export async function POST(
 
     // Check if member has linked user account - block deletion
     const linkedUser = await prisma.user.findFirst({
-      where: { linkedMemberId: params.id },
+      where: { linkedMemberId: id },
       select: { id: true, email: true, nameArabic: true },
     });
 
@@ -82,7 +84,7 @@ export async function POST(
     // Check if member has children - warn unless force=true
     const children = await prisma.familyMember.findMany({
       where: {
-        fatherId: params.id,
+        fatherId: id,
         deletedAt: null,
       },
       select: {
@@ -95,7 +97,7 @@ export async function POST(
 
     const childrenCount = await prisma.familyMember.count({
       where: {
-        fatherId: params.id,
+        fatherId: id,
         deletedAt: null,
       },
     });
@@ -117,13 +119,13 @@ export async function POST(
 
     if (mergedIntoId) {
       await prisma.familyMember.updateMany({
-        where: { fatherId: params.id, deletedAt: null },
+        where: { fatherId: id, deletedAt: null },
         data: { fatherId: mergedIntoId },
       });
     }
 
     await prisma.familyMember.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         deletedAt: new Date(),
         deletedBy: user.id,
@@ -133,7 +135,7 @@ export async function POST(
 
     await prisma.changeHistory.create({
       data: {
-        memberId: params.id,
+        memberId: id,
         fieldName: 'deletedAt',
         oldValue: null,
         newValue: new Date().toISOString(),

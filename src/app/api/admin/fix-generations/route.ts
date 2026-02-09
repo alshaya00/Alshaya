@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { normalizeMemberId } from '@/lib/utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -119,6 +120,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (Array.isArray(body.memberIds)) {
+      body.memberIds = body.memberIds.map((id: string) => normalizeMemberId(id) || id);
+    }
     const { memberIds, fixAll } = body as { memberIds?: string[]; fixAll?: boolean };
 
     const allMembers = await prisma.familyMember.findMany({

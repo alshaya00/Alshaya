@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPendingImage, type CreatePendingImageInput } from '@/lib/db/images';
 import sharp from 'sharp';
+import { normalizeMemberId } from '@/lib/utils';
 
 // Replit-compatible: Lower memory limits for constrained environments
 const IS_REPLIT = !!process.env.REPL_ID;
@@ -146,6 +147,10 @@ async function generateThumbnail(imageData: string, maxSize: number = THUMBNAIL_
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as UploadRequest;
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
+    if (body.taggedMemberIds) {
+      body.taggedMemberIds = body.taggedMemberIds.map(id => normalizeMemberId(id) || id);
+    }
 
     // Validate required fields
     if (!body.imageData) {

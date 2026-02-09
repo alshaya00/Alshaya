@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPendingImages, getImageStats, type PendingImage } from '@/lib/db/images';
+import { normalizeMemberId } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     const status = searchParams.get('status') as PendingImage['reviewStatus'] | null;
     const category = searchParams.get('category');
-    const memberId = searchParams.get('memberId');
+    const memberId = normalizeMemberId(searchParams.get('memberId')) || searchParams.get('memberId');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0;
     const includeStats = searchParams.get('includeStats') === 'true';

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { normalizeMemberId } from '@/lib/utils';
 
 // Helper to get auth user from request
 async function getAuthUser(request: NextRequest) {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
-    const memberId = searchParams.get('memberId');
+    const memberId = normalizeMemberId(searchParams.get('memberId')) || searchParams.get('memberId');
     const changeType = searchParams.get('changeType');
 
     const where: Record<string, unknown> = {};
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
 
     const change = await prisma.changeHistory.create({
       data: {

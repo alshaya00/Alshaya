@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { safeJsonParseArray } from '@/lib/utils/safe-json';
 import { sanitizeString } from '@/lib/sanitize';
+import { normalizeMemberId } from '@/lib/utils';
 
 // GET /api/journals - Get all journals with filters
 export async function GET(request: NextRequest) {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const featured = searchParams.get('featured');
     const generation = searchParams.get('generation');
-    const memberId = searchParams.get('memberId');
+    const memberId = normalizeMemberId(searchParams.get('memberId')) || searchParams.get('memberId');
     const search = searchParams.get('search');
     const era = searchParams.get('era');
     const page = parseInt(searchParams.get('page') || '1');
@@ -137,6 +138,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    if (body.primaryMemberId) body.primaryMemberId = normalizeMemberId(body.primaryMemberId) || body.primaryMemberId;
 
     // Validate required fields
     const titleAr = sanitizeString(body.titleAr);

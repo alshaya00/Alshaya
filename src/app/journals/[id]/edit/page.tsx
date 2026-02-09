@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { JOURNAL_CATEGORIES, type JournalCategoryType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeMemberId } from '@/lib/utils';
 
 interface FormData {
   titleAr: string;
@@ -34,7 +35,7 @@ interface FormData {
 export default function EditJournalPage() {
   const router = useRouter();
   const params = useParams();
-  const journalId = params.id as string;
+  const journalId = normalizeMemberId(params.id as string) || (params.id as string);
   const { user, session } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({

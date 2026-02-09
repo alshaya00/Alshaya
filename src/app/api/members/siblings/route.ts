@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { normalizeArabicName } from '@/lib/lineage-utils';
+import { normalizeMemberId } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('memberId');
+    const memberId = normalizeMemberId(searchParams.get('memberId')) || searchParams.get('memberId');
     
     if (!memberId) {
       return NextResponse.json(
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    if (body.memberId) body.memberId = normalizeMemberId(body.memberId) || body.memberId;
     const { memberId, uncleName } = body;
     
     if (!memberId || !uncleName) {

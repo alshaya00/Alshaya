@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
+import { normalizeMemberId } from '@/lib/utils';
 
 // Helper to get authenticated admin user from request
 async function getAuthAdmin(request: NextRequest) {
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    if (body.branchHeadId) body.branchHeadId = normalizeMemberId(body.branchHeadId) || body.branchHeadId;
 
     // Validate required fields
     if (!body.branchName || !body.branchHeadId || !body.branchHeadName) {
