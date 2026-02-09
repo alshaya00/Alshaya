@@ -1,14 +1,16 @@
 // Auth Module - Main Exports
 // Al-Shaya Family Tree Authentication System
+//
+// NOTE: Password utilities (hashPassword, verifyPassword, etc.) are NOT
+// re-exported here because they use Node.js 'crypto' and 'bcryptjs' which
+// must not be included in client bundles. Import them directly from
+// '@/lib/auth/password' in server-side code (API routes) only.
 
 export * from './types';
-export * from './password';
 export * from './permissions';
 export * from './session';
 
-// Re-export commonly used items for convenience
 export {
-  // Types
   type UserRole,
   type UserStatus,
   type PermissionKey,
@@ -23,7 +25,6 @@ export {
   type ActivityAction,
   type ActivityCategory,
   type ActivityLogEntry,
-  // Constants
   USER_ROLES,
   ROLE_LABELS,
   STATUS_LABELS,
@@ -34,17 +35,6 @@ export {
 } from './types';
 
 export {
-  // Password utilities
-  hashPassword,
-  verifyPassword,
-  validatePassword,
-  generateToken,
-  generateInviteCode,
-  generateSessionToken,
-} from './password';
-
-export {
-  // Permission utilities
   getPermissionMatrix,
   setPermissionMatrixCache,
   clearPermissionMatrixCache,
@@ -62,7 +52,6 @@ export {
 } from './permissions';
 
 export {
-  // Session utilities
   createSession,
   storeSession,
   getStoredSession,

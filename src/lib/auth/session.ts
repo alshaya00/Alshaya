@@ -1,7 +1,6 @@
 // Session Management Utilities
 import { SessionUser, UserRole, PermissionKey, AuthSession } from './types';
 import { getPermissionsForRole } from './permissions';
-import { generateSessionToken } from './password';
 import { storageKeys } from '@/config/storage-keys';
 import { sessionConfig } from '@/config/admin-config';
 
@@ -14,7 +13,7 @@ const DEFAULT_SESSION_DURATION = sessionConfig.defaultDurationMs;
 const REMEMBER_ME_DURATION = sessionConfig.rememberMeDurationMs;
 
 /**
- * Create a new session for a user
+ * Create a new session for a user (server-side only)
  */
 export function createSession(
   user: {
@@ -29,6 +28,7 @@ export function createSession(
   },
   rememberMe: boolean = false
 ): AuthSession {
+  const { generateSessionToken } = require('./password');
   const token = generateSessionToken();
   const duration = rememberMe ? REMEMBER_ME_DURATION : DEFAULT_SESSION_DURATION;
   const expiresAt = new Date(Date.now() + duration);

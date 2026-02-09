@@ -2,7 +2,6 @@
 // Centralized admin defaults, access codes, and credentials
 // SECURITY: All sensitive values MUST be set via environment variables
 
-import { randomBytes } from 'crypto';
 
 // ============================================
 // ACCESS CODE CONFIGURATION
@@ -114,6 +113,7 @@ export const sessionConfig = {
  * Uses crypto.randomBytes instead of Math.random for security
  */
 export function generateRandomCode(length: number = tokenConfig.accessCodeLength): string {
+  const { randomBytes } = require('crypto');
   const chars = tokenConfig.codeCharacters;
   const bytes = randomBytes(length);
   let result = '';
