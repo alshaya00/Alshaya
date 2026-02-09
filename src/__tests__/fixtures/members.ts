@@ -1674,7 +1674,7 @@ export function getGenerationStats(): Record<number, { total: number; male: numb
 }
 
 export function createMemberFixture(overrides: Partial<FamilyMemberFixture> = {}): FamilyMemberFixture {
-  const id = `P${String(Math.floor(Math.random() * 10000)).padStart(3, '0')}`;
+  const id = `P${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
   return {
     id,
     firstName: 'اختبار',

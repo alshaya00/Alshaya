@@ -33,7 +33,7 @@ export const memberFields: FieldDefinition[] = [
     type: 'text',
     required: true,
     editable: false,
-    placeholder: 'P001',
+    placeholder: 'P0001',
   },
   {
     key: 'firstName',
@@ -86,7 +86,7 @@ export const memberFields: FieldDefinition[] = [
     type: 'text',
     required: false,
     editable: true,
-    placeholder: 'P001',
+    placeholder: 'P0001',
   },
   {
     key: 'gender',

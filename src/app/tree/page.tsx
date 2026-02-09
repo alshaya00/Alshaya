@@ -24,7 +24,7 @@ interface TreeNodeData extends FamilyMember {
 
 function TreePageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['P001']));
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -45,7 +45,12 @@ function TreePageContent() {
         });
         if (res.ok) {
           const data = await res.json();
-          setAllMembers(data.data || []);
+          const members = data.data || [];
+          setAllMembers(members);
+          const root = members.find((m: FamilyMember) => !m.fatherId || m.generation === 1);
+          if (root) {
+            setExpandedNodes(new Set([root.id]));
+          }
         }
       } catch (error) {
         console.error('Error fetching members:', error);
@@ -140,7 +145,8 @@ function TreePageContent() {
   };
 
   const collapseAll = () => {
-    setExpandedNodes(new Set(['P001']));
+    const root = allMembers.find(m => !m.fatherId || m.generation === 1);
+    setExpandedNodes(new Set(root ? [root.id] : []));
   };
 
   const highlightMember = (id: string) => {

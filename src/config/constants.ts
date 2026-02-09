@@ -34,8 +34,8 @@ export const generationSettings = {
 
 export const dbSettings = {
   checkInterval: 30000, // 30 seconds - how often to check DB availability
-  idPrefix: 'P',        // Member ID prefix (P001, P002, etc.)
-  idPadding: 3,         // Number of digits in ID (001, 002, etc.)
+  idPrefix: 'P',        // Member ID prefix (P0001, P0002, etc.)
+  idPadding: 4,         // Number of digits in ID (0001, 0002, etc.)
 };
 
 // ============================================

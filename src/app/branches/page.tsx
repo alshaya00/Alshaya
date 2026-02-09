@@ -115,14 +115,13 @@ function BranchesPageContent() {
     return allMembers.find(m => m.id === id);
   };
 
-  // Find main branches (children of root P001)
+  // Find main branches (children of root member)
   useEffect(() => {
     async function loadBranches() {
-      const root = getMemberById('P001');
+      const root = allMembers.find(m => !m.fatherId || m.generation === 1);
       if (!root) return;
 
-      // Get all direct children of root (Generation 2) - these are branch heads
-      const branchHeads = allMembers.filter(m => m.fatherId === 'P001' && isMale(m.gender));
+      const branchHeads = allMembers.filter(m => m.fatherId === root.id && isMale(m.gender));
 
       // Also get Generation 3+ branch heads for more granular control
       const gen3Heads = allMembers.filter(m => m.generation >= 3 && isMale(m.gender) && m.sonsCount > 0);

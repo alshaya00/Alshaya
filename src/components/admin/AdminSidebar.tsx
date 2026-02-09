@@ -135,6 +135,7 @@ const navGroups: NavGroup[] = [
       { href: '/admin/sync-data', label: 'مزامنة البيانات', labelEn: 'Sync', icon: RefreshCw },
       { href: '/admin/data-migration', label: 'ترحيل البيانات', labelEn: 'Migration', icon: Database },
       { href: '/admin/data-repair', label: 'إصلاح الروابط', labelEn: 'Repair Links', icon: Wrench },
+      { href: '/admin/data-repair-center', label: 'مركز إصلاح البيانات', labelEn: 'Repair Center', icon: Wrench },
     ],
   },
   {

@@ -4,9 +4,11 @@ const arabicNameMappings: Record<string, string> = {
   'عدي ': 'Adi',
   'هيله': 'Haila',
   'هيله ': 'Haila',
+  'هيلة': 'Haila',
   'حصه': 'Hessa',
   'حصة': 'Hessa',
   'آسية': 'Asiya',
+  'آسيه': 'Asiya',
   'ابتسام': 'Ibtisam',
   'الجوهره': 'Aljawharah',
   'الجوهره ': 'Aljawharah',
@@ -24,6 +26,7 @@ const arabicNameMappings: Record<string, string> = {
   'ساميه': 'Samia',
   'سلمى': 'Salma',
   'سمية': 'Sumaya',
+  'سميه': 'Sumaya',
   'شذى': 'Shatha',
   'صخر': 'Sakhr',
   'صخر ': 'Sakhr',
@@ -50,6 +53,14 @@ const arabicNameMappings: Record<string, string> = {
   'هيفاء ': 'Haifaa',
   'ياسمين': 'Yasmin',
   'يعرب': 'Yaarib',
+  'وضحى': 'Wadhha',
+  'ملاك': 'Malak',
+  'هتون': 'Hatoon',
+  'عباده': 'Obada',
+  'ترف': 'Turaf',
+  'جواد': 'Jawad',
+  'ليان': 'Layan',
+  'أسامة': 'Osama',
   // End of missing names
   'محمد': 'Mohammed',
   'أحمد': 'Ahmed',
@@ -274,11 +285,17 @@ export function transliterateName(arabicName: string): string {
   
   let result = arabicName.trim();
   
-  for (const [arabic, english] of Object.entries(arabicNameMappings)) {
-    result = result.replace(new RegExp(arabic, 'g'), english);
+  const sortedEntries = Object.entries(arabicNameMappings).sort(
+    (a, b) => b[0].length - a[0].length
+  );
+  
+  for (const [arabic, english] of sortedEntries) {
+    const escapedArabic = arabic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(escapedArabic, 'g'), english);
   }
   
-  // Clean up whitespace and remove any lingering "bin" references
+  result = result.replace(/[\u0600-\u06FF]+/g, '');
+  
   result = result
     .replace(/\s+/g, ' ')
     .replace(/\bbin\b/gi, '')
