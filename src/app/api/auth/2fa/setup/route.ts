@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
@@ -6,7 +7,6 @@ import {
   logActivity,
 } from '@/lib/auth/db-store';
 import {
-export const dynamic = "force-dynamic";
   generateTOTPSecret,
   generateTOTPUri,
   verifyTOTP,

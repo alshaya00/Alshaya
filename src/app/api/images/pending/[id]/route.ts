@@ -1,6 +1,6 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import {
-export const dynamic = "force-dynamic";
   getPendingImageById,
   approvePendingImage,
   rejectPendingImage,
