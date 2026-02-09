@@ -99,6 +99,7 @@ export default function AdminPendingPage() {
     parentPending: DbPendingMember | null;
   } | null>(null);
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
+  const [isFetchingFather, setIsFetchingFather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const { session } = useAuth();
@@ -157,7 +158,34 @@ export default function AdminPendingPage() {
     return allMembers.filter(m => m.fatherId === parentId);
   }, [allMembers]);
 
-  const openReviewModal = useCallback((member: DbPendingMember) => {
+  const fetchMemberById = useCallback(async (id: string): Promise<FamilyMember | null> => {
+    if (!session?.token) return null;
+    try {
+      setIsFetchingFather(true);
+      const res = await fetch(`/api/members/${id}`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const member = data.data || data.member || data;
+        if (member && member.id) {
+          setAllMembers(prev => {
+            if (prev.some(m => m.id === member.id)) return prev;
+            return [...prev, member];
+          });
+          return member as FamilyMember;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching member by ID:', error);
+      return null;
+    } finally {
+      setIsFetchingFather(false);
+    }
+  }, [session?.token]);
+
+  const openReviewModal = useCallback(async (member: DbPendingMember) => {
     const linkedPendingChildren = members.filter(
       m => (m as { parentPendingId?: string }).parentPendingId === member.id
     );
@@ -167,13 +195,21 @@ export default function AdminPendingPage() {
       : null;
     
     if (member.proposedFatherId) {
-      const parent = getMemberById(member.proposedFatherId) || null;
+      let parent = getMemberById(member.proposedFatherId) || null;
       const children = getChildrenOfParent(member.proposedFatherId);
       setReviewModal({ pending: member, parent, children, linkedPendingChildren, parentPending });
+
+      if (!parent) {
+        const fetched = await fetchMemberById(member.proposedFatherId);
+        if (fetched) {
+          const updatedChildren = getChildrenOfParent(member.proposedFatherId);
+          setReviewModal(prev => prev ? { ...prev, parent: fetched, children: updatedChildren } : null);
+        }
+      }
     } else {
       setReviewModal({ pending: member, parent: null, children: [], linkedPendingChildren, parentPending });
     }
-  }, [getChildrenOfParent, members]);
+  }, [getChildrenOfParent, members, fetchMemberById]);
 
   useEffect(() => {
     if (reviewModal && reviewModal.pending.proposedFatherId) {
@@ -1158,15 +1194,30 @@ export default function AdminPendingPage() {
                   </h4>
                   <div className="flex items-center gap-4">
                     <GenderAvatar gender={reviewModal.parent.gender} size="lg" />
-                    <div>
-                      <p className="font-bold text-gray-800">{reviewModal.parent.fullNameAr || reviewModal.parent.firstName}</p>
-                      <p className="text-sm text-gray-500">
-                        المعرف: {reviewModal.parent.id} • الجيل: {reviewModal.parent.generation}
-                        {reviewModal.parent.branch && ` • الفرع: ${reviewModal.parent.branch}`}
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-800 text-lg">{getFullLineageName(reviewModal.parent, allMembers)}</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {reviewModal.parent.fullNameAr || reviewModal.parent.firstName}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        {getFullLineageName(reviewModal.parent, allMembers)}
-                      </p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-sm">
+                        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                          المعرف: {formatMemberId(reviewModal.parent.id)}
+                        </span>
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                          الجيل: {reviewModal.parent.generation}
+                        </span>
+                        {reviewModal.parent.branch && (
+                          <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
+                            الفرع: {reviewModal.parent.branch}
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded ${reviewModal.parent.status === 'Deceased' ? 'bg-gray-200 text-gray-700' : 'bg-emerald-100 text-emerald-800'}`}>
+                          {reviewModal.parent.status === 'Deceased' ? 'متوفى' : 'على قيد الحياة'}
+                        </span>
+                        <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                          الأبناء: {reviewModal.parent.sonsCount} بنين • {reviewModal.parent.daughtersCount} بنات
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1249,11 +1300,29 @@ export default function AdminPendingPage() {
               )}
 
               {!reviewModal.parent && reviewModal.pending.proposedFatherId && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-                  <p className="text-red-700 flex items-center gap-2">
-                    <AlertCircle size={18} />
-                    الأب المقترح (المعرف: {reviewModal.pending.proposedFatherId}) غير موجود في الشجرة
-                  </p>
+                <div className={`border rounded-xl p-4 mb-6 ${isFetchingFather ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                  {isFetchingFather ? (
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="animate-spin text-blue-600" size={20} />
+                      <div>
+                        <p className="text-blue-700 font-medium">جارٍ البحث عن الأب المقترح...</p>
+                        <p className="text-blue-600 text-sm mt-1">
+                          المعرف: {formatMemberId(reviewModal.pending.proposedFatherId)}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-red-700 font-medium flex items-center gap-2">
+                        <AlertCircle size={18} />
+                        الأب المقترح غير موجود في الشجرة
+                      </p>
+                      <div className="mt-2 text-sm text-red-600 space-y-1">
+                        <p>المعرف المُقترح: <span className="font-mono bg-red-100 px-1.5 py-0.5 rounded">{formatMemberId(reviewModal.pending.proposedFatherId)}</span></p>
+                        <p className="text-red-500 mt-2">تأكد من صحة المعرف أو ابحث عن العضو يدوياً في الشجرة</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
