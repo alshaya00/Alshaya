@@ -49,8 +49,8 @@ export const paginationSettings = {
   searchResultsLimit: 100,
 
   // API fetch limits
-  defaultFetchLimit: 500,
-  maxFetchLimit: 1000,
+  defaultFetchLimit: 2000,
+  maxFetchLimit: 5000,
 
   // Activity log limits
   maxActivityLogs: 10000,

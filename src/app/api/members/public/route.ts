@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
-    const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 1000);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '2000'), 5000);
     const includePending = searchParams.get('includePending') === 'true';
 
     const members = await prisma.familyMember.findMany({
