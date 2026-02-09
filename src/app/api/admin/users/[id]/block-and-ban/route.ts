@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, deleteUserSessions } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
-import { normalizePhoneNumber } from '@/lib/phone-utils';
+import { normalizePhone } from '@/lib/phone-utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -73,7 +73,7 @@ export async function POST(
     const blockedItems: string[] = [];
 
     if (blockPhone && targetUser.phone) {
-      const normalizedPhone = normalizePhoneNumber(targetUser.phone);
+      const normalizedPhone = normalizePhone(targetUser.phone);
       const phoneToBlock = normalizedPhone || targetUser.phone;
       
       await prisma.blocklist.upsert({

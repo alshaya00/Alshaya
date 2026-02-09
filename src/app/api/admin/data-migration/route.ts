@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifySessionFromRequest } from '@/lib/auth/session';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { logAuditToDb } from '@/lib/audit';
+import { logAuditToDb } from '@/lib/db-audit';
+
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token) return null;
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+  return user;
+}
 
 interface MigrationTask {
   id: string;
@@ -47,13 +58,13 @@ const migrationTasks: MigrationTask[] = [
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await verifySessionFromRequest(request);
-    if (!session?.user) {
+    const user = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const permissions = getPermissionsForRole(session.user.role);
-    if (!permissions.manage_users && session.user.role !== 'SUPER_ADMIN') {
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.manage_users && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -106,13 +117,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await verifySessionFromRequest(request);
-    if (!session?.user) {
+    const user = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const permissions = getPermissionsForRole(session.user.role);
-    if (!permissions.manage_users && session.user.role !== 'SUPER_ADMIN') {
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.manage_users && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -137,9 +148,9 @@ export async function POST(request: NextRequest) {
         await logAuditToDb({
           action: 'DATA_MIGRATION_EXECUTE',
           severity: 'WARNING',
-          userId: session.user.id,
-          userName: session.user.email,
-          userRole: session.user.role,
+          userId: user.id,
+          userName: user.email,
+          userRole: user.role,
           targetType: 'USER',
           description: 'تفعيل المستخدمين المعلقين',
           details: { taskId, taskName: 'تفعيل المستخدمين المعلقين', affectedRecords },
@@ -182,9 +193,9 @@ export async function POST(request: NextRequest) {
         await logAuditToDb({
           action: 'DATA_MIGRATION_EXECUTE',
           severity: 'WARNING',
-          userId: session.user.id,
-          userName: session.user.email,
-          userRole: session.user.role,
+          userId: user.id,
+          userName: user.email,
+          userRole: user.role,
           targetType: 'ACCESS_REQUEST',
           description: 'ترحيل طلبات الانضمام',
           details: { taskId, taskName: 'ترحيل طلبات الانضمام', affectedRecords },

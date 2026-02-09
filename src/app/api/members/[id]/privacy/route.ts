@@ -1,32 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { normalizeMemberId } from '@/lib/utils';
-
-function normalizeId(id: string): string {
-  if (!id) return '';
-  const cleaned = id.trim().toUpperCase();
-  // Extract numeric part and normalize
-  const numMatch = cleaned.match(/^P?(\d+)$/i);
-  if (numMatch) {
-    const num = parseInt(numMatch[1], 10);
-    return `P${num.toString().padStart(4, '0')}`;
-  }
-  return cleaned;
-}
-
-function matchesMemberId(memberId: string, searchId: string): boolean {
-  if (!memberId || !searchId) return false;
-  const norm1 = normalizeId(memberId);
-  const norm2 = normalizeId(searchId);
-  if (norm1 === norm2) return true;
-  const num1 = parseInt(memberId.replace(/^p/i, ''), 10);
-  const num2 = parseInt(searchId.replace(/^p/i, ''), 10);
-  if (!isNaN(num1) && !isNaN(num2)) {
-    return num1 === num2;
-  }
-  return memberId.toLowerCase() === searchId.toLowerCase();
-}
 
 export async function GET(
   request: NextRequest,
@@ -35,14 +10,13 @@ export async function GET(
   try {
     const memberId = normalizeMemberId(params.id) || params.id;
     
-    const users = await prisma.user.findMany({
-      where: { linkedMemberId: { not: null } },
-      select: { linkedMemberId: true, hidePersonalInfo: true },
+    const linkedUser = await prisma.user.findFirst({
+      where: { linkedMemberId: memberId },
+      select: { hidePersonalInfo: true },
     });
-    const user = users.find(u => u.linkedMemberId && matchesMemberId(u.linkedMemberId, memberId));
 
     return NextResponse.json({
-      hidePersonalInfo: user?.hidePersonalInfo || false,
+      hidePersonalInfo: linkedUser?.hidePersonalInfo || false,
     });
   } catch (error) {
     console.error('Error getting privacy setting:', error);
@@ -59,36 +33,33 @@ export async function PUT(
 ) {
   try {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) {
       return NextResponse.json(
         { error: 'Unauthorized', errorAr: 'غير مصرح' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded) {
+    const session = await findSessionByToken(token);
+    if (!session) {
       return NextResponse.json(
         { error: 'Invalid token', errorAr: 'رمز غير صالح' },
         { status: 401 }
       );
     }
 
-    const memberId = normalizeMemberId(params.id) || params.id;
-    const currentUser = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { linkedMemberId: true, role: true },
-    });
-
-    if (!currentUser) {
+    const currentUser = await findUserById(session.userId);
+    if (!currentUser || currentUser.status !== 'ACTIVE') {
       return NextResponse.json(
         { error: 'User not found', errorAr: 'المستخدم غير موجود' },
         { status: 404 }
       );
     }
 
-    const isOwner = currentUser.linkedMemberId ? matchesMemberId(currentUser.linkedMemberId, memberId) : false;
+    const memberId = normalizeMemberId(params.id) || params.id;
+
+    const isOwner = currentUser.linkedMemberId === memberId;
     const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
     if (!isOwner && !isAdmin) {
@@ -101,13 +72,11 @@ export async function PUT(
     const body = await request.json();
     const { hidePersonalInfo } = body;
 
-    const allLinkedUsers = await prisma.user.findMany({
-      where: { linkedMemberId: { not: null } },
+    const targetUser = await prisma.user.findFirst({
+      where: { linkedMemberId: memberId },
     });
-    const targetUser = allLinkedUsers.find(u => u.linkedMemberId && matchesMemberId(u.linkedMemberId, memberId));
 
     if (!targetUser) {
-      console.error(`Privacy API: No user linked to member ${memberId}. Total linked users: ${allLinkedUsers.length}`);
       return NextResponse.json(
         { error: 'No user linked to this member', errorAr: 'لا يوجد مستخدم مرتبط بهذا العضو' },
         { status: 404 }

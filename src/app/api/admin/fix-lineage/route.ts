@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { generateFullNamesFromLineage, getAncestorNamesFromLineage } from '@/lib/member-registry';
-import { createAuditLog } from '@/lib/audit';
+import { logAuditAsync } from '@/lib/audit';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!preview && results.length > 0) {
-      await createAuditLog({
+      await logAuditAsync({
         action: 'FIX_LINEAGE_NAMES',
         targetType: 'MEMBER',
         targetId: 'BULK',

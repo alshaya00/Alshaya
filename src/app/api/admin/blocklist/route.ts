@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
-import { normalizePhoneNumber } from '@/lib/phone-utils';
+import { normalizePhone } from '@/lib/phone-utils';
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     let normalizedValue = value;
     if (type === 'PHONE') {
-      normalizedValue = normalizePhoneNumber(value) || value;
+      normalizedValue = normalizePhone(value) || value;
     } else if (type === 'EMAIL') {
       normalizedValue = value.toLowerCase();
     }

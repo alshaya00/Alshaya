@@ -1,46 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
+import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getAllMembersFromDb } from '@/lib/db';
 import { normalizeMemberId } from '@/lib/utils';
+
+async function getAuthUser(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token) return null;
+  const session = await findSessionByToken(token);
+  if (!session) return null;
+  const user = await findUserById(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+  return user;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const user = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized', errorAr: 'غير مصرح' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token', errorAr: 'رمز غير صالح' },
-        { status: 401 }
-      );
-    }
-
     const memberId = normalizeMemberId(params.id) || params.id;
-    const currentUser = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { linkedMemberId: true, role: true },
-    });
 
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'User not found', errorAr: 'المستخدم غير موجود' },
-        { status: 404 }
-      );
-    }
-
-    const isOwner = currentUser.linkedMemberId === memberId;
-    const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
+    const isOwner = user.linkedMemberId === memberId;
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
