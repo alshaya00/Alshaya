@@ -36,6 +36,7 @@ export interface MergeResult {
     photosTransferred: number;
     journalsUpdated: number;
     linkedAccountsTransferred: number;
+    pendingRequestsUpdated: number;
   };
 }
 
@@ -250,6 +251,12 @@ export async function mergeMemberProfiles(
       });
       childrenUpdated = childUpdateResult.count;
 
+      const pendingUpdateResult = await tx.pendingMember.updateMany({
+        where: { proposedFatherId: sourceId, reviewStatus: 'PENDING' },
+        data: { proposedFatherId: targetId },
+      });
+      const pendingRequestsUpdated = pendingUpdateResult.count;
+
       const photoUpdateResult = await tx.memberPhoto.updateMany({
         where: { memberId: sourceId },
         data: { memberId: targetId },
@@ -329,6 +336,7 @@ export async function mergeMemberProfiles(
         photosTransferred,
         journalsUpdated,
         linkedAccountsTransferred: linkedAccountsTransfer.count,
+        pendingRequestsUpdated,
       };
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -351,6 +359,7 @@ export async function mergeMemberProfiles(
         photosTransferred: result.photosTransferred,
         journalsUpdated: result.journalsUpdated,
         linkedAccountsTransferred: result.linkedAccountsTransferred,
+        pendingRequestsUpdated: result.pendingRequestsUpdated,
       },
       previousState: {
         sourceId,
@@ -369,6 +378,7 @@ export async function mergeMemberProfiles(
         photosTransferred: result.photosTransferred,
         journalsUpdated: result.journalsUpdated,
         linkedAccountsTransferred: result.linkedAccountsTransferred,
+        pendingRequestsUpdated: result.pendingRequestsUpdated,
       },
       severity: 'WARNING',
     });
@@ -384,6 +394,7 @@ export async function mergeMemberProfiles(
         photosTransferred: result.photosTransferred,
         journalsUpdated: result.journalsUpdated,
         linkedAccountsTransferred: result.linkedAccountsTransferred,
+        pendingRequestsUpdated: result.pendingRequestsUpdated,
       },
     };
   } catch (error) {

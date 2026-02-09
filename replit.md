@@ -1,7 +1,7 @@
 # Al-Shaya Family Tree
 
 ## Overview
-This project is an interactive web application for the Al-Shaya family tree. Its purpose is to digitally preserve and display family history, provide insights through analytics, and facilitate the addition and management of family members. The application aims to be a comprehensive and user-friendly platform, offering features like interactive visualizations, detailed member registries, and robust administrative tools. The business vision is to create a digital legacy for the Al-Shaya family, ensuring their history is accessible and expandable for future generations, fostering connection and understanding within the family.
+This project is an interactive web application designed to digitally preserve and display the Al-Shaya family history. It offers features like interactive visualizations, detailed member registries, and robust administrative tools. The core purpose is to create a comprehensive, user-friendly platform that ensures the family's history is accessible, expandable, and fosters connection across generations.
 
 ## User Preferences
 I prefer clear and concise explanations. I value iterative development and expect the agent to ask for confirmation before implementing significant changes. I also prefer detailed explanations for complex architectural decisions.
@@ -10,137 +10,32 @@ I prefer clear and concise explanations. I value iterative development and expec
 The application is built with Next.js 14 (App Router), TypeScript, and Tailwind CSS for a modern, responsive UI. D3.js is used for interactive family tree visualizations. Data persistence is managed by Prisma 5.x with PostgreSQL. Authentication uses bcrypt for password hashing.
 
 **UI/UX Decisions:**
-The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RTL and English). Saudi cultural avatar images (male with shemagh, female with hijab) are used for all member displays. Interactive D3.js visualizations feature zoom/pan and distinct color coding for up to 12 generations.
+The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RTL and English). Saudi cultural avatar images are used, and D3.js visualizations feature zoom/pan with distinct color coding for up to 12 generations.
 
 **Technical Implementations & Design Patterns:**
 -   **Database-Centric Operations**: All critical data, configurations, and logs are stored in PostgreSQL.
--   **Bilingual Support**: Full Arabic (RTL) and English language support across the application.
--   **Dynamic System Configuration**: Application behavior is controlled via database-persisted configurations with server-side caching and client-side access.
--   **Audit Log System**: Comprehensive tracking of all significant actions with dependency graph and change impact tracking.
--   **Data Management & Integrity**:
-    -   **Backup System**: Database-backed manual and automatic daily backups with configurable retention.
-    -   **Transactional Restore System**: Enterprise-grade, zero data loss restore process with dependency-ordered, atomic transactions.
-    -   **MemberRegistry Service**: Centralized service for member creation, ID generation, lineage building, and duplicate detection, ensuring data consistency.
-    -   **Transactional Approval Pipeline**: Atomic member approval using Prisma SERIALIZABLE transactions.
-    -   **Data Integrity Validation**: Comprehensive validation system with 13 checks (generations, parent relationships, circular ancestry, duplicates, etc.).
-    -   **Simplified Duplicate Detection**: A member is only considered a duplicate if they have the **same fatherId AND same firstName**. This is the only valid duplicate scenario (same person registered twice under the same parent).
-    -   **Father ID-Based Detection**: If two members have different fatherId values, they are NEVER considered duplicates, regardless of how similar their names are. Different fathers = different people.
-    -   **Comprehensive Arabic Name Normalization**: Name comparison includes:
-        - حركات (Tashkeel/Diacritics): فَتْحة، ضَمّة، كَسْرة، سُكون، شدّة، تنوين
-        - همزات (Hamza variations): أ، إ، آ، ٱ، ء → ا
-        - تاء مربوطة (Taa Marbouta): ة → ه
-        - ألف مقصورة (Alef Maqsoura): ى → ي
-        - همزة على واو/ياء: ؤ → و، ئ → ي
-        - تطويل (Kashida): ـ → removed
-        - Common variations: عبد الله = عبدالله
-    -   **Member Merge System**: Safely merges duplicate member profiles with transactional integrity, transferring related data. Server-side blocking prevents merges between members with:
-        - Different fathers (highest priority block)
-        - Critical generation mismatch (>=2 generations apart)
-        - Both members having linked user accounts
-    -   **Phone Number Normalization**: Centralized utility for normalizing Saudi phone numbers to a standard format (+9665XXXXXXXX) with strict validation.
--   **Security Hardening**:
-    -   API Rate Limiting for public endpoints.
-    -   Admin session timeout and account lockout mechanisms.
-    -   Password strength validation.
-    -   Deletion protection for members with linked accounts or pending references.
-    -   Backup integrity verification and destructive action confirmations.
--   **Admin Tools**:
-    -   Comprehensive admin interfaces for user management, access requests, invitations, photo album folders, member merging, data validation, and story moderation.
-    -   Login history tracking and user login statistics.
-    -   Tools for managing unregistered members and sending invitations.
-    -   **Manual User-Member Linking**: Admin can manually link orphaned user accounts to existing family members via search interface.
-    -   **Orphaned Users Report** (`/admin/orphaned`): Dashboard showing users without linked members, with auto-suggested matches based on name similarity.
-    -   **Data Cleanup Tool** (`/admin/data-cleanup`): Dashboard to scan and review potential false duplicates (same name, different fathers/generations). Allows marking pairs as "verified different people" with full audit logging and ability to revert.
--   **Duplicate Detection & Resolution** (`/duplicates`):
-    -   Scan for potential duplicate members based on name similarity (adjustable threshold 40-90%).
-    -   **Persistent Exclusion**: When marking pairs as "ليس تكرار" (not duplicate), decision is saved to `DuplicateFlag` table with status `VERIFIED_DIFFERENT`.
-    -   **Automatic Filtering**: Excluded pairs are fetched on page load and filtered out from scan results.
-    -   **Revert Functionality**: Admin can undo exclusion via "تراجع" button, which removes the flag and restores the pair to scan results.
-    -   **Excluded Pairs Section**: Purple-themed section shows all previously excluded pairs with option to revert.
-    -   **Stats Dashboard**: Shows counts for pending, confirmed, not-duplicate, merged, and excluded pairs.
--   **Advanced Duplicate Scanner** (`/admin/duplicate-scanner`):
-    -   **3-Level Detection System**: EXACT (same name+father+gender, blocked), SUSPICIOUS (85%+ similarity, warning), POTENTIAL (same name+generation+branch, logged).
-    -   **Batch Scan API** (`/api/admin/duplicate-scan`): Scans all active members at once with Arabic name normalization and Levenshtein similarity.
-    -   **3-Tab Interface**: Scan (auto-detect), Pending (awaiting review), History (resolved pairs).
-    -   **Side-by-Side Comparison**: Color-coded field comparison (green=match, red=differ, yellow=one empty).
-    -   **In-Page Merge Flow**: Preview conflicts, auto-select source/target by data completeness, confirm merge with audit trail.
-    -   **Excludes Verified Pairs**: Automatically filters out pairs already marked as VERIFIED_DIFFERENT.
--   **Registration Duplicate Prevention**:
-    -   Real-time duplicate check when user enters name + selects father during registration.
-    -   Calls `/api/duplicate-check` with debounced requests.
-    -   Exact matches (100%): Red warning, submission blocked, user directed to contact admin.
-    -   Similar matches: Orange warning with candidate list, submission allowed.
--   **CRM-Style Members Hub** (`/admin/members-hub`):
-    -   **Smart Data Issue Detection**: Automatic detection of duplicates, orphaned members, missing data, generation inconsistencies, and pending reviews.
-    -   **Issue Severity System**: Issues categorized as HIGH (duplicates, orphaned), MEDIUM (inconsistencies, pending), LOW (missing data).
-    -   **Quick Action Buttons**: Each issue type has appropriate action (Merge, Set Parent, Edit, Fix Generation, Review).
-    -   **Three-Tab Interface**: Overview (stats + alerts), Members Table (CRM-style), Issues List (auto-detected).
-    -   **Advanced Members Table**: Filterable by gender, generation, status, branch, and data health. Shows issue badges inline.
-    -   **Paginated API**: Data issues API supports pagination and type filtering for performance.
--   **Comprehensive Member Edit Modal**:
-    -   **All Fields Editable**: firstName, fatherName, gender, generation, status, branch, birthYear, birthCalendar (Hijri/Gregorian), deathYear, deathCalendar, phone, email, city, occupation, biography.
-    -   **Calendar Type Selection**: Supports both Hijri and Gregorian calendars for birth and death dates.
-    -   **Change History Tab**: Shows all previous changes with field-level before/after values, user who made change, and timestamp.
-    -   **Dependency-Aware Revert**: When reverting a change, system checks for later changes that might be affected and warns admin before proceeding.
-    -   **Revert API** (`/api/members/[id]/revert`): Validates change conflicts, logs all reverts to audit trail.
--   **Quick-Add Smart Search**:
-    -   Helper questions automatically triggered when multiple matches found.
-    -   Branch selection (Ibrahim/Abdulkarim/Fawzan) and uncle name filters to narrow down search results.
-    -   Fallback to full results when filters yield no matches.
--   **Registration Uncle Verification**:
-    -   When a user selects their father during registration, a verification step asks for an uncle's name.
-    -   System validates the entered name against the father's actual siblings using fuzzy matching.
-    -   Skip option available for users who cannot provide uncle name.
-    -   Privacy-safe API only returns sibling count (not names) to unauthenticated users.
-    -   Verification state resets when parent selection changes.
--   **Data Repair Tools**:
-    -   Admin dashboard at `/admin/data-repair` for finding and fixing orphaned members.
-    -   Three repair actions: link user to member, set member's parent, create member for user.
-    -   Full audit logging with before/after state tracking.
-    -   Rollback capability: any repair can be safely reverted using the change ID.
--   **Name Fix Tool** (`/admin/fix-names`):
-    -   Admin tool to scan and repair member name issues.
-    -   Detects Arabic characters in English names (transliteration failures).
-    -   Detects incomplete lineage chains (missing ancestor names in fullNameAr/fullNameEn).
-    -   Detects missing individual ancestor fields (fatherName, grandfatherName, greatGrandfatherName).
-    -   Uses `generateFullNamesFromLineage()` to regenerate display names from fatherId chain traversal.
-    -   Uses `getAncestorNamesFromLineage()` to extract individual ancestor names from chain.
-    -   Preview mode shows before/after changes before execution.
-    -   Bulk fix option for all affected members.
-    -   Works for both root members (no fatherId) and members with complete lineage.
-    -   Dashboard alert shows count of members needing name fixes with quick link to tool.
-    -   **Transactional Approval Enhancement**: Now extracts fatherName/grandfatherName/greatGrandfatherName from actual fatherId chain (not user-entered data) to ensure complete ancestor information for new members.
--   **Gallery with Video Support**:
-    -   Photo gallery supports both images and videos (MP4, WebM, MOV).
-    -   Video files up to 50MB, images up to 5MB.
-    -   Videos display with play button overlay in gallery grid.
-    -   Lightbox plays videos with full controls.
-    -   All gallery views (family, all, timeline) include isVideo flag for consistent rendering.
-    -   Videos stored as base64 in imageData field (same as images).
--   **Conditional Approval System**:
-    -   Allows family members to register even when their parent is pending approval.
-    -   Uses `parentPendingId` field to link conditional pending members to their pending parent.
-    -   Father search includes pending members with "قيد المراجعة" badges when `includePending=true`.
-    -   Registration flow allows selecting pending parents with orange visual indicators.
-    -   Uncle verification is skipped for conditional registrations (pending parents).
-    -   **Sequential Chain Approval**: When a parent is approved, linked children's `parentPendingId` is cleared and their `proposedFatherId` is set to the newly created member.
-    -   **Admin Review Enhancements**:
-        - Review modal shows linked pending children and parent pending warnings.
-        - "Approve with children" button for bulk chain approval (processes parent first, then children sequentially).
-        - Approval is blocked if member's parent is still pending.
-        - Visual badges in list view: "بانتظار الأب" (waiting for father) and "له أبناء معلقون" (has pending children).
-    -   **Conditional Approvals Admin Page** (`/admin/conditional-approvals`):
-        - Dashboard showing all conditional pending members with chain visualization.
-        - Statistics: total conditional, pending parents, children waiting.
-        - Link/unlink tools to manually modify parent-child relationships.
-        - Circular reference detection prevents invalid chains.
-        - Full audit logging for all link/unlink operations.
+-   **Bilingual Support**: Full Arabic (RTL) and English language support.
+-   **Dynamic System Configuration**: Application behavior is controlled via database-persisted configurations with caching.
+-   **Audit Log System**: Comprehensive tracking of all significant actions.
+-   **Data Management & Integrity**: Includes database backup and transactional restore systems, a centralized `MemberRegistry Service` for consistency, a transactional approval pipeline, and robust data integrity validation (including duplicate detection, Arabic name normalization, and phone number normalization). A `Member Merge System` allows safe merging of duplicate profiles with conflict prevention.
+-   **Security Hardening**: API rate limiting, admin session management, password strength validation, and deletion protection.
+-   **Admin Tools**: Comprehensive interfaces for user management, access requests, member merging, data validation, story moderation, and tools for managing unregistered members. This includes features for manual user-member linking, an orphaned users report, and a data cleanup tool.
+-   **Duplicate Detection & Resolution**: A system to scan for potential duplicates with adjustable similarity thresholds, persistent exclusion of false positives, and revert functionality. An advanced scanner uses a 3-level detection system (Exact, Suspicious, Potential) with batch scanning, side-by-side comparison, and in-page merge flows.
+-   **Registration Duplicate Prevention**: Real-time duplicate checks during user registration to prevent exact matches.
+-   **CRM-Style Members Hub**: A dashboard (`/admin/members-hub`) that automatically detects and prioritizes data issues (duplicates, orphaned members, missing data, generation inconsistencies) with quick action buttons for resolution.
+-   **Comprehensive Member Edit Modal**: Allows editing of all member fields, supports both Hijri and Gregorian calendars, includes a change history tab with revert capabilities.
+-   **Quick-Add Smart Search**: Helper questions and filters to narrow down search results when adding members.
+-   **Registration Uncle Verification**: A step during registration to verify the selected father by asking for an uncle's name, using fuzzy matching against the father's siblings.
+-   **Data Repair Tools**: Admin dashboard (`/admin/data-repair`) for finding and fixing orphaned members, with rollback capabilities.
+-   **Name Fix Tool**: Admin tool (`/admin/fix-names`) to detect and repair name issues (Arabic characters in English names, incomplete lineage) by regenerating full names and ancestor fields from the lineage.
+-   **Gallery with Video Support**: Supports both images and videos (up to 50MB) with play button overlays and lightbox functionality.
+-   **Conditional Approval System**: Allows family members to register even if their parent is pending approval, using `parentPendingId`. Includes sequential chain approval, enhanced admin review with pending warnings, and a dedicated admin page (`/admin/conditional-approvals`) to manage and visualize these relationships.
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database.
--   **Twilio Verify**: OTP verification service for user registration and authentication.
+-   **Twilio Verify**: OTP verification.
 -   **Resend**: Transactional email sending.
--   **Google Drive API**: Automated cloud backups (CSV, JSON).
--   **Google Sheets API**: Living registry export to shareable spreadsheets.
--   **GitHub API**: Encrypted database backups to a private repository.
--   **D3.js**: JavaScript library for interactive family tree visualizations.
+-   **Google Drive API**: Automated cloud backups.
+-   **Google Sheets API**: Living registry export.
+-   **GitHub API**: Encrypted database backups.
+-   **D3.js**: Interactive family tree visualizations.

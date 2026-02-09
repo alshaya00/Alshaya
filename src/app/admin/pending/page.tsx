@@ -102,6 +102,9 @@ export default function AdminPendingPage() {
   const [isFetchingFather, setIsFetchingFather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mergedFatherInfo, setMergedFatherInfo] = useState<{originalId: string; mergedIntoId: string; resolvedFather: any} | null>(null);
+  const [orphanedCount, setOrphanedCount] = useState(0);
+  const [isFixingAll, setIsFixingAll] = useState(false);
   const { session } = useAuth();
 
   const fetchPendingMembers = useCallback(async () => {
@@ -141,6 +144,7 @@ export default function AdminPendingPage() {
       try {
         await fetchAllMembers();
         await fetchPendingMembers();
+        await checkOrphanedCount();
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -148,7 +152,7 @@ export default function AdminPendingPage() {
       }
     }
     fetchData();
-  }, [session?.token, fetchPendingMembers, fetchAllMembers]);
+  }, [session?.token, fetchPendingMembers, fetchAllMembers, checkOrphanedCount]);
 
   const getMemberById = (id: string): FamilyMember | undefined => {
     return allMembers.find(m => m.id === id);
@@ -185,7 +189,74 @@ export default function AdminPendingPage() {
     }
   }, [session?.token]);
 
+  const checkMergedFather = useCallback(async (proposedFatherId: string): Promise<{mergedInto: string; resolvedFather: FamilyMember} | null> => {
+    if (!session?.token) return null;
+    try {
+      const res = await fetch(`/api/admin/pending/fix-father?check=${proposedFatherId}`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.mergedInto) {
+          return data;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [session?.token]);
+
+  const checkOrphanedCount = useCallback(async () => {
+    if (!session?.token) return;
+    try {
+      const res = await fetch('/api/admin/pending/fix-father', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrphanedCount(data.count || 0);
+      }
+    } catch {
+      // ignore
+    }
+  }, [session?.token]);
+
+  const handleFixAllOrphaned = useCallback(async () => {
+    if (!session?.token) return;
+    setIsFixingAll(true);
+    try {
+      const res = await fetch('/api/admin/pending/fix-father', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const fixable = (data.orphaned || []).filter((o: any) => o.mergedIntoId && o.resolvedFather);
+      let fixed = 0;
+      for (const item of fixable) {
+        const fixRes = await fetch('/api/admin/pending/fix-father', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.token}`,
+          },
+          body: JSON.stringify({ pendingMemberId: item.pendingMember.id }),
+        });
+        if (fixRes.ok) fixed++;
+      }
+      alert(`تم إصلاح ${fixed} من ${fixable.length} طلبات يتيمة`);
+      await fetchPendingMembers();
+      await checkOrphanedCount();
+    } catch (error) {
+      console.error('Error fixing all orphaned:', error);
+      alert('حدث خطأ أثناء الإصلاح');
+    } finally {
+      setIsFixingAll(false);
+    }
+  }, [session?.token, fetchPendingMembers, checkOrphanedCount]);
+
   const openReviewModal = useCallback(async (member: DbPendingMember) => {
+    setMergedFatherInfo(null);
     const linkedPendingChildren = members.filter(
       m => (m as { parentPendingId?: string }).parentPendingId === member.id
     );
@@ -204,12 +275,21 @@ export default function AdminPendingPage() {
         if (fetched) {
           const updatedChildren = getChildrenOfParent(member.proposedFatherId);
           setReviewModal(prev => prev ? { ...prev, parent: fetched, children: updatedChildren } : null);
+        } else {
+          const mergeResult = await checkMergedFather(member.proposedFatherId);
+          if (mergeResult) {
+            setMergedFatherInfo({
+              originalId: member.proposedFatherId,
+              mergedIntoId: mergeResult.mergedInto,
+              resolvedFather: mergeResult.resolvedFather,
+            });
+          }
         }
       }
     } else {
       setReviewModal({ pending: member, parent: null, children: [], linkedPendingChildren, parentPending });
     }
-  }, [getChildrenOfParent, members, fetchMemberById]);
+  }, [getChildrenOfParent, members, fetchMemberById, checkMergedFather]);
 
   useEffect(() => {
     if (reviewModal && reviewModal.pending.proposedFatherId) {
@@ -670,6 +750,25 @@ export default function AdminPendingPage() {
             <p className="text-sm opacity-80">الكل</p>
           </button>
         </div>
+
+        {orphanedCount > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="text-amber-600" size={20} />
+              <p className="text-amber-800 font-medium">
+                يوجد {orphanedCount} طلب مرتبط بأب تم دمجه أو حذفه
+              </p>
+            </div>
+            <button
+              onClick={handleFixAllOrphaned}
+              disabled={isFixingAll}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+            >
+              {isFixingAll ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}
+              إصلاح الكل
+            </button>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -1300,7 +1399,7 @@ export default function AdminPendingPage() {
               )}
 
               {!reviewModal.parent && reviewModal.pending.proposedFatherId && (
-                <div className={`border rounded-xl p-4 mb-6 ${isFetchingFather ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                <div className={`border rounded-xl p-4 mb-6 ${isFetchingFather ? 'bg-blue-50 border-blue-200' : mergedFatherInfo ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-200'}`}>
                   {isFetchingFather ? (
                     <div className="flex items-center gap-3">
                       <Loader2 className="animate-spin text-blue-600" size={20} />
@@ -1310,6 +1409,62 @@ export default function AdminPendingPage() {
                           المعرف: {formatMemberId(reviewModal.pending.proposedFatherId)}
                         </p>
                       </div>
+                    </div>
+                  ) : mergedFatherInfo ? (
+                    <div>
+                      <p className="text-amber-700 font-medium flex items-center gap-2">
+                        <AlertCircle size={18} />
+                        الأب المقترح تم دمجه مع عضو آخر
+                      </p>
+                      <div className="mt-2 text-sm text-amber-700 space-y-1">
+                        <p>المعرف الأصلي: <span className="font-mono bg-amber-100 px-1.5 py-0.5 rounded">{formatMemberId(mergedFatherInfo.originalId)}</span></p>
+                        <p>تم الدمج إلى: <span className="font-mono bg-green-100 px-1.5 py-0.5 rounded">{formatMemberId(mergedFatherInfo.mergedIntoId)}</span> ({mergedFatherInfo.resolvedFather?.firstName || ''})</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!session?.token) return;
+                          setIsProcessing(true);
+                          try {
+                            const res = await fetch('/api/admin/pending/fix-father', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${session.token}`,
+                              },
+                              body: JSON.stringify({ pendingMemberId: reviewModal.pending.id }),
+                            });
+                            if (res.ok) {
+                              const responseData = await res.json();
+                              setMergedFatherInfo(null);
+                              await fetchPendingMembers();
+                              const resolvedFatherId = responseData.updatedPending?.proposedFatherId || responseData.resolvedFather?.id;
+                              if (resolvedFatherId) {
+                                const updatedPending = { ...reviewModal.pending, proposedFatherId: resolvedFatherId };
+                                setReviewModal(prev => prev ? {
+                                  ...prev,
+                                  pending: updatedPending,
+                                  parent: responseData.resolvedFather || null,
+                                  children: getChildrenOfParent(resolvedFatherId),
+                                } : null);
+                              } else {
+                                setReviewModal(null);
+                              }
+                            } else {
+                              const data = await res.json();
+                              alert(data.error || 'حدث خطأ أثناء الإصلاح');
+                            }
+                          } catch {
+                            alert('حدث خطأ أثناء الإصلاح');
+                          } finally {
+                            setIsProcessing(false);
+                          }
+                        }}
+                        disabled={isProcessing}
+                        className="mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                      >
+                        {isProcessing ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}
+                        إصلاح تلقائي
+                      </button>
                     </div>
                   ) : (
                     <div>
