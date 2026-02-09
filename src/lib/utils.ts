@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function normalizeMemberId(id: string | null | undefined): string | null {
+  if (!id) return null;
+  const trimmed = id.trim().toUpperCase();
+  const match = trimmed.match(/^P(\d+)$/);
+  if (!match) return trimmed;
+  return 'P' + match[1].padStart(4, '0');
+}
+
 export function getCurrentHijriYear(): number {
   const now = new Date();
   const gYear = now.getFullYear();
