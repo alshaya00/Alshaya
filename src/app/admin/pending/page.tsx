@@ -137,6 +137,20 @@ export default function AdminPendingPage() {
     }
   }, [session?.token]);
 
+  const checkOrphanedCount = useCallback(async () => {
+    if (!session?.token) return;
+    try {
+      const res = await fetch('/api/admin/pending/fix-father', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrphanedCount(data.count || 0);
+      }
+    } catch {
+    }
+  }, [session?.token]);
+
   useEffect(() => {
     async function fetchData() {
       if (!session?.token) return;
@@ -204,21 +218,6 @@ export default function AdminPendingPage() {
       return null;
     } catch {
       return null;
-    }
-  }, [session?.token]);
-
-  const checkOrphanedCount = useCallback(async () => {
-    if (!session?.token) return;
-    try {
-      const res = await fetch('/api/admin/pending/fix-father', {
-        headers: { Authorization: `Bearer ${session.token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrphanedCount(data.count || 0);
-      }
-    } catch {
-      // ignore
     }
   }, [session?.token]);
 
