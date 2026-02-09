@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { Camera, Upload, Image as ImageIcon, X, Loader2, Check } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Crop, PixelCrop } from 'react-image-crop';
-import dynamic from 'next/dynamic';
 
-const ReactCrop = dynamic(() => import('react-image-crop').then(mod => mod.default), { ssr: false });
+const ReactCrop = lazy(() => import('react-image-crop').then(mod => ({ default: mod.default })));
 
 interface MemberProfileAvatarProps {
   memberId: string;
@@ -180,7 +179,7 @@ export default function MemberProfileAvatar({
   };
 
   useEffect(() => {
-    import('react-image-crop/dist/ReactCrop.css');
+    import('react-image-crop/dist/ReactCrop.css').catch(() => {});
   }, []);
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -399,23 +398,25 @@ export default function MemberProfileAvatar({
 
             <div className="p-4 bg-gray-50">
               <div className="relative flex justify-center">
-                <ReactCrop
-                  crop={crop}
-                  onChange={(_, percentCrop) => setCrop(percentCrop)}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  aspect={1}
-                  circularCrop
-                  className="max-h-[50vh]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    ref={imgRef}
-                    src={originalImage}
-                    alt="قص الصورة"
-                    onLoad={onImageLoad}
-                    className="max-h-[50vh] object-contain"
-                  />
-                </ReactCrop>
+                <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                  <ReactCrop
+                    crop={crop}
+                    onChange={(_, percentCrop) => setCrop(percentCrop)}
+                    onComplete={(c) => setCompletedCrop(c)}
+                    aspect={1}
+                    circularCrop
+                    className="max-h-[50vh]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      ref={imgRef}
+                      src={originalImage}
+                      alt="قص الصورة"
+                      onLoad={onImageLoad}
+                      className="max-h-[50vh] object-contain"
+                    />
+                  </ReactCrop>
+                </Suspense>
               </div>
               <p className="text-center text-sm text-gray-500 mt-3">
                 اسحب الإطار لتحديد المنطقة المراد قصها

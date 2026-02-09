@@ -4,9 +4,6 @@ import { getAllMembersFromDb, getChildrenFromDb } from '@/lib/db';
 import { calculateAge, getGenerationColor, getStatusBadge, formatMemberId, normalizeMemberId } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 import { getMemberPrivacySetting } from '@/lib/auth/db-store';
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import MemberBreastfeedingSection from '@/components/MemberBreastfeedingSection';
 import MemberStoriesSection from '@/components/MemberStoriesSection';
@@ -29,6 +26,9 @@ import {
   ArrowRight,
   GitBranch,
 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface PageProps {
   params: { id: string };
@@ -364,7 +364,10 @@ export default async function MemberPage({ params }: PageProps) {
       </div>
     </div>
   );
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.digest?.includes('NEXT_NOT_FOUND') || error?.digest?.includes('NEXT_REDIRECT')) {
+      throw error;
+    }
     console.error('Error rendering member page:', error);
     return (
       <div className="min-h-screen py-8 bg-gray-100" dir="rtl">
