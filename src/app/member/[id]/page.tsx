@@ -15,6 +15,7 @@ import GenderAvatar from '@/components/GenderAvatar';
 import MemberProfileAvatar from '@/components/MemberProfileAvatar';
 import MemberStatusChanger from '@/components/MemberStatusChanger';
 import MemberPersonalInfoSection from '@/components/MemberPersonalInfoSection';
+import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
 import {
   User,
   Calendar,
@@ -34,6 +35,7 @@ interface PageProps {
 }
 
 export default async function MemberPage({ params }: PageProps) {
+  try {
   const id = normalizeMemberId(params.id) || params.id;
   const allMembers = await getAllMembersFromDb();
   const member = allMembers.find((m) => m.id === id);
@@ -83,12 +85,14 @@ export default async function MemberPage({ params }: PageProps) {
             } text-white`}
           >
             <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 text-center md:text-right">
-              <MemberProfileAvatar 
-                memberId={member.id} 
-                memberName={member.firstName} 
-                gender={member.gender} 
-                size="2xl" 
-              />
+              <ClientErrorBoundary>
+                <MemberProfileAvatar 
+                  memberId={member.id} 
+                  memberName={member.firstName} 
+                  gender={member.gender} 
+                  size="2xl" 
+                />
+              </ClientErrorBoundary>
               <div className="w-full">
                 <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold">
@@ -145,12 +149,14 @@ export default async function MemberPage({ params }: PageProps) {
                   <p className="text-xs text-gray-400 mt-1">توفي: {member.deathYear}</p>
                 )}
                 <div className="mt-2">
-                  <MemberStatusChanger
-                    memberId={member.id}
-                    currentStatus={member.status}
-                    currentDeathYear={member.deathYear}
-                    birthCalendar={member.birthCalendar}
-                  />
+                  <ClientErrorBoundary>
+                    <MemberStatusChanger
+                      memberId={member.id}
+                      currentStatus={member.status}
+                      currentDeathYear={member.deathYear}
+                      birthCalendar={member.birthCalendar}
+                    />
+                  </ClientErrorBoundary>
                 </div>
               </div>
             </div>
@@ -184,17 +190,21 @@ export default async function MemberPage({ params }: PageProps) {
               </div>
             )}
 
-            <MemberPhotoSection memberId={member.id} memberName={member.firstName} />
+            <ClientErrorBoundary>
+              <MemberPhotoSection memberId={member.id} memberName={member.firstName} />
+            </ClientErrorBoundary>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <MemberPersonalInfoSection
-                memberId={member.id}
-                city={hidePersonalInfo ? null : member.city}
-                occupation={hidePersonalInfo ? null : member.occupation}
-                phone={hidePersonalInfo ? null : member.phone}
-                email={hidePersonalInfo ? null : member.email}
-                serverHidePersonalInfo={hidePersonalInfo}
-              />
+              <ClientErrorBoundary>
+                <MemberPersonalInfoSection
+                  memberId={member.id}
+                  city={hidePersonalInfo ? null : member.city}
+                  occupation={hidePersonalInfo ? null : member.occupation}
+                  phone={hidePersonalInfo ? null : member.phone}
+                  email={hidePersonalInfo ? null : member.email}
+                  serverHidePersonalInfo={hidePersonalInfo}
+                />
+              </ClientErrorBoundary>
 
               <div className="bg-gray-50 rounded-xl p-4">
                 <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
@@ -317,15 +327,21 @@ export default async function MemberPage({ params }: PageProps) {
               </div>
             )}
 
-            <MemberBreastfeedingSection 
-              member={member} 
-              father={father} 
-              siblings={siblings} 
-              children={children} 
-              grandchildren={grandchildren} 
-            />
-            <MemberStoriesSection memberId={member.id} memberName={member.firstName} />
-            <MemberVersionHistory memberId={member.id} />
+            <ClientErrorBoundary>
+              <MemberBreastfeedingSection 
+                member={member} 
+                father={father} 
+                siblings={siblings} 
+                children={children} 
+                grandchildren={grandchildren} 
+              />
+            </ClientErrorBoundary>
+            <ClientErrorBoundary>
+              <MemberStoriesSection memberId={member.id} memberName={member.firstName} />
+            </ClientErrorBoundary>
+            <ClientErrorBoundary>
+              <MemberVersionHistory memberId={member.id} />
+            </ClientErrorBoundary>
 
             <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t">
               <Link
@@ -348,4 +364,18 @@ export default async function MemberPage({ params }: PageProps) {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error('Error rendering member page:', error);
+    return (
+      <div className="min-h-screen py-8 bg-gray-100" dir="rtl">
+        <div className="container mx-auto px-4 max-w-lg">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">حدث خطأ في تحميل الصفحة</h2>
+            <p className="text-gray-500 mb-6">عذراً، لم نتمكن من تحميل بيانات هذا العضو. يرجى المحاولة مرة أخرى.</p>
+            <a href="/registry" className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700">العودة إلى السجل</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }

@@ -4,13 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Camera, Upload, Image as ImageIcon, X, Loader2, Check } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import ReactCrop, {
-  Crop,
-  PixelCrop,
-  centerCrop,
-  makeAspectCrop,
-} from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import type { Crop, PixelCrop } from 'react-image-crop';
+import dynamic from 'next/dynamic';
+
+const ReactCrop = dynamic(() => import('react-image-crop').then(mod => mod.default), { ssr: false });
 
 interface MemberProfileAvatarProps {
   memberId: string;
@@ -36,7 +33,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const OUTPUT_SIZE = 400;
 const COMPRESSION_QUALITY = 0.85;
 
-function centerAspectCrop(mediaWidth: number, mediaHeight: number): Crop {
+async function getCenterAspectCrop(mediaWidth: number, mediaHeight: number): Promise<Crop> {
+  const { centerCrop, makeAspectCrop } = await import('react-image-crop');
   return centerCrop(
     makeAspectCrop({ unit: '%', width: 80 }, 1, mediaWidth, mediaHeight),
     mediaWidth,
@@ -181,9 +179,13 @@ export default function MemberProfileAvatar({
     reader.readAsDataURL(file);
   };
 
+  useEffect(() => {
+    import('react-image-crop/dist/ReactCrop.css');
+  }, []);
+
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height));
+    getCenterAspectCrop(width, height).then(setCrop);
   }, []);
 
   const getCroppedImage = useCallback((): Promise<string> => {
