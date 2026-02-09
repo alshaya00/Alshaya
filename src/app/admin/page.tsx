@@ -590,6 +590,24 @@ export default function AdminDashboardPage() {
         </Link>
 
         <Link
+          href="/admin/data-quality"
+          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-teal-200"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center">
+              <Database className="w-7 h-7 text-teal-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800">جودة البيانات</h3>
+              <p className="text-sm text-gray-500">Data Quality</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-gray-600">
+            فحص وإصلاح الأسماء والمعرفات وسلاسل النسب
+          </p>
+        </Link>
+
+        <Link
           href="/admin/tools"
           className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-orange-200"
         >

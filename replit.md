@@ -26,6 +26,14 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
 -   **Comprehensive Member Edit Modal**: Allows editing of all member fields, supports both Hijri and Gregorian calendars, includes a change history tab with revert capabilities.
 -   **Quick-Add Smart Search**: Helper questions and filters to narrow down search results when adding members.
 -   **Registration Uncle Verification**: A step during registration to verify the selected father by asking for an uncle's name, using fuzzy matching against the father's siblings.
+-   **Data Quality Dashboard** (`/admin/data-quality`):
+    -   Comprehensive scan of all members for 4 categories of data issues.
+    -   **ID Format Issues**: Detects non-standard member IDs (P1, P01, P001 vs standard P0001) with safe normalization tool that atomically updates the ID and all references (fatherId, photos, journals, users, pending members, duplicate flags, change history, breastfeeding).
+    -   **Arabic Name Issues**: Missing or incomplete fullNameAr (lineage chain too short for generation).
+    -   **English Name Issues**: Arabic characters in English names or missing fullNameEn.
+    -   **Missing Ancestor Fields**: fatherName/grandfatherName/greatGrandfatherName empty when they should be populated.
+    -   4-tab interface with per-category tables, select/preview/execute workflow, and audit logging.
+    -   Integrates with existing `/api/admin/fix-lineage` for name regeneration and new `/api/admin/data-quality/fix-ids` for ID normalization.
 -   **Data Repair Tools**: Admin dashboard (`/admin/data-repair`) for finding and fixing orphaned members, with rollback capabilities.
 -   **Name Fix Tool**: Admin tool (`/admin/fix-names`) to detect and repair name issues (Arabic characters in English names, incomplete lineage) by regenerating full names and ancestor fields from the lineage.
 -   **Gallery with Video Support**: Supports both images and videos (up to 50MB) with play button overlays and lightbox functionality.
