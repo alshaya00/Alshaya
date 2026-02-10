@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import type { FamilyMember } from '@/lib/types';
 import { calculateAge, getGenerationColor, getStatusBadge, isMale, formatMemberId } from '@/lib/utils';
-import { Search, Filter, Users, ChevronDown, ChevronUp, Eye, GitBranch } from 'lucide-react';
+import { Search, Filter, Users, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useSystemConfig } from '@/lib/hooks/useSystemConfig';
@@ -19,13 +19,11 @@ function RegistryPageContent() {
   const { getAuthHeader, isLoading: authLoading, isAuthenticated } = useAuth();
   const { features, loading: configLoading } = useSystemConfig();
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
-  const [gen2Branches, setGen2Branches] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [generationFilter, setGenerationFilter] = useState<string>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
-  const [lineageFilter, setLineageFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
@@ -43,8 +41,6 @@ function RegistryPageContent() {
         const data = await res.json();
         const members = data.data || [];
         setAllMembers(members);
-        // Get Gen 2 branches (generation === 2)
-        setGen2Branches(members.filter((m: FamilyMember) => m.generation === 2));
       } catch (error) {
         console.error('Error loading members:', error);
       } finally {
@@ -79,10 +75,6 @@ function RegistryPageContent() {
       result = result.filter((m) => m.branch === branchFilter);
     }
 
-    // Lineage filter (Gen 2 branch)
-    if (lineageFilter !== 'all') {
-      result = result.filter((m) => m.lineageBranchId === lineageFilter);
-    }
 
     // Sorting
     result.sort((a, b) => {
@@ -105,7 +97,7 @@ function RegistryPageContent() {
     });
 
     return result;
-  }, [allMembers, searchTerm, genderFilter, generationFilter, branchFilter, lineageFilter, sortField, sortOrder]);
+  }, [allMembers, searchTerm, genderFilter, generationFilter, branchFilter, sortField, sortOrder]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -178,26 +170,6 @@ function RegistryPageContent() {
                   className="w-full pr-10 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
                 />
               </div>
-            </div>
-
-            {/* Lineage Filter (Gen 2 Branch) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <GitBranch size={14} className="inline ml-1" />
-                السلالة
-              </label>
-              <select
-                value={lineageFilter}
-                onChange={(e) => setLineageFilter(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
-              >
-                <option value="all">كل السلالات</option>
-                {gen2Branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    فرع {branch.firstName}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Gender Filter */}
@@ -295,7 +267,6 @@ function RegistryPageContent() {
                       سنة الميلاد <SortIcon field="birthYear" />
                     </div>
                   </th>
-                  <th className="p-4 text-center">السلالة</th>
                   <th className="p-4 text-center">الفرع</th>
                   <th className="p-4 text-center">الحالة</th>
                   <th className="p-4 text-center">عرض</th>
@@ -348,24 +319,6 @@ function RegistryPageContent() {
                         {member.birthYear && (
                           <span className="text-xs text-gray-400 block">
                             ({calculateAge(member.birthYear, member.birthCalendar)} سنة)
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-center">
-                        {member.lineageBranchName ? (
-                          <div className="flex flex-col items-center">
-                            <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                              فرع {member.lineageBranchName}
-                            </span>
-                            {member.subBranchName && member.generation > 3 && (
-                              <span className="text-xs text-gray-500 mt-1">
-                                ذرية {member.subBranchName}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            {member.generation === 1 ? 'الجذر' : '-'}
                           </span>
                         )}
                       </td>
