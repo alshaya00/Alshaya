@@ -174,6 +174,7 @@ async function handleUpdate(
     }
 
     if (body.fatherId) {
+      body.fatherId = normalizeMemberId(body.fatherId) || body.fatherId;
       const isDescendant = await checkIsDescendant(body.fatherId, id);
       if (isDescendant) {
         return NextResponse.json(

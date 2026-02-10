@@ -52,7 +52,6 @@ export {
 } from './permissions';
 
 export {
-  createSession,
   storeSession,
   getStoredSession,
   clearStoredSession,

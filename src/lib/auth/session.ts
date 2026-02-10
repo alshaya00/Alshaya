@@ -13,49 +13,6 @@ const DEFAULT_SESSION_DURATION = sessionConfig.defaultDurationMs;
 const REMEMBER_ME_DURATION = sessionConfig.rememberMeDurationMs;
 
 /**
- * Create a new session for a user (server-side only)
- */
-export function createSession(
-  user: {
-    id: string;
-    email: string;
-    nameArabic: string;
-    nameEnglish?: string | null;
-    role: UserRole;
-    status: string;
-    linkedMemberId?: string | null;
-    assignedBranch?: string | null;
-  },
-  rememberMe: boolean = false
-): AuthSession {
-  const { generateSessionToken } = require('./password');
-  const token = generateSessionToken();
-  const duration = rememberMe ? REMEMBER_ME_DURATION : DEFAULT_SESSION_DURATION;
-  const expiresAt = new Date(Date.now() + duration);
-
-  // Build session user with permissions
-  const permissions = getPermissionsForRole(user.role as UserRole);
-
-  const sessionUser: SessionUser = {
-    id: user.id,
-    email: user.email,
-    nameArabic: user.nameArabic,
-    nameEnglish: user.nameEnglish,
-    role: user.role as UserRole,
-    status: user.status as 'PENDING' | 'ACTIVE' | 'DISABLED',
-    linkedMemberId: user.linkedMemberId,
-    assignedBranch: user.assignedBranch,
-    permissions,
-  };
-
-  return {
-    user: sessionUser,
-    token,
-    expiresAt,
-  };
-}
-
-/**
  * Store session in browser storage
  */
 export function storeSession(session: AuthSession, rememberMe: boolean = false): void {

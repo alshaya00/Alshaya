@@ -105,12 +105,23 @@ export async function POST(request: NextRequest) {
         where: { id: body.proposedFatherId }
       });
       if (!fatherExists) {
-        return NextResponse.json(
-          { success: false, message: 'Father not found', messageAr: 'الأب غير موجود' },
-          { status: 400 }
-        );
+        const pendingFatherExists = await prisma.pendingMember.findUnique({
+          where: { id: body.proposedFatherId }
+        });
+        if (!pendingFatherExists) {
+          return NextResponse.json(
+            { success: false, message: 'Father not found', messageAr: 'الأب غير موجود' },
+            { status: 400 }
+          );
+        }
+        if (!isMale(pendingFatherExists.gender)) {
+          return NextResponse.json(
+            { success: false, message: 'Father must be male', messageAr: 'يجب أن يكون الأب ذكراً' },
+            { status: 400 }
+          );
+        }
       }
-      if (!isMale(fatherExists.gender)) {
+      if (fatherExists && !isMale(fatherExists.gender)) {
         return NextResponse.json(
           { success: false, message: 'Father must be male', messageAr: 'يجب أن يكون الأب ذكراً' },
           { status: 400 }

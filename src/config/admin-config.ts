@@ -104,32 +104,6 @@ export const sessionConfig = {
   rememberMeDurationDays: 30,
 } as const;
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-/**
- * SECURITY: Generate a cryptographically secure random token/code
- * Uses crypto.randomBytes instead of Math.random for security
- */
-export function generateRandomCode(length: number = tokenConfig.accessCodeLength): string {
-  const { randomBytes } = require('crypto');
-  const chars = tokenConfig.codeCharacters;
-  const bytes = randomBytes(length);
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars[bytes[i] % chars.length];
-  }
-  return result;
-}
-
-/**
- * Generate a cryptographically secure branch link token
- */
-export function generateBranchToken(): string {
-  return generateRandomCode(tokenConfig.branchTokenLength);
-}
-
 /**
  * Check if running in production without required env vars
  */
