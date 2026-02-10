@@ -1,7 +1,7 @@
 // آل شايع Family Tree - Edit Utilities
 
 import { FamilyMember, ChangeHistory, ValidationResult, ValidationError, TreeValidation } from './types';
-import { isMale } from './utils';
+import { isMale, getMemberIdVariants } from './utils';
 
 // ============================================
 // VALIDATION
@@ -14,7 +14,8 @@ export function validateEdit(
 ): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: { field: string; message: string; suggestion?: string }[] = [];
-  const member = allMembers.find(m => m.id === memberId);
+  const memberIdVariants = getMemberIdVariants(memberId);
+  const member = allMembers.find(m => memberIdVariants.includes(m.id));
 
   if (!member) {
     errors.push({ field: 'id', message: 'العضو غير موجود', code: 'NOT_FOUND' });
@@ -49,7 +50,8 @@ export function validateEdit(
     // Check against parent's birth year
     const fatherId = changes.fatherId ?? member.fatherId;
     if (fatherId) {
-      const father = allMembers.find(m => m.id === fatherId);
+      const fatherIdVariants = getMemberIdVariants(fatherId);
+      const father = allMembers.find(m => fatherIdVariants.includes(m.id));
       if (father?.birthYear && changes.birthYear <= father.birthYear) {
         errors.push({
           field: 'birthYear',
@@ -60,7 +62,7 @@ export function validateEdit(
     }
 
     // Check against children's birth years
-    const children = allMembers.filter(m => m.fatherId === memberId);
+    const children = allMembers.filter(m => m.fatherId && memberIdVariants.includes(m.fatherId));
     for (const child of children) {
       if (child.birthYear && changes.birthYear >= child.birthYear) {
         errors.push({
@@ -143,7 +145,8 @@ export function validateParentChange(
   newParentId: string | null,
   allMembers: FamilyMember[]
 ): TreeValidation {
-  const member = allMembers.find(m => m.id === memberId);
+  const memberIdVariants = getMemberIdVariants(memberId);
+  const member = allMembers.find(m => memberIdVariants.includes(m.id));
   const errors: string[] = [];
 
   if (!member) {
@@ -157,7 +160,7 @@ export function validateParentChange(
   }
 
   // Check for self-reference
-  if (newParentId === memberId) {
+  if (newParentId && memberIdVariants.includes(newParentId)) {
     return {
       valid: false,
       wouldCreateCycle: true,
@@ -181,7 +184,8 @@ export function validateParentChange(
     }
 
     // Validate parent is male
-    const newParent = allMembers.find(m => m.id === newParentId);
+    const newParentVariants = getMemberIdVariants(newParentId);
+    const newParent = allMembers.find(m => newParentVariants.includes(m.id));
     if (newParent && !isMale(newParent.gender)) {
       return {
         valid: false,
@@ -203,7 +207,8 @@ export function validateParentChange(
   let newGeneration = 1;
 
   if (newParentId) {
-    const newParent = allMembers.find(m => m.id === newParentId);
+    const parentVariants = getMemberIdVariants(newParentId);
+    const newParent = allMembers.find(m => parentVariants.includes(m.id));
     if (newParent) {
       newGeneration = newParent.generation + 1;
     }
@@ -234,7 +239,8 @@ export function isDescendant(
   allMembers: FamilyMember[]
 ): boolean {
   const descendants = getDescendants(ancestorId, allMembers);
-  return descendants.includes(potentialDescendantId);
+  const potentialVariants = getMemberIdVariants(potentialDescendantId);
+  return descendants.some(d => potentialVariants.includes(d));
 }
 
 export function getDescendants(
@@ -242,15 +248,21 @@ export function getDescendants(
   allMembers: FamilyMember[]
 ): string[] {
   const descendants: string[] = [];
-  const queue = [memberId];
+  const idVariants = getMemberIdVariants(memberId);
+  const queue = [...idVariants];
+  const visited = new Set<string>(idVariants);
 
   while (queue.length > 0) {
     const currentId = queue.shift()!;
-    const children = allMembers.filter(m => m.fatherId === currentId);
+    const currentVariants = getMemberIdVariants(currentId);
+    const children = allMembers.filter(m => m.fatherId && currentVariants.includes(m.fatherId));
 
     for (const child of children) {
-      descendants.push(child.id);
-      queue.push(child.id);
+      if (!visited.has(child.id)) {
+        descendants.push(child.id);
+        visited.add(child.id);
+        queue.push(child.id);
+      }
     }
   }
 
@@ -262,11 +274,13 @@ export function getAncestors(
   allMembers: FamilyMember[]
 ): string[] {
   const ancestors: string[] = [];
-  let currentMember = allMembers.find(m => m.id === memberId);
+  const idVariants = getMemberIdVariants(memberId);
+  let currentMember = allMembers.find(m => idVariants.includes(m.id));
 
   while (currentMember?.fatherId) {
     ancestors.push(currentMember.fatherId);
-    currentMember = allMembers.find(m => m.id === currentMember!.fatherId);
+    const fatherVariants = getMemberIdVariants(currentMember.fatherId);
+    currentMember = allMembers.find(m => fatherVariants.includes(m.id));
   }
 
   return ancestors;
@@ -285,7 +299,8 @@ export function generateFullName(
 
   // Get all ancestor names to the root (no depth limit)
   while (currentMember.fatherId) {
-    const father = allMembers.find(m => m.id === currentMember.fatherId);
+    const fatherVars = getMemberIdVariants(currentMember.fatherId!);
+    const father = allMembers.find(m => fatherVars.includes(m.id));
     if (father) {
       parts.push(father.firstName);
       currentMember = father;
@@ -512,7 +527,8 @@ export function calculateCascadeUpdates(
 
   // If changing firstName, update children's fatherName
   if (changes.firstName !== undefined) {
-    const children = allMembers.filter(m => m.fatherId === memberId);
+    const memberVariants = getMemberIdVariants(memberId);
+    const children = allMembers.filter(m => m.fatherId && memberVariants.includes(m.fatherId));
     for (const child of children) {
       updates.push({
         memberId: child.id,
@@ -527,7 +543,8 @@ export function calculateCascadeUpdates(
     const validation = validateParentChange(memberId, changes.fatherId, allMembers);
     if (validation.valid && validation.generationChange !== 0) {
       for (const descendantId of validation.affectedMembers) {
-        const descendant = allMembers.find(m => m.id === descendantId);
+        const descVariants = getMemberIdVariants(descendantId);
+        const descendant = allMembers.find(m => descVariants.includes(m.id));
         if (descendant) {
           updates.push({
             memberId: descendantId,
