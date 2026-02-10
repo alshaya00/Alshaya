@@ -172,6 +172,23 @@ function RegistryPageContent() {
               </div>
             </div>
 
+            {/* Branch Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الفرع</label>
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+              >
+                <option value="all">الكل</option>
+                {branches.map((branch) => (
+                  <option key={branch} value={branch!}>
+                    {branch}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Gender Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">الجنس</label>
@@ -198,23 +215,6 @@ function RegistryPageContent() {
                 {generations.map((gen) => (
                   <option key={gen} value={gen}>
                     الجيل {gen}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Branch Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">الفرع</label>
-              <select
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
-              >
-                <option value="all">الكل</option>
-                {branches.map((branch) => (
-                  <option key={branch} value={branch!}>
-                    {branch}
                   </option>
                 ))}
               </select>

@@ -50,6 +50,7 @@ export function smartMemberSearch<T extends SearchableMember>(
 
   if (queryParts.length === 0) return [];
 
+  // ID search (P001 format)
   if (/^p?\d+$/i.test(query.trim())) {
     const upperQ = query.trim().toUpperCase();
     const cleanNum = upperQ.replace(/^P/, '');
@@ -62,10 +63,8 @@ export function smartMemberSearch<T extends SearchableMember>(
     return [];
   }
 
-  const primaryName = queryParts[0];
-  const lineageNames = queryParts.slice(1);
   const queryLower = query.toLowerCase();
-
+  const isSingleWord = queryParts.length === 1;
   const results: SearchResult<T>[] = [];
 
   for (const m of items) {
@@ -78,55 +77,78 @@ export function smartMemberSearch<T extends SearchableMember>(
 
     let score = 0;
 
-    if (nFirst === primaryName) {
-      score += 100;
-    } else if (nFirst.startsWith(primaryName)) {
-      score += 80;
-    } else if (nFirst.includes(primaryName)) {
-      score += 50;
+    if (isSingleWord) {
+      // Single word search
+      const primaryName = queryParts[0];
+      
+      // First priority: firstName matches
+      if (nFirst === primaryName) {
+        score = 100;
+      } else if (nFirst.startsWith(primaryName)) {
+        score = 80;
+      } else if (nFirst.includes(primaryName)) {
+        score = 50;
+      }
+
+      // Second priority: lineage-only matches (much lower score)
+      if (score === 0) {
+        if (nFather === primaryName || nGrandfather === primaryName || nFullAr.includes(primaryName)) {
+          score = 12;
+        }
+      }
+    } else {
+      // Multi-word search: check if query parts appear in sequence in the lineage chain
+      // Build the lineage chain: firstName -> fatherName -> grandfatherName -> rest from fullNameAr
+      const lineageChain = [nFirst, nFather, nGrandfather];
+      
+      // Add remaining parts from fullNameAr
+      const fullArParts = nFullAr.split(/\s+/).filter(p => p.length > 0);
+      for (const part of fullArParts) {
+        if (!lineageChain.includes(part)) {
+          lineageChain.push(part);
+        }
+      }
+
+      // Check if all query parts appear in sequence in the lineage chain
+      let currentIndex = 0;
+      let allMatched = true;
+
+      for (const queryPart of queryParts) {
+        let foundMatch = false;
+        for (let i = currentIndex; i < lineageChain.length; i++) {
+          if (lineageChain[i] === queryPart || lineageChain[i].includes(queryPart)) {
+            foundMatch = true;
+            currentIndex = i + 1;
+            break;
+          }
+        }
+        if (!foundMatch) {
+          allMatched = false;
+          break;
+        }
+      }
+
+      if (allMatched) {
+        // All query parts matched in sequence
+        // Score based on where they matched in the chain
+        score = 100 - (currentIndex * 5);
+        
+        // Bonus for exact matches at the beginning
+        if (queryParts[0] === nFirst) {
+          score = 100;
+          if (queryParts.length > 1 && queryParts[1] === nFather) {
+            score = 120;
+          }
+        }
+      }
     }
 
-    if (lineageNames.length > 0) {
-      let lineageMatched = 0;
-      for (const part of lineageNames) {
-        let partMatched = false;
-        if (nFather === part) {
-          score += 60;
-          partMatched = true;
-        } else if (nFather.includes(part)) {
-          score += 40;
-          partMatched = true;
-        }
-        if (nGrandfather === part) {
-          score += 35;
-          partMatched = true;
-        } else if (nGrandfather.includes(part)) {
-          score += 25;
-          partMatched = true;
-        }
-        if (!partMatched && nFullAr.includes(part)) {
-          score += 15;
-          partMatched = true;
-        }
-        if (partMatched) lineageMatched++;
-      }
-      if (lineageMatched === 0) {
-        score = Math.floor(score * 0.3);
-      }
-    }
-
-    if (score === 0 && options?.includeLineageOnly !== false) {
-      if (nFather === primaryName || nGrandfather === primaryName) {
-        score = 5;
-      } else if (nFullAr.includes(primaryName) || nFullEn.includes(primaryName) || m.id.toLowerCase().includes(primaryName)) {
-        score = 3;
-      }
-    }
-
+    // English name bonus
     if (nFullEn && nFullEn.includes(queryLower)) {
       score += 20;
     }
 
+    // Branch bonus
     if (nBranch) {
       for (const part of queryParts) {
         if (nBranch.includes(part)) {
