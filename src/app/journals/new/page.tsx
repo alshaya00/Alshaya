@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   ArrowRight, Save, Loader2, AlertCircle, CheckCircle, Image as ImageIcon,
   Plus, X, Calendar, MapPin, User, Users, BookOpen, Scroll,
-  Tent, Heart, Feather, TreePine, Info
+  Tent, Heart, Feather, TreePine, Info, FileUp
 } from 'lucide-react';
 import { normalizeMemberId } from '@/lib/utils';
 import { JOURNAL_CATEGORIES, type JournalCategoryType } from '@/lib/types';
@@ -29,6 +29,8 @@ interface FormData {
   tags: string[];
   coverImageUrl: string;
   primaryMemberId: string;
+  pdfData: string;
+  pdfFileName: string;
 }
 
 export default function NewJournalPage() {
@@ -55,9 +57,12 @@ export default function NewJournalPage() {
     tags: [],
     coverImageUrl: '',
     primaryMemberId: preselectedMemberId || '',
+    pdfData: '',
+    pdfFileName: '',
   });
 
   const [linkedMemberName, setLinkedMemberName] = useState(preselectedMemberName || '');
+  const [pdfFileSize, setPdfFileSize] = useState<number>(0);
 
   const [newTag, setNewTag] = useState('');
   const [saving, setSaving] = useState(false);
@@ -93,8 +98,8 @@ export default function NewJournalPage() {
       setError('الرجاء إدخال عنوان القصة');
       return;
     }
-    if (!formData.contentAr.trim()) {
-      setError('الرجاء إدخال محتوى القصة');
+    if (!formData.contentAr.trim() && !formData.pdfData) {
+      setError('الرجاء إدخال محتوى القصة أو إرفاق ملف PDF');
       return;
     }
     if (!formData.authorName.trim()) {
@@ -115,6 +120,8 @@ export default function NewJournalPage() {
           yearTo: formData.yearTo ? parseInt(formData.yearTo) : null,
           generation: formData.generation ? parseInt(formData.generation) : null,
           primaryMemberId: formData.primaryMemberId || null,
+          pdfData: formData.pdfData || null,
+          pdfFileName: formData.pdfFileName || null,
           status,
         }),
       });
@@ -282,7 +289,63 @@ export default function NewJournalPage() {
                 />
               </div>
 
-              {/* Linked Family Member */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FileUp className="w-4 h-4 inline-block ml-1" />
+                  إرفاق ملف PDF (اختياري)
+                </label>
+                {formData.pdfData ? (
+                  <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center">
+                        <FileUp className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-amber-800">{formData.pdfFileName}</p>
+                        <p className="text-xs text-amber-600">{(pdfFileSize / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, pdfData: '', pdfFileName: '' }));
+                        setPdfFileSize(0);
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 20 * 1024 * 1024) {
+                        setError('حجم الملف يجب أن لا يتجاوز 20 ميجابايت');
+                        return;
+                      }
+                      setPdfFileSize(file.size);
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const base64 = (reader.result as string).split(',')[1];
+                        setFormData(prev => ({ ...prev, pdfData: base64, pdfFileName: file.name }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all file:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-700 file:font-medium file:cursor-pointer"
+                  />
+                )}
+                {formData.pdfData && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    ✓ تم إرفاق ملف PDF - المحتوى النصي أصبح اختيارياً
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-1">الحد الأقصى: 20 ميجابايت</p>
+              </div>
+
               {linkedMemberName && (
                 <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
                   <label className="block text-sm font-medium text-gray-700 mb-2">

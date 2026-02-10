@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowRight, Save, Loader2, AlertCircle, CheckCircle, Image as ImageIcon,
-  Plus, X, Calendar, MapPin, User, Users, BookOpen, Info
+  Plus, X, Calendar, MapPin, User, Users, BookOpen, Info, FileUp, Download
 } from 'lucide-react';
 import { JOURNAL_CATEGORIES, type JournalCategoryType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,8 @@ interface FormData {
   coverImageUrl: string;
   primaryMemberId: string;
   status: string;
+  pdfData: string;
+  pdfFileName: string;
 }
 
 export default function EditJournalPage() {
@@ -55,10 +57,15 @@ export default function EditJournalPage() {
     coverImageUrl: '',
     primaryMemberId: '',
     status: 'PUBLISHED',
+    pdfData: '',
+    pdfFileName: '',
   });
 
   const [newTag, setNewTag] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pdfFileSize, setPdfFileSize] = useState<number>(0);
+  const [existingPdf, setExistingPdf] = useState<{ hasPdf: boolean; pdfFileName: string | null }>({ hasPdf: false, pdfFileName: null });
+  const [removePdf, setRemovePdf] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -100,7 +107,10 @@ export default function EditJournalPage() {
           coverImageUrl: journal.coverImageUrl || '',
           primaryMemberId: journal.primaryMemberId || '',
           status: journal.status || 'PUBLISHED',
+          pdfData: '',
+          pdfFileName: '',
         });
+        setExistingPdf({ hasPdf: !!journal.hasPdf, pdfFileName: journal.pdfFileName || null });
       } else {
         setError(data.error || 'فشل في تحميل القصة');
       }
@@ -139,8 +149,8 @@ export default function EditJournalPage() {
       setError('الرجاء إدخال عنوان القصة');
       return;
     }
-    if (!formData.contentAr.trim()) {
-      setError('الرجاء إدخال محتوى القصة');
+    if (!formData.contentAr.trim() && !formData.pdfData && !existingPdf.hasPdf) {
+      setError('الرجاء إدخال محتوى القصة أو إرفاق ملف PDF');
       return;
     }
 
@@ -160,6 +170,9 @@ export default function EditJournalPage() {
           yearTo: formData.yearTo ? parseInt(formData.yearTo) : null,
           generation: formData.generation ? parseInt(formData.generation) : null,
           primaryMemberId: formData.primaryMemberId || null,
+          pdfData: formData.pdfData || undefined,
+          pdfFileName: formData.pdfFileName || undefined,
+          removePdf: removePdf || undefined,
         }),
       });
 
@@ -327,6 +340,92 @@ export default function EditJournalPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all resize-none"
                   dir="ltr"
                 />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FileUp className="w-4 h-4 inline-block ml-1" />
+                  إرفاق ملف PDF
+                </label>
+                {existingPdf.hasPdf && !removePdf && !formData.pdfData ? (
+                  <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center">
+                        <FileUp className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-amber-800">{existingPdf.pdfFileName || 'ملف PDF'}</p>
+                        <p className="text-xs text-amber-600">ملف PDF مرفق حالياً</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/journals/${journalId}/pdf`}
+                        download
+                        className="text-amber-600 hover:text-amber-800 p-2"
+                      >
+                        <Download className="w-5 h-5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setRemovePdf(true)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : formData.pdfData ? (
+                  <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center">
+                        <FileUp className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-amber-800">{formData.pdfFileName}</p>
+                        <p className="text-xs text-amber-600">{(pdfFileSize / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, pdfData: '', pdfFileName: '' }));
+                        setPdfFileSize(0);
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 20 * 1024 * 1024) {
+                        setError('حجم الملف يجب أن لا يتجاوز 20 ميجابايت');
+                        return;
+                      }
+                      setPdfFileSize(file.size);
+                      setRemovePdf(false);
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const base64 = (reader.result as string).split(',')[1];
+                        setFormData(prev => ({ ...prev, pdfData: base64, pdfFileName: file.name }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition-all file:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-700 file:font-medium file:cursor-pointer"
+                  />
+                )}
+                {(formData.pdfData || (existingPdf.hasPdf && !removePdf)) && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    ✓ ملف PDF مرفق - المحتوى النصي أصبح اختيارياً
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-1">الحد الأقصى: 20 ميجابايت</p>
               </div>
 
               <div>

@@ -4,6 +4,7 @@ import { safeJsonParseArray } from '@/lib/utils/safe-json';
 import { sanitizeString } from '@/lib/sanitize';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 async function getAuthUser(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -50,11 +51,13 @@ export async function GET(
       data: { viewCount: { increment: 1 } }
     });
 
-    // Parse JSON fields safely
+    const { pdfData, ...journalWithoutPdf } = journal;
     const parsedJournal = {
-      ...journal,
+      ...journalWithoutPdf,
       tags: safeJsonParseArray<string>(journal.tags),
-      relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
+      relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds),
+      hasPdf: !!pdfData,
+      pdfFileName: journal.pdfFileName,
     };
 
     return NextResponse.json({
@@ -120,6 +123,12 @@ export async function PUT(
     if (body.relatedMemberIds !== undefined) updateData.relatedMemberIds = JSON.stringify(body.relatedMemberIds);
     if (body.generation !== undefined) updateData.generation = body.generation ? parseInt(body.generation) : null;
     if (body.coverImageUrl !== undefined) updateData.coverImageUrl = body.coverImageUrl;
+    if (body.pdfData !== undefined) updateData.pdfData = body.pdfData;
+    if (body.pdfFileName !== undefined) updateData.pdfFileName = body.pdfFileName;
+    if (body.removePdf) {
+      updateData.pdfData = null;
+      updateData.pdfFileName = null;
+    }
     if (body.narrator !== undefined) updateData.narrator = sanitizeString(body.narrator);
     if (body.narratorId !== undefined) updateData.narratorId = body.narratorId;
     if (body.source !== undefined) updateData.source = sanitizeString(body.source);

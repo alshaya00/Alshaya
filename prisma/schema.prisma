@@ -839,6 +839,8 @@ model FamilyJournal {
   relatedMemberIds String?
   generation       Int?
   coverImageUrl    String?
+  pdfData          String?
+  pdfFileName      String?
   narrator         String?
   narratorId       String?
   source           String?

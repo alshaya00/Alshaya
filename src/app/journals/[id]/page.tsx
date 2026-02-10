@@ -319,7 +319,32 @@ export default function JournalDetailPage({ params }: { params: { id: string } }
             )}
           </div>
 
-          {/* Media Gallery */}
+          {(journal as any).hasPdf && (
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-10 mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-amber-600" />
+                  المجلة المرفقة
+                </h3>
+                <a
+                  href={`/api/journals/${journalId}/pdf`}
+                  download
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-colors text-sm"
+                >
+                  <FileText className="w-4 h-4" />
+                  تحميل PDF
+                </a>
+              </div>
+              <div className="rounded-xl overflow-hidden border border-gray-200">
+                <iframe
+                  src={`/api/journals/${journalId}/pdf`}
+                  title="عرض المجلة"
+                  className="w-full h-[400px] md:h-[600px]"
+                />
+              </div>
+            </div>
+          )}
+
           {journal.mediaItems && journal.mediaItems.length > 0 && (
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-10 mb-8">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">

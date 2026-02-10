@@ -40,6 +40,7 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
 -   **Data Repair Tools**: Admin dashboard (`/admin/data-repair`) for finding and fixing orphaned members, with rollback capabilities.
 -   **Name Fix Tool**: Admin tool (`/admin/fix-names`) to detect and repair name issues (Arabic characters in English names, incomplete lineage) by regenerating full names and ancestor fields from the lineage.
 -   **Gallery with Video Support**: Supports both images and videos (up to 50MB) with play button overlays and lightbox functionality.
+-   **PDF Support in Journals**: Family journals/stories support PDF attachments (up to 20MB). PDFs are stored as base64 in the `FamilyJournal` table (`pdfData`, `pdfFileName` fields). Served via `/api/journals/[id]/pdf` endpoint. Embedded PDF viewer on journal detail pages. Content text is optional when PDF is attached.
 -   **Conditional Approval System**: Allows family members to register even if their parent is pending approval, using `parentPendingId`. Includes sequential chain approval, enhanced admin review with pending warnings, and a dedicated admin page (`/admin/conditional-approvals`) to manage and visualize these relationships.
 
 ## External Dependencies

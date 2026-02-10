@@ -4,6 +4,7 @@ import { safeJsonParseArray } from '@/lib/utils/safe-json';
 import { sanitizeString } from '@/lib/sanitize';
 import { normalizeMemberId } from '@/lib/utils';
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // GET /api/journals - Get all journals with filters
 export async function GET(request: NextRequest) {
@@ -109,12 +110,15 @@ export async function GET(request: NextRequest) {
       take: limit
     });
 
-    // Parse JSON fields safely
-    const parsedJournals = journals.map((journal: typeof journals[0]) => ({
-      ...journal,
-      tags: safeJsonParseArray<string>(journal.tags),
-      relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds)
-    }));
+    const parsedJournals = journals.map((journal: typeof journals[0]) => {
+      const { pdfData, ...rest } = journal;
+      return {
+        ...rest,
+        tags: safeJsonParseArray<string>(journal.tags),
+        relatedMemberIds: safeJsonParseArray<string>(journal.relatedMemberIds),
+        hasPdf: !!pdfData,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -152,21 +156,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!contentAr) {
+    if (!contentAr && !body.pdfData) {
       return NextResponse.json(
         { success: false, error: 'المحتوى مطلوب' },
         { status: 400 }
       );
     }
 
-    // Create journal entry
+    if (body.pdfData) {
+      const pdfSizeBytes = Math.ceil((body.pdfData.length * 3) / 4);
+      const maxPdfSize = 20 * 1024 * 1024;
+      if (pdfSizeBytes > maxPdfSize) {
+        return NextResponse.json(
+          { success: false, error: 'حجم ملف PDF يتجاوز الحد المسموح (20 ميجابايت)' },
+          { status: 400 }
+        );
+      }
+    }
+
     const journal = await prisma.familyJournal.create({
       data: {
         titleAr,
         titleEn: sanitizeString(body.titleEn),
-        contentAr,
+        contentAr: contentAr || '',
         contentEn: body.contentEn || null,
-        excerpt: sanitizeString(body.excerpt) || contentAr.substring(0, 200),
+        excerpt: sanitizeString(body.excerpt) || (contentAr ? contentAr.substring(0, 200) : ''),
         category: body.category || 'ORAL_HISTORY',
         tags: body.tags ? JSON.stringify(body.tags) : null,
         era: sanitizeString(body.era),
@@ -179,10 +193,11 @@ export async function POST(request: NextRequest) {
         relatedMemberIds: body.relatedMemberIds ? JSON.stringify(body.relatedMemberIds) : null,
         generation: body.generation ? parseInt(body.generation) : null,
         coverImageUrl: body.coverImageUrl || null,
+        pdfData: body.pdfData || null,
+        pdfFileName: body.pdfFileName || null,
         narrator: sanitizeString(body.narrator),
         narratorId: body.narratorId || null,
         source: sanitizeString(body.source),
-        // New journals are always created as DRAFT - admins must approve before publishing
         status: 'DRAFT',
         isFeatured: false,
         displayOrder: body.displayOrder || 0,
