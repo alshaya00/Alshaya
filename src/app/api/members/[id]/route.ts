@@ -7,7 +7,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { generateFullNamesFromLineage } from '@/lib/member-registry';
-import { isMale, normalizeMemberId } from '@/lib/utils';
+import { isMale, normalizeMemberId, getMemberIdVariants } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 export const dynamic = "force-dynamic";
 
@@ -98,8 +98,12 @@ export async function GET(
       );
     }
 
-    const id = normalizeMemberId(params.id) || params.id;
-    const member = await getMemberByIdFromDb(id);
+    const idVariants = getMemberIdVariants(params.id);
+    let member: FamilyMember | null = null;
+    for (const variant of idVariants) {
+      member = await getMemberByIdFromDb(variant);
+      if (member) break;
+    }
 
     if (!member) {
       return NextResponse.json(
@@ -147,8 +151,12 @@ async function handleUpdate(
       );
     }
 
-    const id = normalizeMemberId(params.id) || params.id;
-    const member = await getMemberByIdFromDb(id);
+    const idVariants = getMemberIdVariants(params.id);
+    let member: FamilyMember | null = null;
+    for (const variant of idVariants) {
+      member = await getMemberByIdFromDb(variant);
+      if (member) break;
+    }
 
     if (!member) {
       return NextResponse.json(
@@ -157,6 +165,7 @@ async function handleUpdate(
       );
     }
 
+    const id = member.id;
     const body = await request.json();
 
     if (body.gender && !['Male', 'Female'].includes(body.gender)) {
@@ -354,8 +363,12 @@ export async function DELETE(
       );
     }
 
-    const id = normalizeMemberId(params.id) || params.id;
-    const member = await getMemberByIdFromDb(id);
+    const idVariants = getMemberIdVariants(params.id);
+    let member: FamilyMember | null = null;
+    for (const variant of idVariants) {
+      member = await getMemberByIdFromDb(variant);
+      if (member) break;
+    }
 
     if (!member) {
       return NextResponse.json(
@@ -364,7 +377,8 @@ export async function DELETE(
       );
     }
 
-    const children = await getChildrenFromDb(id);
+    const id = member.id;
+    const children = await getChildrenFromDb(member.id);
     if (children.length > 0) {
       return NextResponse.json(
         {
