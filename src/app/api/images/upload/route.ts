@@ -3,6 +3,7 @@ import { createPendingImage, type CreatePendingImageInput } from '@/lib/db/image
 import sharp from 'sharp';
 import { normalizeMemberId } from '@/lib/utils';
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Replit-compatible: Lower memory limits for constrained environments
 const IS_REPLIT = !!process.env.REPL_ID;

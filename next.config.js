@@ -15,8 +15,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Empty experimental block - Replit recommended
-  experimental: {},
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 
   // Enable SWC minification for smaller bundles
   swcMinify: true,
