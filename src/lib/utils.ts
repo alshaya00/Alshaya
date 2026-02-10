@@ -17,12 +17,12 @@ export function getMemberIdVariants(id: string): string[] {
   const trimmed = id.trim().toUpperCase();
   const match = trimmed.match(/^P(\d+)$/);
   if (!match) return [trimmed];
-  const num = match[1];
+  const numVal = parseInt(match[1], 10);
   const variants = new Set<string>();
   variants.add(trimmed);
-  variants.add('P' + num.padStart(4, '0'));
-  variants.add('P' + num.padStart(3, '0'));
-  variants.add('P' + parseInt(num, 10).toString());
+  variants.add('P' + numVal.toString().padStart(4, '0'));
+  variants.add('P' + numVal.toString().padStart(3, '0'));
+  variants.add('P' + numVal.toString());
   return Array.from(variants);
 }
 
