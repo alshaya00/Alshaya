@@ -23,24 +23,22 @@ export default function ProfilePage() {
             <div className="space-y-6">
               {/* Profile Card */}
               <div className="bg-white shadow-sm border-b border-gray-200 overflow-hidden">
-                {/* Header Banner */}
-                <div className="bg-gradient-to-l from-green-600 to-green-700 h-24" />
-
-                {/* Avatar & Name */}
-                <div className="max-w-2xl mx-auto px-4 pb-6">
-                  <div className="-mt-12 flex items-end gap-4 mb-6">
-                    <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center text-green-600">
+                {/* Header Banner with Avatar & Name */}
+                <div className="bg-gradient-to-l from-green-600 to-green-700 px-4 pt-8 pb-6">
+                  <div className="max-w-2xl mx-auto flex items-center gap-4">
+                    <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white shadow-lg flex items-center justify-center text-white flex-shrink-0">
                       <User size={40} />
                     </div>
-                    <div className="pb-2">
-                      <h2 className="text-xl font-bold text-gray-900">{user.nameArabic}</h2>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">{user.nameArabic}</h2>
                       {user.nameEnglish && (
-                        <p className="text-gray-500" dir="ltr">{user.nameEnglish}</p>
+                        <p className="text-white/80" dir="ltr">{user.nameEnglish}</p>
                       )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Info Grid */}
+                <div className="max-w-2xl mx-auto px-4 py-6">
                   <div className="grid gap-4">
                     {/* Email */}
                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">

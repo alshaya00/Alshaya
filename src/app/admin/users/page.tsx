@@ -765,7 +765,7 @@ export default function AdminUsersPage() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[1400px]">
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">الاسم</th>
@@ -802,7 +802,7 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-700 text-sm" dir="ltr">{user.email}</span>
+                          <span className="text-gray-700 text-sm whitespace-nowrap" dir="ltr">{user.email}</span>
                         </div>
                       </td>
 
@@ -811,7 +811,7 @@ export default function AdminUsersPage() {
                         {user.phone ? (
                           <div className="flex items-center gap-2">
                             <Phone className={`w-4 h-4 ${user.hasDuplicatePhone ? 'text-amber-500' : 'text-gray-400'}`} />
-                            <span className={`text-sm ${user.hasDuplicatePhone ? 'text-amber-700 font-medium' : 'text-gray-700'}`} dir="ltr">
+                            <span className={`text-sm whitespace-nowrap ${user.hasDuplicatePhone ? 'text-amber-700 font-medium' : 'text-gray-700'}`} dir="ltr">
                               {formatPhoneDisplay(user.phone)}
                             </span>
                             {user.phoneVerified && (
@@ -861,18 +861,18 @@ export default function AdminUsersPage() {
                       </td>
 
                       {/* Last Login */}
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                         {formatDateTime(user.lastLoginAt)}
                       </td>
 
                       {/* Created At */}
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                         {formatDate(user.createdAt)}
                       </td>
 
                       {/* Actions */}
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-col items-stretch gap-1">
                           {user.role !== 'SUPER_ADMIN' && (
                             <>
                               {(!user.verificationStatus || user.verificationStatus === 'UNVERIFIED') && (
