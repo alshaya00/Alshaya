@@ -70,6 +70,8 @@ export default function EditJournalPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'saving' | 'done'>('idle');
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
@@ -156,41 +158,91 @@ export default function EditJournalPage() {
 
     setSaving(true);
     setError(null);
+    setUploadProgress(0);
+
+    const payload = JSON.stringify({
+      ...formData,
+      yearFrom: formData.yearFrom ? parseInt(formData.yearFrom) : null,
+      yearTo: formData.yearTo ? parseInt(formData.yearTo) : null,
+      generation: formData.generation ? parseInt(formData.generation) : null,
+      primaryMemberId: formData.primaryMemberId || null,
+      pdfData: formData.pdfData || undefined,
+      pdfFileName: formData.pdfFileName || undefined,
+      removePdf: removePdf || undefined,
+    });
 
     try {
-      const response = await fetch(`/api/journals/${journalId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
-        },
-        body: JSON.stringify({
-          ...formData,
-          yearFrom: formData.yearFrom ? parseInt(formData.yearFrom) : null,
-          yearTo: formData.yearTo ? parseInt(formData.yearTo) : null,
-          generation: formData.generation ? parseInt(formData.generation) : null,
-          primaryMemberId: formData.primaryMemberId || null,
-          pdfData: formData.pdfData || undefined,
-          pdfFileName: formData.pdfFileName || undefined,
-          removePdf: removePdf || undefined,
-        }),
-      });
+      if (formData.pdfData) {
+        setUploadState('uploading');
+        const data = await new Promise<any>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('PUT', `/api/journals/${journalId}`);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          if (session?.token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${session.token}`);
+          }
 
-      const data = await response.json();
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              setUploadProgress(Math.round((event.loaded / event.total) * 100));
+            }
+          };
 
-      if (data.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push(`/journals/${journalId}`);
-        }, 1500);
+          xhr.onload = () => {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(result);
+              } else {
+                reject(new Error(result.error || 'فشل في حفظ التعديلات'));
+              }
+            } catch {
+              reject(new Error('فشل في حفظ التعديلات'));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('فشل في الاتصال'));
+          xhr.send(payload);
+        });
+
+        setUploadState('done');
+        if (data.success) {
+          setSuccess(true);
+          setTimeout(() => {
+            router.push(`/journals/${journalId}`);
+          }, 1500);
+        } else {
+          setError(data.error || 'فشل في حفظ التعديلات');
+        }
       } else {
-        setError(data.error || 'فشل في حفظ التعديلات');
+        setUploadState('saving');
+        const response = await fetch(`/api/journals/${journalId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+          },
+          body: payload,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setSuccess(true);
+          setTimeout(() => {
+            router.push(`/journals/${journalId}`);
+          }, 1500);
+        } else {
+          setError(data.error || 'فشل في حفظ التعديلات');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating journal:', err);
-      setError('حدث خطأ أثناء حفظ التعديلات');
+      setError(err?.message || 'حدث خطأ أثناء حفظ التعديلات');
     } finally {
       setSaving(false);
+      setUploadState('idle');
+      setUploadProgress(0);
     }
   };
 
@@ -623,6 +675,31 @@ export default function EditJournalPage() {
                 </div>
               )}
             </section>
+
+            {uploadState === 'uploading' && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+                  <Loader2 className="w-12 h-12 animate-spin text-amber-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">جاري رفع الملف...</h3>
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div
+                      className="bg-amber-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500">{uploadProgress}%</p>
+                </div>
+              </div>
+            )}
+
+            {uploadState === 'saving' && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+                  <Loader2 className="w-12 h-12 animate-spin text-amber-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">جاري الحفظ...</h3>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-4 justify-end">
               <Link
