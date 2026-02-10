@@ -4,7 +4,7 @@ import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/audit';
 import { v4 as uuidv4 } from 'uuid';
-import { normalizeMemberId } from '@/lib/utils';
+import { normalizeMemberId, getMemberIdVariants } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
@@ -209,7 +209,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'create-member-for-user') {
-      const { userId, nameAr, nameEn, fatherId, gender } = body;
+      const { userId, nameAr, nameEn, gender } = body;
+      let { fatherId } = body;
 
       if (!userId || !nameAr || !fatherId || !gender) {
         return NextResponse.json(
@@ -237,10 +238,18 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const father = await prisma.familyMember.findUnique({
-        where: { id: fatherId },
-        select: { id: true, firstName: true, fullNameAr: true, generation: true, familyName: true },
-      });
+      const fatherVariants = getMemberIdVariants(fatherId);
+      let father = null;
+      for (const variant of fatherVariants) {
+        father = await prisma.familyMember.findUnique({
+          where: { id: variant },
+          select: { id: true, firstName: true, fullNameAr: true, generation: true, familyName: true },
+        });
+        if (father) {
+          fatherId = variant;
+          break;
+        }
+      }
 
       if (!father) {
         return NextResponse.json(

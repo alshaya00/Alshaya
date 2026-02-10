@@ -183,7 +183,17 @@ async function handleUpdate(
     }
 
     if (body.fatherId) {
-      body.fatherId = normalizeMemberId(body.fatherId) || body.fatherId;
+      const fatherVariants = getMemberIdVariants(body.fatherId);
+      let resolvedFatherId = body.fatherId;
+      let father = null;
+      for (const variant of fatherVariants) {
+        father = await getMemberByIdFromDb(variant);
+        if (father) {
+          resolvedFatherId = variant;
+          break;
+        }
+      }
+      body.fatherId = resolvedFatherId;
       const isDescendant = await checkIsDescendant(body.fatherId, id);
       if (isDescendant) {
         return NextResponse.json(
@@ -191,15 +201,12 @@ async function handleUpdate(
           { status: 400 }
         );
       }
-
-      const father = await getMemberByIdFromDb(body.fatherId);
       if (!father) {
         return NextResponse.json(
           { success: false, error: 'Father not found' },
           { status: 400 }
         );
       }
-
       if (!isMale(father.gender)) {
         return NextResponse.json(
           { success: false, error: 'Father must be male', messageAr: 'يجب أن يكون الوالد ذكراً' },

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { isMale, normalizeMemberId } from '@/lib/utils';
+import { isMale, normalizeMemberId, getMemberIdVariants } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 export const dynamic = "force-dynamic";
 
@@ -101,9 +101,17 @@ export async function POST(request: NextRequest) {
     const normalizedGender = ['Male', 'male', 'ذكر'].includes(body.gender) ? 'Male' : 'Female';
 
     if (body.proposedFatherId) {
-      const fatherExists = await prisma.familyMember.findUnique({
-        where: { id: body.proposedFatherId }
-      });
+      const fatherVariants = getMemberIdVariants(body.proposedFatherId);
+      let fatherExists = null;
+      for (const variant of fatherVariants) {
+        fatherExists = await prisma.familyMember.findUnique({
+          where: { id: variant }
+        });
+        if (fatherExists) {
+          body.proposedFatherId = variant;
+          break;
+        }
+      }
       if (!fatherExists) {
         const pendingFatherExists = await prisma.pendingMember.findUnique({
           where: { id: body.proposedFatherId }
