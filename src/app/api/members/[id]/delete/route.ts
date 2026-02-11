@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { normalizeMemberId } from '@/lib/utils';
+import { getMemberIdVariants } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
@@ -31,17 +31,19 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
     }
 
-    const id = normalizeMemberId(params.id) || params.id;
+    const idVariants = getMemberIdVariants(params.id);
     const body = await request.json();
     const { reason, mergedIntoId, force } = body;
 
-    const member = await prisma.familyMember.findUnique({
-      where: { id },
+    const member = await prisma.familyMember.findFirst({
+      where: { id: { in: idVariants } },
     });
 
     if (!member) {
-      return NextResponse.json({ success: false, message: 'Member not found' }, { status: 404 });
+      return NextResponse.json({ success: false, message: 'Member not found', messageAr: 'العضو غير موجود' }, { status: 404 });
     }
+
+    const id = member.id;
 
     if (member.deletedAt) {
       return NextResponse.json({ success: false, message: 'Member already deleted' }, { status: 400 });
@@ -118,10 +120,20 @@ export async function POST(
 
     const fullSnapshot = JSON.stringify(member);
 
+    let resolvedMergeTargetId = mergedIntoId;
     if (mergedIntoId) {
+      const mergeTargetVariants = getMemberIdVariants(mergedIntoId);
+      const mergeTarget = await prisma.familyMember.findFirst({
+        where: { id: { in: mergeTargetVariants }, deletedAt: null },
+        select: { id: true },
+      });
+      if (mergeTarget) {
+        resolvedMergeTargetId = mergeTarget.id;
+      }
+
       await prisma.familyMember.updateMany({
         where: { fatherId: id, deletedAt: null },
-        data: { fatherId: mergedIntoId },
+        data: { fatherId: resolvedMergeTargetId },
       });
     }
 
@@ -130,7 +142,7 @@ export async function POST(
       data: {
         deletedAt: new Date(),
         deletedBy: user.id,
-        deletedReason: reason || (mergedIntoId ? `Merged into ${mergedIntoId}` : 'Manual deletion'),
+        deletedReason: reason || (resolvedMergeTargetId ? `Merged into ${resolvedMergeTargetId}` : 'Manual deletion'),
       },
     });
 
@@ -144,7 +156,7 @@ export async function POST(
         changedBy: user.id,
         changedByName: user.nameArabic,
         fullSnapshot,
-        reason: reason || (mergedIntoId ? `Merged into ${mergedIntoId}` : 'Manual deletion'),
+        reason: reason || (resolvedMergeTargetId ? `Merged into ${resolvedMergeTargetId}` : 'Manual deletion'),
       },
     });
 
