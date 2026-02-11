@@ -1,5 +1,6 @@
 import { prisma, Prisma } from './prisma';
 import { logAuditToDb } from './db-audit';
+import { getMemberIdVariants } from './utils';
 import type { FamilyMember } from '@prisma/client';
 
 export interface MergePreview {
@@ -57,14 +58,20 @@ export async function generateMergePreview(
   sourceId: string,
   targetId: string
 ): Promise<MergePreview | null> {
+  const sourceVariants = getMemberIdVariants(sourceId);
+  const targetVariants = getMemberIdVariants(targetId);
+
   const [source, target] = await Promise.all([
-    prisma.familyMember.findUnique({ where: { id: sourceId } }),
-    prisma.familyMember.findUnique({ where: { id: targetId } }),
+    prisma.familyMember.findFirst({ where: { id: { in: sourceVariants }, deletedAt: null } }),
+    prisma.familyMember.findFirst({ where: { id: { in: targetVariants }, deletedAt: null } }),
   ]);
 
   if (!source || !target) {
     return null;
   }
+
+  const resolvedSourceId = source.id;
+  const resolvedTargetId = target.id;
 
   const conflicts: MergeConflict[] = [];
   const warnings: string[] = [];
@@ -118,20 +125,20 @@ export async function generateMergePreview(
 
   const [children, photos, journals, linkedUsers] = await Promise.all([
     prisma.familyMember.findMany({
-      where: { fatherId: sourceId, deletedAt: null },
+      where: { fatherId: resolvedSourceId, deletedAt: null },
       select: { id: true, firstName: true },
     }),
-    prisma.memberPhoto.count({ where: { memberId: sourceId } }),
+    prisma.memberPhoto.count({ where: { memberId: resolvedSourceId } }),
     prisma.familyJournal.count({
       where: {
         OR: [
-          { primaryMemberId: sourceId },
-          { relatedMemberIds: { has: sourceId } },
+          { primaryMemberId: resolvedSourceId },
+          { relatedMemberIds: { has: resolvedSourceId } },
         ],
       },
     }),
     prisma.user.findMany({
-      where: { linkedMemberId: { in: [sourceId, targetId] } },
+      where: { linkedMemberId: { in: [resolvedSourceId, resolvedTargetId] } },
       select: { id: true, email: true, nameArabic: true, linkedMemberId: true }
     }),
   ]);
@@ -143,8 +150,8 @@ export async function generateMergePreview(
 
   // Process linked accounts
   const linkedAccounts: { userId: string; email: string; nameArabic: string; memberType: 'source' | 'target' }[] = [];
-  const sourceLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === sourceId);
-  const targetLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === targetId);
+  const sourceLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === resolvedSourceId);
+  const targetLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === resolvedTargetId);
 
   for (const user of sourceLinkedUsers) {
     linkedAccounts.push({
@@ -208,6 +215,9 @@ export async function mergeMemberProfiles(
     };
   }
 
+  const resolvedSourceId = preview.source.id;
+  const resolvedTargetId = preview.target.id;
+
   // Block merge if both members have linked user accounts
   const sourceAccounts = preview.linkedAccounts.filter(a => a.memberType === 'source');
   const targetAccounts = preview.linkedAccounts.filter(a => a.memberType === 'target');
@@ -246,28 +256,28 @@ export async function mergeMemberProfiles(
       let journalsUpdated = 0;
 
       const childUpdateResult = await tx.familyMember.updateMany({
-        where: { fatherId: sourceId },
-        data: { fatherId: targetId },
+        where: { fatherId: resolvedSourceId },
+        data: { fatherId: resolvedTargetId },
       });
       childrenUpdated = childUpdateResult.count;
 
       const pendingUpdateResult = await tx.pendingMember.updateMany({
-        where: { proposedFatherId: sourceId, reviewStatus: 'PENDING' },
-        data: { proposedFatherId: targetId },
+        where: { proposedFatherId: resolvedSourceId, reviewStatus: 'PENDING' },
+        data: { proposedFatherId: resolvedTargetId },
       });
       const pendingRequestsUpdated = pendingUpdateResult.count;
 
       const photoUpdateResult = await tx.memberPhoto.updateMany({
-        where: { memberId: sourceId },
-        data: { memberId: targetId },
+        where: { memberId: resolvedSourceId },
+        data: { memberId: resolvedTargetId },
       });
       photosTransferred = photoUpdateResult.count;
 
       const journalsWithSource = await tx.familyJournal.findMany({
         where: {
           OR: [
-            { primaryMemberId: sourceId },
-            { relatedMemberIds: { has: sourceId } },
+            { primaryMemberId: resolvedSourceId },
+            { relatedMemberIds: { has: resolvedSourceId } },
           ],
         },
       });
@@ -275,13 +285,13 @@ export async function mergeMemberProfiles(
       for (const journal of journalsWithSource) {
         const updates: Prisma.FamilyJournalUpdateInput = {};
 
-        if (journal.primaryMemberId === sourceId) {
-          updates.primaryMemberId = targetId;
+        if (journal.primaryMemberId === resolvedSourceId) {
+          updates.primaryMemberId = resolvedTargetId;
         }
 
-        if (journal.relatedMemberIds?.includes(sourceId)) {
+        if (journal.relatedMemberIds?.includes(resolvedSourceId)) {
           updates.relatedMemberIds = journal.relatedMemberIds.map(id =>
-            id === sourceId ? targetId : id
+            id === resolvedSourceId ? resolvedTargetId : id
           );
         }
 
@@ -311,23 +321,22 @@ export async function mergeMemberProfiles(
       }
 
       const mergedMember = await tx.familyMember.update({
-        where: { id: targetId },
+        where: { id: resolvedTargetId },
         data: mergeData,
       });
 
       await tx.familyMember.update({
-        where: { id: sourceId },
+        where: { id: resolvedSourceId },
         data: {
           deletedAt: new Date(),
           deletedBy: options.performedBy,
-          deletedReason: `Merged into ${targetId}: ${options.reason || 'Duplicate profile merge'}`,
+          deletedReason: `Merged into ${resolvedTargetId}: ${options.reason || 'Duplicate profile merge'}`,
         },
       });
 
-      // Transfer linked user accounts from source to target
       const linkedAccountsTransfer = await tx.user.updateMany({
-        where: { linkedMemberId: sourceId },
-        data: { linkedMemberId: targetId },
+        where: { linkedMemberId: resolvedSourceId },
+        data: { linkedMemberId: resolvedTargetId },
       });
 
       return {
@@ -345,13 +354,13 @@ export async function mergeMemberProfiles(
     await logAuditToDb({
       action: 'MERGE_MEMBERS',
       targetType: 'FAMILY_MEMBER',
-      targetId: targetId,
+      targetId: resolvedTargetId,
       targetName: `${source.firstName} → ${target.firstName}`,
       userId: options.performedBy,
-      description: `تم دمج "${source.firstName}" (${sourceId}) في "${target.firstName}" (${targetId})`,
+      description: `تم دمج "${source.firstName}" (${resolvedSourceId}) في "${target.firstName}" (${resolvedTargetId})`,
       details: {
-        sourceId,
-        targetId,
+        sourceId: resolvedSourceId,
+        targetId: resolvedTargetId,
         sourceName: source.fullNameAr || source.firstName,
         targetName: target.fullNameAr || target.firstName,
         reason: options.reason,
@@ -362,16 +371,16 @@ export async function mergeMemberProfiles(
         pendingRequestsUpdated: result.pendingRequestsUpdated,
       },
       previousState: {
-        sourceId,
+        sourceId: resolvedSourceId,
         sourceName: source.fullNameAr || source.firstName,
         sourceGeneration: source.generation,
       },
       newState: {
-        targetId,
+        targetId: resolvedTargetId,
         targetName: target.fullNameAr || target.firstName,
         merged: true,
       },
-      impactedIds: [sourceId, targetId, ...preview.impactedChildren.map(c => c.id)],
+      impactedIds: [resolvedSourceId, resolvedTargetId, ...preview.impactedChildren.map(c => c.id)],
       impactSummary: {
         action: 'merge',
         childrenUpdated: result.childrenUpdated,
@@ -388,7 +397,7 @@ export async function mergeMemberProfiles(
       message: 'Members merged successfully',
       messageAr: 'تم دمج الأعضاء بنجاح',
       mergedMember: result.mergedMember,
-      deletedMemberId: sourceId,
+      deletedMemberId: resolvedSourceId,
       impactSummary: {
         childrenUpdated: result.childrenUpdated,
         photosTransferred: result.photosTransferred,

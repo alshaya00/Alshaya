@@ -428,6 +428,101 @@ export async function POST(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
+        { status: 401 }
+      );
+    }
+
+    const permissions = getPermissionsForRole(user.role);
+    if (!permissions.approve_pending_members && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
+        { status: 403 }
+      );
+    }
+
+    const pending = await prisma.pendingMember.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!pending) {
+      return NextResponse.json(
+        { success: false, message: 'Pending member not found', messageAr: 'العضو المعلق غير موجود' },
+        { status: 404 }
+      );
+    }
+
+    if (pending.reviewStatus !== 'PENDING') {
+      return NextResponse.json(
+        { success: false, message: 'Can only edit pending members', messageAr: 'يمكن تعديل الأعضاء المعلقين فقط' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const allowedFields = ['firstName', 'birthYear', 'city', 'phone', 'occupation', 'email', 'biography'];
+    const updateData: Record<string, unknown> = {};
+
+    for (const field of allowedFields) {
+      if (field in body) {
+        updateData[field] = body[field];
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'No fields to update', messageAr: 'لا توجد حقول للتحديث' },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.pendingMember.update({
+      where: { id: params.id },
+      data: updateData,
+    });
+
+    try {
+      await logAuditToDb({
+        action: 'PENDING_EDIT',
+        severity: 'INFO',
+        userId: user.id,
+        userName: user.email,
+        userRole: user.role,
+        targetType: 'PENDING_MEMBER',
+        targetId: params.id,
+        targetName: updated.fullNameAr || updated.firstName,
+        description: `تم تعديل بيانات العضو المعلق: ${updated.firstName}`,
+        details: { updatedFields: Object.keys(updateData), newValues: updateData },
+        previousState: pending as unknown as Record<string, unknown>,
+        success: true,
+      });
+    } catch (auditError) {
+      console.error('Audit logging failed:', auditError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pending member updated',
+      messageAr: 'تم تحديث بيانات العضو المعلق',
+      pending: updated,
+    });
+  } catch (error) {
+    console.error('Error updating pending member:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to update pending member' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

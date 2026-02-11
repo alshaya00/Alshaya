@@ -658,8 +658,36 @@ export default function AdminPendingPage() {
   };
 
   const handleSaveEdit = async (id: string) => {
-    setEditingId(null);
-    setEditData({});
+    if (!session?.token) {
+      alert('الجلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/pending/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify(editData),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(data.messageAr || 'تم تحديث البيانات بنجاح');
+        await fetchPendingMembers();
+      } else {
+        alert(data.messageAr || data.message || 'حدث خطأ أثناء التحديث');
+      }
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      alert('حدث خطأ أثناء حفظ التعديلات. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setEditingId(null);
+      setEditData({});
+      setIsProcessing(false);
+    }
   };
 
   const statusColors = {
