@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { normalizeMemberId } from '@/lib/utils';
+import { getMemberIdVariants } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
@@ -31,10 +31,10 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
     }
 
-    const memberId = normalizeMemberId(params.id) || params.id;
+    const idVariants = getMemberIdVariants(params.id);
 
-    const member = await prisma.familyMember.findUnique({
-      where: { id: memberId },
+    const member = await prisma.familyMember.findFirst({
+      where: { id: { in: idVariants } },
       select: {
         id: true,
         firstName: true,
@@ -51,10 +51,12 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Member already deleted' }, { status: 400 });
     }
 
-    const [children, photos, journals, linkedUsers] = await Promise.all([
+    const memberIdVariants = getMemberIdVariants(member.id);
+
+    const [children, photos, journals, linkedUsers, breastfeeding, pendingFlags, pendingMembers] = await Promise.all([
       prisma.familyMember.findMany({
         where: {
-          fatherId: memberId,
+          fatherId: { in: memberIdVariants },
           deletedAt: null,
         },
         select: {
@@ -65,14 +67,14 @@ export async function GET(
       }),
       prisma.memberPhoto.count({
         where: {
-          memberId: memberId,
+          memberId: { in: memberIdVariants },
         },
       }),
       prisma.familyJournal.findMany({
         where: {
           OR: [
-            { primaryMemberId: memberId },
-            { narratorId: memberId },
+            { primaryMemberId: { in: memberIdVariants } },
+            { narratorId: { in: memberIdVariants } },
           ],
         },
         select: {
@@ -82,7 +84,7 @@ export async function GET(
       }),
       prisma.user.findMany({
         where: {
-          linkedMemberId: memberId,
+          linkedMemberId: { in: memberIdVariants },
         },
         select: {
           id: true,
@@ -90,12 +92,38 @@ export async function GET(
           nameArabic: true,
         },
       }),
+      prisma.breastfeedingRelationship.count({
+        where: {
+          OR: [
+            { childId: { in: memberIdVariants } },
+            { nurseId: { in: memberIdVariants } },
+            { milkFatherId: { in: memberIdVariants } },
+          ],
+        },
+      }),
+      prisma.duplicateFlag.findMany({
+        where: {
+          status: 'PENDING',
+          OR: [
+            { sourceMemberId: { in: memberIdVariants } },
+            { targetMemberId: { in: memberIdVariants } },
+          ],
+        },
+        select: { id: true, sourceMemberId: true, targetMemberId: true },
+      }),
+      prisma.pendingMember.count({
+        where: {
+          proposedFatherId: { in: memberIdVariants },
+          reviewStatus: 'PENDING',
+        },
+      }),
     ]);
 
     let journalsWithRelated = journals.length;
+    const relatedOrConditions = memberIdVariants.map(v => ({ relatedMemberIds: { contains: v } }));
     const journalsWithRelatedIds = await prisma.familyJournal.findMany({
       where: {
-        relatedMemberIds: { contains: memberId },
+        OR: relatedOrConditions,
       },
       select: { id: true },
     });
@@ -103,6 +131,8 @@ export async function GET(
 
     const childrenNames = children.map(c => c.fullNameAr || c.firstName);
     const linkedUserEmails = linkedUsers.map(u => u.email);
+    const linkedUserNames = linkedUsers.map(u => u.nameArabic);
+    const pendingFlagIds = pendingFlags.map(f => f.id);
 
     return NextResponse.json({
       success: true,
@@ -119,10 +149,25 @@ export async function GET(
         journals: {
           count: journalsWithRelated,
         },
+        breastfeeding: {
+          count: breastfeeding,
+        },
         linkedUsers: {
           count: linkedUsers.length,
           emails: linkedUserEmails,
+          names: linkedUserNames,
         },
+        pendingFlags: {
+          count: pendingFlags.length,
+          ids: pendingFlagIds,
+        },
+        pendingMembers: {
+          count: pendingMembers,
+        },
+      },
+      blockers: {
+        hasLinkedUser: linkedUsers.length > 0,
+        hasPendingFlags: pendingFlags.length > 0,
       },
     });
   } catch (error) {

@@ -228,42 +228,33 @@ function DuplicatesPageContent() {
 
   const [merging, setMerging] = useState<string | null>(null);
 
-  const mergePair = async (pair: DuplicatePair, keepMemberId: string, force: boolean = false): Promise<boolean> => {
+  const mergePair = async (pair: DuplicatePair, keepMemberId: string): Promise<boolean> => {
     const keepMember = keepMemberId === pair.member1.id ? pair.member1 : pair.member2;
     const removeMember = keepMemberId === pair.member1.id ? pair.member2 : pair.member1;
 
     setMerging(removeMember.id);
 
     try {
-      const res = await fetch(`/api/members/${removeMember.id}/delete`, {
+      const res = await fetch('/api/admin/merge', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.token}`,
         },
         body: JSON.stringify({
+          action: 'merge',
+          sourceId: removeMember.id,
+          targetId: keepMember.id,
           reason: `تم الدمج مع العضو ${keepMember.fullNameAr || keepMember.firstName} (${formatMemberId(keepMember.id)})`,
-          mergedIntoId: keepMember.id,
-          force,
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        // Use ID-based update for reliable state update
         updateStatusByIds(pair.member1.id, pair.member2.id, 'MERGED');
-        setAllMembers(prev => prev.filter(m => m.id !== removeMember.id));
+        setAllMembers(prev => prev.filter(m => m.id !== data.deletedMemberId));
         return true;
-      } else if (data.warning && data.hasChildren) {
-        const confirmMsg = `${removeMember.fullNameAr || removeMember.firstName} لديه ${data.childrenCount} أبناء:\n${data.childrenNames?.join('، ')}\n\nسيتم نقل الأبناء إلى ${keepMember.fullNameAr || keepMember.firstName}.\n\nهل تريد المتابعة؟`;
-        if (confirm(confirmMsg)) {
-          return await mergePair(pair, keepMemberId, true);
-        }
-        return false;
-      } else if (data.linkedUser) {
-        alert(`لا يمكن حذف هذا العضو لأنه مرتبط بحساب المستخدم "${data.linkedUser.name}".\n\nيجب فك ارتباط الحساب أولاً من صفحة إدارة المستخدمين.`);
-        return false;
       } else {
         alert(`فشل الدمج: ${data.messageAr || data.message || 'خطأ غير معروف'}`);
         return false;

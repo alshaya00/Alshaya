@@ -123,22 +123,26 @@ export async function generateMergePreview(
     warningsAr.push(`تعارض في البريد الإلكتروني: المصدر ${source.email} مقابل الهدف ${target.email}`);
   }
 
+  const previewSourceVariants = getMemberIdVariants(resolvedSourceId);
+  const previewTargetVariants = getMemberIdVariants(resolvedTargetId);
+  const allLinkedVariants = Array.from(new Set([...previewSourceVariants, ...previewTargetVariants]));
+
+  const journalOrConditions = [
+    { primaryMemberId: { in: previewSourceVariants } },
+    ...previewSourceVariants.map(v => ({ relatedMemberIds: { contains: v } })),
+  ] as Prisma.FamilyJournalWhereInput[];
+
   const [children, photos, journals, linkedUsers] = await Promise.all([
     prisma.familyMember.findMany({
-      where: { fatherId: resolvedSourceId, deletedAt: null },
+      where: { fatherId: { in: previewSourceVariants }, deletedAt: null },
       select: { id: true, firstName: true },
     }),
-    prisma.memberPhoto.count({ where: { memberId: resolvedSourceId } }),
+    prisma.memberPhoto.count({ where: { memberId: { in: previewSourceVariants } } }),
     prisma.familyJournal.count({
-      where: {
-        OR: [
-          { primaryMemberId: resolvedSourceId },
-          { relatedMemberIds: { has: resolvedSourceId } },
-        ],
-      },
+      where: { OR: journalOrConditions },
     }),
     prisma.user.findMany({
-      where: { linkedMemberId: { in: [resolvedSourceId, resolvedTargetId] } },
+      where: { linkedMemberId: { in: allLinkedVariants } },
       select: { id: true, email: true, nameArabic: true, linkedMemberId: true }
     }),
   ]);
@@ -150,8 +154,8 @@ export async function generateMergePreview(
 
   // Process linked accounts
   const linkedAccounts: { userId: string; email: string; nameArabic: string; memberType: 'source' | 'target' }[] = [];
-  const sourceLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === resolvedSourceId);
-  const targetLinkedUsers = linkedUsers.filter(u => u.linkedMemberId === resolvedTargetId);
+  const sourceLinkedUsers = linkedUsers.filter(u => u.linkedMemberId && previewSourceVariants.includes(u.linkedMemberId));
+  const targetLinkedUsers = linkedUsers.filter(u => u.linkedMemberId && previewTargetVariants.includes(u.linkedMemberId));
 
   for (const user of sourceLinkedUsers) {
     linkedAccounts.push({
@@ -251,56 +255,93 @@ export async function mergeMemberProfiles(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      const sourceIdVariants = getMemberIdVariants(resolvedSourceId);
       let childrenUpdated = 0;
       let photosTransferred = 0;
       let journalsUpdated = 0;
+      let breastfeedingUpdated = 0;
+
+      const childrenToMove = await tx.familyMember.findMany({
+        where: { fatherId: { in: sourceIdVariants }, deletedAt: null },
+        select: { id: true },
+      });
+      const childrenMovedIds = childrenToMove.map(c => c.id);
 
       const childUpdateResult = await tx.familyMember.updateMany({
-        where: { fatherId: resolvedSourceId },
+        where: { fatherId: { in: sourceIdVariants } },
         data: { fatherId: resolvedTargetId },
       });
       childrenUpdated = childUpdateResult.count;
 
       const pendingUpdateResult = await tx.pendingMember.updateMany({
-        where: { proposedFatherId: resolvedSourceId, reviewStatus: 'PENDING' },
+        where: { proposedFatherId: { in: sourceIdVariants }, reviewStatus: 'PENDING' },
         data: { proposedFatherId: resolvedTargetId },
       });
       const pendingRequestsUpdated = pendingUpdateResult.count;
 
       const photoUpdateResult = await tx.memberPhoto.updateMany({
-        where: { memberId: resolvedSourceId },
+        where: { memberId: { in: sourceIdVariants } },
         data: { memberId: resolvedTargetId },
       });
       photosTransferred = photoUpdateResult.count;
 
+      const txJournalOrConditions = [
+        { primaryMemberId: { in: sourceIdVariants } },
+        ...sourceIdVariants.map(v => ({ relatedMemberIds: { contains: v } })),
+      ] as Prisma.FamilyJournalWhereInput[];
+
       const journalsWithSource = await tx.familyJournal.findMany({
-        where: {
-          OR: [
-            { primaryMemberId: resolvedSourceId },
-            { relatedMemberIds: { has: resolvedSourceId } },
-          ],
-        },
+        where: { OR: txJournalOrConditions },
       });
 
       for (const journal of journalsWithSource) {
         const updates: Prisma.FamilyJournalUpdateInput = {};
 
-        if (journal.primaryMemberId === resolvedSourceId) {
+        if (journal.primaryMemberId && sourceIdVariants.includes(journal.primaryMemberId)) {
           updates.primaryMemberId = resolvedTargetId;
         }
 
-        if (journal.relatedMemberIds?.includes(resolvedSourceId)) {
-          updates.relatedMemberIds = journal.relatedMemberIds.map(id =>
-            id === resolvedSourceId ? resolvedTargetId : id
-          );
+        if (journal.relatedMemberIds) {
+          let updatedRelated = journal.relatedMemberIds;
+          for (const variant of sourceIdVariants) {
+            updatedRelated = updatedRelated.split(variant).join(resolvedTargetId);
+          }
+          if (updatedRelated !== journal.relatedMemberIds) {
+            updates.relatedMemberIds = updatedRelated;
+          }
         }
 
-        await tx.familyJournal.update({
-          where: { id: journal.id },
-          data: updates,
-        });
-        journalsUpdated++;
+        if (Object.keys(updates).length > 0) {
+          await tx.familyJournal.update({
+            where: { id: journal.id },
+            data: updates,
+          });
+          journalsUpdated++;
+        }
       }
+
+      const bfChildUpdate = await tx.breastfeedingRelationship.updateMany({
+        where: { childId: { in: sourceIdVariants } },
+        data: { childId: resolvedTargetId },
+      });
+      const bfNurseUpdate = await tx.breastfeedingRelationship.updateMany({
+        where: { nurseId: { in: sourceIdVariants } },
+        data: { nurseId: resolvedTargetId },
+      });
+      const bfMilkFatherUpdate = await tx.breastfeedingRelationship.updateMany({
+        where: { milkFatherId: { in: sourceIdVariants } },
+        data: { milkFatherId: resolvedTargetId },
+      });
+      breastfeedingUpdated = bfChildUpdate.count + bfNurseUpdate.count + bfMilkFatherUpdate.count;
+
+      await tx.duplicateFlag.updateMany({
+        where: { sourceMemberId: { in: sourceIdVariants } },
+        data: { sourceMemberId: resolvedTargetId },
+      });
+      await tx.duplicateFlag.updateMany({
+        where: { targetMemberId: { in: sourceIdVariants } },
+        data: { targetMemberId: resolvedTargetId },
+      });
 
       const mergeData: Prisma.FamilyMemberUpdateInput = {};
 
@@ -315,14 +356,52 @@ export async function mergeMemberProfiles(
         }
       }
 
-      if (source.sonsCount > 0 || source.daughtersCount > 0) {
-        mergeData.sonsCount = (target.sonsCount || 0) + (source.sonsCount || 0);
-        mergeData.daughtersCount = (target.daughtersCount || 0) + (source.daughtersCount || 0);
-      }
+      const [sonsCountResult, daughtersCountResult] = await Promise.all([
+        tx.familyMember.count({
+          where: { fatherId: resolvedTargetId, gender: 'MALE', deletedAt: null },
+        }),
+        tx.familyMember.count({
+          where: { fatherId: resolvedTargetId, gender: 'FEMALE', deletedAt: null },
+        }),
+      ]);
+      mergeData.sonsCount = sonsCountResult;
+      mergeData.daughtersCount = daughtersCountResult;
 
       const mergedMember = await tx.familyMember.update({
         where: { id: resolvedTargetId },
         data: mergeData,
+      });
+
+      const linkedAccountsTransfer = await tx.user.updateMany({
+        where: { linkedMemberId: { in: sourceIdVariants } },
+        data: { linkedMemberId: resolvedTargetId },
+      });
+
+      const transferSummary = {
+        childrenMoved: childrenMovedIds,
+        photosTransferred,
+        journalsUpdated,
+        breastfeedingUpdated,
+        linkedUserTransferred: linkedAccountsTransfer.count > 0 ? sourceAccounts[0]?.userId || null : null,
+        pendingMembersUpdated: pendingRequestsUpdated,
+      };
+
+      await tx.changeHistory.create({
+        data: {
+          memberId: resolvedSourceId,
+          fieldName: 'MERGE',
+          oldValue: resolvedSourceId,
+          newValue: resolvedTargetId,
+          changeType: 'MERGE',
+          changedBy: options.performedBy,
+          changedByName: options.performedBy,
+          fullSnapshot: JSON.stringify({
+            memberData: source,
+            transferSummary,
+            mergeTarget: resolvedTargetId,
+          }),
+          reason: options.reason || 'Duplicate profile merge',
+        },
       });
 
       await tx.familyMember.update({
@@ -332,11 +411,6 @@ export async function mergeMemberProfiles(
           deletedBy: options.performedBy,
           deletedReason: `Merged into ${resolvedTargetId}: ${options.reason || 'Duplicate profile merge'}`,
         },
-      });
-
-      const linkedAccountsTransfer = await tx.user.updateMany({
-        where: { linkedMemberId: resolvedSourceId },
-        data: { linkedMemberId: resolvedTargetId },
       });
 
       return {

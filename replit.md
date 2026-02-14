@@ -42,6 +42,9 @@ The UI/UX emphasizes a clean, modern interface with bilingual support (Arabic RT
 -   **Gallery with Video Support**: Supports both images and videos (up to 50MB) with play button overlays and lightbox functionality.
 -   **PDF Support in Journals**: Family journals/stories support PDF attachments (up to 20MB). PDFs are stored as base64 in the `FamilyJournal` table (`pdfData`, `pdfFileName` fields). Served via `/api/journals/[id]/pdf` endpoint. Embedded PDF viewer on journal detail pages. Content text is optional when PDF is attached.
 -   **Conditional Approval System**: Allows family members to register even if their parent is pending approval, using `parentPendingId`. Includes sequential chain approval, enhanced admin review with pending warnings, and a dedicated admin page (`/admin/conditional-approvals`) to manage and visualize these relationships.
+-   **Robust Delete & Merge System**: Complete member deletion and merge system with full ID variant support (P227/P0227). Delete endpoint transfers ALL related data (children, photos, journals, breastfeeding, linked accounts, pending members) to the merge target. Admin force-override capability for pending DuplicateFlags and linked user blocks. Full merge snapshots saved in ChangeHistory for undo operations.
+-   **Undo Delete & Merge**: Admin page (`/admin/deleted-members`) shows all deleted/merged members with one-click restore and undo-merge capabilities. Undo merge restores the source member and moves children back to their original parent. API endpoints: `/api/admin/deleted-members` (GET), `/api/admin/undo-merge` (POST), `/api/members/[id]/restore` (POST).
+-   **Unified Merge Flow**: Both `/duplicates` page and `/admin/duplicate-scanner` now use the same full merge service (`/api/admin/merge`) that handles all data transfers in a serializable transaction.
 
 ## External Dependencies
 -   **PostgreSQL**: Primary database.

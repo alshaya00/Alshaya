@@ -12,7 +12,8 @@ import {
   Filter,
   AlertCircle,
   CheckCircle2,
-  Clock
+  Clock,
+  GitMerge
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -55,14 +56,14 @@ export default function DeletedMembersPage() {
     setError(null);
     
     try {
-      const res = await fetch('/api/members/deleted', {
+      const res = await fetch('/api/admin/deleted-members', {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       
       const data = await res.json();
       
       if (data.success) {
-        setMembers(data.data);
+        setMembers(data.members);
       } else {
         setError(data.message || 'فشل في جلب البيانات');
       }
@@ -71,6 +72,11 @@ export default function DeletedMembersPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const isMergedMember = (reason: string | null): boolean => {
+    if (!reason) return false;
+    return reason.includes('تم الدمج') || reason.includes('Merged into') || reason.includes('merged into');
   };
 
   const restoreMember = async (memberId: string, memberName: string) => {
@@ -101,6 +107,41 @@ export default function DeletedMembersPage() {
       }
     } catch (err) {
       alert('حدث خطأ أثناء الاستعادة');
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  const undoMerge = async (memberId: string, memberName: string) => {
+    if (!session?.token) return;
+    
+    const confirmed = confirm(`هل أنت متأكد من التراجع عن دمج العضو "${memberName}"؟\n\nسيتم استعادة العضو وإرجاع الأبناء إليه إن أمكن.`);
+    if (!confirmed) return;
+    
+    setRestoring(memberId);
+    
+    try {
+      const res = await fetch('/api/admin/undo-merge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.token}`,
+        },
+        body: JSON.stringify({ memberId }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setMembers(prev => prev.filter(m => m.id !== memberId));
+        const childrenMsg = data.childrenRestored > 0 ? ` (تم إرجاع ${data.childrenRestored} أبناء)` : '';
+        setSuccessMessage(`تم التراجع عن دمج "${memberName}" بنجاح${childrenMsg}`);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        alert(`فشل التراجع عن الدمج: ${data.messageAr || data.message}`);
+      }
+    } catch (err) {
+      alert('حدث خطأ أثناء التراجع عن الدمج');
     } finally {
       setRestoring(null);
     }
@@ -143,7 +184,8 @@ export default function DeletedMembersPage() {
     const matchesSearch = !searchTerm || 
       normalizeArabic(member.firstName).includes(normalizedSearch) ||
       normalizeArabic(member.fullNameAr).includes(normalizedSearch) ||
-      normalizeArabic(member.deletedReason).includes(normalizedSearch);
+      normalizeArabic(member.deletedReason).includes(normalizedSearch) ||
+      member.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (!matchesSearch) return false;
     
@@ -158,8 +200,8 @@ export default function DeletedMembersPage() {
     }
   });
 
-  const totalMerged = members.filter(m => m.deletedReason?.includes('تم الدمج')).length;
-  const totalOtherDeleted = members.filter(m => !m.deletedReason?.includes('تم الدمج')).length;
+  const totalMerged = members.filter(m => isMergedMember(m.deletedReason)).length;
+  const totalOtherDeleted = members.filter(m => !isMergedMember(m.deletedReason)).length;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
@@ -200,7 +242,7 @@ export default function DeletedMembersPage() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="بحث بالاسم أو سبب الحذف..."
+                placeholder="بحث بالاسم أو المعرف أو سبب الحذف..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -272,7 +314,7 @@ export default function DeletedMembersPage() {
           <div className="space-y-3">
             {filteredMembers.map((member) => {
               const daysAgo = getDaysAgo(member.deletedAt);
-              const isMerged = member.deletedReason?.includes('تم الدمج');
+              const isMerged = isMergedMember(member.deletedReason);
               
               return (
                 <div 
@@ -286,8 +328,10 @@ export default function DeletedMembersPage() {
                         <h3 className="font-bold text-gray-800">
                           {member.fullNameAr || member.firstName}
                         </h3>
+                        <span className="text-xs text-gray-400 font-mono">{member.id}</span>
                         {isMerged && (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full flex items-center gap-1">
+                            <GitMerge className="w-3 h-3" />
                             دمج
                           </span>
                         )}
@@ -306,14 +350,14 @@ export default function DeletedMembersPage() {
                       </div>
                       
                       {member.deletedReason && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded-lg text-sm text-gray-600">
+                        <div className={`mt-2 p-2 rounded-lg text-sm ${isMerged ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'}`}>
                           <span className="font-medium">السبب: </span>
                           {member.deletedReason}
                         </div>
                       )}
                     </div>
                     
-                    <div className="text-left min-w-[180px]">
+                    <div className="text-left min-w-[200px]">
                       <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                         <Calendar className="w-4 h-4" />
                         <span>{formatDate(member.deletedAt)}</span>
@@ -325,23 +369,45 @@ export default function DeletedMembersPage() {
                         </span>
                       </div>
                       
-                      <button
-                        onClick={() => restoreMember(member.id, member.fullNameAr || member.firstName)}
-                        disabled={restoring === member.id}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-lg transition-colors"
-                      >
-                        {restoring === member.id ? (
-                          <>
-                            <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                            <span>جاري الاستعادة...</span>
-                          </>
+                      <div className="flex gap-2">
+                        {isMerged ? (
+                          <button
+                            onClick={() => undoMerge(member.id, member.fullNameAr || member.firstName)}
+                            disabled={restoring === member.id}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-lg transition-colors"
+                          >
+                            {restoring === member.id ? (
+                              <>
+                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                <span>جاري التراجع...</span>
+                              </>
+                            ) : (
+                              <>
+                                <GitMerge className="w-4 h-4" />
+                                <span>تراجع عن الدمج</span>
+                              </>
+                            )}
+                          </button>
                         ) : (
-                          <>
-                            <RotateCcw className="w-4 h-4" />
-                            <span>استعادة</span>
-                          </>
+                          <button
+                            onClick={() => restoreMember(member.id, member.fullNameAr || member.firstName)}
+                            disabled={restoring === member.id}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-lg transition-colors"
+                          >
+                            {restoring === member.id ? (
+                              <>
+                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                <span>جاري الاستعادة...</span>
+                              </>
+                            ) : (
+                              <>
+                                <RotateCcw className="w-4 h-4" />
+                                <span>استعادة</span>
+                              </>
+                            )}
+                          </button>
                         )}
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -357,7 +423,7 @@ export default function DeletedMembersPage() {
               <h3 className="font-medium text-amber-800">ملاحظة هامة</h3>
               <p className="text-sm text-amber-700 mt-1">
                 الأعضاء المحذوفين يبقون في النظام ولا يُحذفون نهائياً. يمكنك استعادة أي عضو في أي وقت.
-                عند استعادة عضو تم دمجه، قد تحتاج إلى مراجعة بياناته وارتباطاته.
+                عند التراجع عن دمج عضو، سيتم إرجاع الأبناء تلقائياً إن أمكن. قد تحتاج إلى مراجعة الصور والمدونات يدوياً.
               </p>
             </div>
           </div>

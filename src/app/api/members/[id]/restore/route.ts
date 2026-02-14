@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { normalizeMemberId } from '@/lib/utils';
+import { getMemberIdVariants } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
@@ -23,29 +23,29 @@ export async function POST(
   try {
     const user = await getAuthUser(request);
     if (!user) {
-      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Unauthorized', messageAr: 'غير مصرح' }, { status: 401 });
     }
 
     const permissions = getPermissionsForRole(user.role);
     if (!permissions.edit_member) {
-      return NextResponse.json({ success: false, message: 'No permission' }, { status: 403 });
+      return NextResponse.json({ success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' }, { status: 403 });
     }
 
-    const id = normalizeMemberId(params.id) || params.id;
-    const member = await prisma.familyMember.findUnique({
-      where: { id },
+    const idVariants = getMemberIdVariants(params.id);
+    const member = await prisma.familyMember.findFirst({
+      where: { id: { in: idVariants } },
     });
 
     if (!member) {
-      return NextResponse.json({ success: false, message: 'Member not found' }, { status: 404 });
+      return NextResponse.json({ success: false, message: 'Member not found', messageAr: 'العضو غير موجود' }, { status: 404 });
     }
 
     if (!member.deletedAt) {
-      return NextResponse.json({ success: false, message: 'Member is not deleted' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Member is not deleted', messageAr: 'العضو غير محذوف' }, { status: 400 });
     }
 
     await prisma.familyMember.update({
-      where: { id },
+      where: { id: member.id },
       data: {
         deletedAt: null,
         deletedBy: null,
@@ -55,7 +55,7 @@ export async function POST(
 
     await prisma.changeHistory.create({
       data: {
-        memberId: id,
+        memberId: member.id,
         fieldName: 'deletedAt',
         oldValue: member.deletedAt.toISOString(),
         newValue: null,
