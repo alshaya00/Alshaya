@@ -17,6 +17,8 @@ import {
   FileText,
   ChevronRight,
   Loader2,
+  Users,
+  Eye,
 } from 'lucide-react';
 import GenderAvatar from '@/components/GenderAvatar';
 
@@ -74,6 +76,9 @@ export default function MemberEditModal({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [revertingId, setRevertingId] = useState<string | null>(null);
+  const [showNamePreview, setShowNamePreview] = useState(false);
+  const [namePreview, setNamePreview] = useState<any>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   useEffect(() => {
     const changed = JSON.stringify(member) !== JSON.stringify(editedMember);
@@ -105,7 +110,49 @@ export default function MemberEditModal({
   };
 
   const handleSave = async () => {
+    const nameAffectingFields = ['firstName', 'gender', 'fatherId'];
+    const hasNameChanges = nameAffectingFields.some(
+      (field) => editedMember[field as keyof MemberData] !== member[field as keyof MemberData]
+    );
+
+    if (hasNameChanges && !showNamePreview) {
+      setIsLoadingPreview(true);
+      try {
+        const res = await fetch(`/api/members/${member.id}/name-preview`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({
+            firstName: editedMember.firstName,
+            gender: editedMember.gender,
+            fatherId: editedMember.fatherId,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNamePreview(data.preview);
+          setShowNamePreview(true);
+        } else {
+          await performSave();
+        }
+      } catch (error) {
+        console.error('Error loading preview:', error);
+        await performSave();
+      } finally {
+        setIsLoadingPreview(false);
+      }
+      return;
+    }
+
+    await performSave();
+  };
+
+  const performSave = async () => {
     setIsSaving(true);
+    setShowNamePreview(false);
+    setNamePreview(null);
     try {
       await onSave(editedMember);
       onClose();
@@ -196,6 +243,43 @@ export default function MemberEditModal({
     }
   };
 
+  const handleBatchRevert = async (batchId: string) => {
+    try {
+      const previewRes = await fetch('/api/members/batch-revert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ batchId, preview: true }),
+      });
+
+      if (!previewRes.ok) throw new Error('Preview failed');
+      const previewData = await previewRes.json();
+
+      const confirmMsg = `هل تريد التراجع عن التغيير المجموعي؟\n\nسيتم تراجع التغييرات على ${previewData.revertedMembers} عضو (${previewData.revertedFields} حقل):\n${previewData.details.map((d: any) => `- ${d.firstName}: ${d.fields.join(', ')}`).join('\n')}`;
+
+      if (!window.confirm(confirmMsg)) return;
+
+      const revertRes = await fetch('/api/members/batch-revert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ batchId, preview: false }),
+      });
+
+      if (!revertRes.ok) throw new Error('Revert failed');
+
+      alert('تم التراجع بنجاح');
+      await loadHistory();
+    } catch (error) {
+      console.error('Batch revert error:', error);
+      alert('حدث خطأ أثناء التراجع');
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('ar-SA', {
       year: 'numeric',
@@ -236,6 +320,7 @@ export default function MemberEditModal({
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" dir="rtl">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="bg-gradient-to-l from-blue-600 to-blue-800 text-white px-6 py-4 flex items-center justify-between">
@@ -554,20 +639,31 @@ export default function MemberEditModal({
                           بواسطة {item.userName} • {formatDate(item.timestamp)}
                         </p>
                       </div>
-                      {item.previousState && (
-                        <button
-                          onClick={() => handleRevert(item)}
-                          disabled={revertingId === item.id}
-                          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors disabled:opacity-50"
-                        >
-                          {revertingId === item.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
+                      <div className="flex items-center gap-2">
+                        {item.previousState && (
+                          <button
+                            onClick={() => handleRevert(item)}
+                            disabled={revertingId === item.id}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors disabled:opacity-50"
+                          >
+                            {revertingId === item.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-4 h-4" />
+                            )}
+                            تراجع
+                          </button>
+                        )}
+                        {item.details && (item.details as any).batchId && (
+                          <button
+                            onClick={() => handleBatchRevert((item.details as any).batchId)}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                          >
                             <RotateCcw className="w-4 h-4" />
-                          )}
-                          تراجع
-                        </button>
-                      )}
+                            تراجع مجموعي
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {item.previousState && item.newState && (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -606,19 +702,134 @@ export default function MemberEditModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={!hasChanges || isSaving}
+              disabled={!hasChanges || isSaving || isLoadingPreview}
               className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSaving ? (
+              {isSaving || isLoadingPreview ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <Save className="w-5 h-5" />
               )}
-              حفظ التغييرات
+              {isLoadingPreview ? 'جاري معاينة التأثيرات...' : 'حفظ التغييرات'}
             </button>
           </div>
         </div>
       </div>
     </div>
+    {showNamePreview && namePreview && (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" dir="rtl">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-gradient-to-l from-amber-500 to-amber-600 text-white px-6 py-4">
+            <div className="flex items-center gap-3">
+              <Eye className="w-6 h-6" />
+              <div>
+                <h3 className="text-lg font-bold">معاينة تأثير التغييرات</h3>
+                <p className="text-amber-100 text-sm">
+                  {namePreview.totalAffected > 1
+                    ? `سيتأثر ${namePreview.totalAffected} عضو بهذا التغيير`
+                    : 'سيتأثر عضو واحد بهذا التغيير'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-6 space-y-4">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                التغييرات على العضو: {namePreview.member.firstName}
+              </h4>
+              <div className="space-y-2">
+                {Object.entries(namePreview.member.changes).map(([field, change]: [string, any]) => {
+                  if (!change || change.old === change.new) return null;
+                  const fieldLabels: Record<string, string> = {
+                    fullNameAr: 'الاسم الكامل (عربي)',
+                    fullNameEn: 'الاسم الكامل (إنجليزي)',
+                    fatherName: 'اسم الأب',
+                    grandfatherName: 'اسم الجد',
+                    greatGrandfatherName: 'اسم الجد الأعلى',
+                  };
+                  return (
+                    <div key={field} className="flex items-center gap-2 text-sm bg-white px-3 py-2 rounded-lg">
+                      <span className="text-gray-600 font-medium min-w-[120px]">{fieldLabels[field] || field}:</span>
+                      <span className="text-red-600 line-through">{change.old || '-'}</span>
+                      <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                      <span className="text-green-600 font-medium">{change.new || '-'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {namePreview.affectedDescendants && namePreview.affectedDescendants.length > 0 && (
+              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                <h4 className="font-bold text-amber-800 mb-3 flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  الأعضاء المتأثرون ({namePreview.affectedDescendants.length})
+                </h4>
+                <div className="space-y-3 max-h-[300px] overflow-auto">
+                  {namePreview.affectedDescendants.map((desc: any) => (
+                    <div key={desc.id} className="bg-white rounded-lg p-3 border border-amber-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-medium text-gray-800">{desc.firstName}</span>
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                          {desc.relationship}
+                        </span>
+                        <span className="text-xs text-gray-500">الجيل {desc.generation}</span>
+                      </div>
+                      <div className="space-y-1">
+                        {Object.entries(desc.changes).map(([field, change]: [string, any]) => {
+                          if (!change || change.old === change.new) return null;
+                          const fieldLabels: Record<string, string> = {
+                            fullNameAr: 'الاسم الكامل (عربي)',
+                            fullNameEn: 'الاسم الكامل (إنجليزي)',
+                            fatherName: 'اسم الأب',
+                            grandfatherName: 'اسم الجد',
+                            greatGrandfatherName: 'اسم الجد الأعلى',
+                          };
+                          return (
+                            <div key={field} className="flex items-center gap-2 text-xs bg-gray-50 px-2 py-1 rounded">
+                              <span className="text-gray-500 min-w-[100px]">{fieldLabels[field] || field}:</span>
+                              <span className="text-red-500 line-through">{change.old || '-'}</span>
+                              <ChevronRight className="w-2.5 h-2.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-green-600">{change.new || '-'}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t bg-gray-50 px-6 py-4 flex items-center justify-between">
+            <p className="text-sm text-gray-500">يمكنك التراجع عن هذه التغييرات لاحقاً من سجل التغييرات</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setShowNamePreview(false); setNamePreview(null); }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                رجوع
+              </button>
+              <button
+                onClick={performSave}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Check className="w-5 h-5" />
+                )}
+                تأكيد وحفظ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

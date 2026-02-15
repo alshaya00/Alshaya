@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
-import { generateFullNamesFromLineage } from '@/lib/member-registry';
+import { generateFullNamesFromLineage, getAncestorNamesFromLineage } from '@/lib/member-registry';
 import { isMale, normalizeMemberId, getMemberIdVariants } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
 export const dynamic = "force-dynamic";
@@ -31,9 +31,10 @@ async function recordChangeHistory(
   oldMember: FamilyMember,
   newData: Partial<FamilyMember>,
   changedBy: string = 'system',
-  changedByName: string = 'النظام'
-): Promise<void> {
-  const batchId = randomUUID();
+  changedByName: string = 'النظام',
+  existingBatchId?: string
+): Promise<string> {
+  const batchId = existingBatchId || randomUUID();
   const changedFields: { field: string; oldValue: string | null; newValue: string | null }[] = [];
 
   const fieldsToTrack: (keyof FamilyMember)[] = [
@@ -75,6 +76,8 @@ async function recordChangeHistory(
       console.log('Failed to record change history:', err);
     }
   }
+
+  return batchId;
 }
 
 export async function GET(
@@ -272,6 +275,11 @@ async function handleUpdate(
         
         updateData.fullNameAr = fullNames.fullNameAr;
         updateData.fullNameEn = fullNames.fullNameEn;
+
+        const ancestorNames = await getAncestorNamesFromLineage(newFatherId);
+        updateData.fatherName = ancestorNames.fatherName;
+        updateData.grandfatherName = ancestorNames.grandfatherName;
+        updateData.greatGrandfatherName = ancestorNames.greatGrandfatherName;
       } catch (nameError) {
         console.error('Failed to regenerate full names:', nameError);
       }
@@ -288,13 +296,33 @@ async function handleUpdate(
       );
     }
 
-    recordChangeHistory(
-      id,
-      originalMember,
-      updateData,
-      body.changedBy || 'system',
-      body.changedByName || 'النظام'
-    ).catch(err => console.log('Change history recording failed:', err));
+    let batchId: string | undefined;
+    try {
+      batchId = await recordChangeHistory(
+        id,
+        originalMember,
+        updateData,
+        body.changedBy || 'system',
+        body.changedByName || 'النظام'
+      );
+    } catch (err) {
+      console.log('Change history recording failed:', err);
+    }
+
+    let cascadedCount = 0;
+    const firstNameChanged = updateData.firstName !== undefined && updateData.firstName !== member.firstName;
+    if (firstNameChanged && batchId) {
+      try {
+        cascadedCount = await cascadeNameChangesToDescendants(
+          id,
+          batchId,
+          body.changedBy || 'system',
+          body.changedByName || 'النظام'
+        );
+      } catch (cascadeError) {
+        console.error('Failed to cascade name changes:', cascadeError);
+      }
+    }
 
     try {
       await logAuditToDb({
@@ -306,7 +334,7 @@ async function handleUpdate(
         targetType: 'MEMBER',
         targetId: id,
         targetName: updatedMember.fullNameAr || updatedMember.firstName,
-        description: `تم تحديث بيانات العضو: ${updatedMember.firstName}`,
+        description: `تم تحديث بيانات العضو: ${updatedMember.firstName}${cascadedCount > 0 ? ` (تم تحديث ${cascadedCount} من الأبناء والأحفاد)` : ''}`,
         previousState: originalMember as unknown as Record<string, unknown>,
         newState: updatedMember as unknown as Record<string, unknown>,
         success: true,
@@ -318,7 +346,9 @@ async function handleUpdate(
     return NextResponse.json({
       success: true,
       data: updatedMember,
-      message: 'Member updated successfully'
+      message: 'Member updated successfully',
+      cascadedCount,
+      batchId,
     });
   } catch (error) {
     console.error('Error updating member:', error);
@@ -434,6 +464,71 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+async function cascadeNameChangesToDescendants(
+  parentId: string,
+  batchId: string,
+  changedBy: string,
+  changedByName: string
+): Promise<number> {
+  let totalUpdated = 0;
+  const memberIdVariants = getMemberIdVariants(parentId);
+
+  const children = await prisma.familyMember.findMany({
+    where: {
+      fatherId: { in: memberIdVariants },
+      deletedAt: null,
+    },
+  });
+
+  for (const child of children) {
+    const oldChild = { ...child } as unknown as FamilyMember;
+
+    const ancestorNames = await getAncestorNamesFromLineage(child.fatherId);
+    const fullNames = await generateFullNamesFromLineage(child.id, {
+      firstName: child.firstName,
+      gender: child.gender as 'Male' | 'Female',
+      fatherId: child.fatherId,
+    });
+
+    const childUpdateData: Record<string, unknown> = {
+      fatherName: ancestorNames.fatherName,
+      grandfatherName: ancestorNames.grandfatherName,
+      greatGrandfatherName: ancestorNames.greatGrandfatherName,
+      fullNameAr: fullNames.fullNameAr,
+      fullNameEn: fullNames.fullNameEn,
+    };
+
+    await prisma.familyMember.update({
+      where: { id: child.id },
+      data: {
+        ...childUpdateData,
+        version: { increment: 1 },
+      },
+    });
+
+    await recordChangeHistory(
+      child.id,
+      oldChild,
+      childUpdateData as Partial<FamilyMember>,
+      changedBy,
+      changedByName,
+      batchId
+    );
+
+    totalUpdated++;
+
+    const descendantCount = await cascadeNameChangesToDescendants(
+      child.id,
+      batchId,
+      changedBy,
+      changedByName
+    );
+    totalUpdated += descendantCount;
+  }
+
+  return totalUpdated;
 }
 
 async function checkIsDescendant(potentialDescendantId: string, ancestorId: string): Promise<boolean> {

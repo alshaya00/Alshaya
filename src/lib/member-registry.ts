@@ -1,6 +1,7 @@
 import { prisma, Prisma } from './prisma';
 import { logAuditToDb } from './db-audit';
 import { transliterateName, generateFullNameEn } from './utils/transliteration';
+import { getMemberIdVariants } from './utils';
 import type { FamilyMember } from '@prisma/client';
 
 type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -111,8 +112,8 @@ export async function calculateGeneration(
   }
 
   const client = tx || prisma;
-  const father = await client.familyMember.findUnique({
-    where: { id: fatherId },
+  const father = await client.familyMember.findFirst({
+    where: { id: { in: getMemberIdVariants(fatherId) } },
     select: { generation: true },
   });
 
@@ -155,8 +156,8 @@ export async function buildLineageInfo(
   let currentId: string | null = fatherId;
 
   for (let i = 0; i < MAX_GENERATION && currentId; i++) {
-    const ancestor = await client.familyMember.findUnique({
-      where: { id: currentId },
+    const ancestor = await client.familyMember.findFirst({
+      where: { id: { in: getMemberIdVariants(currentId) } },
       select: { id: true, firstName: true, fatherId: true, generation: true },
     });
 
@@ -208,8 +209,8 @@ export async function getAncestorNamesFromLineage(
   let currentId: string | null = fatherId;
 
   for (let i = 0; i < 3 && currentId; i++) {
-    const ancestor = await client.familyMember.findUnique({
-      where: { id: currentId },
+    const ancestor = await client.familyMember.findFirst({
+      where: { id: { in: getMemberIdVariants(currentId) } },
       select: { firstName: true, fatherId: true },
     });
 
@@ -283,8 +284,8 @@ export async function checkCircularAncestry(
   let currentId: string | null = proposedFatherId;
 
   for (let i = 0; i < MAX_GENERATION && currentId; i++) {
-    const ancestor = await client.familyMember.findUnique({
-      where: { id: currentId },
+    const ancestor = await client.familyMember.findFirst({
+      where: { id: { in: getMemberIdVariants(currentId) } },
       select: { id: true, fatherId: true },
     });
 
@@ -313,8 +314,8 @@ export async function validateParent(
   }
 
   const client = tx || prisma;
-  const father = await client.familyMember.findUnique({
-    where: { id: fatherId },
+  const father = await client.familyMember.findFirst({
+    where: { id: { in: getMemberIdVariants(fatherId) } },
     select: {
       id: true,
       firstName: true,
@@ -434,8 +435,8 @@ export async function generateFullNamesFromLineage(
   let currentFatherId: string | null | undefined = memberData.fatherId;
   
   for (let i = 0; i < MAX_GENERATION && currentFatherId; i++) {
-    const ancestor = await client.familyMember.findUnique({
-      where: { id: currentFatherId },
+    const ancestor = await client.familyMember.findFirst({
+      where: { id: { in: getMemberIdVariants(currentFatherId) } },
       select: { id: true, firstName: true, fatherId: true },
     });
     
