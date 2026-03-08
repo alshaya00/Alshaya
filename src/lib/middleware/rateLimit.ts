@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // TYPES
 // ============================================
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
   windowMs: number;       // Time window in milliseconds
   maxRequests: number;    // Max requests per window
   message?: string;       // Custom error message

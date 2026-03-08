@@ -127,8 +127,8 @@ export async function PUT(
     const gathering = await prisma.gathering.update({
       where: { id },
       data: {
-        title: body.title !== undefined ? sanitizeString(body.title) : undefined,
-        titleAr: body.titleAr !== undefined ? sanitizeString(body.titleAr) : undefined,
+        title: body.title !== undefined ? (sanitizeString(body.title) ?? body.title) : undefined,
+        titleAr: body.titleAr !== undefined ? (sanitizeString(body.titleAr) ?? body.titleAr) : undefined,
         description: body.description !== undefined ? body.description : undefined,
         descriptionAr: body.descriptionAr !== undefined ? sanitizeString(body.descriptionAr) : undefined,
         date: body.date !== undefined ? new Date(body.date) : undefined,
@@ -139,8 +139,8 @@ export async function PUT(
         locationUrl: body.locationUrl !== undefined ? body.locationUrl : undefined,
         type: body.type !== undefined ? body.type : undefined,
         coverImage: body.coverImage !== undefined ? body.coverImage : undefined,
-        organizerName: body.organizerName !== undefined ? sanitizeString(body.organizerName) : undefined,
-        organizerNameAr: body.organizerNameAr !== undefined ? sanitizeString(body.organizerNameAr) : undefined,
+        organizerName: body.organizerName !== undefined ? (sanitizeString(body.organizerName) ?? body.organizerName) : undefined,
+        organizerNameAr: body.organizerNameAr !== undefined ? (sanitizeString(body.organizerNameAr) ?? body.organizerNameAr) : undefined,
         status: body.status !== undefined ? body.status : undefined,
         isPublic: body.isPublic !== undefined ? body.isPublic : undefined
       },
@@ -246,7 +246,7 @@ export async function POST(
       create: {
         gatheringId: id,
         userId: userId || null,
-        name: sanitizeString(name),
+        name: sanitizeString(name) ?? name,
         email: email || null,
         rsvpStatus: rsvpStatus.toUpperCase(),
         rsvpNote: rsvpNote ? sanitizeString(rsvpNote) : null,

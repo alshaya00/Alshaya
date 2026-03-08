@@ -156,23 +156,24 @@ export function checkRequestRateLimit(
              request.headers.get('x-real-ip') ||
              'unknown';
 
-  const key = identifier || `${config.name || 'api'}:${ip}`;
+  const key = identifier || `${'api'}:${ip}`;
   const result = checkRateLimit(key, config);
 
   if (!result.allowed) {
+    const resetIn = Math.max(0, result.resetTime - Date.now());
     return NextResponse.json(
       {
         success: false,
-        error: result.message || 'Too many requests',
+        error: 'Too many requests',
         errorAr: 'عدد كبير جداً من الطلبات',
-        retryAfter: Math.ceil(result.resetIn / 1000),
+        retryAfter: Math.ceil(resetIn / 1000),
       },
       {
         status: 429,
         headers: {
-          'Retry-After': String(Math.ceil(result.resetIn / 1000)),
+          'Retry-After': String(Math.ceil(resetIn / 1000)),
           'X-RateLimit-Remaining': String(result.remaining),
-          'X-RateLimit-Reset': String(Date.now() + result.resetIn),
+          'X-RateLimit-Reset': String(result.resetTime),
         },
       }
     );
@@ -188,21 +189,22 @@ export function checkUserRateLimit(
   user: StoredUser,
   config: RateLimitConfig
 ): NextResponse | null {
-  const key = `${config.name || 'api'}:user:${user.id}`;
+  const key = `${'api'}:user:${user.id}`;
   const result = checkRateLimit(key, config);
 
   if (!result.allowed) {
+    const resetIn = Math.max(0, result.resetTime - Date.now());
     return NextResponse.json(
       {
         success: false,
-        error: result.message || 'Too many requests',
+        error: 'Too many requests',
         errorAr: 'عدد كبير جداً من الطلبات',
-        retryAfter: Math.ceil(result.resetIn / 1000),
+        retryAfter: Math.ceil(resetIn / 1000),
       },
       {
         status: 429,
         headers: {
-          'Retry-After': String(Math.ceil(result.resetIn / 1000)),
+          'Retry-After': String(Math.ceil(resetIn / 1000)),
         },
       }
     );
