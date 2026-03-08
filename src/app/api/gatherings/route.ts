@@ -170,8 +170,8 @@ export async function POST(request: NextRequest) {
     // Create gathering
     const gathering = await prisma.gathering.create({
       data: {
-        title: title || titleAr,
-        titleAr: titleAr || title,
+        title: (title || titleAr)!,
+        titleAr: (titleAr || title)!,
         description: body.description || null,
         descriptionAr: sanitizeString(body.descriptionAr) || null,
         date: new Date(date),

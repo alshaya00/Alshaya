@@ -62,7 +62,7 @@ export async function POST(
         {
           status: 429,
           headers: {
-            'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)),
+            'Retry-After': String(Math.ceil((rateCheck.resetTime - Date.now()) / 1000)),
           },
         }
       );

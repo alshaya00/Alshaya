@@ -40,6 +40,7 @@ interface PendingMember {
 }
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
+type MemberStatus = 'pending' | 'approved' | 'rejected';
 
 // Build full lineage name
 function getFullLineageName(member: FamilyMember, allMembers: FamilyMember[], maxDepth: number = 4): string {
@@ -138,7 +139,7 @@ export default function AdminPendingPage() {
   }, [session?.token, fetchPendingMembers]);
 
   // Map reviewStatus to filter status
-  const getFilterStatus = (member: PendingMember): FilterStatus => {
+  const getFilterStatus = (member: PendingMember): MemberStatus => {
     switch (member.reviewStatus) {
       case 'PENDING': return 'pending';
       case 'APPROVED': return 'approved';

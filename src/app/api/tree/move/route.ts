@@ -55,7 +55,7 @@ async function calculateGenerationAsync(parentId: string | null): Promise<number
 
 // Helper to update generations for all descendants
 async function updateDescendantGenerations(
-  tx: typeof prisma,
+  tx: Prisma.TransactionClient | typeof prisma,
   memberId: string,
   newGeneration: number
 ): Promise<number> {

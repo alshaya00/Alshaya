@@ -283,7 +283,7 @@ export async function assertRecordExists(
 ): Promise<void> {
   const client = prisma || getTestPrismaClient();
 
-  const record = await (client[table] as { findFirst: (args: { where: Record<string, unknown> }) => Promise<unknown> }).findFirst({
+  const record = await (client[table] as any).findFirst({ // eslint-disable-line
     where: conditions,
   });
 
@@ -300,7 +300,7 @@ export async function assertRecordNotExists(
 ): Promise<void> {
   const client = prisma || getTestPrismaClient();
 
-  const record = await (client[table] as { findFirst: (args: { where: Record<string, unknown> }) => Promise<unknown> }).findFirst({
+  const record = await (client[table] as any).findFirst({ // eslint-disable-line
     where: conditions,
   });
 

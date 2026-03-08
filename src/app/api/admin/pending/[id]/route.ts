@@ -152,7 +152,7 @@ export async function POST(
           reviewStatus: 'APPROVED',
           reviewedBy: user.id,
           reviewedAt: new Date(),
-          reviewNote,
+          reviewNotes: reviewNote,
           approvedMemberId: newId,
         },
       });
@@ -188,7 +188,7 @@ export async function POST(
           reviewStatus: 'REJECTED',
           reviewedBy: user.id,
           reviewedAt: new Date(),
-          reviewNote,
+          reviewNotes: reviewNote,
         },
       });
 

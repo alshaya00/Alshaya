@@ -38,7 +38,7 @@ export async function GET(
     }
 
     // Check permission to view broadcasts
-    if (!hasPermission(user.role as UserRole, 'view_members')) {
+    if (!hasPermission(user.role as UserRole, 'view_member_profiles')) {
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions' },
         { status: 403 }
@@ -107,7 +107,7 @@ export async function PUT(
       );
     }
 
-    const updateData = validation.data;
+    const updateData = validation.data as any; // eslint-disable-line
     const broadcast = await broadcastService.updateBroadcast(id, updateData);
 
     logger.info('Broadcast updated', { broadcastId: id, userId: user.id });

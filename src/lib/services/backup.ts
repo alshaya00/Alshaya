@@ -254,15 +254,13 @@ export class BackupService {
       const members = JSON.parse(snapshot.treeData) as Record<string, unknown>[];
 
       // Delete all current members and re-create from snapshot
-      await prisma.$transaction(async (tx: typeof prisma) => {
+      await prisma.$transaction(async (tx) => {
         // Delete all existing members (cascade will handle related records)
         await tx.familyMember.deleteMany({});
 
         // Re-create members
         for (const member of members) {
-          await tx.familyMember.create({
-            data: member,
-          });
+          await tx.familyMember.create({ data: member as any }); // eslint-disable-line
         }
       });
 

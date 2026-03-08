@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         {
           status: 429,
           headers: {
-            'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)),
+            'Retry-After': String(Math.ceil((rateCheck.resetTime - Date.now()) / 1000)),
           },
         }
       );
@@ -117,11 +117,11 @@ export async function POST(request: NextRequest) {
     // Sanitize string fields to prevent XSS
     const pending = await prisma.pendingMember.create({
       data: {
-        firstName: sanitizeString(validatedData.firstName),
+        firstName: sanitizeString(validatedData.firstName) ?? validatedData.firstName,
         fatherName: validatedData.fatherName ? sanitizeString(validatedData.fatherName) : null,
         grandfatherName: validatedData.grandfatherName ? sanitizeString(validatedData.grandfatherName) : null,
         greatGrandfatherName: validatedData.greatGrandfatherName ? sanitizeString(validatedData.greatGrandfatherName) : null,
-        familyName: sanitizeString(validatedData.familyName),
+        familyName: sanitizeString(validatedData.familyName) ?? validatedData.familyName,
         proposedFatherId: validatedData.proposedFatherId || null,
         gender: validatedData.gender,
         birthYear: validatedData.birthYear || null,
