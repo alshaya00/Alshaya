@@ -6,7 +6,7 @@
  *
  * Environment variables:
  * - ADMIN_EMAIL: Admin email (default: admin@alshaye.family)
- * - ADMIN_PASSWORD: Admin password (default: ChangeThisSecurePassword123!)
+ * - ADMIN_PASSWORD: Admin password (default: Admin@12345)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -19,7 +19,7 @@ async function ensureAdmin() {
 
   try {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@alshaye.family';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'ChangeThisSecurePassword123!';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@12345';
 
     console.log('🔐 Checking for admin user...');
 
