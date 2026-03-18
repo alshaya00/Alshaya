@@ -7,10 +7,10 @@ This file provides guidance for AI assistants working with this repository.
 - **Name**: Al-Shaye Family Tree (شجرة آل شايع)
 - **Owner**: alshaya00
 - **Type**: Family tree web application
-- **Platform**: Replit (optimized for Replit deployment)
+- **Deployment**: Vercel
 - **Tech Stack**: Next.js 14, TypeScript, Prisma, PostgreSQL, Tailwind CSS
 
-## Project Structure (Replit Architecture)
+## Project Structure
 
 ```
 src/
@@ -38,7 +38,7 @@ prisma/
 ## Development Commands
 
 ```bash
-npm run dev           # Start dev server on port 5000
+npm run dev           # Start dev server
 npm run build         # Production build (prisma generate && next build)
 npm run start         # Start production (ensure-admin && next start)
 npm run lint          # Run ESLint
@@ -57,23 +57,20 @@ npx prisma studio      # Open database GUI
 
 **IMPORTANT**: Never run `prisma db push` or migrations during deployment.
 
-## Replit Deployment Rules
+## Vercel Deployment Rules
 
 1. **Build command**: `prisma generate && next build` only
 2. **Start command**: Runs `ensure-admin.ts` before starting server
-3. **Migrations**: Run manually via Replit Shell
-4. **Port**: Frontend runs on port 5000
-5. **Memory**: `NODE_OPTIONS=--max-old-space-size=2048`
+3. **Migrations**: Run manually via CLI before deploying
+4. **Environment variables**: Set in Vercel dashboard
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `next.config.js` | Next.js config with `standalone` output |
-| `.replit` | Replit deployment configuration |
+| `next.config.js` | Next.js config (Vercel deployment) |
 | `scripts/ensure-admin.ts` | Startup admin/settings creation |
 | `prisma/seed.ts` | Idempotent database seeding |
-| `REPLIT_DEPLOYMENT_GUIDE.md` | Full deployment documentation |
 
 ## Code Conventions
 
@@ -89,10 +86,9 @@ npx prisma studio      # Open database GUI
 ### When Working on This Repository
 
 1. **Read before modifying**: Always read existing code first
-2. **Follow Replit patterns**: Maintain compatibility with Replit deployment
+2. **Follow existing patterns**: Maintain consistency with current architecture
 3. **Idempotent operations**: Use upsert instead of delete+create
 4. **No build-time DB ops**: Never add DB operations to build command
-5. **Port 5000**: Always use port 5000 for the server
 
 ### Key Patterns
 
@@ -103,5 +99,5 @@ npx prisma studio      # Open database GUI
 
 ---
 
-*Last updated: 2025-12-22*
-*Optimized for Replit deployment architecture*
+*Last updated: 2026-03-18*
+*Deployed on Vercel*

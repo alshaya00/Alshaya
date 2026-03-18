@@ -16,7 +16,7 @@ jest.mock('@/lib/auth/password', () => ({
 jest.mock('@/lib/rate-limit', () => ({
   checkRateLimit: jest.fn(),
   getClientIp: jest.fn(),
-  rateLimiters: { register: { maxRequests: 3, windowMs: 60000, keyPrefix: 'register' } },
+  RATE_LIMITS: { REGISTER: { maxRequests: 20, windowMs: 300000, keyPrefix: 'register-public' } },
   createRateLimitResponse: jest.fn((result) => ({
     success: false,
     message: 'Too many requests',

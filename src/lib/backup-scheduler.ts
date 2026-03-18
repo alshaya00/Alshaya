@@ -1,5 +1,5 @@
 // آل شايع Family Tree - Backup Scheduler Service
-// Replit-compatible: Uses database-triggered approach instead of setInterval
+// Uses database-triggered approach instead of setInterval
 // Backups are triggered on-demand or via API calls, not continuous timers
 
 import { prisma } from '@/lib/prisma';
@@ -28,7 +28,7 @@ const DEFAULT_CONFIG: BackupConfig = {
 
 /**
  * Get backup configuration from database
- * Replit-compatible: Reads from database instead of memory
+ * Reads from database instead of memory
  */
 export async function getBackupConfigFromDB(): Promise<BackupConfig> {
   try {
@@ -80,7 +80,7 @@ export async function saveBackupConfigToDB(config: Partial<BackupConfig>): Promi
 
 /**
  * Check if a backup is needed based on last backup time
- * Replit-compatible: No timers, just time-based checks
+ * No timers, just time-based checks
  */
 export async function isBackupNeeded(): Promise<boolean> {
   try {
@@ -184,7 +184,7 @@ export async function createAutoBackup(): Promise<{
 
 /**
  * Run backup if needed - call this from API routes or startup
- * Replit-compatible: Stateless, can be called from anywhere
+ * Stateless, can be called from anywhere
  */
 export async function runBackupIfNeeded(): Promise<{
   ran: boolean;
@@ -299,22 +299,22 @@ export function updateBackupConfig(config: Partial<BackupConfig>): BackupConfig 
 
 /**
  * Start the backup scheduler
- * Replit-compatible: No-op, backups are triggered via API
+ * No-op, backups are triggered via API
  * @deprecated Use runBackupIfNeeded() instead
  */
 export function startBackupScheduler(): void {
-  console.log('[Backup Scheduler] Replit mode: Backups triggered via API, not setInterval');
+  console.log('[Backup Scheduler] Backups triggered via API, not setInterval');
   // Run once on startup to check if backup is needed
   runBackupIfNeeded().catch(console.error);
 }
 
 /**
  * Stop the backup scheduler
- * Replit-compatible: No-op, nothing to stop
- * @deprecated No longer needed in Replit mode
+ * No-op, nothing to stop
+ * @deprecated No longer needed
  */
 export function stopBackupScheduler(): void {
-  console.log('[Backup Scheduler] Replit mode: No scheduler to stop');
+  console.log('[Backup Scheduler] No scheduler to stop');
 }
 
 /**

@@ -2,63 +2,30 @@ import { google } from 'googleapis';
 import { createDailyCSVBackup, createFullBackup } from './backup-service';
 import * as stream from 'stream';
 
-interface ConnectionSettings {
-  settings: {
-    access_token?: string;
-    expires_at?: string;
-    oauth?: {
-      credentials?: {
-        access_token?: string;
-      };
-    };
-  };
-}
-
-let connectionSettings: ConnectionSettings | null = null;
-
 async function getAccessToken(): Promise<string> {
-  if (connectionSettings?.settings?.expires_at && 
-      new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    const token = connectionSettings.settings.access_token;
+  const accessToken = process.env.GOOGLE_ACCESS_TOKEN;
+  if (accessToken) {
+    return accessToken;
+  }
+
+  // Use service account credentials if available
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  if (clientEmail && privateKey) {
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: clientEmail,
+        private_key: privateKey.replace(/\\n/g, '\n'),
+      },
+      scopes: [
+        'https://www.googleapis.com/auth/drive',
+      ],
+    });
+    const token = await auth.getAccessToken();
     if (token) return token;
   }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  if (!hostname) {
-    throw new Error('REPLIT_CONNECTORS_HOSTNAME not found');
-  }
-
-  const response = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-drive',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  );
-  
-  const data = await response.json();
-  connectionSettings = data.items?.[0] as ConnectionSettings;
-
-  const accessToken = connectionSettings?.settings?.access_token || 
-                      connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('Google Drive not connected');
-  }
-  
-  return accessToken;
+  throw new Error('Google credentials not configured. Set GOOGLE_ACCESS_TOKEN or GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY.');
 }
 
 async function getGoogleDriveClient() {

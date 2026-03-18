@@ -31,7 +31,7 @@ yarn-error.log*
 .env.production.local
 
 # Vercel
-.vercel
+.vercel/
 
 # TypeScript
 *.tsbuildinfo
@@ -46,3 +46,9 @@ prisma/*.db-wal
 # IDE
 .idea/
 .vscode/
+
+# Replit artifacts (legacy)
+.replit
+.local/
+.config/
+attached_assets/

@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/backup/check
- * Replit-compatible: Trigger backup check on-demand
+ * Trigger backup check on-demand
  * Called from client-side instead of using setInterval
  */
 export async function POST() {

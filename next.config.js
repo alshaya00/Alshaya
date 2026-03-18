@@ -5,14 +5,14 @@ const nextConfig = {
     NEXT_TELEMETRY_DISABLED: '1',
   },
 
-  // Ignore ESLint errors during build (fix for missing TypeScript ESLint plugin)
+  // Enforce ESLint during builds
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
 
-  // Ignore TypeScript errors during build (for faster deployments)
+  // Enforce TypeScript checks during builds
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   experimental: {
@@ -24,7 +24,7 @@ const nextConfig = {
   // Enable SWC minification for smaller bundles
   swcMinify: true,
 
-  // Image optimization - Replit recommended minimal config
+  // Image optimization
   images: {
     remotePatterns: [
       {
@@ -33,11 +33,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.replit.dev',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.repl.co',
+        hostname: '*.vercel.app',
       },
       {
         protocol: 'https',
@@ -47,13 +43,13 @@ const nextConfig = {
     unoptimized: false,
   },
 
-  // Required for Replit proxy
+  // Security headers
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
     ];

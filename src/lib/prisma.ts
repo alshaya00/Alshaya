@@ -1,78 +1,29 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
-export { Prisma };
+// Re-export Prisma namespace for consumers that need it
+export { Prisma } from '@prisma/client';
 
-// Type for the Prisma client
-type PrismaClientType = PrismaClient;
-
-// Create a mock Prisma client for build time when Prisma isn't fully initialized
-function createMockPrismaClient(): PrismaClientType {
-  const mockModel = {
-    findMany: () => Promise.resolve([]),
-    findFirst: () => Promise.resolve(null),
-    findUnique: () => Promise.resolve(null),
-    create: () => Promise.resolve({}),
-    update: () => Promise.resolve({}),
-    delete: () => Promise.resolve({}),
-    deleteMany: () => Promise.resolve({ count: 0 }),
-    count: () => Promise.resolve(0),
-    upsert: () => Promise.resolve({}),
-    updateMany: () => Promise.resolve({ count: 0 }),
-    createMany: () => Promise.resolve({ count: 0 }),
-    aggregate: () => Promise.resolve({}),
-    groupBy: () => Promise.resolve([]),
-  };
-
-  const mockHandler = {
-    get(_target: unknown, prop: string) {
-      if (prop === '$connect' || prop === '$disconnect') {
-        return () => Promise.resolve();
-      }
-      if (prop === '$transaction') {
-        return (fn: (tx: unknown) => Promise<unknown>) => fn(createMockPrismaClient());
-      }
-      if (prop === '$queryRaw' || prop === '$executeRaw') {
-        return () => Promise.resolve([]);
-      }
-      // Return mock model for any property access
-      return mockModel;
-    },
-  };
-  return new Proxy({}, mockHandler) as PrismaClientType;
+// Fail fast if DATABASE_URL is not configured.
+// The old code silently returned a mock client that swallowed every query,
+// masking bugs in development and production alike.
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL environment variable is not set. ' +
+    'The application cannot start without a database connection. ' +
+    'Set DATABASE_URL in your .env file or environment variables.'
+  );
 }
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClientType | undefined;
+  prisma: PrismaClient | undefined;
 };
 
-let prisma: PrismaClientType;
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
 
-try {
-  // Check if DATABASE_URL is set
-  if (!process.env.DATABASE_URL) {
-    console.warn('DATABASE_URL not set, using mock client');
-    prisma = createMockPrismaClient();
-  } else {
-    // Initialize Prisma with PostgreSQL and optimized connection settings
-    prisma =
-      globalForPrisma.prisma ??
-      new PrismaClient({
-        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-        datasourceUrl: process.env.DATABASE_URL,
-      }) as PrismaClientType;
-
-    // Cache the client globally to reuse connections
-    if (process.env.NODE_ENV !== 'production') {
-      globalForPrisma.prisma = prisma;
-    } else {
-      // In production, also cache to prevent connection exhaustion
-      globalForPrisma.prisma = prisma;
-    }
-  }
-} catch (error) {
-  console.warn('Prisma client not initialized. Using mock client for build.', error);
-  prisma = createMockPrismaClient();
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
 }
 
-export { prisma };
 export default prisma;

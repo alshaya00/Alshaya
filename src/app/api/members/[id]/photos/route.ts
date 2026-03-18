@@ -7,17 +7,12 @@ import { normalizeMemberId } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const IS_REPLIT = !!process.env.REPL_ID;
-const MAX_FILE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
-const THUMBNAIL_MAX_SIZE = IS_REPLIT ? 150 : 200;
-const THUMBNAIL_QUALITY = IS_REPLIT ? 70 : 80;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const THUMBNAIL_MAX_SIZE = 200;
+const THUMBNAIL_QUALITY = 80;
 const DAILY_UPLOAD_QUOTA = 5;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const VALID_CATEGORIES = ['profile', 'memory', 'document', 'historical'];
-
-if (IS_REPLIT) {
-  sharp.concurrency(1);
-}
 
 interface UploadRequest {
   imageData: string;

@@ -1,5 +1,5 @@
 /**
- * Ensure Admin Script for Replit Deployment
+ * Ensure Admin Script
  *
  * This script runs at startup to ensure the admin user exists.
  * It uses upsert for idempotent operation - safe to run multiple times.
@@ -162,7 +162,7 @@ async function ensureAdmin() {
       console.log('✅ API service config exists');
     }
 
-    // Ensure backup config exists (Replit-compatible)
+    // Ensure backup config exists
     console.log('💾 Checking backup config...');
     const backupConfig = await prisma.backupConfig.findUnique({
       where: { id: 'default' },

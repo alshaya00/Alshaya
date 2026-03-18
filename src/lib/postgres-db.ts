@@ -1,6 +1,6 @@
 /**
  * PostgreSQL database layer using Prisma
- * Replaces the SQLite implementation for Replit deployment
+ * Replaces the SQLite implementation for PostgreSQL deployment
  *
  * CONCURRENCY HANDLING:
  * - Uses PostgreSQL transactions for write operations

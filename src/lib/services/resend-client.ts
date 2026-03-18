@@ -1,51 +1,19 @@
 import { Resend } from 'resend';
 
-let connectionSettings: { settings: { api_key?: string; from_email?: string } } | null = null;
-
-async function getCredentials(): Promise<{ apiKey: string; fromEmail: string }> {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  if (!hostname) {
-    throw new Error('REPLIT_CONNECTORS_HOSTNAME not set');
-  }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  if (!connectionSettings || !connectionSettings.settings.api_key) {
-    throw new Error('Resend not connected');
-  }
-  
-  return {
-    apiKey: connectionSettings.settings.api_key,
-    fromEmail: connectionSettings.settings.from_email || 'noreply@alshaye.com'
-  };
-}
-
 export async function getUncachableResendClient(): Promise<{
   client: Resend;
   fromEmail: string;
 }> {
-  const { apiKey, fromEmail } = await getCredentials();
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY not set in environment variables');
+  }
+
+  const fromEmail = process.env.EMAIL_FROM_ADDRESS || 'noreply@alshaye.com';
+
   return {
     client: new Resend(apiKey),
-    fromEmail
+    fromEmail,
   };
 }
 
@@ -59,8 +27,8 @@ export async function sendEmailViaResendConnector(options: {
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const { client, fromEmail } = await getUncachableResendClient();
-    
-    const from = options.fromName 
+
+    const from = options.fromName
       ? `${options.fromName} <${fromEmail}>`
       : fromEmail;
 
@@ -83,18 +51,13 @@ export async function sendEmailViaResendConnector(options: {
 
     return { success: true, messageId: response.data?.id };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error sending email' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error sending email'
     };
   }
 }
 
 export async function isResendConnectorAvailable(): Promise<boolean> {
-  try {
-    await getCredentials();
-    return true;
-  } catch {
-    return false;
-  }
+  return !!process.env.RESEND_API_KEY;
 }

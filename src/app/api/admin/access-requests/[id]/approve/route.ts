@@ -199,7 +199,7 @@ export async function POST(
       console.error('Audit logging failed:', auditError);
     }
 
-    const loginUrl = `${process.env.REPLIT_DEV_DOMAIN || 'https://alshaye.repl.co'}/login`;
+    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
 
     try {
       await emailService.sendEmail({

@@ -4,7 +4,7 @@ import {
   RATE_LIMITS,
   resetRateLimit,
   getRateLimitStatus,
-} from '@/lib/middleware/rateLimit';
+} from '@/lib/rate-limit';
 
 describe('Rate Limiting', () => {
   beforeEach(() => {

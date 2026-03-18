@@ -291,7 +291,7 @@ export async function runAutoBackupIfNeeded(user: { id: string; name: string; ro
 
 /**
  * Start auto backup scheduler
- * Replit-compatible: Runs check once on mount, no setInterval
+ * Runs check once on mount, no setInterval
  */
 export function startBackupScheduler(user: { id: string; name: string; role: string } | null): void {
   if (typeof window === 'undefined') return;
@@ -307,7 +307,7 @@ export function startBackupScheduler(user: { id: string; name: string; role: str
 
 /**
  * Stop backup scheduler
- * Replit-compatible: No-op
+ * No-op - scheduler stopped
  */
 export function stopBackupScheduler(): void {
   // No-op

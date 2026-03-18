@@ -5,21 +5,13 @@ import { normalizeMemberId } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Replit-compatible: Lower memory limits for constrained environments
-const IS_REPLIT = !!process.env.REPL_ID;
-
-// Maximum file size - lower on Replit to avoid memory issues
-const MAX_IMAGE_SIZE = IS_REPLIT ? 2 * 1024 * 1024 : 5 * 1024 * 1024; // 2MB on Replit, 5MB elsewhere
+// Maximum file size
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB for videos
 
-// Thumbnail settings - smaller on Replit
-const THUMBNAIL_MAX_SIZE = IS_REPLIT ? 150 : 200;
-const THUMBNAIL_QUALITY = IS_REPLIT ? 70 : 80;
-
-// Sharp concurrency limit for memory management
-if (IS_REPLIT) {
-  sharp.concurrency(1); // Single-threaded to reduce memory usage
-}
+// Thumbnail settings
+const THUMBNAIL_MAX_SIZE = 200;
+const THUMBNAIL_QUALITY = 80;
 
 // Allowed media types
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

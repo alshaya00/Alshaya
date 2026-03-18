@@ -1,67 +1,15 @@
 import { Octokit } from '@octokit/rest';
 import { prisma } from './prisma';
 
-interface ConnectionSettings {
-  settings: {
-    access_token?: string;
-    expires_at?: string;
-    oauth?: {
-      credentials?: {
-        access_token?: string;
-      };
-    };
-  };
-}
-
-let connectionSettings: ConnectionSettings | null = null;
-
 const REPO_NAME = 'alshaye-family-backup';
 const BACKUP_BRANCH = 'main';
 
 async function getAccessToken(): Promise<string> {
-  if (connectionSettings?.settings?.expires_at && 
-      new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    const token = connectionSettings.settings.access_token;
-    if (token) return token;
+  const token = process.env.GITHUB_TOKEN || process.env.GITHUB_ACCESS_TOKEN;
+  if (!token) {
+    throw new Error('GitHub token not configured. Set GITHUB_TOKEN in environment variables.');
   }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken || !hostname) {
-    throw new Error('GitHub not connected');
-  }
-
-  try {
-    const response = await fetch(
-      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=github',
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
-        }
-      }
-    );
-    
-    const data = await response.json();
-    connectionSettings = data.items?.[0] as ConnectionSettings;
-
-    const accessToken = connectionSettings?.settings?.access_token || 
-                        connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-    if (!connectionSettings || !accessToken) {
-      throw new Error('GitHub not connected');
-    }
-    
-    return accessToken;
-  } catch (error) {
-    console.error('GitHub connection error:', error);
-    throw new Error('GitHub not connected');
-  }
+  return token;
 }
 
 async function getGitHubClient(): Promise<Octokit> {

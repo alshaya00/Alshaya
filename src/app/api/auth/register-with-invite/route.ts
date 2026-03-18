@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
         templateName: EMAIL_TEMPLATES.WELCOME,
         templateData: {
           name: newUser.nameArabic,
-          loginUrl: `${process.env.REPLIT_DEV_DOMAIN || 'https://alshaye.repl.co'}/login`,
+          loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`,
         },
       });
     } catch (emailError) {

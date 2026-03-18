@@ -2,107 +2,263 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+/* ============================================
+   FONTS
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-:root {
-  --male-color: #4472C4;
-  --male-bg: #DBEEF3;
-  --female-color: #E91E63;
-  --female-bg: #F2DCDB;
-  --family-green: #70AD47;
-  --family-gold: #FFD700;
+/* ============================================
+   CSS CUSTOM PROPERTIES - LIGHT THEME
+   ============================================ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 100% 10%;
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.75rem;
+
+    /* Family-specific */
+    --male-color: #4472C4;
+    --male-bg: #DBEEF3;
+    --female-color: #E91E63;
+    --female-bg: #F2DCDB;
+    --family-green: #70AD47;
+    --family-gold: #FFD700;
+  }
+
+  /* ============================================
+     CSS CUSTOM PROPERTIES - DARK THEME
+     ============================================ */
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 6.5%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 6.5%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144 100% 6%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144 100% 6%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 100% 92%;
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 222.2 84% 4.9%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.1 70.6% 45.3%;
+  }
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* RTL Support */
+  [dir="rtl"] body {
+    font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;
+  }
+
+  [dir="ltr"] body {
+    font-family: 'Inter', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  }
+
+  [dir="rtl"] {
+    text-align: right;
+  }
+
+  /* Focus ring styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Selection color */
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-bold tracking-tight;
+  }
 }
 
-html {
-  scroll-behavior: smooth;
+/* ============================================
+   SCROLLBAR STYLES
+   ============================================ */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/50;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-muted/20;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30;
+  }
 }
 
-body {
-  font-family: 'Noto Sans Arabic', Arial, sans-serif;
-  background-color: #f8fafc;
-  min-height: 100vh;
+/* ============================================
+   FAMILY TREE SPECIFIC STYLES
+   ============================================ */
+@layer components {
+  /* Male member card */
+  .member-card-male {
+    background: linear-gradient(135deg, var(--male-bg) 0%, hsl(var(--card)) 100%);
+    border-inline-start: 4px solid var(--male-color);
+  }
+
+  /* Female member card */
+  .member-card-female {
+    background: linear-gradient(135deg, var(--female-bg) 0%, hsl(var(--card)) 100%);
+    border-inline-start: 4px solid var(--female-color);
+  }
+
+  /* Tree node styles */
+  .tree-node-male {
+    fill: var(--male-bg);
+    stroke: var(--male-color);
+    stroke-width: 3;
+  }
+
+  .tree-node-female {
+    fill: var(--female-bg);
+    stroke: var(--female-color);
+    stroke-width: 3;
+  }
+
+  /* Animation for tree links */
+  .tree-link {
+    fill: none;
+    stroke: hsl(var(--border));
+    stroke-width: 2;
+    transition: stroke 0.3s ease;
+  }
+
+  .tree-link:hover {
+    stroke: var(--family-green);
+  }
+
+  /* Badge styles */
+  .badge-male {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300;
+  }
+
+  .badge-female {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300;
+  }
+
+  /* Generation badge colors */
+  .gen-1 { @apply bg-red-500; }
+  .gen-2 { @apply bg-orange-500; }
+  .gen-3 { @apply bg-yellow-500; }
+  .gen-4 { @apply bg-green-500; }
+  .gen-5 { @apply bg-teal-500; }
+  .gen-6 { @apply bg-blue-500; }
+  .gen-7 { @apply bg-indigo-500; }
+  .gen-8 { @apply bg-purple-500; }
 }
 
-/* RTL Support */
-[dir="rtl"] {
-  text-align: right;
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+@layer utilities {
+  /* Safe area padding for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-500;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
-/* Male member card */
-.member-card-male {
-  background: linear-gradient(135deg, var(--male-bg) 0%, #ffffff 100%);
-  border-left: 4px solid var(--male-color);
-}
-
-/* Female member card */
-.member-card-female {
-  background: linear-gradient(135deg, var(--female-bg) 0%, #ffffff 100%);
-  border-left: 4px solid var(--female-color);
-}
-
-/* RTL adjustments for member cards */
-[dir="rtl"] .member-card-male,
-[dir="rtl"] .member-card-female {
-  border-left: none;
-  border-right: 4px solid var(--male-color);
-}
-
-[dir="rtl"] .member-card-female {
-  border-right-color: var(--female-color);
-}
-
-/* Tree node styles */
-.tree-node-male {
-  fill: var(--male-bg);
-  stroke: var(--male-color);
-  stroke-width: 3;
-}
-
-.tree-node-female {
-  fill: var(--female-bg);
-  stroke: var(--female-color);
-  stroke-width: 3;
-}
-
-/* Animation for tree links */
-.tree-link {
-  fill: none;
-  stroke: #ccc;
-  stroke-width: 2;
-  transition: stroke 0.3s ease;
-}
-
-.tree-link:hover {
-  stroke: var(--family-green);
-}
-
-/* Stat card animations */
+/* ============================================
+   STAT CARD HOVER
+   ============================================ */
 .stat-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -112,154 +268,52 @@ body {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-/* Navigation active state */
+/* ============================================
+   NAVIGATION ACTIVE STATE
+   ============================================ */
 .nav-link-active {
-  background-color: var(--family-green);
-  color: white;
+  @apply bg-primary text-primary-foreground;
 }
 
-/* Quick add form styles */
+/* ============================================
+   QUICK ADD FORM STYLES
+   ============================================ */
 .quick-add-input {
-  @apply w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all;
+  @apply w-full p-3 border-2 border-input rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-background;
 }
 
 .quick-add-input:focus {
   outline: none;
 }
 
-/* Table styles */
+/* ============================================
+   TABLE STYLES
+   ============================================ */
 .data-table {
   @apply w-full border-collapse;
 }
 
 .data-table th {
-  @apply bg-gray-100 p-3 text-right font-semibold border-b-2 border-gray-200;
+  @apply bg-muted p-3 text-start font-semibold border-b-2 border-border;
 }
 
 .data-table td {
-  @apply p-3 border-b border-gray-100;
+  @apply p-3 border-b border-border;
 }
 
 .data-table tr:hover {
-  @apply bg-gray-50;
+  @apply bg-muted/50;
 }
 
-/* Badge styles */
-.badge-male {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
-}
-
-.badge-female {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800;
-}
-
-/* Loading animation */
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.33);
-  }
-  40%, 50% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
+/* ============================================
+   LOADING ANIMATION
+   ============================================ */
 .loading-spinner {
-  @apply inline-block w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin;
-}
-
-/* Generation badge colors */
-.gen-1 { @apply bg-red-500; }
-.gen-2 { @apply bg-orange-500; }
-.gen-3 { @apply bg-yellow-500; }
-.gen-4 { @apply bg-green-500; }
-.gen-5 { @apply bg-teal-500; }
-.gen-6 { @apply bg-blue-500; }
-.gen-7 { @apply bg-indigo-500; }
-.gen-8 { @apply bg-purple-500; }
-
-/* ============================================
-   TOAST ANIMATIONS
-   ============================================ */
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(1rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
+  @apply inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin;
 }
 
 /* ============================================
-   MODAL ANIMATIONS
-   ============================================ */
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-/* ============================================
-   PULSE ANIMATION FOR FIND ME
-   ============================================ */
-@keyframes pulse-ring {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-pulse-ring {
-  animation: pulse-ring 2s ease-in-out infinite;
-}
-
-/* ============================================
-   SAFE AREA FOR MOBILE BOTTOM NAV
-   ============================================ */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-
-/* ============================================
-   WHAT'S NEW FEED CARD HOVER
+   FEED / RSVP STYLES
    ============================================ */
 .feed-card {
   @apply transition-all duration-200;
@@ -269,9 +323,6 @@ body {
   @apply shadow-md -translate-y-0.5;
 }
 
-/* ============================================
-   QUICK RSVP BUTTONS
-   ============================================ */
 .rsvp-btn {
   @apply flex-1 py-3 px-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2;
 }
@@ -285,25 +336,25 @@ body {
 }
 
 .rsvp-yes {
-  @apply bg-green-100 text-green-700 hover:bg-green-200;
+  @apply bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50;
 }
 
 .rsvp-yes.selected {
-  @apply bg-green-500 text-white;
+  @apply bg-green-500 text-white dark:bg-green-600;
 }
 
 .rsvp-maybe {
-  @apply bg-amber-100 text-amber-700 hover:bg-amber-200;
+  @apply bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50;
 }
 
 .rsvp-maybe.selected {
-  @apply bg-amber-500 text-white;
+  @apply bg-amber-500 text-white dark:bg-amber-600;
 }
 
 .rsvp-no {
-  @apply bg-red-100 text-red-700 hover:bg-red-200;
+  @apply bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50;
 }
 
 .rsvp-no.selected {
-  @apply bg-red-500 text-white;
+  @apply bg-red-500 text-white dark:bg-red-600;
 }

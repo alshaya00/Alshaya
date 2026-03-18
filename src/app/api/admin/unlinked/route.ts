@@ -303,7 +303,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alshaya-family.replit.app';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const inviteLink = `${baseUrl}/register?code=${invitation.code}`;
 
     return NextResponse.json({

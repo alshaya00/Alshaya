@@ -2,21 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkVerification, normalizePhoneNumber, findUserByPhone } from '@/lib/otp-service';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
-import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
+import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    const rateLimitResult = checkRateLimit(
-      clientIp,
-      'otp-verify',
-      RATE_LIMITS.OTP_VERIFY.limit,
-      RATE_LIMITS.OTP_VERIFY.windowMs
-    );
+    const rateLimitResult = checkRateLimit(clientIp, RATE_LIMITS.OTP_VERIFY);
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(createRateLimitResponse(rateLimitResult.resetAt), { status: 429 });
+      return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });
     }
 
     const body = await request.json();

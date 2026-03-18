@@ -1,4 +1,4 @@
-// OAuth Provider Configuration - Replit Compatible
+// OAuth Provider Configuration
 // Providers are optional and gracefully disabled if not configured
 import crypto from 'crypto';
 
@@ -44,7 +44,7 @@ function getOAuthCredentials(provider: 'google' | 'github'): { clientId: string;
   }
 }
 
-// Provider configurations - Replit compatible with graceful fallbacks
+// Provider configurations with graceful fallbacks
 const googleCreds = getOAuthCredentials('google');
 const githubCreds = getOAuthCredentials('github');
 

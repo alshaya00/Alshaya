@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkBranchDuplicate } from '@/lib/fuzzy-matcher';
-import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
+import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { normalizeMemberId } from '@/lib/utils';
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    const rateLimitResult = checkRateLimit(
-      clientIp,
-      'duplicate-check',
-      RATE_LIMITS.DUPLICATE_CHECK.limit,
-      RATE_LIMITS.DUPLICATE_CHECK.windowMs
-    );
+    const rateLimitResult = checkRateLimit(clientIp, RATE_LIMITS.DUPLICATE_CHECK);
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(createRateLimitResponse(rateLimitResult.resetAt), { status: 429 });
+      return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });
     }
 
     const body = await request.json();

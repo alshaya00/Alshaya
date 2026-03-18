@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendVerification, normalizePhoneNumber, findUserByPhone, OtpChannel } from '@/lib/otp-service';
-import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limiter';
+import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    const rateLimitResult = checkRateLimit(
-      clientIp,
-      'otp-send',
-      RATE_LIMITS.OTP_SEND.limit,
-      RATE_LIMITS.OTP_SEND.windowMs
-    );
+    const rateLimitResult = checkRateLimit(clientIp, RATE_LIMITS.OTP_SEND);
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(createRateLimitResponse(rateLimitResult.resetAt), { status: 429 });
+      return NextResponse.json(createRateLimitResponse(rateLimitResult), { status: 429 });
     }
 
     const body = await request.json();
