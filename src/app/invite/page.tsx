@@ -4,7 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { GuestOnly } from '@/components/auth/ProtectedRoute';
-import { Key, Check, X, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Key, Check, X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Button, Input, Alert, AlertDescription, Spinner, Card, CardContent } from '@/components/ui';
+import AuthPageLayout from '@/components/auth/AuthPageLayout';
 import PhoneInput from '@/components/PhoneInput';
 
 interface LinkedMemberInfo {
@@ -160,306 +162,243 @@ function InvitePageContent() {
   if (success) {
     return (
       <GuestOnly redirectTo="/">
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4" dir="rtl">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-100 flex items-center justify-center">
-              <Check className="w-10 h-10 text-emerald-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              تم إنشاء حسابك بنجاح!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              مرحباً بك في شجرة عائلة آل شايع. سيتم توجيهك لصفحة تسجيل الدخول.
-            </p>
+        <AuthPageLayout
+          icon={<Check className="w-10 h-10 text-primary" />}
+          title="تم إنشاء حسابك بنجاح!"
+          subtitle="مرحباً بك في شجرة عائلة آل شايع. سيتم توجيهك لصفحة تسجيل الدخول."
+        >
+          <div className="text-center">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center justify-center h-11 px-6 text-base rounded-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-colors"
             >
               تسجيل الدخول الآن
             </Link>
           </div>
-        </div>
+        </AuthPageLayout>
       </GuestOnly>
     );
   }
 
   return (
     <GuestOnly redirectTo="/">
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100" dir="rtl">
-        <header className="py-6 px-4">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <Link href="/" className="text-2xl font-bold text-emerald-800">
-              آل شايع
-            </Link>
-            <Link href="/login" className="text-emerald-700 hover:text-emerald-900 font-medium">
-              تسجيل الدخول
-            </Link>
-          </div>
-        </header>
+      <AuthPageLayout
+        icon={<Key className="w-8 h-8 text-primary" />}
+        title="الانضمام بدعوة"
+        subtitle={validatedInvitation ? 'أكمل إنشاء حسابك' : 'أدخل رمز الدعوة للانضمام'}
+        headerLink={{ href: '/login', label: 'تسجيل الدخول' }}
+        maxWidth="max-w-lg"
+      >
+        {error && (
+          <Alert variant="destructive" className="mb-6" dismissible onDismiss={() => setError(null)}>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-        <main className="max-w-lg mx-auto px-4 py-8">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
-                <Key className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">الانضمام بدعوة</h1>
-              <p className="text-gray-600 mt-2">
-                {validatedInvitation ? 'أكمل إنشاء حسابك' : 'أدخل رمز الدعوة للانضمام'}
-              </p>
-            </div>
+        {!validatedInvitation && (
+          <form onSubmit={handleValidateCode} className="space-y-4">
+            <Input
+              label="رمز الدعوة"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              className="text-center font-mono text-lg tracking-wider"
+              placeholder="XXXXX"
+              dir="ltr"
+              autoFocus
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              isLoading={isValidating}
+              disabled={!code.trim()}
+            >
+              تحقق من الرمز
+            </Button>
+          </form>
+        )}
 
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <X className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                <p className="text-red-800">{error}</p>
-              </div>
-            )}
-
-            {!validatedInvitation && (
-              <form onSubmit={handleValidateCode} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    رمز الدعوة
-                  </label>
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-center font-mono text-lg tracking-wider"
-                    placeholder="XXXXX"
-                    dir="ltr"
-                    autoFocus
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isValidating || !code.trim()}
-                  className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {isValidating ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      جاري التحقق...
-                    </>
-                  ) : (
-                    'تحقق من الرمز'
-                  )}
-                </button>
-              </form>
-            )}
-
-            {validatedInvitation && (
-              <>
-                {linkedMemberInfo && (
-                  <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <h3 className="font-semibold text-emerald-800 mb-2 flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      العضو المرتبط
-                    </h3>
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        <span className="text-gray-600">الاسم:</span>{' '}
-                        <span className="font-medium">{linkedMemberInfo.name}</span>
-                      </p>
-                      {linkedMemberInfo.branch && (
-                        <p>
-                          <span className="text-gray-600">الفرع:</span>{' '}
-                          <span className="font-medium">{linkedMemberInfo.branch}</span>
-                        </p>
-                      )}
-                      {linkedMemberInfo.generation && (
-                        <p>
-                          <span className="text-gray-600">الجيل:</span>{' '}
-                          <span className="font-medium">{linkedMemberInfo.generation}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-sm text-blue-800">
-                    <Check className="w-4 h-4" />
-                    <span>رمز الدعوة صالح - الاستخدامات المتبقية: {validatedInvitation.remainingUses}</span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Mail className="w-4 h-4 inline ml-1" />
-                      البريد الإلكتروني <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="example@email.com"
-                      dir="ltr"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <User className="w-4 h-4 inline ml-1" />
-                      الاسم بالعربي <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={nameArabic}
-                      onChange={(e) => setNameArabic(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="أحمد محمد آل شايع"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الاسم بالإنجليزي (اختياري)
-                    </label>
-                    <input
-                      type="text"
-                      value={nameEnglish}
-                      onChange={(e) => setNameEnglish(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Ahmed Al-Shaya"
-                      dir="ltr"
-                    />
-                  </div>
-
-                  <PhoneInput
-                    value={phone}
-                    onChange={(newPhone, newCountryCode) => {
-                      setPhone(newPhone);
-                      setCountryCode(newCountryCode);
-                    }}
-                    countryCode={countryCode}
-                    label="رقم الهاتف (اختياري)"
-                  />
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Lock className="w-4 h-4 inline ml-1" />
-                      كلمة المرور <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pl-12"
-                        placeholder="••••••••"
-                        dir="ltr"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      8 أحرف على الأقل، حرف كبير، حرف صغير، ورقم
+        {validatedInvitation && (
+          <>
+            {linkedMemberInfo && (
+              <Card className="mb-6 border-primary/20 bg-primary/5">
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    العضو المرتبط
+                  </h3>
+                  <div className="space-y-1 text-sm">
+                    <p>
+                      <span className="text-muted-foreground">الاسم:</span>{' '}
+                      <span className="font-medium">{linkedMemberInfo.name}</span>
                     </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Lock className="w-4 h-4 inline ml-1" />
-                      تأكيد كلمة المرور <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pl-12"
-                        placeholder="••••••••"
-                        dir="ltr"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        جاري إنشاء الحساب...
-                      </>
-                    ) : (
-                      'إنشاء الحساب'
+                    {linkedMemberInfo.branch && (
+                      <p>
+                        <span className="text-muted-foreground">الفرع:</span>{' '}
+                        <span className="font-medium">{linkedMemberInfo.branch}</span>
+                      </p>
                     )}
-                  </button>
+                    {linkedMemberInfo.generation && (
+                      <p>
+                        <span className="text-muted-foreground">الجيل:</span>{' '}
+                        <span className="font-medium">{linkedMemberInfo.generation}</span>
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
+            <Alert variant="info" className="mb-6">
+              <AlertDescription>
+                رمز الدعوة صالح - الاستخدامات المتبقية: {validatedInvitation.remainingUses}
+              </AlertDescription>
+            </Alert>
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              <Input
+                type="email"
+                label="البريد الإلكتروني"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@email.com"
+                dir="ltr"
+                required
+                leftIcon={<Mail size={16} />}
+              />
+
+              <Input
+                label="الاسم بالعربي"
+                value={nameArabic}
+                onChange={(e) => setNameArabic(e.target.value)}
+                placeholder="أحمد محمد آل شايع"
+                required
+                leftIcon={<User size={16} />}
+              />
+
+              <Input
+                label="الاسم بالإنجليزي (اختياري)"
+                value={nameEnglish}
+                onChange={(e) => setNameEnglish(e.target.value)}
+                placeholder="Ahmed Al-Shaya"
+                dir="ltr"
+              />
+
+              <PhoneInput
+                value={phone}
+                onChange={(newPhone, newCountryCode) => {
+                  setPhone(newPhone);
+                  setCountryCode(newCountryCode);
+                }}
+                countryCode={countryCode}
+                label="رقم الهاتف (اختياري)"
+              />
+
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                label="كلمة المرور"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                dir="ltr"
+                required
+                helperText="8 أحرف على الأقل، حرف كبير، حرف صغير، ورقم"
+                leftIcon={<Lock size={16} />}
+                rightIcon={
                   <button
                     type="button"
-                    onClick={() => {
-                      setValidatedInvitation(null);
-                      setLinkedMemberInfo(null);
-                      setCode('');
-                      setError(null);
-                      setEmail('');
-                      setPassword('');
-                      setConfirmPassword('');
-                      setNameArabic('');
-                      setNameEnglish('');
-                      setPhone('');
-                      setCountryCode('+966');
-                    }}
-                    className="w-full py-2 text-gray-600 hover:text-gray-800 text-sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="pointer-events-auto cursor-pointer text-muted-foreground hover:text-foreground"
                   >
-                    استخدام رمز مختلف
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-                </form>
-              </>
-            )}
-          </div>
+                }
+              />
 
-          <div className="text-center mt-6 space-y-2">
-            <p className="text-gray-600">
-              ليس لديك رمز دعوة؟{' '}
-              <Link href="/register" className="text-emerald-600 hover:text-emerald-800 font-medium">
-                طلب الانضمام
-              </Link>
-            </p>
-            <p className="text-gray-600">
-              لديك حساب؟{' '}
-              <Link href="/login" className="text-emerald-600 hover:text-emerald-800 font-medium">
-                تسجيل الدخول
-              </Link>
-            </p>
-          </div>
-        </main>
-      </div>
+              <Input
+                type={showConfirmPassword ? 'text' : 'password'}
+                label="تأكيد كلمة المرور"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                dir="ltr"
+                required
+                leftIcon={<Lock size={16} />}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="pointer-events-auto cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
+              />
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isSubmitting}
+              >
+                إنشاء الحساب
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setValidatedInvitation(null);
+                  setLinkedMemberInfo(null);
+                  setCode('');
+                  setError(null);
+                  setEmail('');
+                  setPassword('');
+                  setConfirmPassword('');
+                  setNameArabic('');
+                  setNameEnglish('');
+                  setPhone('');
+                  setCountryCode('+966');
+                }}
+                className="w-full py-2 text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
+                استخدام رمز مختلف
+              </button>
+            </form>
+          </>
+        )}
+
+        <div className="text-center mt-6 space-y-2">
+          <p className="text-muted-foreground">
+            ليس لديك رمز دعوة؟{' '}
+            <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+              طلب الانضمام
+            </Link>
+          </p>
+          <p className="text-muted-foreground">
+            لديك حساب؟{' '}
+            <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+              تسجيل الدخول
+            </Link>
+          </p>
+        </div>
+      </AuthPageLayout>
     </GuestOnly>
   );
 }
 
 export default function InvitePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <AuthPageLayout>
+          <div className="flex justify-center py-8">
+            <Spinner size="lg" label="جاري التحميل..." />
+          </div>
+        </AuthPageLayout>
+      }
+    >
       <InvitePageContent />
     </Suspense>
   );

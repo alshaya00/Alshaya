@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 /* ============================================
-   FONTS
+   FONTS — loaded via next/font in layout.tsx
+   CSS variables: --font-ibm-plex-arabic, --font-inter
    ============================================ */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ============================================
    CSS CUSTOM PROPERTIES - LIGHT THEME
@@ -99,18 +99,18 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;
+    font-family: var(--font-ibm-plex-arabic), var(--font-inter), system-ui, sans-serif;
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* RTL Support */
   [dir="rtl"] body {
-    font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;
+    font-family: var(--font-ibm-plex-arabic), var(--font-inter), system-ui, sans-serif;
   }
 
   [dir="ltr"] body {
-    font-family: 'Inter', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    font-family: var(--font-inter), var(--font-ibm-plex-arabic), system-ui, sans-serif;
   }
 
   [dir="rtl"] {
@@ -253,6 +253,25 @@
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Page transition */
+  .animate-fade-in {
+    animation: page-fade-in 0.25s ease-out both;
+  }
+}
+
+/* ============================================
+   PAGE TRANSITION KEYFRAMES
+   ============================================ */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

@@ -9,10 +9,12 @@ import { getFullLineageString } from '@/lib/lineage-utils';
 import { isMale, isFemale } from '@/lib/utils';
 import {
   Mail, UserPlus, Eye, ChevronLeft, ChevronRight, Check, Shield,
-  Users, Lock, ArrowRight, Loader2, X, Search, Phone, AlertTriangle, AlertCircle
+  Users, Lock, ArrowRight, X, Search, Phone, AlertTriangle, AlertCircle
 } from 'lucide-react';
 import { relationshipTypes } from '@/config/constants';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button, Input, Alert, AlertDescription, Card, CardContent, Spinner } from '@/components/ui';
+import AuthPageLayout from '@/components/auth/AuthPageLayout';
 import PhoneInput from '@/components/PhoneInput';
 import OtpInput from '@/components/OtpInput';
 import { GenderAvatarInline } from '@/components/GenderAvatar';
@@ -235,7 +237,7 @@ export default function RegisterPage() {
       const isPending = (parent as { isPending?: boolean; pendingId?: string }).isPending;
       const pendingId = (parent as { pendingId?: string }).pendingId;
       const parentName = parent.fullNameAr || parent.firstName;
-      
+
       setFormData({
         ...formData,
         parentMemberId: isPending ? '' : memberId,
@@ -290,7 +292,7 @@ export default function RegisterPage() {
       await handleStartUncleVerification();
       return;
     }
-    
+
     if (formData.parentPendingId) {
       setUncleVerified(true);
     }
@@ -370,7 +372,7 @@ export default function RegisterPage() {
     try {
       const response = await fetch(`/api/members/siblings?memberId=${formData.parentMemberId}`);
       const data = await response.json();
-      return { 
+      return {
         hasSiblings: data.hasSiblings || false,
         count: data.count || 0
       };
@@ -519,19 +521,17 @@ export default function RegisterPage() {
           token: data.token,
           expiresAt: data.expiresAt,
         });
-        
+
         router.push('/');
         return;
       }
 
-      // Handle needsLogin case - account created but needs manual login
       if (data.needsLogin) {
         setPhoneStep('complete');
         setSuccess(true);
         return;
       }
 
-      // Default success case
       setPhoneStep('complete');
       setSuccess(true);
     } catch (error) {
@@ -568,40 +568,35 @@ export default function RegisterPage() {
     }
   }, [formData.gender, formData.parentMemberId, allMembers]);
 
+  // ─── SUCCESS VIEW ───
   if (success) {
     return (
       <GuestOnly redirectTo="/">
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4" dir="rtl">
-          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
-              <Check className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              تم إنشاء حسابك بنجاح!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              تم التحقق من رقم جوالك وإنشاء حسابك. يمكنك الآن تسجيل الدخول واستخدام شجرة العائلة.
-            </p>
-            <div className="space-y-3">
-              <Link
-                href="/login"
-                className="block w-full py-3 px-4 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
-              >
-                تسجيل الدخول
-              </Link>
-              <Link
-                href="/"
-                className="block w-full py-3 px-4 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
-              >
-                الصفحة الرئيسية
-              </Link>
-            </div>
+        <AuthPageLayout
+          icon={<Check className="w-10 h-10 text-primary" />}
+          title="تم إنشاء حسابك بنجاح!"
+          subtitle="تم التحقق من رقم جوالك وإنشاء حسابك. يمكنك الآن تسجيل الدخول واستخدام شجرة العائلة."
+        >
+          <div className="space-y-3">
+            <Link
+              href="/login"
+              className="flex items-center justify-center w-full h-11 px-6 text-base rounded-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-colors"
+            >
+              تسجيل الدخول
+            </Link>
+            <Link
+              href="/"
+              className="flex items-center justify-center w-full h-11 px-6 text-base rounded-lg font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              الصفحة الرئيسية
+            </Link>
           </div>
-        </div>
+        </AuthPageLayout>
       </GuestOnly>
     );
   }
 
+  // ─── UNCLE VERIFICATION VIEW ───
   if (phoneStep === 'uncle_verify') {
     const selectedParentForVerify = formData.parentMemberId
       ? allMembers.find((m) => m.id === formData.parentMemberId)
@@ -609,934 +604,762 @@ export default function RegisterPage() {
 
     return (
       <GuestOnly redirectTo="/">
-        <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-purple-700" dir="rtl">
-          <header className="py-6 px-4">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <Link href="/" className="flex items-center gap-2">
-                <span className="text-2xl">🌳</span>
-                <span className="text-xl font-bold text-white">آل شايع</span>
-              </Link>
-              <div className="text-white text-sm">
-                الخطوة 2: المطابقة
-              </div>
+        <AuthPageLayout
+          icon={<Users className="w-8 h-8 text-primary" />}
+          title="ما اسم أحد أعمامك؟"
+          subtitle="أي عم من أعمامك (إخوة والدك) يساعدنا في التأكد"
+          maxWidth="max-w-lg"
+        >
+          {selectedParentForVerify && (
+            <div className="mb-4 p-3 bg-secondary rounded-lg border border-border">
+              <p className="text-sm text-muted-foreground">الوالد المحدد:</p>
+              <p className="font-semibold text-foreground">{selectedParentForVerify.fullNameAr || selectedParentForVerify.firstName}</p>
             </div>
-          </header>
+          )}
 
-          <div className="bg-indigo-700 py-4 px-4 text-white text-center">
-            <h1 className="text-xl font-bold">الخطوة 2: المطابقة</h1>
-            <p className="text-indigo-200 text-sm mt-1">تأكيد مكانك في شجرة العائلة</p>
+          {uncleError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{uncleError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="mb-6">
+            <Input
+              value={uncleName}
+              onChange={(e) => setUncleName(e.target.value)}
+              placeholder="مثال: سعد، عبدالله، محمد..."
+              disabled={isLoading}
+            />
           </div>
 
-          <main className="max-w-lg mx-auto px-4 py-8">
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
-                  <Users className="w-6 h-6 text-indigo-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">ما اسم أحد أعمامك؟</h2>
-                  <p className="text-gray-600 mt-1">
-                    أي عم من أعمامك (إخوة والدك) يساعدنا في التأكد
-                  </p>
-                </div>
-              </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleSkipUncleVerification}
+              disabled={isLoading}
+              leftIcon={<ChevronRight size={16} />}
+            >
+              تخطي
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              className="flex-1"
+              onClick={handleVerifyUncle}
+              disabled={isLoading || !uncleName.trim()}
+              isLoading={isLoading}
+              leftIcon={!isLoading ? <Check size={16} /> : undefined}
+            >
+              تأكيد
+            </Button>
+          </div>
 
-              {selectedParentForVerify && (
-                <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                  <p className="text-sm text-gray-500">الوالد المحدد:</p>
-                  <p className="font-semibold text-gray-900">{selectedParentForVerify.fullNameAr || selectedParentForVerify.firstName}</p>
-                </div>
-              )}
-
-              {uncleError && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-red-800 font-medium">{uncleError}</p>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <input
-                  type="text"
-                  value={uncleName}
-                  onChange={(e) => setUncleName(e.target.value)}
-                  placeholder="مثال: سعد، عبدالله، محمد..."
-                  className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleSkipUncleVerification}
-                  disabled={isLoading}
-                  className="px-6 py-4 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                  تخطي
-                </button>
-                <button
-                  onClick={handleVerifyUncle}
-                  disabled={isLoading || !uncleName.trim()}
-                  className="flex-1 py-4 px-6 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      جاري التحقق...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-5 h-5" />
-                      تأكيد
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <button
-                onClick={() => {
-                  setPhoneStep('form');
-                  setUncleName('');
-                  setUncleError(null);
-                  setUncleVerified(false);
-                }}
-                className="w-full mt-4 text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                الرجوع للنموذج
-              </button>
-            </div>
-          </main>
-        </div>
+          <button
+            onClick={() => {
+              setPhoneStep('form');
+              setUncleName('');
+              setUncleError(null);
+              setUncleVerified(false);
+            }}
+            className="w-full mt-4 text-muted-foreground hover:text-foreground flex items-center justify-center gap-2 transition-colors"
+          >
+            <ChevronLeft size={16} />
+            الرجوع للنموذج
+          </button>
+        </AuthPageLayout>
       </GuestOnly>
     );
   }
 
+  // ─── OTP VERIFICATION VIEW ───
   if (phoneStep === 'verify') {
     return (
       <GuestOnly redirectTo="/">
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100" dir="rtl">
-          <header className="py-6 px-4">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <Link href="/" className="flex items-center gap-2">
-                <span className="text-2xl">🌳</span>
-                <span className="text-xl font-bold text-green-800">آل شايع</span>
-              </Link>
-            </div>
-          </header>
+        <AuthPageLayout
+          icon={<Phone className="w-8 h-8 text-primary" />}
+          title="التحقق من رقم الجوال"
+          subtitle="تم إرسال رمز التحقق إلى"
+        >
+          <p className="text-lg font-semibold text-foreground text-center mb-6" dir="ltr">
+            {formData.countryCode} {formData.phone}
+          </p>
 
-          <main className="max-w-md mx-auto px-4 py-8">
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-              <button
-                onClick={() => {
-                  setPhoneStep('form');
-                  setOtp('');
-                  setOtpError(null);
-                }}
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6"
-              >
-                <ChevronRight className="w-5 h-5" />
-                رجوع
-              </button>
+          {otpError && (
+            <Alert variant="destructive" className="mb-6" dismissible onDismiss={() => setOtpError(null)}>
+              <AlertDescription>{otpError}</AlertDescription>
+            </Alert>
+          )}
 
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-2xl mb-4">
-                  <Phone className="w-8 h-8 text-green-600" />
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">التحقق من رقم الجوال</h1>
-                <p className="text-gray-600 mt-2">
-                  تم إرسال رمز التحقق إلى
-                </p>
-                <p className="text-lg font-semibold text-gray-900 mt-1 dir-ltr" dir="ltr">
-                  {formData.countryCode} {formData.phone}
-                </p>
-              </div>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-foreground mb-3 text-center">
+              أدخل رمز التحقق المكون من 6 أرقام
+            </label>
+            <OtpInput
+              value={otp}
+              onChange={setOtp}
+              disabled={isLoading}
+            />
+            {otpExpiresIn > 0 && (
+              <p className="text-sm text-muted-foreground text-center mt-3">
+                صالح لمدة {Math.floor(otpExpiresIn / 60)}:{(otpExpiresIn % 60).toString().padStart(2, '0')}
+              </p>
+            )}
+          </div>
 
-              {otpError && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                  <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-red-800">{otpError}</p>
-                </div>
-              )}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleVerifyAndCreate}
+            disabled={isLoading || otp.length !== 6}
+            isLoading={isLoading}
+            leftIcon={!isLoading ? <Check size={18} /> : undefined}
+          >
+            تأكيد وإنشاء الحساب
+          </Button>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
-                  أدخل رمز التحقق المكون من 6 أرقام
-                </label>
-                <OtpInput
-                  value={otp}
-                  onChange={setOtp}
-                  disabled={isLoading}
-                />
-                {otpExpiresIn > 0 && (
-                  <p className="text-sm text-gray-500 text-center mt-3">
-                    صالح لمدة {Math.floor(otpExpiresIn / 60)}:{(otpExpiresIn % 60).toString().padStart(2, '0')}
-                  </p>
-                )}
-              </div>
+          <div className="mt-6 text-center">
+            <p className="text-muted-foreground mb-2">لم تستلم الرمز؟</p>
+            <button
+              onClick={handleResendOtp}
+              disabled={resendCooldown > 0 || isLoading}
+              className="text-primary hover:text-primary/80 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {resendCooldown > 0
+                ? `إعادة الإرسال بعد ${resendCooldown} ثانية`
+                : 'إعادة إرسال الرمز'}
+            </button>
+          </div>
 
-              <button
-                onClick={handleVerifyAndCreate}
-                disabled={isLoading || otp.length !== 6}
-                className="w-full py-4 px-4 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    جاري التحقق...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-5 h-5" />
-                    تأكيد وإنشاء الحساب
-                  </>
-                )}
-              </button>
-
-              <div className="mt-6 text-center">
-                <p className="text-gray-600 mb-2">لم تستلم الرمز؟</p>
-                <button
-                  onClick={handleResendOtp}
-                  disabled={resendCooldown > 0 || isLoading}
-                  className="text-green-600 hover:text-green-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {resendCooldown > 0
-                    ? `إعادة الإرسال بعد ${resendCooldown} ثانية`
-                    : 'إعادة إرسال الرمز'}
-                </button>
-              </div>
-            </div>
-          </main>
-        </div>
+          <button
+            onClick={() => {
+              setPhoneStep('form');
+              setOtp('');
+              setOtpError(null);
+            }}
+            className="w-full mt-4 flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight size={16} />
+            رجوع
+          </button>
+        </AuthPageLayout>
       </GuestOnly>
     );
   }
 
+  // ─── JOIN PATH SELECTION VIEW ───
   if (!joinPath) {
     return (
       <GuestOnly redirectTo="/">
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100" dir="rtl">
-          <header className="py-6 px-4">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <Link href="/" className="flex items-center gap-2">
-                <span className="text-2xl">🌳</span>
-                <span className="text-xl font-bold text-green-800">آل شايع</span>
-              </Link>
-              <Link
-                href="/login"
-                className="text-green-700 hover:text-green-900 font-medium"
-              >
-                تسجيل الدخول
-              </Link>
-            </div>
-          </header>
-
-          <main className="max-w-2xl mx-auto px-4 py-12">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-3xl mb-6">
-                <Users className="w-10 h-10 text-green-600" />
+        <AuthPageLayout
+          icon={<Users className="w-10 h-10 text-primary" />}
+          title="انضم إلى العائلة"
+          subtitle="كيف تود الانضمام لشجرة آل شايع؟"
+          showCard={false}
+          maxWidth="max-w-2xl"
+          headerLink={{ href: '/login', label: 'تسجيل الدخول' }}
+        >
+          <div className="space-y-4">
+            <button
+              onClick={() => router.push('/invite')}
+              className="w-full rounded-lg border border-border bg-card shadow-soft hover:border-primary p-6 text-start transition-all group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-primary transition-colors">
+                  <Mail className="w-7 h-7 text-primary group-hover:text-primary-foreground transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-foreground mb-1">لدي دعوة</h3>
+                  <p className="text-sm text-muted-foreground">I have an invitation</p>
+                  <p className="text-muted-foreground mt-2">استلمت رمز دعوة أو رابط من أحد أفراد العائلة</p>
+                </div>
+                <ChevronLeft className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                انضم إلى العائلة
-              </h1>
-              <p className="text-gray-600 text-lg">
-                كيف تود الانضمام لشجرة آل شايع؟
-              </p>
-            </div>
+            </button>
 
-            <div className="space-y-4">
-              <button
-                onClick={() => router.push('/invite')}
-                className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-green-500 p-6 text-right transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-green-500 transition-colors">
-                    <Mail className="w-7 h-7 text-green-600 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">
-                      لدي دعوة
-                    </h3>
-                    <p className="text-sm text-gray-500">I have an invitation</p>
-                    <p className="text-gray-600 mt-2">
-                      استلمت رمز دعوة أو رابط من أحد أفراد العائلة
-                    </p>
-                  </div>
-                  <ChevronLeft className="w-6 h-6 text-gray-400 group-hover:text-green-500 transition-colors" />
+            <button
+              onClick={() => setJoinPath('request')}
+              className="w-full rounded-lg border border-border bg-card shadow-soft hover:border-blue-500 p-6 text-start transition-all group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-blue-500 transition-colors">
+                  <UserPlus className="w-7 h-7 text-blue-600 group-hover:text-white transition-colors" />
                 </div>
-              </button>
-
-              <button
-                onClick={() => setJoinPath('request')}
-                className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-500 p-6 text-right transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-blue-500 transition-colors">
-                    <UserPlus className="w-7 h-7 text-blue-600 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">
-                      أنا من العائلة
-                    </h3>
-                    <p className="text-sm text-gray-500">I&apos;m a family member</p>
-                    <p className="text-gray-600 mt-2">
-                      أرغب في الانضمام والتحقق عبر رقم جوالي
-                    </p>
-                  </div>
-                  <ChevronLeft className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-foreground mb-1">أنا من العائلة</h3>
+                  <p className="text-sm text-muted-foreground">I&apos;m a family member</p>
+                  <p className="text-muted-foreground mt-2">أرغب في الانضمام والتحقق عبر رقم جوالي</p>
                 </div>
-              </button>
+                <ChevronLeft className="w-6 h-6 text-muted-foreground group-hover:text-blue-500 transition-colors" />
+              </div>
+            </button>
 
-              <button
-                onClick={() => router.push('/tree')}
-                className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-gray-400 p-6 text-right transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-gray-500 transition-colors">
-                    <Eye className="w-7 h-7 text-gray-600 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">
-                      أتصفح فقط
-                    </h3>
-                    <p className="text-sm text-gray-500">Just browsing</p>
-                    <p className="text-gray-600 mt-2">
-                      أريد استكشاف الشجرة أولاً قبل الانضمام
-                    </p>
-                  </div>
-                  <ChevronLeft className="w-6 h-6 text-gray-400 group-hover:text-gray-500 transition-colors" />
+            <button
+              onClick={() => router.push('/tree')}
+              className="w-full rounded-lg border border-border bg-card shadow-soft hover:border-muted-foreground p-6 text-start transition-all group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-secondary rounded-xl flex items-center justify-center shrink-0 group-hover:bg-muted-foreground transition-colors">
+                  <Eye className="w-7 h-7 text-muted-foreground group-hover:text-white transition-colors" />
                 </div>
-              </button>
-            </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-foreground mb-1">أتصفح فقط</h3>
+                  <p className="text-sm text-muted-foreground">Just browsing</p>
+                  <p className="text-muted-foreground mt-2">أريد استكشاف الشجرة أولاً قبل الانضمام</p>
+                </div>
+                <ChevronLeft className="w-6 h-6 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
+              </div>
+            </button>
+          </div>
 
-            <div className="mt-10 p-6 bg-white/50 rounded-2xl">
+          {/* Privacy card */}
+          <Card className="mt-10 bg-card/50">
+            <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Shield className="w-5 h-5 text-green-600" />
-                <span className="font-semibold text-gray-800">خصوصيتك محمية</span>
+                <Shield className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-foreground">خصوصيتك محمية</span>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+              <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-primary" />
                   <span>فقط أفراد العائلة</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-primary" />
                   <span>لا مشاركة للبيانات</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-primary" />
                   <span>تحكم كامل بمعلوماتك</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-primary" />
                   <span>إدارة موثوقة</span>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <p className="text-center mt-8 text-gray-600">
-              لديك حساب بالفعل؟{' '}
-              <Link href="/login" className="text-green-600 hover:text-green-800 font-medium">
-                تسجيل الدخول
-              </Link>
-            </p>
-          </main>
-        </div>
+          <p className="text-center mt-8 text-muted-foreground">
+            لديك حساب بالفعل؟{' '}
+            <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+              تسجيل الدخول
+            </Link>
+          </p>
+        </AuthPageLayout>
       </GuestOnly>
     );
   }
 
+  // ─── MAIN REGISTRATION FORM VIEW ───
   return (
     <GuestOnly redirectTo="/">
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100" dir="rtl">
-        <header className="py-6 px-4">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl">🌳</span>
-              <span className="text-xl font-bold text-green-800">آل شايع</span>
-            </Link>
-            <Link
-              href="/login"
-              className="text-green-700 hover:text-green-900 font-medium"
-            >
-              تسجيل الدخول
-            </Link>
-          </div>
-        </header>
+      <AuthPageLayout
+        icon={<UserPlus className="w-8 h-8 text-primary" />}
+        title="الانضمام للعائلة"
+        subtitle="أدخل بياناتك وسيتم التحقق من رقم جوالك عبر رسالة نصية"
+        maxWidth="max-w-2xl"
+        headerLink={{ href: '/login', label: 'تسجيل الدخول' }}
+      >
+        {/* Back button */}
+        <button
+          onClick={() => setJoinPath(null)}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        >
+          <ChevronRight size={18} />
+          رجوع
+        </button>
 
-        <main className="max-w-2xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-3xl shadow-xl p-8">
-            <button
-              onClick={() => setJoinPath(null)}
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6"
-            >
-              <ChevronRight className="w-5 h-5" />
-              رجوع
-            </button>
+        {error && (
+          <Alert variant="destructive" className="mb-6" dismissible onDismiss={() => setError(null)}>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
-                <UserPlus className="w-8 h-8 text-blue-600" />
+        <form onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }} className="space-y-6">
+          {/* Section 1: Find your name */}
+          <div className="border-b border-border pb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-sm font-bold text-primary">1</span>
+              ابحث عن اسمك في شجرة العائلة
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              ابحث عن اسمك في الشجرة لتسهيل عملية التحقق من هويتك
+            </p>
+
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowMemberDropdown(true);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMemberDropdown(true);
+                  }}
+                  className="w-full pe-11 ps-4 py-3 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors"
+                  placeholder="ابحث بالاسم الأول أو اسم العائلة..."
+                />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">الانضمام للعائلة</h1>
-              <p className="text-gray-600 mt-2">
-                أدخل بياناتك وسيتم التحقق من رقم جوالك عبر رسالة نصية
-              </p>
-            </div>
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-red-800">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }} className="space-y-6">
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">1</span>
-                  ابحث عن اسمك في شجرة العائلة
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  ابحث عن اسمك في الشجرة لتسهيل عملية التحقق من هويتك
-                </p>
-
-                <div className="relative">
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setShowMemberDropdown(true);
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMemberDropdown(true);
-                      }}
-                      className="w-full pr-11 pl-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg"
-                      placeholder="ابحث بالاسم الأول أو اسم العائلة..."
-                    />
-                  </div>
-                  {showMemberDropdown && filteredMembers.length > 0 && (
-                    <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto">
-                      {filteredMembers.map((member) => {
-                        const fullLineage = getFullLineageString(member.id, allMembers);
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMemberSelect(member.id);
-                              setFormData({
-                                ...formData,
-                                relatedMemberId: member.id,
-                                nameArabic: member.fullNameAr || member.firstName,
-                                nameEnglish: member.fullNameEn || '',
-                                claimedRelation: `أنا ${fullLineage || member.fullNameAr || member.firstName}`,
-                                relationshipType: 'self',
-                              });
-                            }}
-                            className="w-full px-4 py-4 text-right hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <span className="font-semibold text-gray-900 block">
-                                  {fullLineage || member.fullNameAr || member.firstName}
-                                </span>
-                                {member.fullNameEn && (
-                                  <span className="text-sm text-gray-500 block mt-1" dir="ltr">
-                                    {member.fullNameEn}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-500 mt-1">
-                              الجيل {member.generation}{member.branch ? ` - فرع: ${member.branch}` : ''}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {searchQuery && filteredMembers.length === 0 && showMemberDropdown && (
-                    <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl p-4 text-center text-gray-500">
-                      لم يتم العثور على نتائج. يمكنك إدخال اسمك يدوياً أدناه.
-                    </div>
-                  )}
-                </div>
-
-                {selectedMember && (
-                  <div className="mt-4 p-4 bg-gradient-to-l from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                          <Users className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-green-900 text-lg">
-                            {getFullLineageString(selectedMember.id, allMembers) || selectedMember.fullNameAr || selectedMember.firstName}
-                          </p>
-                          <p className="text-sm text-green-700">
-                            الجيل {selectedMember.generation} {selectedMember.branch ? `- فرع ${selectedMember.branch}` : ''}
-                          </p>
-                        </div>
-                      </div>
+              {showMemberDropdown && filteredMembers.length > 0 && (
+                <div className="absolute z-20 w-full mt-2 bg-card border border-border rounded-lg shadow-lg max-h-72 overflow-auto">
+                  {filteredMembers.map((member) => {
+                    const fullLineage = getFullLineageString(member.id, allMembers);
+                    return (
                       <button
+                        key={member.id}
                         type="button"
-                        onClick={() => {
-                          setFormData({ 
-                            ...formData, 
-                            relatedMemberId: '', 
-                            claimedRelation: '',
-                            nameArabic: '',
-                            nameEnglish: '',
-                            relationshipType: '',
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMemberSelect(member.id);
+                          setFormData({
+                            ...formData,
+                            relatedMemberId: member.id,
+                            nameArabic: member.fullNameAr || member.firstName,
+                            nameEnglish: member.fullNameEn || '',
+                            claimedRelation: `أنا ${fullLineage || member.fullNameAr || member.firstName}`,
+                            relationshipType: 'self',
                           });
                         }}
-                        className="text-green-600 hover:text-green-800 p-2 hover:bg-green-100 rounded-lg transition-colors"
+                        className="w-full px-4 py-3 text-start hover:bg-accent border-b border-border last:border-0 transition-colors"
                       >
-                        <X className="w-5 h-5" />
+                        <span className="font-semibold text-foreground block">
+                          {fullLineage || member.fullNameAr || member.firstName}
+                        </span>
+                        {member.fullNameEn && (
+                          <span className="text-sm text-muted-foreground block mt-1" dir="ltr">
+                            {member.fullNameEn}
+                          </span>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          الجيل {member.generation}{member.branch ? ` - فرع: ${member.branch}` : ''}
+                        </p>
                       </button>
+                    );
+                  })}
+                </div>
+              )}
+              {searchQuery && filteredMembers.length === 0 && showMemberDropdown && (
+                <div className="absolute z-20 w-full mt-2 bg-card border border-border rounded-lg shadow-lg p-4 text-center text-muted-foreground">
+                  لم يتم العثور على نتائج. يمكنك إدخال اسمك يدوياً أدناه.
+                </div>
+              )}
+            </div>
+
+            {selectedMember && (
+              <Card className="mt-4 border-primary/30 bg-primary/5">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                        <Users className="w-6 h-6 text-primary-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground text-lg">
+                          {getFullLineageString(selectedMember.id, allMembers) || selectedMember.fullNameAr || selectedMember.firstName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          الجيل {selectedMember.generation} {selectedMember.branch ? `- فرع ${selectedMember.branch}` : ''}
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          relatedMemberId: '',
+                          claimedRelation: '',
+                          nameArabic: '',
+                          nameEnglish: '',
+                          relationshipType: '',
+                        });
+                      }}
+                      className="text-primary hover:text-primary/80 p-2 hover:bg-primary/10 rounded-lg transition-colors"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Manual entry section */}
+          {!selectedMember && (
+            <div className="border-b border-border pb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <span className="w-7 h-7 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-sm font-bold text-blue-600 dark:text-blue-400">أو</span>
+                أدخل معلوماتك يدوياً
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                لم تجد اسمك في الشجرة؟ أدخل بياناتك وابحث عن والدك لتحديد موقعك في الشجرة
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2 mb-4">
+                <Input
+                  label="الاسم بالعربي"
+                  name="nameArabic"
+                  value={formData.nameArabic}
+                  onChange={handleChange}
+                  placeholder="أحمد محمد آل شايع"
+                  required={!selectedMember}
+                />
+                <Input
+                  label="الاسم بالإنجليزي"
+                  name="nameEnglish"
+                  value={formData.nameEnglish}
+                  onChange={handleChange}
+                  placeholder="Ahmed Mohammed Al-Shaya"
+                  dir="ltr"
+                />
               </div>
 
-              {!selectedMember && (
-                <div className="border-b pb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-sm font-bold text-blue-600">أو</span>
-                    أدخل معلوماتك يدوياً
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    لم تجد اسمك في الشجرة؟ أدخل بياناتك وابحث عن والدك لتحديد موقعك في الشجرة
-                  </p>
-                  
-                  <div className="grid gap-4 md:grid-cols-2 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        الاسم بالعربي <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="nameArabic"
-                        value={formData.nameArabic}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="أحمد محمد آل شايع"
-                        required={!selectedMember}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        الاسم بالإنجليزي
-                      </label>
-                      <input
-                        type="text"
-                        name="nameEnglish"
-                        value={formData.nameEnglish}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Ahmed Mohammed Al-Shaya"
-                        dir="ltr"
-                      />
-                    </div>
-                  </div>
+              {isCheckingDuplicate && (
+                <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Spinner size="sm" label="" />
+                  <span>جاري التحقق من التكرار...</span>
+                </div>
+              )}
 
-                  {isCheckingDuplicate && (
-                    <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>جاري التحقق من التكرار...</span>
-                    </div>
-                  )}
-
-                  {duplicateWarning?.hasPotentialDuplicates && (
-                    <div className={`mb-4 p-4 rounded-xl border-2 ${
-                      duplicateWarning.isDuplicate
-                        ? 'bg-red-50 border-red-300'
-                        : 'bg-orange-50 border-orange-300'
-                    }`}>
-                      <div className="flex items-start gap-3">
-                        {duplicateWarning.isDuplicate ? (
-                          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1">
-                          <p className={`font-semibold ${
-                            duplicateWarning.isDuplicate ? 'text-red-800' : 'text-orange-800'
-                          }`}>
-                            {duplicateWarning.isDuplicate
-                              ? '⚠️ يوجد عضو مسجل بنفس الاسم تحت نفس الأب'
-                              : '⚠️ يوجد أعضاء بأسماء مشابهة'}
-                          </p>
-                          {duplicateWarning.isDuplicate && (
-                            <p className="text-sm text-red-700 mt-1">
-                              قد يكون لديك حساب بالفعل. يرجى التواصل مع المسؤول.
-                            </p>
-                          )}
-                          <div className="mt-3 space-y-2">
-                            {duplicateWarning.candidates.map((candidate) => (
-                              <div
-                                key={candidate.id}
-                                className={`flex items-center justify-between p-2 rounded-lg ${
-                                  duplicateWarning.isDuplicate ? 'bg-red-100' : 'bg-orange-100'
-                                }`}
-                              >
-                                <span className={`text-sm font-medium ${
-                                  duplicateWarning.isDuplicate ? 'text-red-900' : 'text-orange-900'
-                                }`}>
-                                  {candidate.fullNameAr || candidate.firstName}
-                                </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  duplicateWarning.isDuplicate
-                                    ? 'bg-red-200 text-red-800'
-                                    : 'bg-orange-200 text-orange-800'
-                                }`}>
-                                  {Math.round(candidate.similarityScore * 100)}%
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          {!duplicateWarning.isDuplicate && (
-                            <p className="text-sm text-orange-700 mt-2">
-                              إذا كنت شخصاً مختلفاً، يمكنك المتابعة
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الجنس <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex gap-4">
-                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${isMale(formData.gender) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                        <input
-                          type="radio"
-                          name="gender"
-                          value="Male"
-                          checked={isMale(formData.gender)}
-                          onChange={handleChange}
-                          className="sr-only"
-                        />
-                        <GenderAvatarInline gender="Male" size="md" />
-                        <span className="font-medium text-gray-800">ذكر</span>
-                      </label>
-                      <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${isFemale(formData.gender) ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                        <input
-                          type="radio"
-                          name="gender"
-                          value="Female"
-                          checked={isFemale(formData.gender)}
-                          onChange={handleChange}
-                          className="sr-only"
-                        />
-                        <GenderAvatarInline gender="Female" size="md" />
-                        <span className="font-medium text-gray-800">أنثى</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        سنة الميلاد (اختياري)
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          name="birthYear"
-                          value={formData.birthYear}
-                          onChange={handleChange}
-                          className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                          placeholder="مثال: 1410"
-                          min="1300"
-                          max="1500"
-                        />
-                        <select
-                          name="birthCalendar"
-                          value={formData.birthCalendar}
-                          onChange={handleChange}
-                          className="px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                        >
-                          <option value="HIJRI">هجري</option>
-                          <option value="GREGORIAN">ميلادي</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        المهنة (اختياري)
-                      </label>
-                      <input
-                        type="text"
-                        name="occupation"
-                        value={formData.occupation}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="مثال: مهندس، طبيب، تاجر..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-l from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4">
-                    <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                      <span className="text-lg">🔍</span>
-                      ابحث عن والدك في الشجرة
-                    </h4>
-                    <p className="text-sm text-amber-700 mb-3">
-                      ابحث عن اسم والدك لتسهيل تحديد موقعك الصحيح في شجرة العائلة
+              {duplicateWarning?.hasPotentialDuplicates && (
+                <Alert
+                  variant={duplicateWarning.isDuplicate ? 'destructive' : 'warning'}
+                  className="mb-4"
+                >
+                  <AlertDescription>
+                    <p className="font-semibold">
+                      {duplicateWarning.isDuplicate
+                        ? 'يوجد عضو مسجل بنفس الاسم تحت نفس الأب'
+                        : 'يوجد أعضاء بأسماء مشابهة'}
                     </p>
-                    
-                    <div className="relative">
-                      <div className="relative">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
-                        <input
-                          type="text"
-                          value={parentSearchQuery}
-                          onChange={(e) => {
-                            setParentSearchQuery(e.target.value);
-                            setShowParentDropdown(true);
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowParentDropdown(true);
-                          }}
-                          className="w-full pr-11 pl-4 py-3 border-2 border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
-                          placeholder="ابحث عن اسم الوالد..."
-                        />
-                      </div>
-                      {showParentDropdown && filteredParents.length > 0 && (
-                        <div className="absolute z-20 w-full mt-2 bg-white border-2 border-amber-200 rounded-xl shadow-xl max-h-60 overflow-auto">
-                          {filteredParents.map((parent) => {
-                            const isPending = (parent as { isPending?: boolean }).isPending;
-                            const fullLineage = isPending ? null : getFullLineageString(parent.id, allMembers);
-                            return (
-                              <button
-                                key={parent.id}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleParentSelect(parent.id);
-                                }}
-                                className={`w-full px-4 py-3 text-right border-b border-amber-100 last:border-0 transition-colors ${
-                                  isPending ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-amber-50'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-gray-900">
-                                    {fullLineage || parent.fullNameAr || parent.firstName}
-                                  </span>
-                                  {isPending && (
-                                    <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full">
-                                      قيد المراجعة
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  الجيل {parent.generation}{parent.branch ? ` - فرع: ${parent.branch}` : ''}
-                                  {isPending && ' - مُضاف حديثاً'}
-                                </p>
-                              </button>
-                            );
-                          })}
+                    {duplicateWarning.isDuplicate && (
+                      <p className="text-sm mt-1">
+                        قد يكون لديك حساب بالفعل. يرجى التواصل مع المسؤول.
+                      </p>
+                    )}
+                    <div className="mt-3 space-y-2">
+                      {duplicateWarning.candidates.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="flex items-center justify-between p-2 rounded-lg bg-background/50"
+                        >
+                          <span className="text-sm font-medium">
+                            {candidate.fullNameAr || candidate.firstName}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-background">
+                            {Math.round(candidate.similarityScore * 100)}%
+                          </span>
                         </div>
-                      )}
+                      ))}
                     </div>
+                    {!duplicateWarning.isDuplicate && (
+                      <p className="text-sm mt-2">إذا كنت شخصاً مختلفاً، يمكنك المتابعة</p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
 
-                    {selectedParent && (
-                      <div className={`mt-3 p-3 bg-white rounded-xl border-2 ${
-                        formData.parentPendingId ? 'border-orange-300' : 'border-green-300'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              formData.parentPendingId ? 'bg-orange-500' : 'bg-green-500'
-                            }`}>
-                              <Users className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
+              {/* Gender selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  الجنس <span className="text-destructive">*</span>
+                </label>
+                <div className="flex gap-4">
+                  <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-lg cursor-pointer transition-all ${isMale(formData.gender) ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-border hover:border-muted-foreground'}`}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="Male"
+                      checked={isMale(formData.gender)}
+                      onChange={handleChange}
+                      className="sr-only"
+                    />
+                    <GenderAvatarInline gender="Male" size="md" />
+                    <span className="font-medium text-foreground">ذكر</span>
+                  </label>
+                  <label className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-lg cursor-pointer transition-all ${isFemale(formData.gender) ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20' : 'border-border hover:border-muted-foreground'}`}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="Female"
+                      checked={isFemale(formData.gender)}
+                      onChange={handleChange}
+                      className="sr-only"
+                    />
+                    <GenderAvatarInline gender="Female" size="md" />
+                    <span className="font-medium text-foreground">أنثى</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Birth year & occupation */}
+              <div className="grid gap-4 md:grid-cols-2 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    سنة الميلاد (اختياري)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      name="birthYear"
+                      value={formData.birthYear}
+                      onChange={handleChange}
+                      className="flex-1 h-10 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors"
+                      placeholder="مثال: 1410"
+                      min="1300"
+                      max="1500"
+                    />
+                    <select
+                      name="birthCalendar"
+                      value={formData.birthCalendar}
+                      onChange={handleChange}
+                      className="h-10 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors"
+                    >
+                      <option value="HIJRI">هجري</option>
+                      <option value="GREGORIAN">ميلادي</option>
+                    </select>
+                  </div>
+                </div>
+                <Input
+                  label="المهنة (اختياري)"
+                  name="occupation"
+                  value={formData.occupation}
+                  onChange={handleChange}
+                  placeholder="مثال: مهندس، طبيب، تاجر..."
+                />
+              </div>
+
+              {/* Parent search */}
+              <Card className="border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardContent className="p-4">
+                  <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Search size={18} className="text-amber-600" />
+                    ابحث عن والدك في الشجرة
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    ابحث عن اسم والدك لتسهيل تحديد موقعك الصحيح في شجرة العائلة
+                  </p>
+
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
+                      <input
+                        type="text"
+                        value={parentSearchQuery}
+                        onChange={(e) => {
+                          setParentSearchQuery(e.target.value);
+                          setShowParentDropdown(true);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowParentDropdown(true);
+                        }}
+                        className="w-full pe-11 ps-4 py-3 border border-amber-200 dark:border-amber-800 rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors"
+                        placeholder="ابحث عن اسم الوالد..."
+                      />
+                    </div>
+                    {showParentDropdown && filteredParents.length > 0 && (
+                      <div className="absolute z-20 w-full mt-2 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {filteredParents.map((parent) => {
+                          const isPending = (parent as { isPending?: boolean }).isPending;
+                          const fullLineage = isPending ? null : getFullLineageString(parent.id, allMembers);
+                          return (
+                            <button
+                              key={parent.id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleParentSelect(parent.id);
+                              }}
+                              className={`w-full px-4 py-3 text-start border-b border-border last:border-0 transition-colors ${
+                                isPending ? 'bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-950/40' : 'hover:bg-accent'
+                              }`}
+                            >
                               <div className="flex items-center gap-2">
-                                <p className={`text-sm font-medium ${
-                                  formData.parentPendingId ? 'text-orange-600' : 'text-green-600'
-                                }`}>الوالد المحدد</p>
-                                {formData.parentPendingId && (
+                                <span className="font-semibold text-foreground">
+                                  {fullLineage || parent.fullNameAr || parent.firstName}
+                                </span>
+                                {isPending && (
                                   <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full">
                                     قيد المراجعة
                                   </span>
                                 )}
                               </div>
-                              <p className={`font-bold ${
-                                formData.parentPendingId ? 'text-orange-900' : 'text-green-900'
-                              }`}>
-                                {formData.parentPendingId 
-                                  ? (selectedParent.fullNameAr || selectedParent.firstName)
-                                  : (getFullLineageString(selectedParent.id, allMembers) || selectedParent.fullNameAr || selectedParent.firstName)
-                                }
+                              <p className="text-sm text-muted-foreground mt-1">
+                                الجيل {parent.generation}{parent.branch ? ` - فرع: ${parent.branch}` : ''}
+                                {isPending && ' - مُضاف حديثاً'}
                               </p>
-                              {formData.parentPendingId && (
-                                <p className="text-xs text-orange-600 mt-1">
-                                  سيتم ربط طلبك بطلب والدك - الموافقة ستكون بالتسلسل
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormData({
-                                ...formData,
-                                parentMemberId: '',
-                                parentPendingId: '',
-                                claimedRelation: '',
-                              });
-                            }}
-                            className={`p-1 rounded-lg transition-colors ${
-                              formData.parentPendingId 
-                                ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-100'
-                                : 'text-green-600 hover:text-green-800 hover:bg-green-100'
-                            }`}
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                </div>
-              )}
 
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">2</span>
-                  معلومات التواصل
-                </h3>
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                    <p className="text-sm text-blue-800">
-                      سيتم إرسال رمز التحقق عبر رسالة نصية للتأكد من رقم جوالك
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <PhoneInput
-                    value={formData.phone}
-                    onChange={(phone, countryCode) => setFormData({ ...formData, phone, countryCode })}
-                    countryCode={formData.countryCode}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center text-sm font-bold text-green-600">3</span>
-                  معلومات الحساب
-                </h3>
-                <div className="grid gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      البريد الإلكتروني <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="example@email.com"
-                      required
-                      dir="ltr"
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        كلمة المرور <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="••••••••"
-                        required
-                        dir="ltr"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        8 أحرف على الأقل، حرف كبير، حرف صغير، ورقم
-                      </p>
+                  {selectedParent && (
+                    <div className={`mt-3 p-3 bg-background rounded-lg border-2 ${
+                      formData.parentPendingId ? 'border-orange-300 dark:border-orange-800' : 'border-primary/30'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            formData.parentPendingId ? 'bg-orange-500' : 'bg-primary'
+                          }`}>
+                            <Users className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className={`text-sm font-medium ${
+                                formData.parentPendingId ? 'text-orange-600' : 'text-primary'
+                              }`}>الوالد المحدد</p>
+                              {formData.parentPendingId && (
+                                <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full">
+                                  قيد المراجعة
+                                </span>
+                              )}
+                            </div>
+                            <p className={`font-bold ${
+                              formData.parentPendingId ? 'text-orange-900 dark:text-orange-200' : 'text-foreground'
+                            }`}>
+                              {formData.parentPendingId
+                                ? (selectedParent.fullNameAr || selectedParent.firstName)
+                                : (getFullLineageString(selectedParent.id, allMembers) || selectedParent.fullNameAr || selectedParent.firstName)
+                              }
+                            </p>
+                            {formData.parentPendingId && (
+                              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                سيتم ربط طلبك بطلب والدك - الموافقة ستكون بالتسلسل
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              parentMemberId: '',
+                              parentPendingId: '',
+                              claimedRelation: '',
+                            });
+                          }}
+                          className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        تأكيد كلمة المرور <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="••••••••"
-                        required
-                        dir="ltr"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
+          {/* Section 2: Contact info */}
+          <div className="border-b border-border pb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-sm font-bold text-primary">2</span>
+              معلومات التواصل
+            </h3>
+            <Alert variant="info" className="mb-4">
+              <AlertDescription>
+                سيتم إرسال رمز التحقق عبر رسالة نصية للتأكد من رقم جوالك
+              </AlertDescription>
+            </Alert>
+            <PhoneInput
+              value={formData.phone}
+              onChange={(phone, countryCode) => setFormData({ ...formData, phone, countryCode })}
+              countryCode={formData.countryCode}
+              required
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  رسالة إضافية (اختياري)
-                </label>
-                <textarea
-                  name="message"
-                  value={formData.message}
+          {/* Section 3: Account info */}
+          <div className="border-b border-border pb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-sm font-bold text-primary">3</span>
+              معلومات الحساب
+            </h3>
+            <div className="grid gap-4">
+              <Input
+                type="email"
+                label="البريد الإلكتروني"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="example@email.com"
+                required
+                dir="ltr"
+                leftIcon={<Mail size={16} />}
+              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <Input
+                  type="password"
+                  label="كلمة المرور"
+                  name="password"
+                  value={formData.password}
                   onChange={handleChange}
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="أي معلومات إضافية تود مشاركتها..."
+                  placeholder="••••••••"
+                  required
+                  dir="ltr"
+                  helperText="8 أحرف على الأقل، حرف كبير، حرف صغير، ورقم"
+                  leftIcon={<Lock size={16} />}
+                />
+                <Input
+                  type="password"
+                  label="تأكيد كلمة المرور"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  dir="ltr"
+                  leftIcon={<Lock size={16} />}
                 />
               </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-4 px-4 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    جاري إرسال رمز التحقق...
-                  </>
-                ) : (
-                  <>
-                    <Phone className="w-5 h-5" />
-                    التحقق من رقم الجوال
-                  </>
-                )}
-              </button>
-            </form>
-
-            <p className="text-center mt-6 text-gray-600">
-              لديك حساب بالفعل؟{' '}
-              <Link href="/login" className="text-green-600 hover:text-green-800 font-medium">
-                تسجيل الدخول
-              </Link>
-            </p>
+            </div>
           </div>
-        </main>
-      </div>
+
+          {/* Additional message */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              رسالة إضافية (اختياري)
+            </label>
+            <textarea
+              name="message"
+              value={formData.message}
+              onChange={handleChange}
+              rows={3}
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors"
+              placeholder="أي معلومات إضافية تود مشاركتها..."
+            />
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            isLoading={isLoading}
+            leftIcon={!isLoading ? <Phone size={18} /> : undefined}
+          >
+            التحقق من رقم الجوال
+          </Button>
+        </form>
+
+        <p className="text-center mt-6 text-muted-foreground">
+          لديك حساب بالفعل؟{' '}
+          <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+            تسجيل الدخول
+          </Link>
+        </p>
+      </AuthPageLayout>
     </GuestOnly>
   );
 }

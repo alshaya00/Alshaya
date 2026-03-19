@@ -10,6 +10,13 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import GenderAvatar from '@/components/GenderAvatar';
 import Image from 'next/image';
 import { normalizeForSearch } from '@/lib/search-utils';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
+import { Skeleton, SkeletonAvatar } from '@/components/ui/Skeleton';
+import { Spinner } from '@/components/ui/Spinner';
+import { Avatar, AvatarImage, AvatarFallback, getInitials } from '@/components/ui/Avatar';
 
 function SearchPageContent() {
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
@@ -43,7 +50,7 @@ function SearchPageContent() {
     const ancestors: string[] = [member.firstName];
     let currentId = member.fatherId;
     let depth = 0;
-    
+
     while (currentId && depth < maxDepth) {
       const father = membersMap.get(currentId);
       if (father) {
@@ -54,7 +61,7 @@ function SearchPageContent() {
       }
       depth++;
     }
-    
+
     return ancestors.join(' بن ');
   };
 
@@ -73,23 +80,21 @@ function SearchPageContent() {
 
   const normalizeArabic = normalizeForSearch;
 
-  // Calculate similarity score between two strings (0-1)
   const calculateSimilarity = (str1: string, str2: string): number => {
     const s1 = normalizeArabic(str1);
     const s2 = normalizeArabic(str2);
-    
+
     if (s1 === s2) return 1;
     if (s1.includes(s2) || s2.includes(s1)) return 0.9;
-    
-    // Check if all characters of shorter string exist in longer
+
     const shorter = s1.length < s2.length ? s1 : s2;
     const longer = s1.length < s2.length ? s2 : s1;
-    
+
     let matchCount = 0;
     for (const char of shorter) {
       if (longer.includes(char)) matchCount++;
     }
-    
+
     return matchCount / shorter.length;
   };
 
@@ -99,8 +104,7 @@ function SearchPageContent() {
     const normalizedQuery = normalizeForSearch(query);
     const stopWords = ['بن', 'بنت', 'bin', 'bint', 'ibn', 'al', 'ال', 'آل'];
     const queryTerms = normalizedQuery.split(/\s+/).filter(t => t.length > 0 && !stopWords.includes(t));
-    
-    // Score each member based on match quality
+
     const scoredResults = membersWithAncestry.map((m) => {
       const normalizedChain = normalizeArabic(m.ancestorChain);
       const normalizedFirstName = normalizeArabic(m.firstName);
@@ -109,10 +113,9 @@ function SearchPageContent() {
       const normalizedCity = normalizeArabic(m.city || '');
       const normalizedOccupation = normalizeArabic(m.occupation || '');
       const fullNameEnLower = (m.fullNameEn || '').toLowerCase();
-      
+
       let score = 0;
-      
-      // Exact match on first name (highest priority)
+
       if (normalizedFirstName === normalizedQuery) {
         score += 100;
       } else if (normalizedFirstName.startsWith(normalizedQuery)) {
@@ -120,53 +123,45 @@ function SearchPageContent() {
       } else if (normalizedFirstName.includes(normalizedQuery)) {
         score += 60;
       }
-      
-      // Match on full Arabic name
+
       if (normalizedFullNameAr.includes(normalizedQuery)) {
         score += 50;
       }
-      
-      // Match on ancestor chain
+
       if (normalizedChain.includes(normalizedQuery)) {
         score += 40;
       }
-      
-      // Match individual terms (for multi-word queries)
-      const matchedTerms = queryTerms.filter(term => 
+
+      const matchedTerms = queryTerms.filter(term =>
         normalizedChain.includes(term) ||
         normalizedFirstName.includes(term) ||
         normalizedFatherName.includes(term)
       );
       score += matchedTerms.length * 20;
-      
-      // Fuzzy match on first name (for typos)
+
       const firstNameSimilarity = calculateSimilarity(m.firstName, query);
       if (firstNameSimilarity > 0.7) {
         score += firstNameSimilarity * 30;
       }
-      
-      // Match on English name
+
       if (fullNameEnLower.includes(query.toLowerCase())) {
         score += 35;
       }
-      
-      // Match on city or occupation
+
       if (normalizedCity.includes(normalizedQuery)) {
         score += 15;
       }
       if (normalizedOccupation.includes(normalizedQuery)) {
         score += 10;
       }
-      
-      // Match on ID
+
       if (m.id.toLowerCase().includes(query.toLowerCase())) {
         score += 25;
       }
-      
+
       return { member: m, score };
     });
-    
-    // Filter members with any match and sort by score
+
     return scoredResults
       .filter(r => r.score > 0)
       .sort((a, b) => b.score - a.score)
@@ -191,7 +186,7 @@ function SearchPageContent() {
       .filter((m) => {
         const normalizedChain = normalizeArabic(m.ancestorChain);
         const normalizedFirstName = normalizeArabic(m.firstName);
-        return normalizedChain.includes(normalizedQuery) || 
+        return normalizedChain.includes(normalizedQuery) ||
                normalizedFirstName.includes(normalizedQuery) ||
                calculateSimilarity(m.firstName, query) > 0.7;
       })
@@ -201,58 +196,49 @@ function SearchPageContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
-          <p className="text-gray-600">جاري التحميل...</p>
-        </div>
+        <Spinner size="md" label="جاري التحميل..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-8 pb-24 lg:pb-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-3">
-            <SearchIcon className="text-blue-600" size={36} />
-            البحث في العائلة
-          </h1>
-          <p className="text-gray-600 mt-2">ابحث عن أي فرد من أفراد العائلة</p>
-        </div>
+    <PageLayout
+      title="البحث في العائلة"
+      description="ابحث عن أي فرد من أفراد العائلة"
+      narrow
+    >
+      {/* Search Bar Card */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <Input
+            value={query}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="ابحث بالاسم، الرقم، المدينة، المهنة..."
+            leftIcon={<SearchIcon size={20} />}
+            rightIcon={
+              query ? (
+                <button
+                  onClick={clearSearch}
+                  className="pointer-events-auto cursor-pointer text-muted-foreground hover:text-foreground"
+                >
+                  <X size={18} />
+                </button>
+              ) : undefined
+            }
+            className="text-lg h-12"
+            autoFocus
+          />
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <div className="relative">
-            <SearchIcon
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={24}
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="ابحث بالاسم، الرقم، المدينة، المهنة..."
-              className="w-full pr-12 pl-12 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-              autoFocus
-            />
-            {query && (
-              <button
-                onClick={clearSearch}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
-            )}
-          </div>
-
+          {/* Suggestions */}
           {suggestions.length > 0 && query && (
-            <div className="mt-2 border-t pt-2">
-              <p className="text-xs text-gray-500 mb-2">اقتراحات:</p>
+            <div className="mt-3 pt-3 border-t border-border">
+              <p className="text-xs text-muted-foreground mb-2">اقتراحات:</p>
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => setQuery(s.ancestorChain)}
-                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition-colors"
+                    className="px-3 py-1 rounded-full text-sm border border-border bg-muted/50 hover:bg-muted transition-colors"
                   >
                     {s.ancestorChain}
                   </button>
@@ -261,15 +247,16 @@ function SearchPageContent() {
             </div>
           )}
 
+          {/* Recent searches */}
           {recentSearches.length > 0 && !query && (
             <div className="mt-4">
-              <p className="text-sm text-gray-500 mb-2">عمليات البحث الأخيرة:</p>
+              <p className="text-sm text-muted-foreground mb-2">عمليات البحث الأخيرة:</p>
               <div className="flex flex-wrap gap-2">
                 {recentSearches.map((term, i) => (
                   <button
                     key={i}
                     onClick={() => setQuery(term)}
-                    className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-full text-sm transition-colors"
+                    className="px-3 py-1 rounded-full text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                   >
                     {term}
                   </button>
@@ -277,44 +264,46 @@ function SearchPageContent() {
               </div>
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {query && (
-          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-            <p className="text-gray-600 mb-4">
+      {/* Results */}
+      {query && (
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground mb-4">
               {searchResults.length === 0
                 ? 'لم يتم العثور على نتائج'
                 : `تم العثور على ${searchResults.length} نتيجة`}
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {searchResults.slice(0, 50).map((member) => (
                 <Link
                   key={member.id}
                   href={`/member/${member.id}`}
-                  className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                  className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card hover:bg-accent transition-colors"
                 >
+                  {/* Avatar */}
                   {member.photoUrl ? (
-                    <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
-                      <Image
-                        src={member.photoUrl}
-                        alt={member.firstName}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                    <Avatar size="lg">
+                      <AvatarImage src={member.photoUrl} alt={member.firstName} />
+                      <AvatarFallback>{getInitials(member.firstName)}</AvatarFallback>
+                    </Avatar>
                   ) : (
                     <GenderAvatar gender={member.gender} size="lg" />
                   )}
-                  <div className="flex-1">
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-gray-800">{member.ancestorChain}</span>
-                      <span className="text-xs text-gray-400">({formatMemberId(member.id)})</span>
+                      <span className="font-semibold text-foreground">{member.ancestorChain}</span>
+                      <span className="text-xs text-muted-foreground">({formatMemberId(member.id)})</span>
                     </div>
                     {member.fullNameAr && member.fullNameAr !== member.ancestorChain && (
-                      <p className="text-sm text-gray-500">{member.fullNameAr}</p>
+                      <p className="text-sm text-muted-foreground truncate">{member.fullNameAr}</p>
                     )}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       {member.branch && (
                         <span className="flex items-center gap-1">
                           <GitBranch size={12} />
@@ -335,33 +324,38 @@ function SearchPageContent() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full text-white ${getGenerationColor(
-                        member.generation
-                      )}`}
+
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge
+                      variant="info"
+                      size="sm"
+                      className={`text-white ${getGenerationColor(member.generation)}`}
                     >
                       الجيل {member.generation}
-                    </span>
-                    <Eye size={16} className="text-gray-400" />
+                    </Badge>
+                    <Eye size={16} className="text-muted-foreground" />
                   </div>
                 </Link>
               ))}
             </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {!query && (
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <User size={64} className="mx-auto text-gray-300 mb-4" />
-            <h3 className="text-xl font-bold text-gray-700 mb-2">ابدأ البحث</h3>
-            <p className="text-gray-500">
+      {/* Empty state */}
+      {!query && (
+        <Card>
+          <CardContent className="pt-8 pb-8 text-center">
+            <User size={64} className="mx-auto text-muted-foreground/30 mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">ابدأ البحث</h3>
+            <p className="text-muted-foreground">
               اكتب اسم الشخص أو رقمه أو المدينة أو المهنة للبحث
             </p>
-          </div>
-        )}
-      </div>
-    </div>
+          </CardContent>
+        </Card>
+      )}
+    </PageLayout>
   );
 }
 

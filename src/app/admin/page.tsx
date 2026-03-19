@@ -4,6 +4,26 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  Badge,
+  Button,
+  Spinner,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from '@/components/ui';
+import {
   Users,
   UserCheck,
   History,
@@ -13,13 +33,11 @@ import {
   Wrench,
   BarChart3,
   TrendingUp,
-  TrendingDown,
   Clock,
   AlertTriangle,
   CheckCircle,
   Plus,
   Download,
-  Upload,
   RefreshCw,
   Shield,
   Activity,
@@ -51,8 +69,8 @@ interface ActionItem {
   count: number;
   href: string;
   icon: React.ReactNode;
-  color: string;
   priority: 'high' | 'medium' | 'low';
+  badgeVariant: 'destructive' | 'warning' | 'info' | 'default';
 }
 
 interface RecentActivity {
@@ -91,46 +109,36 @@ export default function AdminDashboardPage() {
     setIsLoading(true);
     const headers: HeadersInit = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
     try {
-      // Load statistics from API
       const statsRes = await fetch('/api/statistics', { headers });
       const statsData = await statsRes.json();
 
-      // Load active admins count from users API
       const usersRes = await fetch('/api/users', { headers });
       const usersData = await usersRes.json().catch(() => ({ users: [] }));
-      const activeAdmins = usersData.users?.filter((u: { role: string; isActive?: boolean }) => 
+      const activeAdmins = usersData.users?.filter((u: { role: string; isActive?: boolean }) =>
         (u.role === 'ADMIN' || u.role === 'SUPER_ADMIN') && u.isActive !== false
       ).length || 1;
 
-      // Load pending members
       const pendingRes = await fetch('/api/admin/pending', { headers });
       const pendingData = await pendingRes.json().catch(() => ({ pending: [] }));
 
-      // Load snapshots for last backup
       const snapshotsRes = await fetch('/api/admin/snapshots', { headers });
       const snapshotsData = await snapshotsRes.json().catch(() => ({ snapshots: [] }));
 
-      // Load history for recent changes
       const historyRes = await fetch('/api/admin/history?limit=10', { headers });
       const historyData = await historyRes.json().catch(() => ({ changes: [] }));
 
-      // Load duplicates
       const duplicatesRes = await fetch('/api/admin/duplicates', { headers });
       const duplicatesData = await duplicatesRes.json().catch(() => ({ duplicates: [] }));
 
-      // Load branch links
       const branchLinksRes = await fetch('/api/admin/branch-links', { headers });
       const branchLinksData = await branchLinksRes.json().catch(() => ({ links: [] }));
 
-      // Load pending images
       const pendingImagesRes = await fetch('/api/images/pending', { headers });
       const pendingImagesData = await pendingImagesRes.json().catch(() => ({ pending: [] }));
 
-      // Load access requests
       const accessReqRes = await fetch('/api/access-requests', { headers });
       const accessReqData = await accessReqRes.json().catch(() => ({ requests: [] }));
 
-      // Load name issues count
       const nameIssuesRes = await fetch('/api/admin/fix-lineage', { headers });
       const nameIssuesData = await nameIssuesRes.json().catch(() => ({ issuesCount: 0 }));
       const nameIssuesCount = nameIssuesData.issuesCount || 0;
@@ -141,7 +149,6 @@ export default function AdminDashboardPage() {
       const accessRequests = accessReqData.requests?.filter((r: { status: string }) => r.status === 'PENDING').length || 0;
       const lastBackup = snapshotsData.snapshots?.[0]?.createdAt || null;
 
-      // Check if backup is needed (older than 7 days or none)
       const backupNeeded = !lastBackup || (new Date().getTime() - new Date(lastBackup).getTime()) > 7 * 24 * 60 * 60 * 1000;
 
       setStats({
@@ -157,7 +164,6 @@ export default function AdminDashboardPage() {
         accessRequests,
       });
 
-      // Build action items list
       const actions: ActionItem[] = [];
 
       if (pendingApprovals > 0) {
@@ -169,8 +175,8 @@ export default function AdminDashboardPage() {
           count: pendingApprovals,
           href: '/admin/pending',
           icon: <UserPlus className="w-5 h-5" />,
-          color: 'bg-orange-500',
           priority: 'high',
+          badgeVariant: 'warning',
         });
       }
 
@@ -183,8 +189,8 @@ export default function AdminDashboardPage() {
           count: pendingImages,
           href: '/admin/images',
           icon: <Image className="w-5 h-5" />,
-          color: 'bg-purple-500',
           priority: 'medium',
+          badgeVariant: 'info',
         });
       }
 
@@ -193,12 +199,12 @@ export default function AdminDashboardPage() {
           id: 'duplicates',
           type: 'duplicate',
           title: 'تكرارات محتملة',
-          description: `${duplicatesCount} تكرار محتمل يحتاج مراجعة - استخدم أداة الدمج`,
+          description: `${duplicatesCount} تكرار محتمل يحتاج مراجعة`,
           count: duplicatesCount,
           href: '/admin/merge',
           icon: <AlertTriangle className="w-5 h-5" />,
-          color: 'bg-yellow-500',
           priority: 'medium',
+          badgeVariant: 'warning',
         });
       }
 
@@ -211,8 +217,8 @@ export default function AdminDashboardPage() {
           count: accessRequests,
           href: '/admin/access-requests',
           icon: <UserPlus className="w-5 h-5" />,
-          color: 'bg-blue-500',
           priority: 'high',
+          badgeVariant: 'info',
         });
       }
 
@@ -225,8 +231,8 @@ export default function AdminDashboardPage() {
           count: 1,
           href: '/admin/tools',
           icon: <Camera className="w-5 h-5" />,
-          color: 'bg-red-500',
           priority: 'low',
+          badgeVariant: 'destructive',
         });
       }
 
@@ -239,12 +245,11 @@ export default function AdminDashboardPage() {
           count: nameIssuesCount,
           href: '/admin/fix-names',
           icon: <Wrench className="w-5 h-5" />,
-          color: 'bg-amber-500',
           priority: 'medium',
+          badgeVariant: 'warning',
         });
       }
 
-      // Sort by priority
       actions.sort((a, b) => {
         const priorityOrder = { high: 0, medium: 1, low: 2 };
         return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -252,7 +257,6 @@ export default function AdminDashboardPage() {
 
       setActionItems(actions);
 
-      // Convert history to activity
       const activity: RecentActivity[] = (historyData.changes || []).slice(0, 5).map((change: {
         id: string;
         changeType: string;
@@ -269,7 +273,6 @@ export default function AdminDashboardPage() {
       setRecentActivity(activity);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Set default values on error
       setStats({
         totalMembers: 0,
         pendingApprovals: 0,
@@ -288,21 +291,33 @@ export default function AdminDashboardPage() {
   };
 
   const quickActions = [
-    { href: '/quick-add', label: 'إضافة عضو', icon: Plus, color: 'bg-green-500' },
-    { href: '/admin/merge', label: 'دمج التكرارات', icon: GitBranch, color: 'bg-yellow-500' },
-    { href: '/export', label: 'تصدير البيانات', icon: Download, color: 'bg-blue-500' },
-    { href: '/admin/tools', label: 'نسخ احتياطي', icon: Camera, color: 'bg-orange-500' },
+    { href: '/quick-add', label: 'إضافة عضو', icon: Plus, variant: 'success' as const },
+    { href: '/admin/merge', label: 'دمج التكرارات', icon: GitBranch, variant: 'outline' as const },
+    { href: '/export', label: 'تصدير البيانات', icon: Download, variant: 'outline' as const },
+    { href: '/admin/tools', label: 'نسخ احتياطي', icon: Camera, variant: 'outline' as const },
   ];
 
-  const getActivityIcon = (type: string) => {
+  const getActivityBadgeVariant = (type: string) => {
     switch (type) {
-      case 'create': return <Plus className="w-4 h-4 text-green-500" />;
-      case 'update': return <RefreshCw className="w-4 h-4 text-blue-500" />;
-      case 'delete': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'approve': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'reject': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'backup': return <Camera className="w-4 h-4 text-purple-500" />;
-      default: return <Activity className="w-4 h-4 text-gray-500" />;
+      case 'create': return 'success' as const;
+      case 'update': return 'info' as const;
+      case 'delete': return 'destructive' as const;
+      case 'approve': return 'success' as const;
+      case 'reject': return 'destructive' as const;
+      case 'backup': return 'secondary' as const;
+      default: return 'default' as const;
+    }
+  };
+
+  const getActivityLabel = (type: string) => {
+    switch (type) {
+      case 'create': return 'إضافة';
+      case 'update': return 'تعديل';
+      case 'delete': return 'حذف';
+      case 'approve': return 'موافقة';
+      case 'reject': return 'رفض';
+      case 'backup': return 'نسخ';
+      default: return 'نشاط';
     }
   };
 
@@ -322,344 +337,287 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#1E3A5F] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">جاري تحميل لوحة التحكم...</p>
-        </div>
+        <Spinner size="lg" label="جاري تحميل لوحة التحكم..." />
       </div>
     );
   }
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="p-4 lg:p-8 space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">لوحة التحكم</h1>
-        <p className="text-gray-500 mt-1">Admin Dashboard - نظرة عامة على النظام</p>
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">لوحة التحكم</h1>
+        <p className="text-muted-foreground mt-1">Admin Dashboard - نظرة عامة على النظام</p>
       </div>
 
-      {/* Action Required Panel - Shows when there are pending items */}
+      {/* Action Required Panel */}
       {actionItems.length > 0 && (
-        <div className="mb-8 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border-2 border-orange-200 overflow-hidden">
-          <div className="px-6 py-4 bg-orange-500 text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
-                <Bell className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold">إجراءات مطلوبة</h2>
-                <p className="text-orange-100 text-sm">{actionItems.length} عنصر يحتاج انتباهك</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4">
-            <div className="space-y-3">
+        <Alert variant="warning" dismissible={false}>
+          <AlertTitle className="flex items-center gap-2 text-lg">
+            <Bell className="w-5 h-5" />
+            إجراءات مطلوبة
+            <Badge variant="warning" size="sm">{actionItems.length}</Badge>
+          </AlertTitle>
+          <AlertDescription>
+            <div className="mt-3 space-y-2">
               {actionItems.map((item) => (
                 <Link
                   key={item.id}
                   href={item.href}
-                  className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-transparent hover:border-orange-300 hover:shadow-md transition-all group"
+                  className="flex items-center gap-4 p-3 bg-card rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all group"
                 >
-                  <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0">
                     {item.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-gray-800">{item.title}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold text-white ${item.color}`}>
-                        {item.count}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-foreground">{item.title}</span>
+                      <Badge variant={item.badgeVariant} size="sm">{item.count}</Badge>
                       {item.priority === 'high' && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                          عاجل
-                        </span>
+                        <Badge variant="destructive" size="sm">عاجل</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 truncate">{item.description}</p>
+                    <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-[-4px] rtl:group-hover:translate-x-[4px] transition-all shrink-0" />
                 </Link>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-orange-100">
-              <Link
-                href="/admin/audit"
-                className="flex items-center justify-center gap-2 text-orange-600 hover:text-orange-800 font-medium text-sm"
-              >
-                <Activity className="w-4 h-4" />
-                عرض سجل النشاط الكامل
+            <div className="mt-4 pt-3 border-t border-border">
+              <Link href="/admin/audit">
+                <Button variant="ghost" size="sm" leftIcon={<Activity className="w-4 h-4" />}>
+                  عرض سجل النشاط الكامل
+                </Button>
               </Link>
             </div>
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6 border-r-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">إجمالي الأعضاء</p>
-              <p className="text-3xl font-bold text-gray-800">{stats.totalMembers}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">إجمالي الأعضاء</p>
+                <p className="text-3xl font-bold text-foreground">{stats.totalMembers}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-blue-500" />
+            <div className="mt-3 flex items-center text-sm">
+              <Badge variant="success" size="sm">
+                <TrendingUp className="w-3 h-3 me-1" />
+                {stats.totalMembers} مسجل
+              </Badge>
             </div>
-          </div>
-          <div className="mt-3 flex items-center text-sm text-green-600">
-            <TrendingUp className="w-4 h-4 ml-1" />
-            <span>{stats.totalMembers} عضو مسجل</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border-r-4 border-yellow-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">طلبات معلقة</p>
-              <p className="text-3xl font-bold text-gray-800">{stats.pendingApprovals}</p>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">طلبات معلقة</p>
+                <p className="text-3xl font-bold text-foreground">{stats.pendingApprovals}</p>
+              </div>
+              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                <UserCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <UserCheck className="w-6 h-6 text-yellow-500" />
-            </div>
-          </div>
-          <Link href="/admin/database/pending" className="mt-3 flex items-center text-sm text-yellow-600 hover:underline">
-            <Clock className="w-4 h-4 ml-1" />
-            <span>مراجعة الطلبات</span>
-          </Link>
-        </div>
+            <Link href="/admin/database/pending" className="mt-3 flex items-center">
+              <Badge variant="warning" size="sm">
+                <Clock className="w-3 h-3 me-1" />
+                مراجعة الطلبات
+              </Badge>
+            </Link>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border-r-4 border-purple-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">المشرفين النشطين</p>
-              <p className="text-3xl font-bold text-gray-800">{stats.activeAdmins}</p>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">المشرفين النشطين</p>
+                <p className="text-3xl font-bold text-foreground">{stats.activeAdmins}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6 text-purple-500" />
-            </div>
-          </div>
-          <Link href="/admin/settings" className="mt-3 flex items-center text-sm text-purple-600 hover:underline">
-            <span>إدارة المشرفين</span>
-          </Link>
-        </div>
+            <Link href="/admin/settings" className="mt-3 flex items-center">
+              <Badge variant="info" size="sm">إدارة المشرفين</Badge>
+            </Link>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border-r-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">حجم قاعدة البيانات</p>
-              <p className="text-3xl font-bold text-gray-800">{stats.databaseSize}</p>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">حجم قاعدة البيانات</p>
+                <p className="text-3xl font-bold text-foreground">{stats.databaseSize}</p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                <Database className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <Database className="w-6 h-6 text-green-500" />
+            <div className="mt-3">
+              <Badge variant="secondary" size="sm">PostgreSQL Database</Badge>
             </div>
-          </div>
-          <div className="mt-3 text-sm text-gray-500">
-            <span>PostgreSQL Database</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">إجراءات سريعة</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="flex items-center gap-3 p-4 rounded-lg border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all"
-              >
-                <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center`}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-medium text-gray-700">{action.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>إجراءات سريعة</CardTitle>
+          <CardDescription>Quick Actions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link key={action.href} href={action.href}>
+                  <Button
+                    variant={action.variant}
+                    fullWidth
+                    size="lg"
+                    leftIcon={<Icon className="w-5 h-5" />}
+                    className="justify-start"
+                  >
+                    {action.label}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-800">النشاط الأخير</h2>
-            <Link href="/admin/database/history" className="text-sm text-blue-600 hover:underline">
-              عرض الكل
-            </Link>
-          </div>
-          <div className="space-y-4">
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Recent Activity Table */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>النشاط الأخير</CardTitle>
+              <Link href="/admin/database/history">
+                <Button variant="ghost" size="sm">عرض الكل</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
             {recentActivity.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">لا يوجد نشاط حديث</p>
+              <div className="text-center py-8">
+                <Activity className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">لا يوجد نشاط حديث</p>
+              </div>
             ) : (
-              recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">{activity.description}</p>
-                    <p className="text-xs text-gray-500">{activity.user}</p>
-                  </div>
-                  <span className="text-xs text-gray-400">{formatTimeAgo(activity.timestamp)}</span>
-                </div>
-              ))
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>النوع</TableHead>
+                    <TableHead>الوصف</TableHead>
+                    <TableHead>المستخدم</TableHead>
+                    <TableHead>الوقت</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentActivity.map((activity) => (
+                    <TableRow key={activity.id}>
+                      <TableCell>
+                        <Badge variant={getActivityBadgeVariant(activity.type)} size="sm">
+                          {getActivityLabel(activity.type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">{activity.description}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{activity.user}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatTimeAgo(activity.timestamp)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* System Status */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">حالة النظام</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-green-50">
+        <Card>
+          <CardHeader>
+            <CardTitle>حالة النظام</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-green-500" />
-                <span className="font-medium text-gray-700">قاعدة البيانات</span>
+                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-medium text-foreground">قاعدة البيانات</span>
               </div>
-              <span className="text-sm text-green-600">تعمل بشكل طبيعي</span>
+              <Badge variant="success" size="sm">تعمل بشكل طبيعي</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
-                <Camera className="w-5 h-5 text-gray-500" />
-                <span className="font-medium text-gray-700">آخر نسخة احتياطية</span>
+                <Camera className="w-5 h-5 text-muted-foreground" />
+                <span className="font-medium text-foreground">آخر نسخة احتياطية</span>
               </div>
-              <span className="text-sm text-gray-600">
+              <Badge variant="secondary" size="sm">
                 {stats.lastBackup ? formatTimeAgo(new Date(stats.lastBackup)) : 'لا يوجد'}
-              </span>
+              </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                <span className="font-medium text-gray-700">تكرارات محتملة</span>
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <span className="font-medium text-foreground">تكرارات محتملة</span>
               </div>
-              <span className="text-sm text-yellow-600">{stats.duplicatesCount} للمراجعة</span>
+              <Badge variant="warning" size="sm">{stats.duplicatesCount} للمراجعة</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
-                <Activity className="w-5 h-5 text-blue-500" />
-                <span className="font-medium text-gray-700">روابط الفروع النشطة</span>
+                <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span className="font-medium text-foreground">روابط الفروع النشطة</span>
               </div>
-              <span className="text-sm text-blue-600">{stats.branchLinks} رابط</span>
+              <Badge variant="info" size="sm">{stats.branchLinks} رابط</Badge>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Admin Sections Navigation */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link
-          href="/admin/database"
-          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-blue-200"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Database className="w-7 h-7 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800">إدارة قاعدة البيانات</h3>
-              <p className="text-sm text-gray-500">Database Management</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600">
-            إدارة جداول البيانات، الأعضاء، السجل، والنسخ الاحتياطية
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/config"
-          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-green-200"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center">
-              <Settings className="w-7 h-7 text-green-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800">إعدادات النظام</h3>
-              <p className="text-sm text-gray-500">System Configuration</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600">
-            تخصيص إعدادات التطبيق، قواعد التحقق، وخيارات العرض
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/data-quality"
-          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-teal-200"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center">
-              <Database className="w-7 h-7 text-teal-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800">جودة البيانات</h3>
-              <p className="text-sm text-gray-500">Data Quality</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600">
-            فحص وإصلاح الأسماء والمعرفات وسلاسل النسب
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/tools"
-          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-orange-200"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
-              <Wrench className="w-7 h-7 text-orange-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800">أدوات البيانات</h3>
-              <p className="text-sm text-gray-500">Data Tools</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600">
-            النسخ الاحتياطي، التحقق من سلامة البيانات، والعمليات المجمعة
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/reports"
-          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-purple-200"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">
-              <BarChart3 className="w-7 h-7 text-purple-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800">التقارير والتحليلات</h3>
-              <p className="text-sm text-gray-500">Reports & Analytics</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600">
-            تقارير تفصيلية وتحليلات إحصائية عن العائلة والنظام
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/settings"
-          className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border-2 border-transparent hover:border-red-200"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center">
-              <Shield className="w-7 h-7 text-red-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800">إدارة المشرفين</h3>
-              <p className="text-sm text-gray-500">Admin Users</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600">
-            إدارة حسابات المشرفين، الصلاحيات، ورموز الوصول
-          </p>
-        </Link>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { href: '/admin/database', icon: Database, title: 'إدارة قاعدة البيانات', subtitle: 'Database Management', description: 'إدارة جداول البيانات، الأعضاء، السجل، والنسخ الاحتياطية', color: 'blue' },
+          { href: '/admin/config', icon: Settings, title: 'إعدادات النظام', subtitle: 'System Configuration', description: 'تخصيص إعدادات التطبيق، قواعد التحقق، وخيارات العرض', color: 'green' },
+          { href: '/admin/data-quality', icon: Database, title: 'جودة البيانات', subtitle: 'Data Quality', description: 'فحص وإصلاح الأسماء والمعرفات وسلاسل النسب', color: 'teal' },
+          { href: '/admin/tools', icon: Wrench, title: 'أدوات البيانات', subtitle: 'Data Tools', description: 'النسخ الاحتياطي، التحقق من سلامة البيانات، والعمليات المجمعة', color: 'orange' },
+          { href: '/admin/reports', icon: BarChart3, title: 'التقارير والتحليلات', subtitle: 'Reports & Analytics', description: 'تقارير تفصيلية وتحليلات إحصائية عن العائلة والنظام', color: 'purple' },
+          { href: '/admin/settings', icon: Shield, title: 'إدارة المشرفين', subtitle: 'Admin Users', description: 'إدارة حسابات المشرفين، الصلاحيات، ورموز الوصول', color: 'red' },
+        ].map((section) => {
+          const Icon = section.icon;
+          return (
+            <Link key={section.href} href={section.href}>
+              <Card className="h-full hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-foreground">{section.title}</h3>
+                      <p className="text-xs text-muted-foreground">{section.subtitle}</p>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">{section.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

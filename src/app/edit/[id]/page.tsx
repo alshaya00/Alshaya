@@ -7,22 +7,16 @@ import { isMale, normalizeMemberId } from '@/lib/utils';
 import {
   ArrowRight,
   Save,
-  X,
   AlertTriangle,
   CheckCircle,
   User,
   Users,
-  Mail,
-  MapPin,
   Calendar,
-  Briefcase,
-  FileText,
   ChevronDown,
   ChevronUp,
   History,
   RefreshCw,
   Eye,
-  AlertCircle,
   Phone,
 } from 'lucide-react';
 import PhoneInput from '@/components/PhoneInput';
@@ -37,6 +31,15 @@ import type { FamilyMember, ValidationError } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import MemberPhotoSection from '@/components/MemberPhotoSection';
 import { getYearRange, CalendarType } from '@/lib/utils/hijri-calendar';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Button } from '@/components/ui/Button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
+import { Badge } from '@/components/ui/Badge';
+import { Separator } from '@/components/ui/Separator';
+import { Spinner } from '@/components/ui/Spinner';
 
 type EditSection = 'identity' | 'family' | 'personal' | 'contact';
 
@@ -66,37 +69,37 @@ export default function EditMemberPage() {
       if (!session?.token) {
         return;
       }
-      
+
       setLoadError(null);
       setIsLoadingData(true);
-      
+
       try {
         const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
         const [memberRes, allRes] = await Promise.all([
           fetch(`/api/members/${memberId}`, { headers }),
           fetch('/api/members?limit=2000', { headers })
         ]);
-        
+
         if (memberRes.status === 401) {
           setLoadError('unauthorized');
           return;
         }
-        
+
         if (memberRes.status === 404) {
           setLoadError('not_found');
           return;
         }
-        
+
         if (!memberRes.ok) {
           setLoadError('error');
           return;
         }
-        
+
         const memberData = await memberRes.json();
         const member = memberData.data || memberData;
         setOriginalMember(member);
         setFormData({ ...member });
-        
+
         if (allRes.ok) {
           const allData = await allRes.json();
           setAllMembers(allData.data || []);
@@ -117,7 +120,6 @@ export default function EditMemberPage() {
     ).sort((a, b) => a.generation - b.generation);
   }, [allMembers, memberId]);
 
-  // Track which fields have changed
   const changedFields = useMemo(() => {
     if (!originalMember) return [];
     const changed: string[] = [];
@@ -132,7 +134,6 @@ export default function EditMemberPage() {
     return changed;
   }, [formData, originalMember]);
 
-  // Validate on form change
   useEffect(() => {
     if (!originalMember || changedFields.length === 0) {
       setErrors([]);
@@ -146,23 +147,19 @@ export default function EditMemberPage() {
       (changes as any)[field] = formData[field as keyof FamilyMember];
     }
 
-    // Validate
     const validation = validateEdit(memberId, changes, allMembers);
     setErrors(validation.errors);
     setWarnings(validation.warnings);
 
-    // Calculate cascade updates
     const cascades = calculateCascadeUpdates(memberId, changes, allMembers);
     setCascadeUpdates(cascades);
   }, [formData, originalMember, changedFields, memberId]);
 
-  // Update form field
   const updateField = (field: keyof FamilyMember, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setSaveSuccess(false);
   };
 
-  // Toggle section
   const toggleSection = (section: EditSection) => {
     setExpandedSections(prev =>
       prev.includes(section)
@@ -171,7 +168,6 @@ export default function EditMemberPage() {
     );
   };
 
-  // Handle parent change
   const handleParentChange = (newParentId: string | null) => {
     const validation = validateParentChange(memberId, newParentId, allMembers);
 
@@ -187,7 +183,6 @@ export default function EditMemberPage() {
 
     updateField('fatherId', newParentId);
 
-    // Update related fields
     if (newParentId) {
       const newParent = allMembers.find(m => m.id === newParentId);
       if (newParent) {
@@ -195,7 +190,6 @@ export default function EditMemberPage() {
         updateField('generation', newParent.generation + 1);
         updateField('branch', newParent.branch);
 
-        // Update ancestor names
         const grandparent = allMembers.find(m => m.id === newParent.fatherId);
         if (grandparent) {
           updateField('grandfatherName', grandparent.firstName);
@@ -211,14 +205,12 @@ export default function EditMemberPage() {
     }
   };
 
-  // Regenerate full name
   const regenerateFullName = () => {
     const names = generateFullName(formData, allMembers);
     updateField('fullNameAr', names.fullNameAr);
     updateField('fullNameEn', names.fullNameEn);
   };
 
-  // Save changes
   const handleSave = async () => {
     if (errors.length > 0) {
       alert('يرجى تصحيح الأخطاء قبل الحفظ');
@@ -233,12 +225,11 @@ export default function EditMemberPage() {
         return acc;
       }, {} as Record<string, unknown>);
 
-      // Save changes via API
-      const headers: HeadersInit = session?.token ? { 
+      const headers: HeadersInit = session?.token ? {
         Authorization: `Bearer ${session.token}`,
         'Content-Type': 'application/json'
       } : { 'Content-Type': 'application/json' };
-      
+
       const res = await fetch(`/api/members/${memberId}`, {
         method: 'PATCH',
         headers,
@@ -257,7 +248,6 @@ export default function EditMemberPage() {
             errorMessage = err.messageAr || err.message || err.error || errorMessage;
           }
         } catch {
-          // If response body is empty or not valid JSON, use status text
           errorMessage = `خطأ في الخادم: ${res.status} ${res.statusText || ''}`.trim();
         }
         throw new Error(errorMessage);
@@ -275,7 +265,6 @@ export default function EditMemberPage() {
     }
   };
 
-  // Reset form
   const handleReset = () => {
     if (originalMember) {
       setFormData({ ...originalMember });
@@ -284,59 +273,61 @@ export default function EditMemberPage() {
     setSaveSuccess(false);
   };
 
+  // Loading state
   if (isLoadingData || !session?.token) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <RefreshCw className="w-16 h-16 text-blue-500 mx-auto mb-4 animate-spin" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">جاري تحميل بيانات العضو...</h2>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <Spinner size="lg" label="جاري تحميل بيانات العضو..." />
       </div>
     );
   }
 
+  // Error states
   if (loadError === 'unauthorized') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">غير مصرح</h2>
-          <p className="text-gray-600 mb-4">يجب تسجيل الدخول للوصول لهذه الصفحة</p>
-          <Link href="/login" className="text-blue-600 hover:underline">
-            تسجيل الدخول
-          </Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="pt-6 text-center">
+            <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">غير مصرح</h2>
+            <p className="text-muted-foreground mb-4">يجب تسجيل الدخول للوصول لهذه الصفحة</p>
+            <Link href="/login" className="text-primary hover:underline underline-offset-4">
+              تسجيل الدخول
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (loadError === 'not_found' || !originalMember) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">العضو غير موجود</h2>
-          <Link href="/tree" className="text-blue-600 hover:underline">
-            العودة للشجرة
-          </Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="pt-6 text-center">
+            <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">العضو غير موجود</h2>
+            <Link href="/tree" className="text-primary hover:underline underline-offset-4">
+              العودة للشجرة
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (loadError === 'error') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">حدث خطأ أثناء التحميل</h2>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="text-blue-600 hover:underline"
-          >
-            إعادة المحاولة
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="pt-6 text-center">
+            <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">حدث خطأ أثناء التحميل</h2>
+            <Button variant="link" onClick={() => window.location.reload()}>
+              إعادة المحاولة
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -349,20 +340,20 @@ export default function EditMemberPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen" dir="rtl">
       {/* Header */}
-      <header className="bg-gradient-to-l from-[#1E3A5F] to-[#2D5A87] text-white py-6">
-        <div className="container mx-auto px-4">
+      <header className="bg-gradient-to-l from-[#1E3A5F] to-[#2D5A87] text-white py-4 lg:py-6">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
                 href={`/member/${memberId}`}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 hover:bg-white/10 rounded-md transition-colors"
               >
                 <ArrowRight className="w-6 h-6" />
               </Link>
               <div>
-                <h1 className="text-2xl font-bold">تعديل العضو</h1>
+                <h1 className="text-xl lg:text-2xl font-bold">تعديل العضو</h1>
                 <p className="text-white/80 text-sm">
                   {originalMember.fullNameAr || originalMember.firstName}
                 </p>
@@ -371,133 +362,111 @@ export default function EditMemberPage() {
 
             <div className="flex items-center gap-3">
               {changedFields.length > 0 && (
-                <span className="px-3 py-1 bg-yellow-500/20 rounded-lg text-sm">
+                <Badge variant="warning" size="lg">
                   {changedFields.length} تغييرات
-                </span>
+                </Badge>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleReset}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2"
+                className="text-white hover:bg-white/10"
+                leftIcon={<RefreshCw className="w-4 h-4" />}
               >
-                <RefreshCw className="w-4 h-4" />
                 إعادة تعيين
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleSave}
-                disabled={isSaving || errors.length > 0 || changedFields.length === 0}
-                className="px-6 py-2 bg-white text-[#1E3A5F] rounded-lg flex items-center gap-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={errors.length > 0 || changedFields.length === 0}
+                isLoading={isSaving}
+                leftIcon={saveSuccess ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Save className="w-4 h-4" />}
+                className="bg-white text-[#1E3A5F] hover:bg-gray-100"
               >
-                {isSaving ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : saveSuccess ? (
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
                 {isSaving ? 'جاري الحفظ...' : saveSuccess ? 'تم الحفظ!' : 'حفظ التغييرات'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Errors & Warnings */}
-            {(errors.length > 0 || warnings.length > 0) && (
-              <div className="space-y-3">
-                {errors.map((error, i) => (
-                  <div
-                    key={i}
-                    className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700"
-                  >
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <span><strong>{error.field}:</strong> {error.message}</span>
-                  </div>
-                ))}
-                {warnings.map((warning, i) => (
-                  <div
-                    key={i}
-                    className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3 text-yellow-700"
-                  >
-                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                    <div>
-                      <span><strong>{warning.field}:</strong> {warning.message}</span>
-                      {warning.suggestion && (
-                        <p className="text-sm text-yellow-600 mt-1">{warning.suggestion}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {errors.length > 0 && errors.map((error, i) => (
+              <Alert key={`err-${i}`} variant="destructive">
+                <AlertDescription>
+                  <strong>{error.field}:</strong> {error.message}
+                </AlertDescription>
+              </Alert>
+            ))}
+            {warnings.length > 0 && warnings.map((warning, i) => (
+              <Alert key={`warn-${i}`} variant="warning">
+                <AlertDescription>
+                  <strong>{warning.field}:</strong> {warning.message}
+                  {warning.suggestion && (
+                    <p className="text-sm mt-1 opacity-80">{warning.suggestion}</p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            ))}
 
             {/* Form sections */}
             {sections.map(({ key, title, icon: Icon }) => {
               const isExpanded = expandedSections.includes(key);
 
               return (
-                <div key={key} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <Card key={key}>
                   <button
                     onClick={() => toggleSection(key)}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
+                    className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-t-lg"
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5 text-[#1E3A5F]" />
-                      <span className="font-bold text-gray-800">{title}</span>
+                      <Icon className="w-5 h-5 text-primary" />
+                      <span className="font-semibold text-foreground">{title}</span>
                     </div>
-                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
                   </button>
 
                   {isExpanded && (
-                    <div className="p-6 border-t space-y-4">
+                    <CardContent className="pt-0">
+                      <Separator className="mb-4" />
+
                       {/* Identity Section */}
                       {key === 'identity' && (
-                        <>
+                        <div className="space-y-4">
                           <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الرقم التعريفي
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.id || ''}
-                                disabled
-                                className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الاسم الأول <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.firstName || ''}
-                                onChange={(e) => updateField('firstName', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent ${
-                                  changedFields.includes('firstName') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
+                            <Input
+                              label="الرقم التعريفي"
+                              value={formData.id || ''}
+                              disabled
+                            />
+                            <Input
+                              label="الاسم الأول *"
+                              value={formData.firstName || ''}
+                              onChange={(e) => updateField('firstName', e.target.value)}
+                              className={changedFields.includes('firstName') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              الجنس <span className="text-red-500">*</span>
+                            <label className="text-sm font-medium text-foreground mb-2 block">
+                              الجنس <span className="text-destructive">*</span>
                             </label>
                             <div className="flex gap-4">
                               {(['Male', 'Female'] as const).map(gender => (
                                 <label
                                   key={gender}
-                                  className={`flex-1 p-3 border rounded-lg cursor-pointer transition-colors ${
+                                  className={`flex-1 p-3 border rounded-md cursor-pointer transition-colors ${
                                     formData.gender === gender
                                       ? isMale(gender)
-                                        ? 'border-blue-500 bg-blue-50'
-                                        : 'border-pink-500 bg-pink-50'
-                                      : 'hover:bg-gray-50'
-                                  } ${changedFields.includes('gender') ? 'ring-2 ring-yellow-400' : ''}`}
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                                        : 'border-pink-500 bg-pink-50 dark:bg-pink-950/30'
+                                      : 'border-input hover:bg-accent'
+                                  } ${changedFields.includes('gender') ? 'ring-2 ring-amber-400' : ''}`}
                                 >
                                   <input
                                     type="radio"
@@ -507,7 +476,7 @@ export default function EditMemberPage() {
                                     onChange={(e) => updateField('gender', e.target.value)}
                                     className="sr-only"
                                   />
-                                  <span className="font-medium">
+                                  <span className="font-medium text-foreground">
                                     {isMale(gender) ? 'ذكر' : 'أنثى'}
                                   </span>
                                 </label>
@@ -517,260 +486,189 @@ export default function EditMemberPage() {
 
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الاسم الكامل (عربي)
-                              </label>
+                              <label className="text-sm font-medium text-foreground mb-2 block">الاسم الكامل (عربي)</label>
                               <div className="flex gap-2">
-                                <input
-                                  type="text"
+                                <Input
                                   value={formData.fullNameAr || ''}
                                   onChange={(e) => updateField('fullNameAr', e.target.value)}
-                                  className={`flex-1 px-4 py-2 border rounded-lg ${
-                                    changedFields.includes('fullNameAr') ? 'border-yellow-400 bg-yellow-50' : ''
-                                  }`}
+                                  className={changedFields.includes('fullNameAr') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
                                 />
-                                <button
+                                <Button
+                                  variant="outline"
+                                  size="icon"
                                   onClick={regenerateFullName}
-                                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
                                   title="إنشاء تلقائي"
                                 >
                                   <RefreshCw className="w-4 h-4" />
-                                </button>
+                                </Button>
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الاسم الكامل (إنجليزي)
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.fullNameEn || ''}
-                                onChange={(e) => updateField('fullNameEn', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('fullNameEn') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                                dir="ltr"
-                              />
-                            </div>
+                            <Input
+                              label="الاسم الكامل (إنجليزي)"
+                              value={formData.fullNameEn || ''}
+                              onChange={(e) => updateField('fullNameEn', e.target.value)}
+                              className={changedFields.includes('fullNameEn') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                              dir="ltr"
+                            />
                           </div>
-                        </>
+                        </div>
                       )}
 
                       {/* Family Section */}
                       {key === 'family' && (
-                        <>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              الأب
-                            </label>
-                            <select
-                              value={formData.fatherId || ''}
-                              onChange={(e) => handleParentChange(e.target.value || null)}
-                              className={`w-full px-4 py-2 border rounded-lg ${
-                                changedFields.includes('fatherId') ? 'border-yellow-400 bg-yellow-50' : ''
-                              }`}
-                            >
-                              <option value="">بدون أب (جذر)</option>
-                              {potentialFathers.map(father => (
-                                <option key={father.id} value={father.id}>
-                                  {father.fullNameAr || father.firstName} ({father.id}) - الجيل {father.generation}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                        <div className="space-y-4">
+                          <Select
+                            label="الأب"
+                            value={formData.fatherId || ''}
+                            onChange={(e) => handleParentChange(e.target.value || null)}
+                            options={[
+                              { value: '', label: 'بدون أب (جذر)' },
+                              ...potentialFathers.map(father => ({
+                                value: father.id,
+                                label: `${father.fullNameAr || father.firstName} (${father.id}) - الجيل ${father.generation}`
+                              }))
+                            ]}
+                            className={changedFields.includes('fatherId') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                          />
 
                           <div className="grid md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الجيل
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.generation || 1}
-                                onChange={(e) => updateField('generation', parseInt(e.target.value))}
-                                min={1}
-                                max={20}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('generation') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الفرع
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.branch || ''}
-                                onChange={(e) => updateField('branch', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('branch') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                اسم العائلة
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.familyName || 'آل شايع'}
-                                onChange={(e) => updateField('familyName', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('familyName') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
+                            <Input
+                              label="الجيل"
+                              type="number"
+                              value={formData.generation || 1}
+                              onChange={(e) => updateField('generation', parseInt(e.target.value))}
+                              min={1}
+                              max={20}
+                              className={changedFields.includes('generation') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
+                            <Input
+                              label="الفرع"
+                              value={formData.branch || ''}
+                              onChange={(e) => updateField('branch', e.target.value)}
+                              className={changedFields.includes('branch') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
+                            <Input
+                              label="اسم العائلة"
+                              value={formData.familyName || 'آل شايع'}
+                              onChange={(e) => updateField('familyName', e.target.value)}
+                              className={changedFields.includes('familyName') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
                           </div>
 
                           <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                عدد الأبناء
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.sonsCount || 0}
-                                onChange={(e) => updateField('sonsCount', parseInt(e.target.value))}
-                                min={0}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('sonsCount') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                عدد البنات
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.daughtersCount || 0}
-                                onChange={(e) => updateField('daughtersCount', parseInt(e.target.value))}
-                                min={0}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('daughtersCount') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
+                            <Input
+                              label="عدد الأبناء"
+                              type="number"
+                              value={formData.sonsCount || 0}
+                              onChange={(e) => updateField('sonsCount', parseInt(e.target.value))}
+                              min={0}
+                              className={changedFields.includes('sonsCount') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
+                            <Input
+                              label="عدد البنات"
+                              type="number"
+                              value={formData.daughtersCount || 0}
+                              onChange={(e) => updateField('daughtersCount', parseInt(e.target.value))}
+                              min={0}
+                              className={changedFields.includes('daughtersCount') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
                           </div>
-                        </>
+                        </div>
                       )}
 
                       {/* Personal Section */}
                       {key === 'personal' && (
-                        <>
+                        <div className="space-y-4">
                           <div className="grid md:grid-cols-3 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                سنة الميلاد
-                              </label>
+                              <label className="text-sm font-medium text-foreground mb-2 block">سنة الميلاد</label>
                               <div className="flex gap-2">
-                                <input
+                                <Input
                                   type="number"
                                   value={formData.birthYear || ''}
                                   onChange={(e) => updateField('birthYear', e.target.value ? parseInt(e.target.value) : null)}
                                   min={getYearRange((formData.birthCalendar as CalendarType) || 'GREGORIAN').min}
                                   max={getYearRange((formData.birthCalendar as CalendarType) || 'GREGORIAN').max}
-                                  className={`flex-1 px-4 py-2 border rounded-lg ${
-                                    changedFields.includes('birthYear') ? 'border-yellow-400 bg-yellow-50' : ''
-                                  }`}
+                                  className={changedFields.includes('birthYear') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
                                 />
-                                <select
+                                <Select
                                   value={(formData.birthCalendar as string) || 'GREGORIAN'}
                                   onChange={(e) => updateField('birthCalendar', e.target.value)}
-                                  className={`px-2 py-2 border rounded-lg bg-white ${
-                                    changedFields.includes('birthCalendar') ? 'border-yellow-400 bg-yellow-50' : ''
-                                  }`}
-                                  title="نوع التقويم"
-                                >
-                                  <option value="HIJRI">هجري</option>
-                                  <option value="GREGORIAN">ميلادي</option>
-                                </select>
+                                  options={[
+                                    { value: 'HIJRI', label: 'هجري' },
+                                    { value: 'GREGORIAN', label: 'ميلادي' },
+                                  ]}
+                                  className={changedFields.includes('birthCalendar') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                                  fullWidth={false}
+                                />
                               </div>
-                              {/* Smart calendar detection warning */}
                               {formData.birthYear && (() => {
                                 const year = formData.birthYear as number;
                                 const calendar = (formData.birthCalendar as string) || 'GREGORIAN';
                                 if (calendar === 'HIJRI' && year >= 1900 && year <= 2030) {
                                   return (
-                                    <p className="text-amber-600 text-xs mt-1">
-                                      ⚠️ هل تقصد السنة الميلادية؟ {year} تبدو ميلادية
-                                    </p>
+                                    <Alert variant="warning" className="mt-2 py-2">
+                                      <AlertDescription className="text-xs">
+                                        هل تقصد السنة الميلادية؟ {year} تبدو ميلادية
+                                      </AlertDescription>
+                                    </Alert>
                                   );
                                 }
                                 if (calendar === 'GREGORIAN' && year >= 1300 && year <= 1500) {
                                   return (
-                                    <p className="text-amber-600 text-xs mt-1">
-                                      ⚠️ هل تقصد السنة الهجرية؟ {year} تبدو هجرية
-                                    </p>
+                                    <Alert variant="warning" className="mt-2 py-2">
+                                      <AlertDescription className="text-xs">
+                                        هل تقصد السنة الهجرية؟ {year} تبدو هجرية
+                                      </AlertDescription>
+                                    </Alert>
                                   );
                                 }
                                 return null;
                               })()}
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                سنة الوفاة
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.deathYear || ''}
-                                onChange={(e) => updateField('deathYear', e.target.value ? parseInt(e.target.value) : null)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('deathYear') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الحالة
-                              </label>
-                              <select
-                                value={formData.status || 'Living'}
-                                onChange={(e) => updateField('status', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('status') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                              >
-                                <option value="Living">على قيد الحياة</option>
-                                <option value="Deceased">متوفى</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              المهنة
-                            </label>
-                            <input
-                              type="text"
-                              value={formData.occupation || ''}
-                              onChange={(e) => updateField('occupation', e.target.value)}
-                              className={`w-full px-4 py-2 border rounded-lg ${
-                                changedFields.includes('occupation') ? 'border-yellow-400 bg-yellow-50' : ''
-                              }`}
+                            <Input
+                              label="سنة الوفاة"
+                              type="number"
+                              value={formData.deathYear || ''}
+                              onChange={(e) => updateField('deathYear', e.target.value ? parseInt(e.target.value) : null)}
+                              className={changedFields.includes('deathYear') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                            />
+                            <Select
+                              label="الحالة"
+                              value={formData.status || 'Living'}
+                              onChange={(e) => updateField('status', e.target.value)}
+                              options={[
+                                { value: 'Living', label: 'على قيد الحياة' },
+                                { value: 'Deceased', label: 'متوفى' },
+                              ]}
+                              className={changedFields.includes('status') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
                             />
                           </div>
 
+                          <Input
+                            label="المهنة"
+                            value={formData.occupation || ''}
+                            onChange={(e) => updateField('occupation', e.target.value)}
+                            className={changedFields.includes('occupation') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                          />
+
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              السيرة
-                            </label>
+                            <label className="text-sm font-medium text-foreground mb-2 block">السيرة</label>
                             <textarea
                               value={formData.biography || ''}
                               onChange={(e) => updateField('biography', e.target.value)}
                               rows={4}
-                              className={`w-full px-4 py-2 border rounded-lg ${
-                                changedFields.includes('biography') ? 'border-yellow-400 bg-yellow-50' : ''
+                              className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                changedFields.includes('biography') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : 'border-input'
                               }`}
                             />
                           </div>
-                        </>
+                        </div>
                       )}
 
                       {/* Contact Section */}
                       {key === 'contact' && (
-                        <>
+                        <div className="space-y-4">
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
                               <PhoneInput
@@ -782,82 +680,75 @@ export default function EditMemberPage() {
                                 label="الهاتف"
                               />
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                البريد الإلكتروني
-                              </label>
-                              <input
-                                type="email"
-                                value={formData.email || ''}
-                                onChange={(e) => updateField('email', e.target.value)}
-                                className={`w-full px-4 py-2 border rounded-lg ${
-                                  changedFields.includes('email') ? 'border-yellow-400 bg-yellow-50' : ''
-                                }`}
-                                dir="ltr"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              المدينة
-                            </label>
-                            <input
-                              type="text"
-                              value={formData.city || ''}
-                              onChange={(e) => updateField('city', e.target.value)}
-                              className={`w-full px-4 py-2 border rounded-lg ${
-                                changedFields.includes('city') ? 'border-yellow-400 bg-yellow-50' : ''
-                              }`}
+                            <Input
+                              label="البريد الإلكتروني"
+                              type="email"
+                              value={formData.email || ''}
+                              onChange={(e) => updateField('email', e.target.value)}
+                              className={changedFields.includes('email') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                              dir="ltr"
                             />
                           </div>
-                        </>
+
+                          <Input
+                            label="المدينة"
+                            value={formData.city || ''}
+                            onChange={(e) => updateField('city', e.target.value)}
+                            className={changedFields.includes('city') ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : ''}
+                          />
+                        </div>
                       )}
-                    </div>
+                    </CardContent>
                   )}
-                </div>
+                </Card>
               );
             })}
 
             {/* Change reason */}
             {changedFields.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  سبب التعديل (اختياري)
-                </label>
-                <textarea
-                  value={changeReason}
-                  onChange={(e) => setChangeReason(e.target.value)}
-                  placeholder="أدخل سبب التعديل للتوثيق..."
-                  rows={2}
-                  className="w-full px-4 py-2 border rounded-lg"
-                />
-              </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    سبب التعديل (اختياري)
+                  </label>
+                  <textarea
+                    value={changeReason}
+                    onChange={(e) => setChangeReason(e.target.value)}
+                    placeholder="أدخل سبب التعديل للتوثيق..."
+                    rows={2}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
+                </CardContent>
+              </Card>
             )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Preview */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                معاينة
-              </h3>
-              <div className={`p-4 rounded-lg border-r-4 ${
-                isMale(formData.gender) ? 'border-blue-500 bg-blue-50' : 'border-pink-500 bg-pink-50'
-              }`}>
-                <div className="font-bold text-lg mb-2">
-                  {formData.fullNameAr || formData.firstName || 'بدون اسم'}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Eye className="w-5 h-5" />
+                  معاينة
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`p-4 rounded-md border-r-4 ${
+                  isMale(formData.gender) ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-pink-500 bg-pink-50 dark:bg-pink-950/20'
+                }`}>
+                  <div className="font-bold text-lg mb-2 text-foreground">
+                    {formData.fullNameAr || formData.firstName || 'بدون اسم'}
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <div>الرقم: {formData.id}</div>
+                    <div>الجيل: {formData.generation}</div>
+                    <div>الفرع: {formData.branch || '-'}</div>
+                    <div>الحالة: {formData.status === 'Living' ? 'حي' : 'متوفى'}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <div>الرقم: {formData.id}</div>
-                  <div>الجيل: {formData.generation}</div>
-                  <div>الفرع: {formData.branch || '-'}</div>
-                  <div>الحالة: {formData.status === 'Living' ? 'حي' : 'متوفى'}</div>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Photo Section */}
             <MemberPhotoSection
@@ -867,61 +758,71 @@ export default function EditMemberPage() {
 
             {/* Changed fields summary */}
             {changedFields.length > 0 && (
-              <div className="bg-yellow-50 rounded-xl shadow-sm p-6 border border-yellow-200">
-                <h3 className="font-bold text-yellow-800 mb-4 flex items-center gap-2">
-                  <History className="w-5 h-5" />
-                  التغييرات ({changedFields.length})
-                </h3>
-                <div className="space-y-2 max-h-60 overflow-auto">
-                  {changedFields.map(field => {
-                    const originalRecord = originalMember as unknown as Record<string, unknown>;
-                    const formRecord = formData as unknown as Record<string, unknown>;
-                    return (
-                      <div key={field} className="text-sm">
-                        <span className="font-medium text-gray-700">{field}:</span>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-red-600 line-through">
-                            {String(originalRecord[field] ?? '-')}
-                          </span>
-                          <span>→</span>
-                          <span className="text-green-600">
-                            {String(formRecord[field] ?? '-')}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Cascade updates preview */}
-            {cascadeUpdates.length > 0 && (
-              <div className="bg-blue-50 rounded-xl shadow-sm p-6 border border-blue-200">
-                <button
-                  onClick={() => setShowCascadePreview(!showCascadePreview)}
-                  className="w-full flex items-center justify-between"
-                >
-                  <h3 className="font-bold text-blue-800 flex items-center gap-2">
-                    <RefreshCw className="w-5 h-5" />
-                    تحديثات متتالية ({cascadeUpdates.length})
-                  </h3>
-                  {showCascadePreview ? <ChevronUp /> : <ChevronDown />}
-                </button>
-                {showCascadePreview && (
-                  <div className="mt-4 space-y-2 max-h-40 overflow-auto">
-                    {cascadeUpdates.map((update, i) => {
-                      const member = allMembers.find(m => m.id === update.memberId);
+              <Card className="border-amber-200 dark:border-amber-800/50">
+                <CardHeader className="bg-amber-50 dark:bg-amber-950/20">
+                  <CardTitle className="flex items-center gap-2 text-base text-amber-800 dark:text-amber-300">
+                    <History className="w-5 h-5" />
+                    التغييرات ({changedFields.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-2 max-h-60 overflow-auto">
+                    {changedFields.map(field => {
+                      const originalRecord = originalMember as unknown as Record<string, unknown>;
+                      const formRecord = formData as unknown as Record<string, unknown>;
                       return (
-                        <div key={i} className="text-sm bg-white p-2 rounded-lg">
-                          <span className="font-medium">{member?.firstName || update.memberId}</span>
-                          <p className="text-xs text-gray-500">{update.reason}</p>
+                        <div key={field} className="text-sm">
+                          <span className="font-medium text-foreground">{field}:</span>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-destructive line-through">
+                              {String(originalRecord[field] ?? '-')}
+                            </span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              {String(formRecord[field] ?? '-')}
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Cascade updates preview */}
+            {cascadeUpdates.length > 0 && (
+              <Card className="border-blue-200 dark:border-blue-800/50">
+                <button
+                  onClick={() => setShowCascadePreview(!showCascadePreview)}
+                  className="w-full"
+                >
+                  <CardHeader className="bg-blue-50 dark:bg-blue-950/20">
+                    <CardTitle className="flex items-center justify-between text-base text-blue-800 dark:text-blue-300">
+                      <span className="flex items-center gap-2">
+                        <RefreshCw className="w-5 h-5" />
+                        تحديثات متتالية ({cascadeUpdates.length})
+                      </span>
+                      {showCascadePreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </CardTitle>
+                  </CardHeader>
+                </button>
+                {showCascadePreview && (
+                  <CardContent className="pt-4">
+                    <div className="space-y-2 max-h-40 overflow-auto">
+                      {cascadeUpdates.map((update, i) => {
+                        const member = allMembers.find(m => m.id === update.memberId);
+                        return (
+                          <div key={i} className="text-sm rounded-md border border-border bg-background p-2">
+                            <span className="font-medium text-foreground">{member?.firstName || update.memberId}</span>
+                            <p className="text-xs text-muted-foreground">{update.reason}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
                 )}
-              </div>
+              </Card>
             )}
           </div>
         </div>

@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { 
-  User, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Briefcase, 
-  Eye, 
+import { Button } from '@/components/ui/Button';
+import { Spinner } from '@/components/ui/Spinner';
+import {
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  Briefcase,
+  Eye,
   EyeOff,
-  Loader2,
   Lock,
-  CheckCircle
+  CheckCircle,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 import { normalizeMemberId } from '@/lib/utils';
@@ -108,10 +109,10 @@ export default function MemberPersonalInfoSection({
 
   const togglePrivacy = async () => {
     if (!session?.token || !canToggle) return;
-    
+
     setIsSaving(true);
     const newHideState = !hideInfo;
-    
+
     try {
       const res = await fetch(`/api/members/${memberId}/privacy`, {
         method: 'PUT',
@@ -121,12 +122,12 @@ export default function MemberPersonalInfoSection({
         },
         body: JSON.stringify({ hidePersonalInfo: newHideState }),
       });
-      
+
       if (res.ok) {
         setHideInfo(newHideState);
         setJustToggled(true);
         setTimeout(() => setJustToggled(false), 2000);
-        
+
         if (newHideState) {
           toast.success('تم إخفاء المعلومات الشخصية', 'Personal info is now hidden');
         } else {
@@ -150,76 +151,67 @@ export default function MemberPersonalInfoSection({
   }
 
   return (
-    <div className="bg-gray-50 rounded-xl p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-gray-700 flex items-center gap-2">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
           <User className="text-blue-500" size={20} />
           المعلومات الشخصية
         </h3>
         {canToggle && !stillLoading && (
-          <button
+          <Button
+            variant={hideInfo ? 'outline' : 'ghost'}
+            size="sm"
             onClick={togglePrivacy}
             disabled={isSaving}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all duration-300 ${
+            isLoading={isSaving}
+            leftIcon={justToggled ? <CheckCircle size={14} className="text-emerald-600" /> : hideInfo ? <EyeOff size={14} /> : <Eye size={14} />}
+            className={`${
               hideInfo
-                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 border-2 border-orange-300'
-                : 'bg-green-100 text-green-700 hover:bg-green-200 border-2 border-green-300'
-            } ${justToggled ? 'scale-110 ring-2 ring-offset-2 ring-green-400' : ''} disabled:opacity-50 active:scale-95`}
-            title={hideInfo ? 'اضغط لإظهار المعلومات للآخرين' : 'اضغط لإخفاء المعلومات عن الآخرين'}
+                ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400'
+                : 'text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400'
+            } ${justToggled ? 'ring-2 ring-offset-2 ring-emerald-400' : ''}`}
           >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : justToggled ? (
-              <CheckCircle size={16} className="text-green-600" />
-            ) : hideInfo ? (
-              <EyeOff size={16} />
-            ) : (
-              <Eye size={16} />
-            )}
-            <span className="font-medium">{hideInfo ? 'مخفية' : 'ظاهرة'}</span>
-          </button>
+            {hideInfo ? 'مخفية' : 'ظاهرة'}
+          </Button>
         )}
       </div>
 
       {stillLoading ? (
-        <div className="flex items-center gap-3 text-gray-400 py-4">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>جاري التحميل...</span>
-        </div>
+        <Spinner size="sm" label="جاري التحميل..." />
       ) : canViewInfo ? (
         <div className="space-y-3">
           {city && (
             <div className="flex items-center gap-3">
-              <MapPin className="text-gray-400" size={18} />
-              <span className="text-gray-600">{city}</span>
+              <MapPin className="text-muted-foreground" size={18} />
+              <span className="text-muted-foreground">{city}</span>
             </div>
           )}
           {occupation && (
             <div className="flex items-center gap-3">
-              <Briefcase className="text-gray-400" size={18} />
-              <span className="text-gray-600">{occupation}</span>
+              <Briefcase className="text-muted-foreground" size={18} />
+              <span className="text-muted-foreground">{occupation}</span>
             </div>
           )}
           {phone && (
             <div className="flex items-center gap-3">
-              <Phone className="text-gray-400" size={18} />
-              <span className="text-gray-600" dir="ltr">
+              <Phone className="text-muted-foreground" size={18} />
+              <span className="text-muted-foreground" dir="ltr">
                 {formatPhoneDisplay(phone)}
               </span>
             </div>
           )}
           {email && (
             <div className="flex items-center gap-3">
-              <Mail className="text-gray-400" size={18} />
-              <span className="text-gray-600">{email}</span>
+              <Mail className="text-muted-foreground" size={18} />
+              <span className="text-muted-foreground">{email}</span>
             </div>
           )}
           {!hasPersonalInfo && canToggle && (
-            <p className="text-gray-400 text-sm">لا توجد معلومات شخصية مضافة</p>
+            <p className="text-muted-foreground text-sm">لا توجد معلومات شخصية مضافة</p>
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-3 text-gray-400 py-4">
+        <div className="flex items-center gap-3 text-muted-foreground py-4">
           <Lock size={20} />
           <span>المعلومات الشخصية مخفية بطلب من صاحب الحساب</span>
         </div>

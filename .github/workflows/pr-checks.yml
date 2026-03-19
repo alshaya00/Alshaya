@@ -1,0 +1,85 @@
+name: PR Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx prisma generate
+
+      - name: Run lint
+        id: lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run type-check
+        id: typecheck
+        run: npm run type-check
+        continue-on-error: true
+
+      - name: Build
+        id: build
+        run: npm run build
+        continue-on-error: true
+
+      - name: Comment PR with status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const lint = '${{ steps.lint.outcome }}';
+            const typecheck = '${{ steps.typecheck.outcome }}';
+            const build = '${{ steps.build.outcome }}';
+
+            const icon = (s) => s === 'success' ? '✅' : '❌';
+            const body = [
+              '## PR Quality Gate Results',
+              '',
+              `| Check | Status |`,
+              `|-------|--------|`,
+              `| Lint | ${icon(lint)} ${lint} |`,
+              `| Type Check | ${icon(typecheck)} ${typecheck} |`,
+              `| Build | ${icon(build)} ${build} |`,
+              '',
+              lint !== 'success' || typecheck !== 'success' || build !== 'success'
+                ? '⚠️ Some checks failed. Please review before merging.'
+                : '🎉 All checks passed!'
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('PR Quality Gate Results')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail if checks failed
+        if: steps.lint.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.build.outcome != 'success'
+        run: exit 1

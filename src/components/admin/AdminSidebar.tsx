@@ -5,6 +5,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarGroup,
+  SidebarItem,
+  SidebarFooter,
+  SidebarToggle,
+  useSidebar,
+} from '@/components/layout';
+import { Badge } from '@/components/ui';
+import {
   LayoutDashboard,
   Database,
   Settings,
@@ -18,7 +30,6 @@ import {
   Unlink,
   Shield,
   ChevronDown,
-  ChevronLeft,
   Home,
   Menu,
   X,
@@ -36,8 +47,8 @@ import {
   Ban,
   Heart,
   Archive,
-  FolderOpen,
   Folder,
+  FolderOpen,
   RefreshCw,
 } from 'lucide-react';
 import { useFeatureFlags, FeatureKey } from '@/contexts/FeatureFlagsContext';
@@ -173,10 +184,11 @@ interface PendingCounts {
   pendingStories: number;
 }
 
-export function AdminSidebar() {
+function AdminSidebarInner() {
   const pathname = usePathname();
   const { isFeatureEnabled } = useFeatureFlags();
   const { session } = useAuth();
+  const { collapsed } = useSidebar();
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['members']);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>({
@@ -189,7 +201,7 @@ export function AdminSidebar() {
     const fetchPendingCounts = async () => {
       if (!session?.token) return;
       const headers: HeadersInit = { Authorization: `Bearer ${session.token}` };
-      
+
       try {
         const [pendingRes, imagesRes, storiesRes] = await Promise.all([
           fetch('/api/admin/pending', { headers }).catch(() => null),
@@ -265,177 +277,160 @@ export function AdminSidebar() {
   };
 
   const sidebarContent = (
-    <>
-      <div className="p-4 border-b bg-gradient-to-l from-[#1E3A5F] to-[#2D5A87]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="font-bold">لوحة الإدارة</h2>
-              <p className="text-xs text-white/70">Admin Panel</p>
-            </div>
+    <Sidebar position="end" className="border-s border-e-0">
+      <SidebarHeader className="bg-primary text-primary-foreground">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+            <Shield className="w-5 h-5" />
           </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <h2 className="font-bold text-sm truncate">لوحة الإدارة</h2>
+              <p className="text-xs opacity-70">Admin Panel</p>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <SidebarToggle className="text-primary-foreground hover:bg-white/10" />
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg"
+            className="lg:hidden p-2 hover:bg-white/10 rounded-md"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
-      </div>
+      </SidebarHeader>
 
-      <nav className="flex-1 p-4 space-y-2 overflow-auto">
-        <Link
-          href="/admin"
-          onClick={() => setIsMobileOpen(false)}
-          className={cn(
-            'flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
-            isActive('/admin') && pathname === '/admin'
-              ? 'bg-[#1E3A5F] text-white'
-              : 'text-gray-600 hover:bg-gray-100'
-          )}
-        >
-          <LayoutDashboard size={20} />
-          <div className="text-right">
-            <span className="block text-sm font-medium">لوحة التحكم</span>
-            <span className="text-xs opacity-70">Dashboard</span>
-          </div>
-        </Link>
+      <SidebarContent>
+        {/* Dashboard link */}
+        <SidebarGroup>
+          <Link href="/admin" onClick={() => setIsMobileOpen(false)}>
+            <SidebarItem
+              icon={<LayoutDashboard size={18} />}
+              active={isActive('/admin') && pathname === '/admin'}
+            >
+              <div>
+                <span className="block text-sm">لوحة التحكم</span>
+                {!collapsed && <span className="text-xs text-muted-foreground">Dashboard</span>}
+              </div>
+            </SidebarItem>
+          </Link>
+        </SidebarGroup>
 
-        <div className="pt-2 space-y-1">
-          {filteredGroups.map((group) => {
-            const Icon = group.icon;
-            const isExpanded = expandedGroups.includes(group.id);
-            const groupActive = isGroupActive(group);
-            const badge = getGroupBadge(group);
+        {/* Nav Groups */}
+        {filteredGroups.map((group) => {
+          const GroupIcon = group.icon;
+          const isExpanded = expandedGroups.includes(group.id);
+          const groupActive = isGroupActive(group);
+          const badge = getGroupBadge(group);
 
-            return (
-              <div key={group.id}>
-                <button
-                  onClick={() => toggleGroup(group.id)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all',
-                    groupActive
-                      ? 'bg-gray-100 text-[#1E3A5F]'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon size={20} />
-                    <div className="text-right">
-                      <span className="block text-sm font-medium">{group.label}</span>
-                      <span className="text-xs opacity-70">{group.labelEn}</span>
+          return (
+            <SidebarGroup key={group.id} label={collapsed ? undefined : undefined}>
+              {/* Group header as collapsible toggle */}
+              <div
+                onClick={() => toggleGroup(group.id)}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer transition-colors',
+                  groupActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  collapsed && 'justify-center px-2'
+                )}
+              >
+                <span className="shrink-0"><GroupIcon size={18} /></span>
+                {!collapsed && (
+                  <>
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-sm truncate">{group.label}</span>
+                      <span className="text-xs opacity-60">{group.labelEn}</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {badge > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                        {badge}
-                      </span>
-                    )}
-                    <ChevronDown
-                      size={16}
-                      className={cn('transition-transform', isExpanded && 'rotate-180')}
-                    />
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="mt-1 mr-4 space-y-1 border-r-2 border-gray-200 pr-2">
-                    <Link
-                      href={group.hubHref}
-                      onClick={() => setIsMobileOpen(false)}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all',
-                        isActive(group.hubHref)
-                          ? 'bg-blue-50 text-[#1E3A5F] font-medium'
-                          : 'text-gray-500 hover:bg-gray-50'
+                    <div className="flex items-center gap-1.5">
+                      {badge > 0 && (
+                        <Badge variant="destructive" size="sm">{badge}</Badge>
                       )}
-                    >
-                      <Folder size={16} />
-                      <span>نظرة عامة</span>
-                    </Link>
-
-                    {group.items.map((item) => {
-                      const ItemIcon = item.icon;
-                      const itemBadge = getPendingCountForHref(item.href);
-
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setIsMobileOpen(false)}
-                          className={cn(
-                            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all',
-                            isActive(item.href)
-                              ? 'bg-blue-50 text-[#1E3A5F] font-medium'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          )}
-                        >
-                          <ItemIcon size={16} />
-                          <span className="flex-1">{item.label}</span>
-                          {itemBadge > 0 && (
-                            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                              {itemBadge}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
+                      <ChevronDown
+                        size={14}
+                        className={cn('transition-transform', isExpanded && 'rotate-180')}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
-            );
-          })}
-        </div>
 
-        <div className="pt-4 border-t mt-4">
-          <Link
-            href="/admin/archive"
-            onClick={() => setIsMobileOpen(false)}
-            className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
-              isActive('/admin/archive')
-                ? 'bg-amber-50 text-amber-700'
-                : 'text-gray-500 hover:bg-gray-50'
-            )}
-          >
-            <Archive size={20} />
-            <div className="text-right">
-              <span className="block text-sm">الأرشيف</span>
-              <span className="text-xs opacity-70">Archive</span>
-            </div>
+              {/* Expanded items */}
+              {isExpanded && !collapsed && (
+                <div className="mt-1 ms-4 border-s-2 border-border ps-1 space-y-0.5">
+                  <Link href={group.hubHref} onClick={() => setIsMobileOpen(false)}>
+                    <SidebarItem
+                      icon={<Folder size={15} />}
+                      active={isActive(group.hubHref)}
+                      className="text-xs py-1.5"
+                    >
+                      نظرة عامة
+                    </SidebarItem>
+                  </Link>
+                  {group.items.map((item) => {
+                    const ItemIcon = item.icon;
+                    const itemBadge = getPendingCountForHref(item.href);
+                    return (
+                      <Link key={item.href} href={item.href} onClick={() => setIsMobileOpen(false)}>
+                        <SidebarItem
+                          icon={<ItemIcon size={15} />}
+                          active={isActive(item.href)}
+                          badge={itemBadge > 0 ? itemBadge : undefined}
+                          className="text-xs py-1.5"
+                        >
+                          {item.label}
+                        </SidebarItem>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </SidebarGroup>
+          );
+        })}
+
+        {/* Archive */}
+        <SidebarGroup>
+          <Link href="/admin/archive" onClick={() => setIsMobileOpen(false)}>
+            <SidebarItem
+              icon={<Archive size={18} />}
+              active={isActive('/admin/archive')}
+            >
+              <div>
+                <span className="block text-sm">الأرشيف</span>
+                {!collapsed && <span className="text-xs text-muted-foreground">Archive</span>}
+              </div>
+            </SidebarItem>
           </Link>
-        </div>
-      </nav>
+        </SidebarGroup>
+      </SidebarContent>
 
-      <div className="p-4 border-t">
-        <Link
-          href="/"
-          className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
-        >
-          <Home size={20} />
-          <div className="text-right">
-            <span className="block text-sm font-medium">العودة للموقع</span>
-            <span className="text-xs text-gray-400">Back to Site</span>
-          </div>
-          <ChevronLeft size={16} className="mr-auto" />
+      <SidebarFooter>
+        <Link href="/">
+          <SidebarItem icon={<Home size={18} />}>
+            <div>
+              <span className="block text-sm">العودة للموقع</span>
+              {!collapsed && <span className="text-xs text-muted-foreground">Back to Site</span>}
+            </div>
+          </SidebarItem>
         </Link>
-      </div>
-    </>
+      </SidebarFooter>
+    </Sidebar>
   );
 
   return (
     <>
+      {/* Mobile toggle button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 right-4 z-40 p-3 bg-[#1E3A5F] text-white rounded-lg shadow-lg"
+        className="lg:hidden fixed top-4 end-4 z-40 p-3 bg-primary text-primary-foreground rounded-lg shadow-lg"
       >
         <Menu size={24} />
       </button>
 
+      {/* Mobile overlay */}
       {isMobileOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -443,18 +438,28 @@ export function AdminSidebar() {
         />
       )}
 
+      {/* Mobile sidebar */}
       <aside
         className={cn(
-          'lg:hidden fixed top-0 right-0 bottom-0 w-72 bg-white z-50 transform transition-transform duration-300 flex flex-col',
-          isMobileOpen ? 'translate-x-0' : 'translate-x-full'
+          'lg:hidden fixed top-0 end-0 bottom-0 z-50 transform transition-transform duration-300',
+          isMobileOpen ? 'translate-x-0' : 'ltr:translate-x-full rtl:-translate-x-full'
         )}
       >
         {sidebarContent}
       </aside>
 
-      <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:top-0 lg:right-0 lg:bottom-0 bg-white border-l shadow-sm z-30">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:block fixed top-0 end-0 bottom-0 z-30">
         {sidebarContent}
       </aside>
     </>
+  );
+}
+
+export function AdminSidebar() {
+  return (
+    <SidebarProvider>
+      <AdminSidebarInner />
+    </SidebarProvider>
   );
 }

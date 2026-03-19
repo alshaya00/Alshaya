@@ -3,12 +3,33 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Check, X, Clock, Mail, Phone, Users, AlertCircle,
-  UserPlus, CheckCircle, XCircle, Loader2, MessageSquare, Search, Info,
+  UserPlus, CheckCircle, XCircle, MessageSquare, Search, Info,
   AlertTriangle, Copy
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Badge,
+  Button,
+  Input,
+  Spinner,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogFooter,
+  EmptyState,
+} from '@/components/ui';
 
 type FilterStatus = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'MORE_INFO';
 
@@ -57,6 +78,20 @@ interface AccessRequest {
   duplicateWarning?: DuplicateWarning | null;
 }
 
+const statusBadgeVariant = {
+  PENDING: 'warning' as const,
+  APPROVED: 'success' as const,
+  REJECTED: 'destructive' as const,
+  MORE_INFO: 'info' as const,
+};
+
+const statusLabels = {
+  PENDING: 'معلقة',
+  APPROVED: 'مقبولة',
+  REJECTED: 'مرفوضة',
+  MORE_INFO: 'بانتظار معلومات',
+};
+
 export default function AdminAccessRequestsPage() {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('PENDING');
@@ -104,11 +139,9 @@ export default function AdminAccessRequestsPage() {
 
   const filteredRequests = useMemo(() => {
     let result = requests;
-
     if (filter !== 'all') {
       result = result.filter(r => r.status === filter);
     }
-
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(r =>
@@ -118,7 +151,6 @@ export default function AdminAccessRequestsPage() {
         (r.phone && r.phone.includes(query))
       );
     }
-
     return result;
   }, [requests, filter, searchQuery]);
 
@@ -136,10 +168,7 @@ export default function AdminAccessRequestsPage() {
     try {
       const res = await fetch(`/api/admin/access-requests/${request.id}/approve`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({}),
       });
       if (res.ok) {
@@ -163,10 +192,7 @@ export default function AdminAccessRequestsPage() {
     try {
       const res = await fetch(`/api/admin/access-requests/${request.id}/reject`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({ reason: rejectionReason }),
       });
       if (res.ok) {
@@ -191,10 +217,7 @@ export default function AdminAccessRequestsPage() {
     try {
       const res = await fetch(`/api/admin/access-requests/${request.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({ status: 'MORE_INFO', reviewNote: moreInfoNote }),
       });
       if (res.ok) {
@@ -213,165 +236,103 @@ export default function AdminAccessRequestsPage() {
     }
   };
 
-  const statusColors = {
-    PENDING: 'bg-orange-100 text-orange-700 border-orange-300',
-    APPROVED: 'bg-green-100 text-green-700 border-green-300',
-    REJECTED: 'bg-red-100 text-red-700 border-red-300',
-    MORE_INFO: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  };
-
-  const statusIcons = {
-    PENDING: <Clock size={14} />,
-    APPROVED: <CheckCircle size={14} />,
-    REJECTED: <XCircle size={14} />,
-    MORE_INFO: <AlertCircle size={14} />,
-  };
-
-  const statusLabels = {
-    PENDING: 'معلقة',
-    APPROVED: 'مقبولة',
-    REJECTED: 'مرفوضة',
-    MORE_INFO: 'بانتظار معلومات',
-  };
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-600">جاري التحميل...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner size="lg" label="جاري التحميل..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6" dir="rtl">
-      <div className="container mx-auto px-4 max-w-5xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <UserPlus className="text-blue-500" size={28} />
-              طلبات الانضمام
-            </h1>
-            <p className="text-gray-500 mt-1">راجع وأقر طلبات الانضمام الجديدة</p>
-          </div>
-          <Link
-            href="/admin"
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg flex items-center gap-2 transition-colors"
-          >
-            العودة للوحة التحكم
-          </Link>
+    <div className="p-4 lg:p-8 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <UserPlus className="text-primary" size={28} />
+            طلبات الانضمام
+          </h1>
+          <p className="text-muted-foreground mt-1">راجع وأقر طلبات الانضمام الجديدة</p>
         </div>
+        <Link href="/admin">
+          <Button variant="outline">العودة للوحة التحكم</Button>
+        </Link>
+      </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
-            <AlertCircle size={20} />
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="mr-auto text-red-500 hover:text-red-700">
-              <X size={18} />
-            </button>
-          </div>
-        )}
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive" dismissible onDismiss={() => setError(null)}>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          <button
-            onClick={() => setFilter('PENDING')}
-            className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'PENDING' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white border hover:border-orange-300'
-            }`}
+      {/* Filter Stats */}
+      <div className="grid grid-cols-5 gap-3">
+        {([
+          { key: 'PENDING' as const, label: 'معلقة', count: stats.pending, variant: 'warning' as const },
+          { key: 'APPROVED' as const, label: 'مقبولة', count: stats.approved, variant: 'success' as const },
+          { key: 'REJECTED' as const, label: 'مرفوضة', count: stats.rejected, variant: 'destructive' as const },
+          { key: 'MORE_INFO' as const, label: 'معلومات', count: stats.moreInfo, variant: 'info' as const },
+          { key: 'all' as const, label: 'الكل', count: stats.total, variant: 'default' as const },
+        ]).map(({ key, label, count, variant }) => (
+          <Card
+            key={key}
+            className={`cursor-pointer transition-all text-center ${filter === key ? 'ring-2 ring-primary shadow-md' : 'hover:border-primary/30'}`}
+            onClick={() => setFilter(key)}
           >
-            <p className="text-2xl font-bold">{stats.pending}</p>
-            <p className="text-sm opacity-80">معلقة</p>
-          </button>
-          <button
-            onClick={() => setFilter('APPROVED')}
-            className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'APPROVED' ? 'bg-green-500 text-white shadow-lg' : 'bg-white border hover:border-green-300'
-            }`}
-          >
-            <p className="text-2xl font-bold">{stats.approved}</p>
-            <p className="text-sm opacity-80">مقبولة</p>
-          </button>
-          <button
-            onClick={() => setFilter('REJECTED')}
-            className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'REJECTED' ? 'bg-red-500 text-white shadow-lg' : 'bg-white border hover:border-red-300'
-            }`}
-          >
-            <p className="text-2xl font-bold">{stats.rejected}</p>
-            <p className="text-sm opacity-80">مرفوضة</p>
-          </button>
-          <button
-            onClick={() => setFilter('MORE_INFO')}
-            className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'MORE_INFO' ? 'bg-yellow-500 text-white shadow-lg' : 'bg-white border hover:border-yellow-300'
-            }`}
-          >
-            <p className="text-2xl font-bold">{stats.moreInfo}</p>
-            <p className="text-sm opacity-80">معلومات</p>
-          </button>
-          <button
-            onClick={() => setFilter('all')}
-            className={`p-4 rounded-xl text-center transition-all ${
-              filter === 'all' ? 'bg-blue-500 text-white shadow-lg' : 'bg-white border hover:border-blue-300'
-            }`}
-          >
-            <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-sm opacity-80">الكل</p>
-          </button>
-        </div>
+            <CardContent className="pt-4 pb-3">
+              <p className="text-2xl font-bold text-foreground">{count}</p>
+              <Badge variant={variant} size="sm" className="mt-1">{label}</Badge>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث بالاسم أو البريد الإلكتروني أو رقم الهاتف..."
-              className="w-full pr-10 pl-4 py-2.5 border rounded-lg focus:outline-none focus:border-blue-500"
+      {/* Search */}
+      <Card>
+        <CardContent className="pt-4 pb-4">
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="ابحث بالاسم أو البريد الإلكتروني أو رقم الهاتف..."
+            leftIcon={<Search size={18} />}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Request List */}
+      {filteredRequests.length === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <EmptyState
+              icon={<Users className="w-12 h-12" />}
+              title="لا يوجد طلبات"
+              description={filter === 'PENDING' ? 'لا يوجد طلبات معلقة' : 'لا يوجد طلبات في هذه الفئة'}
             />
-          </div>
-        </div>
-
-        {filteredRequests.length === 0 && (
-          <div className="bg-white rounded-xl p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="text-gray-400" size={32} />
-            </div>
-            <h3 className="text-lg font-medium text-gray-700">لا يوجد طلبات</h3>
-            <p className="text-gray-500 mt-1">
-              {filter === 'PENDING' ? 'لا يوجد طلبات معلقة' : 'لا يوجد طلبات في هذه الفئة'}
-            </p>
-          </div>
-        )}
-
+          </CardContent>
+        </Card>
+      ) : (
         <div className="space-y-4">
           {filteredRequests.map(request => (
-            <div key={request.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="p-6">
+            <Card key={request.id}>
+              <CardContent className="pt-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                      <UserPlus className="text-blue-500" size={24} />
+                    <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                      <UserPlus className="text-primary" size={24} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-gray-800 text-lg">
-                          {request.nameArabic}
-                        </span>
+                        <span className="font-bold text-foreground text-lg">{request.nameArabic}</span>
                         {request.nameEnglish && (
-                          <span className="text-gray-500 text-sm">
-                            ({request.nameEnglish})
-                          </span>
+                          <span className="text-muted-foreground text-sm">({request.nameEnglish})</span>
                         )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusColors[request.status]}`}>
-                          {statusIcons[request.status]}
+                        <Badge variant={statusBadgeVariant[request.status]} size="sm">
                           {statusLabels[request.status]}
-                        </span>
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Mail size={14} />
                           {request.email}
@@ -385,230 +346,188 @@ export default function AdminAccessRequestsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-left text-sm text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     {new Date(request.createdAt).toLocaleDateString('ar-SA', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
+                      year: 'numeric', month: 'long', day: 'numeric',
                     })}
                   </div>
                 </div>
 
+                {/* Claimed relation & related member */}
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   {request.claimedRelation && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Users size={16} className="text-gray-400" />
-                      <span className="text-gray-500">صلة القرابة:</span>
-                      <span className="font-medium">{request.claimedRelation}</span>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users size={16} />
+                      <span>صلة القرابة:</span>
+                      <span className="font-medium text-foreground">{request.claimedRelation}</span>
                     </div>
                   )}
                   {request.relatedMember && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Users size={16} className="text-gray-400" />
-                      <span className="text-gray-500">العضو المرتبط:</span>
-                      <Link
-                        href={`/member/${request.relatedMember.id}`}
-                        className="font-medium text-blue-600 hover:underline"
-                      >
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users size={16} />
+                      <span>العضو المرتبط:</span>
+                      <Link href={`/member/${request.relatedMember.id}`} className="font-medium text-primary hover:underline">
                         {request.relatedMember.fullNameAr || request.relatedMember.firstName}
                         {request.relatedMember.generation && (
-                          <span className="text-gray-400 text-xs mr-1">
-                            (الجيل {request.relatedMember.generation})
-                          </span>
+                          <span className="text-muted-foreground text-xs ms-1">(الجيل {request.relatedMember.generation})</span>
                         )}
                       </Link>
                     </div>
                   )}
                 </div>
 
+                {/* Message */}
                 {request.message && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                       <MessageSquare size={14} />
                       <span>الرسالة:</span>
                     </div>
-                    <p className="text-gray-700">{request.message}</p>
+                    <p className="text-foreground">{request.message}</p>
                   </div>
                 )}
 
+                {/* Review note */}
                 {request.reviewNote && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-yellow-700 text-sm mb-1">
-                      <Info size={14} />
-                      <span>ملاحظة المراجعة:</span>
-                    </div>
-                    <p className="text-yellow-800">{request.reviewNote}</p>
-                  </div>
+                  <Alert variant="warning" className="mt-4">
+                    <AlertDescription>
+                      <span className="font-medium">ملاحظة المراجعة: </span>
+                      {request.reviewNote}
+                    </AlertDescription>
+                  </Alert>
                 )}
 
+                {/* Duplicate warning */}
                 {request.duplicateWarning?.hasPotentialDuplicates && (
-                  <div className={`mt-4 p-4 rounded-lg border-2 ${
-                    request.duplicateWarning.isDuplicate 
-                      ? 'bg-red-50 border-red-300' 
-                      : 'bg-orange-50 border-orange-300'
-                  }`}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertTriangle className={`${
-                        request.duplicateWarning.isDuplicate ? 'text-red-500' : 'text-orange-500'
-                      }`} size={20} />
-                      <span className={`font-bold ${
-                        request.duplicateWarning.isDuplicate ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        {request.duplicateWarning.isDuplicate 
-                          ? '⚠️ تحذير: تكرار محتمل مؤكد!' 
-                          : '⚠️ تنبيه: تشابه محتمل مع أعضاء موجودين'}
-                      </span>
-                      <span className={`text-sm px-2 py-0.5 rounded-full ${
-                        request.duplicateWarning.isDuplicate 
-                          ? 'bg-red-200 text-red-700' 
-                          : 'bg-orange-200 text-orange-700'
-                      }`}>
+                  <Alert
+                    variant={request.duplicateWarning.isDuplicate ? 'destructive' : 'warning'}
+                    className="mt-4"
+                  >
+                    <AlertTitle className="flex items-center gap-2">
+                      <AlertTriangle size={18} />
+                      {request.duplicateWarning.isDuplicate
+                        ? 'تحذير: تكرار محتمل مؤكد!'
+                        : 'تنبيه: تشابه محتمل مع أعضاء موجودين'}
+                      <Badge
+                        variant={request.duplicateWarning.isDuplicate ? 'destructive' : 'warning'}
+                        size="sm"
+                      >
                         {request.duplicateWarning.highestScore}% تطابق
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {request.duplicateWarning.candidates.map((candidate) => (
-                        <div key={candidate.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                          <div className="flex items-center gap-3">
-                            <Copy size={16} className="text-gray-400" />
-                            <div>
-                              <Link 
-                                href={`/member/${candidate.id}`}
-                                className="font-medium text-blue-600 hover:underline"
-                              >
-                                {candidate.fullNameAr || candidate.firstName}
-                              </Link>
-                              {candidate.fullNameEn && (
-                                <p className="text-xs text-gray-500">{candidate.fullNameEn}</p>
-                              )}
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {candidate.matchReasonsAr.map((reason, idx) => (
-                                  <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                    {reason}
-                                  </span>
-                                ))}
+                      </Badge>
+                    </AlertTitle>
+                    <AlertDescription>
+                      <div className="space-y-2 mt-2">
+                        {request.duplicateWarning.candidates.map((candidate) => (
+                          <div key={candidate.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
+                            <div className="flex items-center gap-3">
+                              <Copy size={16} className="text-muted-foreground" />
+                              <div>
+                                <Link href={`/member/${candidate.id}`} className="font-medium text-primary hover:underline">
+                                  {candidate.fullNameAr || candidate.firstName}
+                                </Link>
+                                {candidate.fullNameEn && (
+                                  <p className="text-xs text-muted-foreground">{candidate.fullNameEn}</p>
+                                )}
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {candidate.matchReasonsAr.map((reason, idx) => (
+                                    <Badge key={idx} variant="secondary" size="sm">{reason}</Badge>
+                                  ))}
+                                </div>
                               </div>
                             </div>
+                            <span className={`text-lg font-bold ${candidate.similarityScore >= 80 ? 'text-destructive' : 'text-amber-600'}`}>
+                              {candidate.similarityScore}%
+                            </span>
                           </div>
-                          <div className={`text-lg font-bold ${
-                            candidate.similarityScore >= 80 ? 'text-red-600' : 'text-orange-600'
-                          }`}>
-                            {candidate.similarityScore}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-sm text-gray-600">
-                      يرجى التحقق من العضو الموجود قبل الموافقة على هذا الطلب لتجنب التكرار.
-                    </p>
-                  </div>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        يرجى التحقق من العضو الموجود قبل الموافقة على هذا الطلب لتجنب التكرار.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
                 )}
 
-                {request.status === 'PENDING' && (
-                  <div className="mt-4 pt-4 border-t flex items-center gap-3">
-                    <button
+                {/* Action Buttons */}
+                {(request.status === 'PENDING' || request.status === 'MORE_INFO') && (
+                  <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
+                    <Button
+                      variant="success"
+                      size="sm"
+                      leftIcon={<Check size={16} />}
                       onClick={() => setShowConfirmModal({ type: 'approve', request })}
-                      className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center gap-2 transition-colors"
                       disabled={isProcessing}
                     >
-                      <Check size={18} />
                       قبول
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      leftIcon={<X size={16} />}
                       onClick={() => setShowConfirmModal({ type: 'reject', request })}
-                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 transition-colors"
                       disabled={isProcessing}
                     >
-                      <X size={18} />
                       رفض
-                    </button>
-                    <button
-                      onClick={() => setShowConfirmModal({ type: 'more_info', request })}
-                      className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg flex items-center gap-2 transition-colors"
-                      disabled={isProcessing}
-                    >
-                      <AlertCircle size={18} />
-                      طلب معلومات إضافية
-                    </button>
+                    </Button>
+                    {request.status === 'PENDING' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<AlertCircle size={16} />}
+                        onClick={() => setShowConfirmModal({ type: 'more_info', request })}
+                        disabled={isProcessing}
+                      >
+                        طلب معلومات إضافية
+                      </Button>
+                    )}
                   </div>
                 )}
 
-                {request.status === 'MORE_INFO' && (
-                  <div className="mt-4 pt-4 border-t flex items-center gap-3">
-                    <button
-                      onClick={() => setShowConfirmModal({ type: 'approve', request })}
-                      className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center gap-2 transition-colors"
-                      disabled={isProcessing}
-                    >
-                      <Check size={18} />
-                      قبول
-                    </button>
-                    <button
-                      onClick={() => setShowConfirmModal({ type: 'reject', request })}
-                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 transition-colors"
-                      disabled={isProcessing}
-                    >
-                      <X size={18} />
-                      رفض
-                    </button>
-                  </div>
-                )}
-
+                {/* Reviewed timestamp */}
                 {request.reviewedAt && (
-                  <div className="mt-4 pt-4 border-t text-sm text-gray-400">
+                  <div className="mt-4 pt-4 border-t border-border text-sm text-muted-foreground">
                     تمت المراجعة في: {new Date(request.reviewedAt).toLocaleDateString('ar-SA', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
+                      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
                     })}
                   </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
-      </div>
+      )}
 
+      {/* Confirm Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" dir="rtl">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
-            <div className={`p-4 border-b ${
-              showConfirmModal.type === 'approve' ? 'bg-green-50' :
-              showConfirmModal.type === 'reject' ? 'bg-red-50' : 'bg-yellow-50'
-            }`}>
-              <h3 className={`text-lg font-bold flex items-center gap-2 ${
-                showConfirmModal.type === 'approve' ? 'text-green-700' :
-                showConfirmModal.type === 'reject' ? 'text-red-700' : 'text-yellow-700'
-              }`}>
-                {showConfirmModal.type === 'approve' && <Check size={20} />}
-                {showConfirmModal.type === 'reject' && <X size={20} />}
-                {showConfirmModal.type === 'more_info' && <AlertCircle size={20} />}
-                {showConfirmModal.type === 'approve' ? 'تأكيد الموافقة' :
-                 showConfirmModal.type === 'reject' ? 'تأكيد الرفض' : 'طلب معلومات إضافية'}
-              </h3>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 mb-4">
+        <Dialog open={true} onOpenChange={() => { setShowConfirmModal(null); setRejectionReason(''); setMoreInfoNote(''); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {showConfirmModal.type === 'approve' && <><CheckCircle className="text-emerald-600" size={20} /> تأكيد الموافقة</>}
+                {showConfirmModal.type === 'reject' && <><XCircle className="text-destructive" size={20} /> تأكيد الرفض</>}
+                {showConfirmModal.type === 'more_info' && <><AlertCircle className="text-amber-600" size={20} /> طلب معلومات إضافية</>}
+              </DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <p className="text-muted-foreground mb-4">
                 {showConfirmModal.type === 'approve' && (
-                  <>هل أنت متأكد من الموافقة على طلب <strong>{showConfirmModal.request.nameArabic}</strong>؟</>
+                  <>هل أنت متأكد من الموافقة على طلب <strong className="text-foreground">{showConfirmModal.request.nameArabic}</strong>؟</>
                 )}
                 {showConfirmModal.type === 'reject' && (
-                  <>هل أنت متأكد من رفض طلب <strong>{showConfirmModal.request.nameArabic}</strong>؟</>
+                  <>هل أنت متأكد من رفض طلب <strong className="text-foreground">{showConfirmModal.request.nameArabic}</strong>؟</>
                 )}
                 {showConfirmModal.type === 'more_info' && (
-                  <>أدخل ملاحظة لطلب معلومات إضافية من <strong>{showConfirmModal.request.nameArabic}</strong>:</>
+                  <>أدخل ملاحظة لطلب معلومات إضافية من <strong className="text-foreground">{showConfirmModal.request.nameArabic}</strong>:</>
                 )}
               </p>
 
               {showConfirmModal.type === 'reject' && (
                 <div className="mb-4">
-                  <label className="block text-sm text-gray-600 mb-1">سبب الرفض (اختياري):</label>
+                  <label className="block text-sm text-muted-foreground mb-1">سبب الرفض (اختياري):</label>
                   <textarea
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-red-500"
+                    className="w-full px-3 py-2 border border-border bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                     rows={3}
                     placeholder="أدخل سبب الرفض..."
                   />
@@ -617,11 +536,11 @@ export default function AdminAccessRequestsPage() {
 
               {showConfirmModal.type === 'more_info' && (
                 <div className="mb-4">
-                  <label className="block text-sm text-gray-600 mb-1">الملاحظة:</label>
+                  <label className="block text-sm text-muted-foreground mb-1">الملاحظة:</label>
                   <textarea
                     value={moreInfoNote}
                     onChange={(e) => setMoreInfoNote(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 border border-border bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                     rows={3}
                     placeholder="أدخل المعلومات المطلوبة..."
                   />
@@ -629,56 +548,41 @@ export default function AdminAccessRequestsPage() {
               )}
 
               {showConfirmModal.type === 'approve' && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4 text-sm text-blue-700">
-                  <Info size={16} className="inline ml-1" />
-                  سيتم إنشاء حساب مستخدم جديد للشخص بناءً على هذا الطلب.
-                </div>
+                <Alert variant="info" className="mb-4">
+                  <AlertDescription>
+                    سيتم إنشاء حساب مستخدم جديد للشخص بناءً على هذا الطلب.
+                  </AlertDescription>
+                </Alert>
               )}
-
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setShowConfirmModal(null);
-                    setRejectionReason('');
-                    setMoreInfoNote('');
-                  }}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  disabled={isProcessing}
-                >
-                  إلغاء
-                </button>
-                <button
-                  onClick={() => {
-                    if (showConfirmModal.type === 'approve') {
-                      handleApprove(showConfirmModal.request);
-                    } else if (showConfirmModal.type === 'reject') {
-                      handleReject(showConfirmModal.request);
-                    } else {
-                      handleRequestMoreInfo(showConfirmModal.request);
-                    }
-                  }}
-                  className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 transition-colors ${
-                    showConfirmModal.type === 'approve' ? 'bg-green-500 hover:bg-green-600' :
-                    showConfirmModal.type === 'reject' ? 'bg-red-500 hover:bg-red-600' : 'bg-yellow-500 hover:bg-yellow-600'
-                  }`}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : (
-                    <>
-                      {showConfirmModal.type === 'approve' && <Check size={18} />}
-                      {showConfirmModal.type === 'reject' && <X size={18} />}
-                      {showConfirmModal.type === 'more_info' && <AlertCircle size={18} />}
-                    </>
-                  )}
-                  {showConfirmModal.type === 'approve' ? 'تأكيد الموافقة' :
-                   showConfirmModal.type === 'reject' ? 'تأكيد الرفض' : 'إرسال'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => { setShowConfirmModal(null); setRejectionReason(''); setMoreInfoNote(''); }}
+                disabled={isProcessing}
+              >
+                إلغاء
+              </Button>
+              <Button
+                variant={showConfirmModal.type === 'approve' ? 'success' : showConfirmModal.type === 'reject' ? 'destructive' : 'default'}
+                isLoading={isProcessing}
+                leftIcon={
+                  showConfirmModal.type === 'approve' ? <Check size={16} /> :
+                  showConfirmModal.type === 'reject' ? <X size={16} /> :
+                  <AlertCircle size={16} />
+                }
+                onClick={() => {
+                  if (showConfirmModal.type === 'approve') handleApprove(showConfirmModal.request);
+                  else if (showConfirmModal.type === 'reject') handleReject(showConfirmModal.request);
+                  else handleRequestMoreInfo(showConfirmModal.request);
+                }}
+              >
+                {showConfirmModal.type === 'approve' ? 'تأكيد الموافقة' :
+                 showConfirmModal.type === 'reject' ? 'تأكيد الرفض' : 'إرسال'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

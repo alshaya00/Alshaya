@@ -73,8 +73,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'IBM Plex Sans Arabic', 'system-ui', 'sans-serif'],
-        arabic: ['IBM Plex Sans Arabic', 'Noto Sans Arabic', 'Arial', 'sans-serif'],
+        sans: ['var(--font-inter)', 'var(--font-ibm-plex-arabic)', 'system-ui', 'sans-serif'],
+        arabic: ['var(--font-ibm-plex-arabic)', 'Noto Sans Arabic', 'Arial', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       fontSize: {

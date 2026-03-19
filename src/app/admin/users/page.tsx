@@ -30,6 +30,24 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Button,
+  Spinner,
+  Alert,
+  AlertDescription,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Input,
+} from '@/components/ui';
 
 interface LinkedMember {
   id: string;
@@ -517,27 +535,27 @@ export default function AdminUsersPage() {
     switch (status) {
       case 'ACTIVE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+          <Badge variant="success" size="sm" className="gap-1">
             <CheckCircle className="w-3 h-3" />
             نشط
-          </span>
+          </Badge>
         );
       case 'PENDING':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+          <Badge variant="warning" size="sm" className="gap-1">
             <Clock className="w-3 h-3" />
             معلق
-          </span>
+          </Badge>
         );
       case 'DISABLED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+          <Badge variant="destructive" size="sm" className="gap-1">
             <Ban className="w-3 h-3" />
             محظور
-          </span>
+          </Badge>
         );
       default:
-        return <span className="text-gray-500">{status}</span>;
+        return <Badge variant="secondary" size="sm">{status}</Badge>;
     }
   };
 
@@ -547,30 +565,17 @@ export default function AdminUsersPage() {
       case 'VERIFIED':
         return (
           <div className="flex flex-col">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              مُدقق
-            </span>
+            <Badge variant="success" size="sm">مُدقق</Badge>
             {user.verifierName && (
-              <span className="text-xs text-gray-500 mt-0.5">بواسطة: {user.verifierName}</span>
+              <span className="text-xs text-muted-foreground mt-0.5">بواسطة: {user.verifierName}</span>
             )}
           </div>
         );
       case 'FRAUDULENT':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-900 text-white">
-            <span className="w-2 h-2 rounded-full bg-gray-600"></span>
-            متطفل
-          </span>
-        );
+        return <Badge variant="default" size="sm" className="bg-gray-900 text-white">متطفل</Badge>;
       case 'UNVERIFIED':
       default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-            <span className="w-2 h-2 rounded-full bg-red-500"></span>
-            غير مُدقق
-          </span>
-        );
+        return <Badge variant="destructive" size="sm">غير مُدقق</Badge>;
     }
   };
 
@@ -578,176 +583,166 @@ export default function AdminUsersPage() {
     switch (role) {
       case 'SUPER_ADMIN':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+          <Badge variant="destructive" size="sm" className="gap-1">
             <Shield className="w-3 h-3" />
             مدير أعلى
-          </span>
+          </Badge>
         );
       case 'ADMIN':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+          <Badge variant="info" size="sm" className="gap-1">
             <Shield className="w-3 h-3" />
             مدير
-          </span>
+          </Badge>
         );
       case 'EDITOR':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
-            محرر
-          </span>
-        );
+        return <Badge variant="default" size="sm">محرر</Badge>;
       case 'MEMBER':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+          <Badge variant="secondary" size="sm" className="gap-1">
             <User className="w-3 h-3" />
             عضو
-          </span>
+          </Badge>
         );
       default:
-        return <span className="text-gray-500">{role}</span>;
+        return <Badge variant="secondary" size="sm">{role}</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-l from-[#1E3A5F] to-[#2D5A87] rounded-xl p-6 text-white">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <Users className="w-6 h-6" />
+      <Card className="bg-primary text-primary-foreground border-0">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
+              <p className="opacity-80">
+                إجمالي {total} مستخدم مسجل في النظام
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
-            <p className="text-white/80">
-              إجمالي {total} مستخدم مسجل في النظام
-            </p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Duplicate Phone Warning */}
       {duplicatePhoneCount > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-amber-800">تحذير: أرقام جوال مكررة</h3>
-            <p className="text-amber-700 text-sm">
+        <Alert variant="warning">
+          <AlertDescription>
+            <h3 className="font-semibold">تحذير: أرقام جوال مكررة</h3>
+            <p className="text-sm">
               يوجد {duplicatePhoneCount} رقم جوال مستخدم من قبل أكثر من شخص. هذا قد يسبب مشاكل في تسجيل الدخول.
               يرجى مراجعة الأرقام المميزة بعلامة تحذير وتحديثها.
             </p>
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-blue-600" />
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{total}</p>
+                <p className="text-sm text-muted-foreground">إجمالي المستخدمين</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{total}</p>
-              <p className="text-sm text-gray-500">إجمالي المستخدمين</p>
-            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.active}</p>
+                <p className="text-sm text-muted-foreground">نشط</p>
+              </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-600" />
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
+                <p className="text-sm text-muted-foreground">معلق</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
-              <p className="text-sm text-gray-500">نشط</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                <Ban className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.disabled}</p>
+                <p className="text-sm text-muted-foreground">محظور</p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-              <p className="text-sm text-gray-500">معلق</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg p-4 border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-              <Ban className="w-5 h-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.disabled}</p>
-              <p className="text-sm text-gray-500">محظور</p>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search & Filters */}
-      <div className="bg-white rounded-lg border shadow-sm p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="بحث بالاسم أو البريد أو رقم الجوال..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pr-10 pl-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+      <Card>
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <Input
+                placeholder="بحث بالاسم أو البريد أو رقم الجوال..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+              />
+            </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value as FilterStatus);
-                setCurrentPage(1);
-              }}
-              className="border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">الكل</option>
-              <option value="ACTIVE">نشط</option>
-              <option value="PENDING">معلق</option>
-              <option value="DISABLED">محظور</option>
-            </select>
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-muted-foreground" />
+              <select
+                value={filter}
+                onChange={(e) => {
+                  setFilter(e.target.value as FilterStatus);
+                  setCurrentPage(1);
+                }}
+                className="border border-border bg-background text-foreground rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">الكل</option>
+                <option value="ACTIVE">نشط</option>
+                <option value="PENDING">معلق</option>
+                <option value="DISABLED">محظور</option>
+              </select>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Success Message */}
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-          <p className="text-green-700">{successMessage}</p>
-          <button
-            onClick={() => setSuccessMessage(null)}
-            className="mr-auto text-green-500 hover:text-green-700"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <Alert variant="success" dismissible onDismiss={() => setSuccessMessage(null)}>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <p className="text-red-700">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="mr-auto text-red-500 hover:text-red-700"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <Alert variant="destructive" dismissible onDismiss={() => setError(null)}>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Users Table */}

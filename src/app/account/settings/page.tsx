@@ -4,14 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Settings,
   Phone,
   Mail,
   Lock,
   Key,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
   ArrowRight,
   User,
   Eye,
@@ -22,6 +18,16 @@ import PhoneInput from '@/components/PhoneInput';
 import OtpInput from '@/components/OtpInput';
 import { formatPhoneDisplay } from '@/lib/phone-utils';
 import { formatMemberId } from '@/lib/utils';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { Avatar, AvatarFallback, getInitials } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { Separator } from '@/components/ui/Separator';
+import { Spinner } from '@/components/ui/Spinner';
 
 type PhoneStep = 'form' | 'otp';
 
@@ -139,7 +145,7 @@ export default function AccountSettingsPage() {
       return;
     }
 
-    const fullPhone = phoneCountryCode === '+966' 
+    const fullPhone = phoneCountryCode === '+966'
       ? `${phoneCountryCode}${newPhone.startsWith('0') ? newPhone.slice(1) : newPhone}`
       : `${phoneCountryCode}${newPhone}`;
 
@@ -182,7 +188,7 @@ export default function AccountSettingsPage() {
       return;
     }
 
-    const fullPhone = phoneCountryCode === '+966' 
+    const fullPhone = phoneCountryCode === '+966'
       ? `${phoneCountryCode}${newPhone.startsWith('0') ? newPhone.slice(1) : newPhone}`
       : `${phoneCountryCode}${newPhone}`;
 
@@ -220,7 +226,7 @@ export default function AccountSettingsPage() {
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
 
-    const fullPhone = phoneCountryCode === '+966' 
+    const fullPhone = phoneCountryCode === '+966'
       ? `${phoneCountryCode}${newPhone.startsWith('0') ? newPhone.slice(1) : newPhone}`
       : `${phoneCountryCode}${newPhone}`;
 
@@ -318,11 +324,8 @@ export default function AccountSettingsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100" dir="rtl">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
-          <p className="text-gray-600">جاري التحميل...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <Spinner size="lg" label="جاري التحميل..." />
       </div>
     );
   }
@@ -332,381 +335,355 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100" dir="rtl">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Settings className="w-6 h-6 text-emerald-600" />
-              <h1 className="text-xl font-bold text-gray-900">إعدادات الحساب</h1>
-            </div>
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700 transition-colors"
-            >
-              <span>العودة للرئيسية</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-              <User className="w-8 h-8 text-emerald-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">{user?.nameArabic}</h2>
-              {user?.nameEnglish && (
-                <p className="text-sm text-gray-500">{user.nameEnglish}</p>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2 text-gray-600">
-              <Mail className="w-4 h-4 text-gray-400" />
-              <span>{user?.email || '-'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Phone className="w-4 h-4 text-gray-400" />
-              <span dir="ltr">{maskPhone(user?.phone)}</span>
-            </div>
-            {user?.linkedMemberId && (
-              <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
-                <User className="w-4 h-4 text-gray-400" />
-                <span>مرتبط بالعضو: {formatMemberId(user.linkedMemberId)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Lock className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-lg font-semibold text-gray-900">تغيير كلمة المرور</h2>
-          </div>
-
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                كلمة المرور الحالية
-              </label>
-              <div className="relative">
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="أدخل كلمة المرور الحالية"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                كلمة المرور الجديدة
-              </label>
-              <div className="relative">
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="أدخل كلمة المرور الجديدة"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                تأكيد كلمة المرور الجديدة
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="أعد إدخال كلمة المرور الجديدة"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            {passwordError && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <span>{passwordError}</span>
-              </div>
-            )}
-
-            {passwordSuccess && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                <span>{passwordSuccess}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={passwordLoading}
-              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-3 rounded-lg transition-colors"
-            >
-              {passwordLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>جاري التحديث...</span>
-                </>
-              ) : (
-                <>
-                  <Key className="w-5 h-5" />
-                  <span>تحديث كلمة المرور</span>
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Phone className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-lg font-semibold text-gray-900">رقم الجوال</h2>
-          </div>
-
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">
-              الرقم الحالي: <span dir="ltr" className="font-medium">{maskPhone(user?.phone)}</span>
-            </p>
-          </div>
-
-          {phoneStep === 'form' ? (
-            <form onSubmit={handlePhoneSubmit} className="space-y-4">
-              <PhoneInput
-                value={newPhone}
-                onChange={(phone, countryCode) => {
-                  setNewPhone(phone);
-                  setPhoneCountryCode(countryCode);
-                }}
-                countryCode={phoneCountryCode}
-                label="رقم الجوال الجديد"
-                placeholder="5XXXXXXXX"
-                error={undefined}
-              />
-
-              {phoneError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>{phoneError}</span>
-                </div>
-              )}
-
-              {phoneSuccess && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>{phoneSuccess}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={phoneLoading}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-3 rounded-lg transition-colors"
-              >
-                {phoneLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>جاري الإرسال...</span>
-                  </>
-                ) : (
-                  <>
-                    <Phone className="w-5 h-5" />
-                    <span>إرسال رمز التحقق</span>
-                  </>
+    <div dir="rtl">
+      <PageLayout
+        title="إعدادات الحساب"
+        narrow
+        breadcrumbs={[
+          { label: 'الرئيسية', href: '/' },
+          { label: 'إعدادات الحساب' },
+        ]}
+        actions={
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowRight className="w-4 h-4" />
+            العودة للرئيسية
+          </Link>
+        }
+      >
+        {/* Profile Card */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Avatar size="xl" className="bg-primary/10">
+                <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                  {getInitials(user?.nameArabic || '')}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{user?.nameArabic}</h2>
+                {user?.nameEnglish && (
+                  <p className="text-sm text-muted-foreground">{user.nameEnglish}</p>
                 )}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handlePhoneOtpVerify} className="space-y-4">
-              <p className="text-sm text-gray-600 text-center mb-4">
-                تم إرسال رمز التحقق إلى الرقم{' '}
-                <span dir="ltr" className="font-medium">{phoneCountryCode}{newPhone}</span>
-              </p>
-
-              <OtpInput
-                value={phoneOtp}
-                onChange={setPhoneOtp}
-                error={undefined}
-              />
-
-              {otpExpiresIn > 0 && (
-                <p className="text-center text-sm text-gray-500">
-                  ينتهي الرمز خلال: <span className="font-medium">{formatCountdown(otpExpiresIn)}</span>
-                </p>
-              )}
-
-              {phoneError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>{phoneError}</span>
+              </div>
+            </div>
+            <Separator className="my-4" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Mail className="w-4 h-4" />
+                <span>{user?.email || '-'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Phone className="w-4 h-4" />
+                <span dir="ltr">{maskPhone(user?.phone)}</span>
+              </div>
+              {user?.linkedMemberId && (
+                <div className="flex items-center gap-2 text-muted-foreground sm:col-span-2">
+                  <User className="w-4 h-4" />
+                  <span>مرتبط بالعضو: </span>
+                  <Badge variant="outline" size="sm">{formatMemberId(user.linkedMemberId)}</Badge>
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
 
-              {phoneSuccess && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                  <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>{phoneSuccess}</span>
-                </div>
-              )}
+        {/* Settings Tabs */}
+        <Tabs defaultValue="password">
+          <TabsList className="w-full mb-6">
+            <TabsTrigger value="password" className="flex-1">
+              <Lock className="w-4 h-4 me-2" />
+              كلمة المرور
+            </TabsTrigger>
+            <TabsTrigger value="phone" className="flex-1">
+              <Phone className="w-4 h-4 me-2" />
+              رقم الجوال
+            </TabsTrigger>
+            <TabsTrigger value="email" className="flex-1">
+              <Mail className="w-4 h-4 me-2" />
+              البريد الإلكتروني
+            </TabsTrigger>
+          </TabsList>
 
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={phoneLoading}
-                  className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-3 rounded-lg transition-colors"
-                >
-                  {phoneLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>جاري التحقق...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      <span>تأكيد</span>
-                    </>
+          {/* Password Tab */}
+          <TabsContent value="password">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-primary" />
+                  تغيير كلمة المرور
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                  <div className="relative">
+                    <Input
+                      label="كلمة المرور الحالية"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="أدخل كلمة المرور الحالية"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute left-3 top-[38px] text-muted-foreground hover:text-foreground"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <Input
+                      label="كلمة المرور الجديدة"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="أدخل كلمة المرور الجديدة"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute left-3 top-[38px] text-muted-foreground hover:text-foreground"
+                    >
+                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <Input
+                      label="تأكيد كلمة المرور الجديدة"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="أعد إدخال كلمة المرور الجديدة"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute left-3 top-[38px] text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  {passwordError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{passwordError}</AlertDescription>
+                    </Alert>
                   )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhoneStep('form');
-                    setPhoneOtp('');
-                    setPhoneError(null);
-                    setPhoneSuccess(null);
-                  }}
-                  className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  إلغاء
-                </button>
-              </div>
 
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={resendCooldown > 0 || phoneLoading}
-                className="w-full text-center text-sm text-emerald-600 hover:text-emerald-700 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                {resendCooldown > 0 ? `إعادة الإرسال متاحة بعد ${formatCountdown(resendCooldown)}` : 'إعادة إرسال الرمز'}
-              </button>
-            </form>
-          )}
-        </div>
+                  {passwordSuccess && (
+                    <Alert variant="success">
+                      <AlertDescription>{passwordSuccess}</AlertDescription>
+                    </Alert>
+                  )}
 
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Mail className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-lg font-semibold text-gray-900">البريد الإلكتروني</h2>
-          </div>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    isLoading={passwordLoading}
+                    leftIcon={<Key className="w-5 h-5" />}
+                  >
+                    تحديث كلمة المرور
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">
-              البريد الحالي: <span className="font-medium">{user?.email || '-'}</span>
-            </p>
-          </div>
+          {/* Phone Tab */}
+          <TabsContent value="phone">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-primary" />
+                  رقم الجوال
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 p-3 rounded-md bg-muted">
+                  <p className="text-sm text-muted-foreground">
+                    الرقم الحالي: <span dir="ltr" className="font-medium text-foreground">{maskPhone(user?.phone)}</span>
+                  </p>
+                </div>
 
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                البريد الإلكتروني الجديد
-              </label>
-              <input
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="example@email.com"
-                dir="ltr"
-              />
-            </div>
+                {phoneStep === 'form' ? (
+                  <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                    <PhoneInput
+                      value={newPhone}
+                      onChange={(phone, countryCode) => {
+                        setNewPhone(phone);
+                        setPhoneCountryCode(countryCode);
+                      }}
+                      countryCode={phoneCountryCode}
+                      label="رقم الجوال الجديد"
+                      placeholder="5XXXXXXXX"
+                      error={undefined}
+                    />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                كلمة المرور للتأكيد
-              </label>
-              <div className="relative">
-                <input
-                  type={showEmailPassword ? 'text' : 'password'}
-                  value={emailPassword}
-                  onChange={(e) => setEmailPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="أدخل كلمة المرور"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowEmailPassword(!showEmailPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showEmailPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
+                    {phoneError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{phoneError}</AlertDescription>
+                      </Alert>
+                    )}
 
-            {emailError && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <span>{emailError}</span>
-              </div>
-            )}
+                    {phoneSuccess && (
+                      <Alert variant="success">
+                        <AlertDescription>{phoneSuccess}</AlertDescription>
+                      </Alert>
+                    )}
 
-            {emailSuccess && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                <span>{emailSuccess}</span>
-              </div>
-            )}
+                    <Button
+                      type="submit"
+                      fullWidth
+                      isLoading={phoneLoading}
+                      leftIcon={<Phone className="w-5 h-5" />}
+                    >
+                      إرسال رمز التحقق
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handlePhoneOtpVerify} className="space-y-4">
+                    <p className="text-sm text-muted-foreground text-center mb-4">
+                      تم إرسال رمز التحقق إلى الرقم{' '}
+                      <span dir="ltr" className="font-medium text-foreground">{phoneCountryCode}{newPhone}</span>
+                    </p>
 
-            <button
-              type="submit"
-              disabled={emailLoading}
-              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-3 rounded-lg transition-colors"
-            >
-              {emailLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>جاري التحديث...</span>
-                </>
-              ) : (
-                <>
-                  <Mail className="w-5 h-5" />
-                  <span>تحديث البريد الإلكتروني</span>
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-      </main>
+                    <OtpInput
+                      value={phoneOtp}
+                      onChange={setPhoneOtp}
+                      error={undefined}
+                    />
+
+                    {otpExpiresIn > 0 && (
+                      <p className="text-center text-sm text-muted-foreground">
+                        ينتهي الرمز خلال: <span className="font-medium">{formatCountdown(otpExpiresIn)}</span>
+                      </p>
+                    )}
+
+                    {phoneError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{phoneError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {phoneSuccess && (
+                      <Alert variant="success">
+                        <AlertDescription>{phoneSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="flex gap-3">
+                      <Button
+                        type="submit"
+                        fullWidth
+                        isLoading={phoneLoading}
+                        leftIcon={<Key className="w-5 h-5" />}
+                      >
+                        تأكيد
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setPhoneStep('form');
+                          setPhoneOtp('');
+                          setPhoneError(null);
+                          setPhoneSuccess(null);
+                        }}
+                      >
+                        إلغاء
+                      </Button>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="link"
+                      fullWidth
+                      onClick={handleResendOtp}
+                      disabled={resendCooldown > 0 || phoneLoading}
+                      className="text-sm"
+                    >
+                      {resendCooldown > 0 ? `إعادة الإرسال متاحة بعد ${formatCountdown(resendCooldown)}` : 'إعادة إرسال الرمز'}
+                    </Button>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Email Tab */}
+          <TabsContent value="email">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-primary" />
+                  البريد الإلكتروني
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 p-3 rounded-md bg-muted">
+                  <p className="text-sm text-muted-foreground">
+                    البريد الحالي: <span className="font-medium text-foreground">{user?.email || '-'}</span>
+                  </p>
+                </div>
+
+                <form onSubmit={handleEmailSubmit} className="space-y-4">
+                  <Input
+                    label="البريد الإلكتروني الجديد"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="example@email.com"
+                    dir="ltr"
+                  />
+
+                  <div className="relative">
+                    <Input
+                      label="كلمة المرور للتأكيد"
+                      type={showEmailPassword ? 'text' : 'password'}
+                      value={emailPassword}
+                      onChange={(e) => setEmailPassword(e.target.value)}
+                      placeholder="أدخل كلمة المرور"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailPassword(!showEmailPassword)}
+                      className="absolute left-3 top-[38px] text-muted-foreground hover:text-foreground"
+                    >
+                      {showEmailPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  {emailError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{emailError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {emailSuccess && (
+                    <Alert variant="success">
+                      <AlertDescription>{emailSuccess}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button
+                    type="submit"
+                    fullWidth
+                    isLoading={emailLoading}
+                    leftIcon={<Mail className="w-5 h-5" />}
+                  >
+                    تحديث البريد الإلكتروني
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </PageLayout>
     </div>
   );
 }
