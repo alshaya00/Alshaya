@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { getStatisticsFromDb } from '@/lib/db';
 import { familyInfo } from '@/config/constants';
+import { apiSuccess, apiServerError } from '@/lib/api-response';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,7 +12,7 @@ export async function GET() {
     const currentYear = new Date().getFullYear();
     const yearsOfHistory = currentYear - familyInfo.foundingYear;
 
-    const response = NextResponse.json({
+    const response = apiSuccess({
       ...stats,
       yearsOfHistory,
       foundingYear: familyInfo.foundingYear,
@@ -25,13 +25,9 @@ export async function GET() {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
-    
+
     return response;
   } catch (error) {
-    console.error('Error fetching statistics:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch statistics' },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }

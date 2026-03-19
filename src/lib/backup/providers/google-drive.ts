@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
-import { createDailyCSVBackup, createFullBackup } from './backup-service';
+import { createDailyCSVBackup, createFullBackup } from '../index';
 import * as stream from 'stream';
+import type { DriveExportResult, BackupProvider } from '../types';
 
 async function getAccessToken(): Promise<string> {
   const accessToken = process.env.GOOGLE_ACCESS_TOKEN;
@@ -41,9 +42,9 @@ async function getGoogleDriveClient() {
 
 export async function findOrCreateBackupFolder(): Promise<string> {
   const drive = await getGoogleDriveClient();
-  
+
   const folderName = 'AlShaya Family Backups';
-  
+
   const response = await drive.files.list({
     q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: 'files(id, name)',
@@ -66,20 +67,11 @@ export async function findOrCreateBackupFolder(): Promise<string> {
   return folder.data.id!;
 }
 
-export interface DriveExportResult {
-  success: boolean;
-  fileId?: string;
-  fileName?: string;
-  memberCount?: number;
-  webViewLink?: string;
-  error?: string;
-}
-
 export async function exportCSVToGoogleDrive(): Promise<DriveExportResult> {
   try {
     const drive = await getGoogleDriveClient();
     const folderId = await findOrCreateBackupFolder();
-    
+
     const { csv, memberCount, date } = await createDailyCSVBackup();
     const fileName = `Alshaya_family_${date}.csv`;
 
@@ -90,7 +82,7 @@ export async function exportCSVToGoogleDrive(): Promise<DriveExportResult> {
 
     if (existingFiles.data.files && existingFiles.data.files.length > 0) {
       const existingFileId = existingFiles.data.files[0].id!;
-      
+
       const csvBuffer = Buffer.from(csv, 'utf-8');
       const bufferStream = new stream.PassThrough();
       bufferStream.end(csvBuffer);
@@ -156,7 +148,7 @@ export async function exportJSONBackupToGoogleDrive(): Promise<DriveExportResult
   try {
     const drive = await getGoogleDriveClient();
     const folderId = await findOrCreateBackupFolder();
-    
+
     const backup = await createFullBackup();
     const date = new Date().toISOString().split('T')[0];
     const fileName = `Alshaya_family_backup_${date}.json`;
@@ -173,10 +165,10 @@ export async function exportJSONBackupToGoogleDrive(): Promise<DriveExportResult
 
     if (existingFiles.data.files && existingFiles.data.files.length > 0) {
       const existingFileId = existingFiles.data.files[0].id!;
-      
+
       const updateStream = new stream.PassThrough();
       updateStream.end(jsonBuffer);
-      
+
       await drive.files.update({
         fileId: existingFileId,
         media: {

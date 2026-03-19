@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
-import { 
-  exportCSVToGoogleDrive, 
-  exportJSONBackupToGoogleDrive, 
+import {
+  exportCSVToGoogleDrive,
+  exportJSONBackupToGoogleDrive,
   listBackupFiles,
-  isGoogleDriveConnected 
-} from '@/lib/google-drive-export';
-import { sendBackupNotification } from '@/lib/backup-notifications';
+  isGoogleDriveConnected
+} from '@/lib/backup/providers/google-drive';
+import { sendBackupNotification } from '@/lib/backup/notifications';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {

@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
-import { prisma } from './prisma';
+import { prisma } from '@/lib/prisma';
+import type { GitHubBackupResult, BackupProvider } from '../types';
 
 const REPO_NAME = 'alshaye-family-backup';
 const BACKUP_BRANCH = 'main';
@@ -96,7 +97,7 @@ async function getAllMembers() {
 
 async function createBackupContent(): Promise<{ json: string; csv: string; memberCount: number }> {
   const members = await getAllMembers();
-  
+
   const backupData = {
     exportDate: new Date().toISOString(),
     version: '2.1',
@@ -205,7 +206,7 @@ async function uploadFile(
   message: string
 ): Promise<string> {
   let sha: string | undefined;
-  
+
   try {
     const { data } = await octokit.repos.getContent({
       owner,
@@ -232,14 +233,6 @@ async function uploadFile(
   return data.commit.sha || '';
 }
 
-export interface GitHubBackupResult {
-  success: boolean;
-  commitSha?: string;
-  repoUrl?: string;
-  memberCount?: number;
-  error?: string;
-}
-
 export async function exportBackupToGitHub(): Promise<GitHubBackupResult> {
   try {
     const octokit = await getGitHubClient();
@@ -248,7 +241,7 @@ export async function exportBackupToGitHub(): Promise<GitHubBackupResult> {
 
     const { json, csv, memberCount } = await createBackupContent();
     const timestamp = new Date().toISOString().split('T')[0];
-    
+
     const jsonPath = `backups/${timestamp}/backup.json`;
     const csvPath = `backups/${timestamp}/members.csv`;
     const latestJsonPath = 'latest/backup.json';
@@ -298,7 +291,7 @@ export async function getGitHubBackupInfo(): Promise<{
   try {
     const octokit = await getGitHubClient();
     const owner = await getAuthenticatedUser(octokit);
-    
+
     try {
       await octokit.repos.get({ owner, repo: REPO_NAME });
     } catch {

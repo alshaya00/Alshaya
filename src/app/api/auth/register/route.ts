@@ -11,6 +11,7 @@ import { validatePassword } from '@/lib/auth/password';
 import { checkRateLimit, getClientIp, createRateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { emailService, EMAIL_TEMPLATES } from '@/lib/services/email';
 import { normalizePhone } from '@/lib/phone-utils';
+import { apiError, apiSuccess, apiServerError, apiForbidden } from '@/lib/api-response';
 export const dynamic = "force-dynamic";
 
 // Sanitize string input
@@ -54,81 +55,40 @@ export async function POST(request: NextRequest) {
     // Check if self-registration is allowed
     const settings = await getSiteSettings();
     if (!settings.allowSelfRegistration) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Self-registration is currently disabled',
-          messageAr: 'التسجيل الذاتي معطل حالياً',
-        },
-        { status: 403 }
-      );
+      return apiForbidden('Self-registration is currently disabled', 'التسجيل الذاتي معطل حالياً');
     }
 
     // Validate required fields
     if (!email || !password || !nameArabic || !claimedRelation) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Missing required fields',
-          messageAr: 'الحقول المطلوبة غير مكتملة',
-          requiredFields: ['email', 'password', 'nameArabic', 'claimedRelation'],
-        },
-        { status: 400 }
-      );
+      return apiError('Missing required fields', 'الحقول المطلوبة غير مكتملة', 400);
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid email format',
-          messageAr: 'صيغة البريد الإلكتروني غير صحيحة',
-        },
-        { status: 400 }
-      );
+      return apiError('Invalid email format', 'صيغة البريد الإلكتروني غير صحيحة', 400);
     }
 
     // Validate password
     const passwordValidation = validatePassword(password, settings.minPasswordLength || 8);
     if (!passwordValidation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: passwordValidation.errors.map((e) => e.en).join('. '),
-          messageAr: passwordValidation.errors.map((e) => e.ar).join('. '),
-          errors: passwordValidation.errors,
-        },
-        { status: 400 }
+      return apiError(
+        passwordValidation.errors.map((e) => e.en).join('. '),
+        passwordValidation.errors.map((e) => e.ar).join('. '),
+        400
       );
     }
 
     // Check if email already exists as a user
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'An account with this email already exists',
-          messageAr: 'يوجد حساب بهذا البريد الإلكتروني',
-        },
-        { status: 409 }
-      );
+      return apiError('An account with this email already exists', 'يوجد حساب بهذا البريد الإلكتروني', 409);
     }
 
     // Check if there's already a pending request
     const existingRequest = await findAccessRequestByEmail(email);
     if (existingRequest && existingRequest.status === 'PENDING') {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'You already have a pending access request',
-          messageAr: 'لديك طلب وصول بانتظار الموافقة',
-          requestId: existingRequest.id,
-        },
-        { status: 409 }
-      );
+      return apiError('You already have a pending access request', 'لديك طلب وصول بانتظار الموافقة', 409);
     }
 
     // Normalize phone for consistent identity matching
@@ -185,39 +145,17 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send access request confirmation email:', emailError);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: settings.requireApprovalForRegistration
-        ? 'Your request has been submitted. You will be notified once approved.'
-        : 'Registration successful. Please check your email to verify your account.',
-      messageAr: settings.requireApprovalForRegistration
-        ? 'تم تقديم طلبك. سيتم إشعارك عند الموافقة.'
-        : 'تم التسجيل بنجاح. يرجى التحقق من بريدك الإلكتروني.',
+    return apiSuccess({
       requestId: accessRequest.id,
       requiresApproval: settings.requireApprovalForRegistration,
-    });
+    }, 201);
   } catch (error) {
-    console.error('Registration error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     if (errorMessage.includes('pending access request')) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'You already have a pending access request',
-          messageAr: 'لديك طلب وصول بانتظار الموافقة',
-        },
-        { status: 409 }
-      );
+      return apiError('You already have a pending access request', 'لديك طلب وصول بانتظار الموافقة', 409);
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'An error occurred during registration',
-        messageAr: 'حدث خطأ أثناء التسجيل',
-      },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }

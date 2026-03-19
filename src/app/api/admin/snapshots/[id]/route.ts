@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById, logActivity } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { restoreFromBackup, BackupData, MemberBackup } from '@/lib/backup-service';
+import { restoreFromBackup } from '@/lib/backup';
+import type { BackupData, MemberBackup } from '@/lib/backup/types';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {

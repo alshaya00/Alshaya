@@ -1,41 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { findPotentialDuplicates } from '@/lib/fuzzy-matcher';
+import { getAuthUser } from '@/lib/api-auth';
+import { apiSuccess, apiForbidden, apiServerError } from '@/lib/api-response';
 export const dynamic = "force-dynamic";
-
-async function getAuthUser(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-
-  if (!token) return null;
-
-  const session = await findSessionByToken(token);
-  if (!session) return null;
-
-  const user = await findUserById(session.userId);
-  if (!user || user.status !== 'ACTIVE') return null;
-
-  return user;
-}
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError) return authError;
 
-    const permissions = getPermissionsForRole(user.role);
-    if (!permissions.manage_users && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'No permission', messageAr: 'لا تملك الصلاحية' },
-        { status: 403 }
-      );
+    const permissions = getPermissionsForRole(user!.role);
+    if (!permissions.manage_users && user!.role !== 'SUPER_ADMIN' && user!.role !== 'ADMIN') {
+      return apiForbidden('No permission', 'لا تملك الصلاحية');
     }
 
     const { searchParams } = new URL(request.url);
@@ -133,16 +111,11 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       accessRequests: requestsWithMember,
       count: requestsWithMember.length,
     });
   } catch (error) {
-    console.error('Error fetching access requests:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to fetch access requests', messageAr: 'فشل في جلب طلبات الانضمام' },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }

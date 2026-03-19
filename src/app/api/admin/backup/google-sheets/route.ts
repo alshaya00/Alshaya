@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
-import { exportLivingRegistryToSheets, isGoogleSheetsConnected, getSpreadsheetInfo } from '@/lib/google-sheets-export';
+import { exportLivingRegistryToSheets, isGoogleSheetsConnected, getSpreadsheetInfo } from '@/lib/backup/providers/google-sheets';
 import { logAuditToDb } from '@/lib/db-audit';
-import { sendBackupNotification } from '@/lib/backup-notifications';
+import { sendBackupNotification } from '@/lib/backup/notifications';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {

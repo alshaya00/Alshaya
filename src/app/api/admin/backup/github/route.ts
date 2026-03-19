@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
-import { 
-  exportBackupToGitHub, 
+import {
+  exportBackupToGitHub,
   getGitHubBackupInfo,
-  isGitHubConnected 
-} from '@/lib/github-backup';
+  isGitHubConnected
+} from '@/lib/backup/providers/github';
 import { prisma } from '@/lib/prisma';
-import { sendBackupNotification } from '@/lib/backup-notifications';
+import { sendBackupNotification } from '@/lib/backup/notifications';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {

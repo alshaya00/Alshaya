@@ -1,21 +1,15 @@
-// آل شايع Family Tree - Backup Scheduler Service
+// Backup Scheduler Service
 // Uses database-triggered approach instead of setInterval
 // Backups are triggered on-demand or via API calls, not continuous timers
 
 import { prisma } from '@/lib/prisma';
+import type { SchedulerConfig } from './types';
 
 // ============================================
 // BACKUP CONFIGURATION
 // ============================================
 
-export interface BackupConfig {
-  enabled: boolean;
-  intervalHours: number;
-  maxBackups: number;
-  retentionDays: number;
-}
-
-const DEFAULT_CONFIG: BackupConfig = {
+const DEFAULT_CONFIG: SchedulerConfig = {
   enabled: true,
   intervalHours: 24, // Daily backups
   maxBackups: 10,
@@ -30,7 +24,7 @@ const DEFAULT_CONFIG: BackupConfig = {
  * Get backup configuration from database
  * Reads from database instead of memory
  */
-export async function getBackupConfigFromDB(): Promise<BackupConfig> {
+export async function getBackupConfigFromDB(): Promise<SchedulerConfig> {
   try {
     const config = await prisma.backupConfig.findUnique({
       where: { id: 'default' },
@@ -54,7 +48,7 @@ export async function getBackupConfigFromDB(): Promise<BackupConfig> {
 /**
  * Save backup configuration to database
  */
-export async function saveBackupConfigToDB(config: Partial<BackupConfig>): Promise<BackupConfig> {
+export async function saveBackupConfigToDB(config: Partial<SchedulerConfig>): Promise<SchedulerConfig> {
   try {
     const updated = await prisma.backupConfig.upsert({
       where: { id: 'default' },
@@ -282,42 +276,6 @@ export async function getNextBackupTime(): Promise<Date | null> {
 }
 
 /**
- * Get current backup configuration (sync version for backwards compatibility)
- */
-export function getBackupConfig(): BackupConfig {
-  return { ...DEFAULT_CONFIG };
-}
-
-/**
- * Update backup configuration (sync version for backwards compatibility)
- */
-export function updateBackupConfig(config: Partial<BackupConfig>): BackupConfig {
-  // This is now async internally but returns sync for backwards compatibility
-  saveBackupConfigToDB(config).catch(console.error);
-  return { ...DEFAULT_CONFIG, ...config };
-}
-
-/**
- * Start the backup scheduler
- * No-op, backups are triggered via API
- * @deprecated Use runBackupIfNeeded() instead
- */
-export function startBackupScheduler(): void {
-  console.log('[Backup Scheduler] Backups triggered via API, not setInterval');
-  // Run once on startup to check if backup is needed
-  runBackupIfNeeded().catch(console.error);
-}
-
-/**
- * Stop the backup scheduler
- * No-op, nothing to stop
- * @deprecated No longer needed
- */
-export function stopBackupScheduler(): void {
-  console.log('[Backup Scheduler] No scheduler to stop');
-}
-
-/**
  * Get backup statistics
  */
 export async function getBackupStats(): Promise<{
@@ -414,4 +372,38 @@ export async function verifyBackupIntegrity(snapshotId: string): Promise<{
       issues: [error instanceof Error ? error.message : 'Unknown error'],
     };
   }
+}
+
+/**
+ * Get backup configuration (sync version for backwards compatibility)
+ */
+export function getBackupConfig(): SchedulerConfig {
+  return { ...DEFAULT_CONFIG };
+}
+
+/**
+ * Update backup configuration (sync version for backwards compatibility)
+ */
+export function updateBackupConfig(config: Partial<SchedulerConfig>): SchedulerConfig {
+  saveBackupConfigToDB(config).catch(console.error);
+  return { ...DEFAULT_CONFIG, ...config };
+}
+
+/**
+ * Start the backup scheduler
+ * No-op, backups are triggered via API
+ * @deprecated Use runBackupIfNeeded() instead
+ */
+export function startBackupScheduler(): void {
+  console.log('[Backup Scheduler] Backups triggered via API, not setInterval');
+  runBackupIfNeeded().catch(console.error);
+}
+
+/**
+ * Stop the backup scheduler
+ * No-op, nothing to stop
+ * @deprecated No longer needed
+ */
+export function stopBackupScheduler(): void {
+  console.log('[Backup Scheduler] No scheduler to stop');
 }

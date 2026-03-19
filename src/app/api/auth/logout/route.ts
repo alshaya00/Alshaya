@@ -1,11 +1,12 @@
 export const dynamic = "force-dynamic";
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
   findSessionByToken,
   deleteSessionByToken,
   findUserById,
   logActivity,
 } from '@/lib/auth/db-store';
+import { apiSuccess } from '@/lib/api-response';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,11 +15,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader?.replace('Bearer ', '');
 
     if (!token) {
-      return NextResponse.json({
-        success: true,
-        message: 'Logged out',
-        messageAr: 'تم تسجيل الخروج',
-      });
+      return apiSuccess({ message: 'Logged out' });
     }
 
     // Get client info
@@ -46,17 +43,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Logged out successfully',
-      messageAr: 'تم تسجيل الخروج بنجاح',
-    });
+    return apiSuccess({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
-    return NextResponse.json({
-      success: true,
-      message: 'Logged out',
-      messageAr: 'تم تسجيل الخروج',
-    });
+    // Logout should always succeed from the client's perspective
+    return apiSuccess({ message: 'Logged out' });
   }
 }

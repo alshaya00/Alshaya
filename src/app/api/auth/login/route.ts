@@ -12,6 +12,7 @@ import {
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { checkRateLimit, getClientIp, rateLimiters, createRateLimitResponse } from '@/lib/rate-limit';
 import { prisma } from '@/lib/prisma';
+import { apiError, apiSuccess, apiServerError } from '@/lib/api-response';
 export const dynamic = "force-dynamic";
 
 async function recordLoginHistory(
@@ -53,14 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Email and password are required',
-          messageAr: 'البريد الإلكتروني وكلمة المرور مطلوبان',
-        },
-        { status: 400 }
-      );
+      return apiError('Email and password are required', 'البريد الإلكتروني وكلمة المرور مطلوبان', 400);
     }
 
     // Get client info
@@ -85,15 +79,10 @@ export async function POST(request: NextRequest) {
         errorMessage: 'Account locked due to too many failed attempts',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Account locked. Try again in ${lockMinutes} minutes`,
-          messageAr: `الحساب مقفل. حاول مرة أخرى بعد ${lockMinutes} دقيقة`,
-          locked: true,
-          lockMinutes,
-        },
-        { status: 429 }
+      return apiError(
+        `Account locked. Try again in ${lockMinutes} minutes`,
+        `الحساب مقفل. حاول مرة أخرى بعد ${lockMinutes} دقيقة`,
+        429
       );
     }
 
@@ -112,15 +101,7 @@ export async function POST(request: NextRequest) {
         errorMessage: 'User not found',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid email or password',
-          messageAr: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
-          remainingAttempts: attemptCheck.remainingAttempts - 1,
-        },
-        { status: 401 }
-      );
+      return apiError('Invalid email or password', 'البريد الإلكتروني أو كلمة المرور غير صحيحة', 401);
     }
 
     // Verify password
@@ -141,15 +122,7 @@ export async function POST(request: NextRequest) {
         errorMessage: 'Invalid password',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid email or password',
-          messageAr: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
-          remainingAttempts: attemptCheck.remainingAttempts - 1,
-        },
-        { status: 401 }
-      );
+      return apiError('Invalid email or password', 'البريد الإلكتروني أو كلمة المرور غير صحيحة', 401);
     }
 
     // PENDING users can now login - admin will review later
@@ -170,15 +143,7 @@ export async function POST(request: NextRequest) {
         errorMessage: 'Account disabled',
       });
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Your account has been disabled',
-          messageAr: 'تم تعطيل حسابك',
-          disabled: true,
-        },
-        { status: 403 }
-      );
+      return apiError('Your account has been disabled', 'تم تعطيل حسابك', 403);
     }
 
     // Clear failed login attempts
@@ -219,23 +184,12 @@ export async function POST(request: NextRequest) {
       permissions: getPermissionsForRole(user.role),
     };
 
-    return NextResponse.json({
-      success: true,
-      message: 'Login successful',
-      messageAr: 'تم تسجيل الدخول بنجاح',
+    return apiSuccess({
       user: responseUser,
       token: session.token,
       expiresAt: session.expiresAt.toISOString(),
     });
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'An error occurred during login',
-        messageAr: 'حدث خطأ أثناء تسجيل الدخول',
-      },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }

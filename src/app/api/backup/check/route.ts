@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { runBackupIfNeeded, getBackupStats, isBackupNeeded } from '@/lib/backup-scheduler';
+import { runBackupIfNeeded, getBackupStats, isBackupNeeded } from '@/lib/backup/scheduler';
 export const dynamic = "force-dynamic";
 
 /**

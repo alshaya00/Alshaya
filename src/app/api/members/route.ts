@@ -1,31 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import type { FamilyMember } from '@/lib/types';
 import { getAllMembersFromDb, getNextIdFromDb, memberExistsInDb, createMemberInDb } from '@/lib/db';
 import { sanitizeString } from '@/lib/sanitize';
-import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { formatMemberId, normalizeMemberId } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
+import { getAuthUser } from '@/lib/api-auth';
+import { apiPaginated, apiError, apiForbidden, apiServerError, apiSuccess } from '@/lib/api-response';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-// Helper to get authenticated user from request
-async function getAuthUser(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-
-  if (!token) return null;
-
-  const session = await findSessionByToken(token);
-  if (!session) return null;
-
-  const user = await findUserById(session.userId);
-  if (!user || user.status !== 'ACTIVE') return null;
-
-  return user;
-}
 
 // Normalize gender input to handle case insensitivity
 function normalizeGender(gender: string): 'Male' | 'Female' | null {
@@ -62,20 +47,12 @@ function matchesMemberId(memberId: string, searchQuery: string): boolean {
 export async function GET(request: NextRequest) {
   try {
     // SECURITY: Require authentication to view members
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError) return authError;
 
-    const permissions = getPermissionsForRole(user.role);
+    const permissions = getPermissionsForRole(user!.role);
     if (!permissions.view_member_profiles) {
-      return NextResponse.json(
-        { success: false, message: 'No permission to view members', messageAr: 'لا تملك صلاحية عرض الأعضاء' },
-        { status: 403 }
-      );
+      return apiForbidden('No permission to view members', 'لا تملك صلاحية عرض الأعضاء');
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -149,25 +126,12 @@ export async function GET(request: NextRequest) {
     const endIndex = startIndex + limit;
     const paginatedMembers = members.slice(startIndex, endIndex);
 
-    const response = NextResponse.json({
-      success: true,
-      data: paginatedMembers,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    });
-    
+    const response = apiPaginated(paginatedMembers, { page, limit, total });
+
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
-    console.error('Error fetching members:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch members' },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }
 
@@ -175,20 +139,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // SECURITY: Require authentication and add_members permission
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError) return authError;
 
-    const permissions = getPermissionsForRole(user.role);
+    const permissions = getPermissionsForRole(user!.role);
     if (!permissions.add_member) {
-      return NextResponse.json(
-        { success: false, message: 'No permission to add members', messageAr: 'لا تملك صلاحية إضافة أعضاء' },
-        { status: 403 }
-      );
+      return apiForbidden('No permission to add members', 'لا تملك صلاحية إضافة أعضاء');
     }
 
     const body = await request.json();
@@ -200,27 +156,18 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!sanitizedFirstName) {
-      return NextResponse.json(
-        { success: false, error: 'firstName is required' },
-        { status: 400 }
-      );
+      return apiError('firstName is required', 'الاسم الأول مطلوب', 400);
     }
 
     if (!sanitizedGender) {
-      return NextResponse.json(
-        { success: false, error: 'Valid gender is required (Male or Female)' },
-        { status: 400 }
-      );
+      return apiError('Valid gender is required (Male or Female)', 'الجنس المطلوب (ذكر أو أنثى)', 400);
     }
 
     // Check for duplicate ID in database
     if (body.id) {
       const exists = await memberExistsInDb(body.id);
       if (exists) {
-        return NextResponse.json(
-          { success: false, error: 'Member with this ID already exists' },
-          { status: 409 }
-        );
+        return apiError('Member with this ID already exists', 'يوجد عضو بهذا المعرف', 409);
       }
     }
 
@@ -258,19 +205,16 @@ export async function POST(request: NextRequest) {
     const createdMember = await createMemberInDb(newMember);
 
     if (!createdMember) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to create member in database'
-      }, { status: 500 });
+      return apiError('Failed to create member in database', 'فشل في إنشاء العضو في قاعدة البيانات', 500);
     }
 
     try {
       await logAuditToDb({
         action: 'MEMBER_CREATE',
         severity: 'INFO',
-        userId: user.id,
-        userName: user.email,
-        userRole: user.role,
+        userId: user!.id,
+        userName: user!.email,
+        userRole: user!.role,
         targetType: 'MEMBER',
         targetId: createdMember.id,
         targetName: createdMember.fullNameAr || createdMember.firstName,
@@ -282,16 +226,8 @@ export async function POST(request: NextRequest) {
       console.error('Audit logging failed:', auditError);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: createdMember,
-      message: 'Member created successfully'
-    }, { status: 201 });
+    return apiSuccess(createdMember, 201);
   } catch (error) {
-    console.error('Error creating member:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create member' },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }

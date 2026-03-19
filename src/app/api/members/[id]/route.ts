@@ -1,30 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import type { FamilyMember } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
 import { getMemberByIdFromDb, getChildrenFromDb, getAllMembersFromDb, updateMemberInDb, deleteMemberFromDb } from '@/lib/db';
 import { randomUUID } from 'crypto';
-import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
 import { logAuditToDb } from '@/lib/db-audit';
 import { generateFullNamesFromLineage, getAncestorNamesFromLineage } from '@/lib/member-registry';
 import { isMale, normalizeMemberId, getMemberIdVariants } from '@/lib/utils';
 import { normalizeCityWithCorrection } from '@/lib/matching/arabic-utils';
+import { getAuthUser } from '@/lib/api-auth';
+import { apiSuccess, apiError, apiNotFound, apiForbidden, apiServerError } from '@/lib/api-response';
 export const dynamic = "force-dynamic";
-
-async function getAuthUser(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-
-  if (!token) return null;
-
-  const session = await findSessionByToken(token);
-  if (!session) return null;
-
-  const user = await findUserById(session.userId);
-  if (!user || user.status !== 'ACTIVE') return null;
-
-  return user;
-}
 
 async function recordChangeHistory(
   memberId: string,
@@ -85,20 +71,12 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError) return authError;
 
-    const permissions = getPermissionsForRole(user.role);
+    const permissions = getPermissionsForRole(user!.role);
     if (!permissions.view_member_profiles) {
-      return NextResponse.json(
-        { success: false, message: 'No permission to view members', messageAr: 'لا تملك صلاحية عرض الأعضاء' },
-        { status: 403 }
-      );
+      return apiForbidden('No permission to view members', 'لا تملك صلاحية عرض الأعضاء');
     }
 
     const idVariants = getMemberIdVariants(params.id);
@@ -109,27 +87,17 @@ export async function GET(
     }
 
     if (!member) {
-      return NextResponse.json(
-        { success: false, error: 'Member not found' },
-        { status: 404 }
-      );
+      return apiNotFound('Member not found', 'العضو غير موجود');
     }
 
     const children = await getChildrenFromDb(member.id);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...member,
-        children,
-      }
+    return apiSuccess({
+      ...member,
+      children,
     });
   } catch (error) {
-    console.error('Error fetching member:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch member' },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }
 
@@ -138,20 +106,12 @@ async function handleUpdate(
   params: { id: string }
 ) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError) return authError;
 
-    const permissions = getPermissionsForRole(user.role);
+    const permissions = getPermissionsForRole(user!.role);
     if (!permissions.edit_member) {
-      return NextResponse.json(
-        { success: false, message: 'No permission to edit members', messageAr: 'لا تملك صلاحية تعديل الأعضاء' },
-        { status: 403 }
-      );
+      return apiForbidden('No permission to edit members', 'لا تملك صلاحية تعديل الأعضاء');
     }
 
     const idVariants = getMemberIdVariants(params.id);
@@ -162,27 +122,18 @@ async function handleUpdate(
     }
 
     if (!member) {
-      return NextResponse.json(
-        { success: false, error: 'Member not found' },
-        { status: 404 }
-      );
+      return apiNotFound('Member not found', 'العضو غير موجود');
     }
 
     const id = member.id;
     const body = await request.json();
 
     if (body.gender && !['Male', 'Female'].includes(body.gender)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid gender value' },
-        { status: 400 }
-      );
+      return apiError('Invalid gender value', 'قيمة الجنس غير صالحة', 400);
     }
 
     if (body.status && !['Living', 'Deceased'].includes(body.status)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid status value' },
-        { status: 400 }
-      );
+      return apiError('Invalid status value', 'قيمة الحالة غير صالحة', 400);
     }
 
     if (body.fatherId) {
@@ -199,22 +150,13 @@ async function handleUpdate(
       body.fatherId = resolvedFatherId;
       const isDescendant = await checkIsDescendant(body.fatherId, id);
       if (isDescendant) {
-        return NextResponse.json(
-          { success: false, error: 'Cannot set a descendant as parent (would create cycle)' },
-          { status: 400 }
-        );
+        return apiError('Cannot set a descendant as parent (would create cycle)', 'لا يمكن تعيين أحد الأحفاد كأب (سيؤدي إلى حلقة)', 400);
       }
       if (!father) {
-        return NextResponse.json(
-          { success: false, error: 'Father not found' },
-          { status: 400 }
-        );
+        return apiError('Father not found', 'الأب غير موجود', 400);
       }
       if (!isMale(father.gender)) {
-        return NextResponse.json(
-          { success: false, error: 'Father must be male', messageAr: 'يجب أن يكون الوالد ذكراً' },
-          { status: 400 }
-        );
+        return apiError('Father must be male', 'يجب أن يكون الوالد ذكراً', 400);
       }
     }
 
@@ -290,10 +232,7 @@ async function handleUpdate(
     const updatedMember = await updateMemberInDb(id, updateData);
     
     if (!updatedMember) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to update member' },
-        { status: 500 }
-      );
+      return apiError('Failed to update member', 'فشل في تحديث بيانات العضو', 500);
     }
 
     let batchId: string | undefined;
@@ -328,9 +267,9 @@ async function handleUpdate(
       await logAuditToDb({
         action: 'MEMBER_UPDATE',
         severity: 'INFO',
-        userId: user.id,
-        userName: user.email,
-        userRole: user.role,
+        userId: user!.id,
+        userName: user!.email,
+        userRole: user!.role,
         targetType: 'MEMBER',
         targetId: id,
         targetName: updatedMember.fullNameAr || updatedMember.firstName,
@@ -343,25 +282,13 @@ async function handleUpdate(
       console.error('Audit logging failed:', auditError);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: updatedMember,
-      message: 'Member updated successfully',
+    return apiSuccess({
+      ...updatedMember,
       cascadedCount,
       batchId,
     });
   } catch (error) {
-    console.error('Error updating member:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to update member';
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: errorMessage,
-        message: errorMessage,
-        messageAr: 'فشل في تحديث بيانات العضو'
-      },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }
 
@@ -384,20 +311,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', messageAr: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError) return authError;
 
-    const permissions = getPermissionsForRole(user.role);
+    const permissions = getPermissionsForRole(user!.role);
     if (!permissions.delete_member) {
-      return NextResponse.json(
-        { success: false, message: 'No permission to delete members', messageAr: 'لا تملك صلاحية حذف الأعضاء' },
-        { status: 403 }
-      );
+      return apiForbidden('No permission to delete members', 'لا تملك صلاحية حذف الأعضاء');
     }
 
     const idVariants = getMemberIdVariants(params.id);
@@ -408,40 +327,31 @@ export async function DELETE(
     }
 
     if (!member) {
-      return NextResponse.json(
-        { success: false, error: 'Member not found' },
-        { status: 404 }
-      );
+      return apiNotFound('Member not found', 'العضو غير موجود');
     }
 
     const id = member.id;
     const children = await getChildrenFromDb(member.id);
     if (children.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Cannot delete member with children. Please reassign or delete children first.',
-          childrenCount: children.length
-        },
-        { status: 400 }
+      return apiError(
+        'Cannot delete member with children. Please reassign or delete children first.',
+        'لا يمكن حذف عضو لديه أبناء. يرجى إعادة تعيين أو حذف الأبناء أولاً.',
+        400
       );
     }
 
     const deleted = await deleteMemberFromDb(id);
     if (!deleted) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to delete member' },
-        { status: 500 }
-      );
+      return apiError('Failed to delete member', 'فشل في حذف العضو', 500);
     }
 
     try {
       await logAuditToDb({
         action: 'MEMBER_DELETE',
         severity: 'WARNING',
-        userId: user.id,
-        userName: user.email,
-        userRole: user.role,
+        userId: user!.id,
+        userName: user!.email,
+        userRole: user!.role,
         targetType: 'MEMBER',
         targetId: id,
         targetName: member.fullNameAr || member.firstName,
@@ -453,16 +363,9 @@ export async function DELETE(
       console.error('Audit logging failed:', auditError);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Member deleted successfully'
-    });
+    return apiSuccess({ message: 'Member deleted successfully' });
   } catch (error) {
-    console.error('Error deleting member:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete member' },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }
 

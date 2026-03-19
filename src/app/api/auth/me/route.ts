@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
   findSessionByToken,
   findUserById,
   updateSessionActivity,
 } from '@/lib/auth/db-store';
 import { getPermissionsForRole } from '@/lib/auth/permissions';
+import { apiSuccess, apiUnauthorized, apiNotFound, apiForbidden, apiServerError } from '@/lib/api-response';
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -14,52 +15,24 @@ export async function GET(request: NextRequest) {
     const token = authHeader?.replace('Bearer ', '');
 
     if (!token) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'No token provided',
-          messageAr: 'لم يتم توفير رمز المصادقة',
-        },
-        { status: 401 }
-      );
+      return apiUnauthorized('No token provided', 'لم يتم توفير رمز المصادقة');
     }
 
     // Find session
     const session = await findSessionByToken(token);
     if (!session) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid or expired session',
-          messageAr: 'جلسة غير صالحة أو منتهية',
-        },
-        { status: 401 }
-      );
+      return apiUnauthorized('Invalid or expired session', 'جلسة غير صالحة أو منتهية');
     }
 
     // Find user
     const user = await findUserById(session.userId);
     if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'User not found',
-          messageAr: 'المستخدم غير موجود',
-        },
-        { status: 404 }
-      );
+      return apiNotFound('User not found', 'المستخدم غير موجود');
     }
 
     // Check if user is still active
     if (user.status === 'DISABLED') {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Your account has been disabled',
-          messageAr: 'تم تعطيل حسابك',
-        },
-        { status: 403 }
-      );
+      return apiForbidden('Your account has been disabled', 'تم تعطيل حسابك');
     }
 
     // Update session activity
@@ -82,8 +55,7 @@ export async function GET(request: NextRequest) {
       permissions: getPermissionsForRole(user.role),
     };
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       user: responseUser,
       session: {
         expiresAt: session.expiresAt.toISOString(),
@@ -91,14 +63,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Get user error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'An error occurred',
-        messageAr: 'حدث خطأ',
-      },
-      { status: 500 }
-    );
+    return apiServerError(error);
   }
 }

@@ -1,13 +1,6 @@
-import { prisma } from './prisma';
-import { emailService } from './services/email';
-
-export interface BackupNotificationData {
-  success: boolean;
-  destination: 'GitHub' | 'Google Drive' | 'Google Sheets' | 'Local';
-  memberCount?: number;
-  url?: string;
-  error?: string;
-}
+import { prisma } from '@/lib/prisma';
+import { emailService } from '@/lib/services/email';
+import type { BackupNotificationData } from './types';
 
 export async function sendBackupNotification(data: BackupNotificationData): Promise<void> {
   try {

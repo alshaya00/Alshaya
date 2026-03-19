@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAllMembersFromDb } from '@/lib/db';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
 import { smartMemberSearch, normalizeForSearch } from '@/lib/search-utils';
+import { apiSuccess } from '@/lib/api-response';
 export const dynamic = "force-dynamic";
 
 /**
@@ -48,11 +49,7 @@ export async function GET(request: NextRequest) {
     const includeHistory = searchParams.get('history') !== 'false';
 
     if (query.length < 1) {
-      return NextResponse.json({
-        success: true,
-        suggestions: [],
-        recentSearches: [],
-      });
+      return apiSuccess({ suggestions: [], recentSearches: [] });
     }
 
     const suggestions: Array<{
@@ -143,17 +140,13 @@ export async function GET(request: NextRequest) {
 
     const limitedSuggestions = suggestions.slice(0, limit);
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       suggestions: limitedSuggestions,
       recentSearches,
     });
   } catch (error) {
     console.error('Error getting suggestions:', error);
-    return NextResponse.json({
-      success: true,
-      suggestions: [],
-      recentSearches: [],
-    });
+    // Gracefully return empty results on error
+    return apiSuccess({ suggestions: [], recentSearches: [] });
   }
 }

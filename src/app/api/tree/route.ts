@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { getAllMembersFromDb } from '@/lib/db';
 import type { FamilyMember } from '@/lib/types';
+import { apiSuccess, apiNotFound, apiServerError } from '@/lib/api-response';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -70,14 +70,13 @@ export async function GET() {
     const tree = buildTreeFromMembers(members);
     
     if (!tree) {
-      return NextResponse.json({ error: 'No family tree data available' }, { status: 404 });
+      return apiNotFound('No family tree data available', 'لا تتوفر بيانات شجرة العائلة');
     }
-    
-    const response = NextResponse.json(tree);
+
+    const response = apiSuccess(tree);
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
-    console.error('Error building family tree:', error);
-    return NextResponse.json({ error: 'Failed to build family tree' }, { status: 500 });
+    return apiServerError(error);
   }
 }

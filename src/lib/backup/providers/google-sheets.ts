@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
-import { prisma } from './prisma';
+import { prisma } from '@/lib/prisma';
+import type { SheetsExportResult, BackupProvider } from '../types';
 
 async function getAccessToken(): Promise<string> {
   const accessToken = process.env.GOOGLE_ACCESS_TOKEN;
@@ -50,21 +51,12 @@ async function getGoogleDriveClient() {
   return google.drive({ version: 'v3', auth: oauth2Client });
 }
 
-export interface SheetsExportResult {
-  success: boolean;
-  spreadsheetId?: string;
-  spreadsheetUrl?: string;
-  sheetTitle?: string;
-  memberCount?: number;
-  error?: string;
-}
-
 const SPREADSHEET_NAME = 'Al-Shaya Living Registry Snapshot';
 const MAX_SNAPSHOTS = 30;
 
 async function findOrCreateSpreadsheet(): Promise<{ spreadsheetId: string; isNew: boolean }> {
   const drive = await getGoogleDriveClient();
-  
+
   const response = await drive.files.list({
     q: `name='${SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
     fields: 'files(id, name)',
@@ -75,7 +67,7 @@ async function findOrCreateSpreadsheet(): Promise<{ spreadsheetId: string; isNew
   }
 
   const sheets = await getGoogleSheetsClient();
-  
+
   const spreadsheet = await sheets.spreadsheets.create({
     requestBody: {
       properties: {
@@ -170,10 +162,10 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
   try {
     const sheets = await getGoogleSheetsClient();
     const { spreadsheetId, isNew } = await findOrCreateSpreadsheet();
-    
+
     const members = await getLivingMembers();
     const data = formatMembersForSheet(members);
-    
+
     const today = new Date().toISOString().split('T')[0];
     const snapshotSheetTitle = today;
 
@@ -184,15 +176,15 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
 
     const existingSheets = spreadsheet.data.sheets || [];
     const sheetTitles = existingSheets.map(s => s.properties?.title).filter(Boolean);
-    
+
     const existingSnapshotSheet = existingSheets.find(s => s.properties?.title === snapshotSheetTitle);
-    
+
     if (existingSnapshotSheet) {
       await sheets.spreadsheets.values.clear({
         spreadsheetId,
         range: `'${snapshotSheetTitle}'!A:Z`,
       });
-      
+
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: `'${snapshotSheetTitle}'!A1`,
@@ -217,7 +209,7 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
           ],
         },
       });
-      
+
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: `'${snapshotSheetTitle}'!A1`,
@@ -234,7 +226,7 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
         spreadsheetId,
         range: "'Current'!A:Z",
       });
-      
+
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: "'Current'!A1",
@@ -259,7 +251,7 @@ export async function exportLivingRegistryToSheets(): Promise<SheetsExportResult
 
     if (allSnapshotTitles.length > MAX_SNAPSHOTS) {
       const sheetsToDelete = allSnapshotTitles.slice(MAX_SNAPSHOTS);
-      
+
       for (const sheetTitle of sheetsToDelete) {
         const sheetToDelete = updatedSheets.find(s => s.properties?.title === sheetTitle);
         if (sheetToDelete?.properties?.sheetId) {
@@ -318,7 +310,7 @@ export async function getSpreadsheetInfo(): Promise<{
 }> {
   try {
     const drive = await getGoogleDriveClient();
-    
+
     const response = await drive.files.list({
       q: `name='${SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
       fields: 'files(id, name, modifiedTime)',
@@ -330,7 +322,7 @@ export async function getSpreadsheetInfo(): Promise<{
 
     const spreadsheetId = response.data.files[0].id!;
     const sheets = await getGoogleSheetsClient();
-    
+
     const spreadsheet = await sheets.spreadsheets.get({
       spreadsheetId,
       fields: 'sheets.properties.title',

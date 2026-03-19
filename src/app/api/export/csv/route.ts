@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { findSessionByToken, findUserById } from '@/lib/auth/db-store';
-import { createDailyCSVBackup } from '@/lib/backup-service';
+import { createDailyCSVBackup } from '@/lib/backup';
 export const dynamic = "force-dynamic";
 
 async function getAuthUser(request: NextRequest) {
