@@ -666,8 +666,9 @@ export default function AdminUsersPage() {
                 <p className="text-2xl font-bold text-foreground">{stats.active}</p>
                 <p className="text-sm text-muted-foreground">نشط</p>
               </div>
-          </div>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-3">
